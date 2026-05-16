@@ -715,7 +715,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
       >
         <Box
           sx={{
-            flex: "0 1 20%",
+            flex: "1 1 auto",
             p: 2,
             display: "flex",
             alignItems: "center",
@@ -725,14 +725,11 @@ export function NodeView<TNode extends NodeViewNodeData>({
         >
           {treatment ? (
             // Title chip — wraps the model name with the same !/~
-            // language used per-column in the schema grid. The chip is
-            // the panel's only whole-model signal in the header area;
-            // the wash and labeled bar were dropped (see spec
-            // 2026-05-14-whole-model-treatment-redesign-design.md).
-            // `cll-experience` ensures `--schema-color-impacted-accent`
-            // resolves: that CSS variable is only declared inside the
-            // `.cll-experience` scope (see schema/style.css), and the
-            // disc background depends on it.
+            // language used per-column in the schema grid. Reuses the
+            // existing `schema-change-badge` glyph so the chip stays in
+            // sync with the per-row treatment. `cll-experience` is
+            // required for the badge's CSS vars to resolve (see
+            // schema/style.css).
             <Box
               className="cll-experience"
               data-testid={
@@ -757,28 +754,18 @@ export function NodeView<TNode extends NodeViewNodeData>({
                 border: `1px solid ${treatment.washAccent}`,
                 color: treatment.fg,
                 minWidth: 0,
-                maxWidth: "100%",
               }}
             >
-              <Box
+              <span
                 aria-hidden="true"
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 18,
-                  height: 18,
-                  borderRadius: "50%",
-                  backgroundColor: treatment.washAccent,
-                  color: "#fff",
-                  fontSize: "0.7rem",
-                  fontWeight: 800,
-                  lineHeight: 1,
-                  flexShrink: 0,
-                }}
+                className={
+                  treatmentKind === "source"
+                    ? "schema-change-badge schema-change-badge-changed"
+                    : "schema-change-badge schema-change-badge-impacted"
+                }
               >
                 {treatmentKind === "source" ? "~" : "!"}
-              </Box>
+              </span>
               <Typography
                 variant="subtitle1"
                 component="span"

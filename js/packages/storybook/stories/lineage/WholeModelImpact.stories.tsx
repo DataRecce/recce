@@ -107,28 +107,18 @@ function PanelFixture({ modelName, variant, rows }: PanelFixtureProps) {
               border: `1px solid ${tokens.washAccent}`,
               color: tokens.fg,
               minWidth: 0,
-              maxWidth: "100%",
             }}
           >
-            <Box
+            <span
               aria-hidden="true"
-              sx={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 18,
-                height: 18,
-                borderRadius: "50%",
-                backgroundColor: tokens.washAccent,
-                color: "#fff",
-                fontSize: "0.7rem",
-                fontWeight: 800,
-                lineHeight: 1,
-                flexShrink: 0,
-              }}
+              className={
+                isSource
+                  ? "schema-change-badge schema-change-badge-changed"
+                  : "schema-change-badge schema-change-badge-impacted"
+              }
             >
               {isSource ? "~" : "!"}
-            </Box>
+            </span>
             <Typography
               variant="subtitle1"
               component="span"
