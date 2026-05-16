@@ -88,6 +88,7 @@ function PanelFixture({ modelName, variant, rows }: PanelFixtureProps) {
           sx={{ alignItems: "center", gap: 1, minWidth: 0, flex: 1 }}
         >
           <Box
+            className="cll-experience"
             data-testid={
               isSource
                 ? "whole-model-source-title-chip"

@@ -729,7 +729,12 @@ export function NodeView<TNode extends NodeViewNodeData>({
             // the panel's only whole-model signal in the header area;
             // the wash and labeled bar were dropped (see spec
             // 2026-05-14-whole-model-treatment-redesign-design.md).
+            // `cll-experience` ensures `--schema-color-impacted-accent`
+            // resolves: that CSS variable is only declared inside the
+            // `.cll-experience` scope (see schema/style.css), and the
+            // disc background depends on it.
             <Box
+              className="cll-experience"
               data-testid={
                 treatmentKind === "source"
                   ? "whole-model-source-title-chip"
@@ -805,15 +810,6 @@ export function NodeView<TNode extends NodeViewNodeData>({
           )}
         </Box>
         <Box sx={{ flexGrow: 1 }} />
-        {!isSingleEnv && isModelSeedOrSnapshot && (
-          <ExploreHeaderButtons
-            node={node}
-            actionCallbacks={extendedCallbacks}
-            runTypeIcons={runTypeIcons}
-            featureToggles={featureToggles}
-            ConnectionPopoverWrapper={ConnectionPopoverWrapper}
-          />
-        )}
         <Box sx={{ flex: "0 1 1%" }}>
           <IconButton size="small" onClick={onCloseNode}>
             <IoClose />
@@ -840,6 +836,22 @@ export function NodeView<TNode extends NodeViewNodeData>({
                 ))}
         </Stack>
       </Box>
+      {/* Header actions row — Add schema diff to checklist, Sandbox.
+          Moved out of the title row so the title chip has more breathing
+          room and the action buttons sit closer to the data they act on. */}
+      {!isSingleEnv && isModelSeedOrSnapshot && (
+        <Box sx={{ pl: 2, py: 0.5 }}>
+          <Stack direction="row" spacing={1}>
+            <ExploreHeaderButtons
+              node={node}
+              actionCallbacks={extendedCallbacks}
+              runTypeIcons={runTypeIcons}
+              featureToggles={featureToggles}
+              ConnectionPopoverWrapper={ConnectionPopoverWrapper}
+            />
+          </Stack>
+        </Box>
+      )}
       {/* Action buttons row */}
       {isModelSeedOrSnapshot && (
         <Box sx={{ pl: 2, py: 1 }}>

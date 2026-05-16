@@ -38,6 +38,9 @@ recce/data
 # Git worktrees for isolated development
 .worktrees/
 
+# Superpowers brainstorming companion session files
+.superpowers/
+
 # Claude output files
 output/*
 !output/.gitkeep
