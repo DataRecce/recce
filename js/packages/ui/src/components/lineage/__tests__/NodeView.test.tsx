@@ -8,6 +8,7 @@
  */
 
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import type { NodeColumnData } from "../../../api";
 import type { NodeViewNodeData } from "../NodeView";
@@ -182,7 +183,7 @@ describe("NodeView", () => {
       expect(chip).toHaveTextContent("~");
     });
 
-    test("downstream-impact: wash + labeled bar are gone; [ALL] badge sits next to chip", () => {
+    test("downstream-impact: wash + labeled bar are gone; [TABLE] badge sits next to chip", () => {
       renderNodeViewWithTreatment(
         createNode("model", testColumns),
         { isWholeModelImpactedDownstream: true },
@@ -196,14 +197,30 @@ describe("NodeView", () => {
       expect(
         screen.queryByTestId("whole-model-impact-header"),
       ).not.toBeInTheDocument();
-      // [ALL] badge is rendered next to the title chip (mirrors the
+      // [TABLE] badge is rendered next to the title chip (mirrors the
       // lineage-graph badge so users get the same signal on both surfaces).
+      const badge = screen.getByTestId("whole-model-impact-badge");
+      expect(badge).toBeInTheDocument();
+      expect(badge).toHaveTextContent("TABLE");
+      // Tooltip wrapper passes its title down as an aria description.
+      expect(badge.closest("[aria-label]")).toBeTruthy();
+    });
+
+    test("downstream-impact: badge tooltip reads 'Table-wide impact'", async () => {
+      const user = userEvent.setup();
+      renderNodeViewWithTreatment(
+        createNode("model", testColumns),
+        { isWholeModelImpactedDownstream: true },
+        testColumns,
+      );
+
+      await user.hover(screen.getByTestId("whole-model-impact-badge"));
       expect(
-        screen.getByTestId("whole-model-impact-badge"),
+        await screen.findByRole("tooltip", { name: "Table-wide impact" }),
       ).toBeInTheDocument();
     });
 
-    test("source: wash + labeled bar are gone; [ALL] badge sits next to chip", () => {
+    test("source: wash + labeled bar are gone; [TABLE] badge sits next to chip", () => {
       renderNodeViewWithTreatment(
         createNode("model", testColumns),
         { isBreakingSource: true },
@@ -216,8 +233,50 @@ describe("NodeView", () => {
       expect(
         screen.queryByTestId("whole-model-source-header"),
       ).not.toBeInTheDocument();
+      const badge = screen.getByTestId("whole-model-source-badge");
+      expect(badge).toBeInTheDocument();
+      expect(badge).toHaveTextContent("TABLE");
+    });
+
+    test("source: badge tooltip reads 'Table-wide change'", async () => {
+      const user = userEvent.setup();
+      renderNodeViewWithTreatment(
+        createNode("model", testColumns),
+        { isBreakingSource: true },
+        testColumns,
+      );
+
+      await user.hover(screen.getByTestId("whole-model-source-badge"));
       expect(
-        screen.getByTestId("whole-model-source-badge"),
+        await screen.findByRole("tooltip", { name: "Table-wide change" }),
+      ).toBeInTheDocument();
+    });
+
+    test("source: title chip and badge surface the same tooltip text", async () => {
+      const user = userEvent.setup();
+      renderNodeViewWithTreatment(
+        createNode("model", testColumns),
+        { isBreakingSource: true },
+        testColumns,
+      );
+
+      await user.hover(screen.getByTestId("whole-model-source-title-chip"));
+      expect(
+        await screen.findByRole("tooltip", { name: "Table-wide change" }),
+      ).toBeInTheDocument();
+    });
+
+    test("downstream-impact: title chip and badge surface the same tooltip text", async () => {
+      const user = userEvent.setup();
+      renderNodeViewWithTreatment(
+        createNode("model", testColumns),
+        { isWholeModelImpactedDownstream: true },
+        testColumns,
+      );
+
+      await user.hover(screen.getByTestId("whole-model-impact-title-chip"));
+      expect(
+        await screen.findByRole("tooltip", { name: "Table-wide impact" }),
       ).toBeInTheDocument();
     });
 

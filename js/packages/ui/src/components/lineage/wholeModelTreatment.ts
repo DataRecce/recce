@@ -7,7 +7,7 @@
  *   using `washBg`/`washAccent`/`fg` plus a `~` (source) or `!`
  *   (downstream) glyph. The earlier panel-wide wash and labeled header
  *   bar were dropped because the cumulative yellow read as a warning.
- * - Lineage graph — the per-node `[ALL]` badge (source/downstream) and
+ * - Lineage graph — the per-node `[TABLE]` badge (source/downstream) and
  *   `[ADD]` badge (additive) still use `badgeBg`/`badgeBorder`/`fg`.
  *
  * Families:
@@ -30,11 +30,11 @@ export interface WholeModelTreatmentTokens {
   washBg: string;
   /** Sidebar left-edge accent stripe + title-chip border + glyph-disc fill. */
   washAccent: string;
-  /** Title-chip text color (sidebar) and `[ALL]` badge text (graph node). */
+  /** Title-chip text color (sidebar) and `[TABLE]` badge text (graph node). */
   fg: string;
-  /** `[ALL]` badge background (graph node only). */
+  /** `[TABLE]` badge background (graph node only). */
   badgeBg: string;
-  /** `[ALL]` badge border (graph node only). */
+  /** `[TABLE]` badge border (graph node only). */
   badgeBorder: string;
 }
 

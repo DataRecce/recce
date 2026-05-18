@@ -97,4 +97,26 @@ describe("buildColumnTooltip", () => {
   it("returns just name when no status and no types", () => {
     expect(buildColumnTooltip({ name: "col" })).toBe("col");
   });
+
+  it("inserts 'impacted' segment before the CLL suffix when impacted", () => {
+    expect(
+      buildColumnTooltip({
+        name: "STATUS",
+        status: "unchanged",
+        currentType: "VARCHAR",
+        impacted: true,
+        cllAvailable: true,
+      }),
+    ).toBe("STATUS VARCHAR · impacted · Click for column lineage");
+  });
+
+  it("emits 'impacted' without CLL suffix when CLL unavailable", () => {
+    expect(
+      buildColumnTooltip({
+        name: "STATUS",
+        currentType: "VARCHAR",
+        impacted: true,
+      }),
+    ).toBe("STATUS VARCHAR · impacted");
+  });
 });

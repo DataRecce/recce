@@ -177,9 +177,10 @@ export interface NodeViewProps<
    * Whole-model treatment props (DRC-3341 / `--downstream-of-breaking`).
    * When either is true, the panel header wraps the model name in a
    * title chip (`~` for source, `!` for downstream) and a 6px left-edge
-   * accent stripe runs the full panel height so the reviewer never
-   * loses impact context when switching tabs. The earlier panel wash
-   * and labeled header bar were dropped — see spec
+   * accent stripe runs alongside the header region (title chip + tags +
+   * action buttons). The stripe is bounded by the header so it doesn't
+   * flash full-height before tab content renders. The earlier panel
+   * wash and labeled header bar were dropped — see spec
    * docs/superpowers/specs/2026-05-14-whole-model-treatment-redesign-design.md.
    *
    * Source wins (Q11 of the spec): a node that is both a source and
@@ -695,18 +696,18 @@ export function NodeView<TNode extends NodeViewNodeData>({
   const treatment = treatmentKind
     ? wholeModelTreatmentTokens(treatmentKind, isDark)
     : null;
-  const titleChipTooltip =
-    treatmentKind === "source"
-      ? "The change in this model can affect all rows in this model"
-      : treatmentKind === "downstream"
-        ? "The impact on this model may have impacted rows across all the columns"
-        : "";
   const badgeAriaLabel =
     treatmentKind === "source" ? "whole-model change" : "whole-model impact";
   const badgeTestId =
     treatmentKind === "source"
       ? "whole-model-source-badge"
       : "whole-model-impact-badge";
+  const badgeTooltip =
+    treatmentKind === "source"
+      ? "Table-wide change"
+      : treatmentKind === "downstream"
+        ? "Table-wide impact"
+        : "";
   return (
     <Box
       // `cll-experience` scopes the panel to the new CLL palette so the
@@ -720,193 +721,205 @@ export function NodeView<TNode extends NodeViewNodeData>({
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        // 6px left-edge accent stripe is the only panel-level signal that
-        // survives the title-chip redesign. The wash and labeled bar were
-        // dropped because the cumulative yellow read as a warning. See
-        // docs/superpowers/specs/2026-05-14-whole-model-treatment-redesign-design.md
-        ...(treatment && {
-          boxShadow: `inset 6px 0 0 ${treatment.washAccent}`,
-        }),
       }}
     >
-      {/* Header row: name + close button */}
-      <Stack
-        direction="row"
+      {/* Header region — wraps the title chip, tags, and action buttons.
+          The 6px left-edge accent stripe lives on THIS wrapper (not the
+          outer panel) so it's bounded by the header rather than the
+          panel, avoiding the initial-render flash where the stripe
+          briefly painted full-height before the tab-panel content
+          covered the lower half.
+          The wash and labeled bar that used to live here were dropped
+          because the cumulative yellow read as a warning. See
+          docs/superpowers/specs/2026-05-14-whole-model-treatment-redesign-design.md */}
+      <Box
         sx={{
-          alignItems: "center",
+          ...(treatment && {
+            boxShadow: `inset 6px 0 0 ${treatment.washAccent}`,
+          }),
         }}
       >
-        <Box
+        {/* Header row: name + close button */}
+        <Stack
+          direction="row"
           sx={{
-            flex: "1 1 auto",
-            p: 2,
-            display: "flex",
             alignItems: "center",
-            gap: 1,
-            minWidth: 0,
           }}
         >
-          {treatment ? (
-            // Title chip — wraps the model name with the same !/~
-            // language used per-column in the schema grid. Background,
-            // border, and text color all come from `treatment.badge*`/
-            // `treatment.fg`, the same fields the lineage-graph node
-            // badge uses, so light/dark mode stay symmetric across both
-            // surfaces.
-            <MuiTooltip title={titleChipTooltip} placement="top">
-              <Box
-                data-testid={
-                  treatmentKind === "source"
-                    ? "whole-model-source-title-chip"
-                    : "whole-model-impact-title-chip"
-                }
-                aria-label={badgeAriaLabel}
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 0.75,
-                  px: 1,
-                  py: 0.25,
-                  borderRadius: "6px",
-                  backgroundColor: treatment.badgeBg,
-                  border: `1px solid ${treatment.badgeBorder}`,
-                  color: treatment.fg,
-                  minWidth: 0,
-                }}
-              >
-                <span
-                  aria-hidden="true"
-                  className={
+          <Box
+            sx={{
+              flex: "1 1 auto",
+              p: 2,
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              minWidth: 0,
+            }}
+          >
+            {treatment ? (
+              // Title chip — wraps the model name with the same !/~
+              // language used per-column in the schema grid. Background,
+              // border, and text color all come from `treatment.badge*`/
+              // `treatment.fg`, the same fields the lineage-graph node
+              // badge uses, so light/dark mode stay symmetric across both
+              // surfaces.
+              <MuiTooltip title={badgeTooltip} placement="top">
+                <Box
+                  data-testid={
                     treatmentKind === "source"
-                      ? "schema-change-badge schema-change-badge-changed"
-                      : "schema-change-badge schema-change-badge-impacted"
+                      ? "whole-model-source-title-chip"
+                      : "whole-model-impact-title-chip"
                   }
-                >
-                  {treatmentKind === "source" ? "~" : "!"}
-                </span>
-                <Typography
-                  variant="subtitle1"
-                  component="span"
-                  className="no-track-pii-safe"
+                  aria-label={badgeAriaLabel}
                   sx={{
-                    fontWeight: 600,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    color: "inherit",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 0.75,
+                    px: 1,
+                    py: 0.25,
+                    borderRadius: "6px",
+                    backgroundColor: treatment.badgeBg,
+                    border: `1px solid ${treatment.badgeBorder}`,
+                    color: treatment.fg,
+                    minWidth: 0,
                   }}
                 >
-                  {node.data.name}
-                </Typography>
-              </Box>
-            </MuiTooltip>
-          ) : (
-            <Typography
-              variant="subtitle1"
-              className="no-track-pii-safe"
-              sx={{
-                fontWeight: 600,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {node.data.name}
-            </Typography>
-          )}
-          {/* [ALL] badge on the right of the chip — mirrors the
+                  <span
+                    aria-hidden="true"
+                    className={
+                      treatmentKind === "source"
+                        ? "schema-change-badge schema-change-badge-changed"
+                        : "schema-change-badge schema-change-badge-impacted"
+                    }
+                  >
+                    {treatmentKind === "source" ? "~" : "!"}
+                  </span>
+                  <Typography
+                    variant="subtitle1"
+                    component="span"
+                    className="no-track-pii-safe"
+                    sx={{
+                      fontWeight: 600,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      color: "inherit",
+                    }}
+                  >
+                    {node.data.name}
+                  </Typography>
+                </Box>
+              </MuiTooltip>
+            ) : (
+              <Typography
+                variant="subtitle1"
+                className="no-track-pii-safe"
+                sx={{
+                  fontWeight: 600,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {node.data.name}
+              </Typography>
+            )}
+            {/* [TABLE] badge on the right of the chip — mirrors the
               lineage-graph node badge so a reader gets the same signal
               in both surfaces. Same tokens, same colors. */}
-          {treatment && (
-            <Box
-              aria-label={badgeAriaLabel}
-              data-testid={badgeTestId}
-              sx={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "0.65rem",
-                fontWeight: 700,
-                lineHeight: 1,
-                height: 18,
-                minWidth: 22,
-                px: 0.5,
-                borderRadius: "3px",
-                color: treatment.fg,
-                backgroundColor: treatment.badgeBg,
-                border: `1px solid ${treatment.badgeBorder}`,
-                flexShrink: 0,
-              }}
-            >
-              ALL
-            </Box>
-          )}
-        </Box>
-        <Box sx={{ flexGrow: 1 }} />
-        <Box sx={{ flex: "0 1 1%" }}>
-          <IconButton size="small" onClick={onCloseNode}>
-            <IoClose />
-          </IconButton>
-        </Box>
-      </Stack>
-      {/* Tags row: resource type, row count */}
-      <Box sx={{ color: "text.secondary", pl: 2 }}>
-        <Stack direction="row" spacing={1}>
-          {ResourceTypeTag && <ResourceTypeTag node={node} />}
-          {isModelSeedOrSnapshot &&
-            (isSingleEnv
-              ? RowCountTag && (
-                  <RowCountTag
-                    node={node}
-                    onRefresh={actionCallbacks?.onRowCountClick}
-                  />
-                )
-              : RowCountDiffTag && (
-                  <RowCountDiffTag
-                    node={node}
-                    onRefresh={actionCallbacks?.onRowCountDiffClick}
-                  />
-                ))}
+            {treatment && (
+              <MuiTooltip title={badgeTooltip} placement="top">
+                <Box
+                  aria-label={badgeAriaLabel}
+                  data-testid={badgeTestId}
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "0.65rem",
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    height: 18,
+                    minWidth: 22,
+                    px: 0.5,
+                    borderRadius: "3px",
+                    color: treatment.fg,
+                    backgroundColor: treatment.badgeBg,
+                    border: `1px solid ${treatment.badgeBorder}`,
+                    flexShrink: 0,
+                  }}
+                >
+                  TABLE
+                </Box>
+              </MuiTooltip>
+            )}
+          </Box>
+          <Box sx={{ flexGrow: 1 }} />
+          <Box sx={{ flex: "0 1 1%" }}>
+            <IconButton size="small" onClick={onCloseNode}>
+              <IoClose />
+            </IconButton>
+          </Box>
         </Stack>
-      </Box>
-      {/* Header actions row — Add schema diff to checklist, Sandbox.
-          Moved out of the title row so the title chip has more breathing
-          room and the action buttons sit closer to the data they act on. */}
-      {!isSingleEnv && isModelSeedOrSnapshot && (
-        <Box sx={{ pl: 2, py: 0.5 }}>
+        {/* Tags row: resource type, row count */}
+        <Box sx={{ color: "text.secondary", pl: 2 }}>
           <Stack direction="row" spacing={1}>
-            <ExploreHeaderButtons
-              node={node}
-              actionCallbacks={extendedCallbacks}
-              runTypeIcons={runTypeIcons}
-              featureToggles={featureToggles}
-              ConnectionPopoverWrapper={ConnectionPopoverWrapper}
-            />
+            {ResourceTypeTag && <ResourceTypeTag node={node} />}
+            {isModelSeedOrSnapshot &&
+              (isSingleEnv
+                ? RowCountTag && (
+                    <RowCountTag
+                      node={node}
+                      onRefresh={actionCallbacks?.onRowCountClick}
+                    />
+                  )
+                : RowCountDiffTag && (
+                    <RowCountDiffTag
+                      node={node}
+                      onRefresh={actionCallbacks?.onRowCountDiffClick}
+                    />
+                  ))}
           </Stack>
         </Box>
-      )}
-      {/* Action buttons row */}
-      {isModelSeedOrSnapshot && (
-        <Box sx={{ pl: 2, py: 1 }}>
-          {isSingleEnv ? (
-            <SingleEnvActionButtons
-              node={node}
-              actionCallbacks={actionCallbacks}
-              runTypeIcons={runTypeIcons}
-              isActionAvailable={isActionAvailable}
-            />
-          ) : (
-            <DiffActionButtons
-              node={node}
-              actionCallbacks={extendedCallbacks}
-              runTypeIcons={runTypeIcons}
-              featureToggles={featureToggles}
-              isActionAvailable={isActionAvailable}
-              ConnectionPopoverWrapper={ConnectionPopoverWrapper}
-            />
-          )}
-        </Box>
-      )}
+        {/* Header actions row — Add schema diff to checklist, Sandbox.
+          Moved out of the title row so the title chip has more breathing
+          room and the action buttons sit closer to the data they act on. */}
+        {!isSingleEnv && isModelSeedOrSnapshot && (
+          <Box sx={{ pl: 2, py: 0.5 }}>
+            <Stack direction="row" spacing={1}>
+              <ExploreHeaderButtons
+                node={node}
+                actionCallbacks={extendedCallbacks}
+                runTypeIcons={runTypeIcons}
+                featureToggles={featureToggles}
+                ConnectionPopoverWrapper={ConnectionPopoverWrapper}
+              />
+            </Stack>
+          </Box>
+        )}
+        {/* Action buttons row */}
+        {isModelSeedOrSnapshot && (
+          <Box sx={{ pl: 2, py: 1 }}>
+            {isSingleEnv ? (
+              <SingleEnvActionButtons
+                node={node}
+                actionCallbacks={actionCallbacks}
+                runTypeIcons={runTypeIcons}
+                isActionAvailable={isActionAvailable}
+              />
+            ) : (
+              <DiffActionButtons
+                node={node}
+                actionCallbacks={extendedCallbacks}
+                runTypeIcons={runTypeIcons}
+                featureToggles={featureToggles}
+                isActionAvailable={isActionAvailable}
+                ConnectionPopoverWrapper={ConnectionPopoverWrapper}
+              />
+            )}
+          </Box>
+        )}
+      </Box>
       {/* Content area: tabs for columns and code */}
       {withColumns && (
         <Box

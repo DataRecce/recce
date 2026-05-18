@@ -236,7 +236,7 @@ export function PrivateSchemaView(
   }, [newCllExperience, lineageViewContext?.impactedColumnIds]);
 
   // Whole-model treatment (DRC-3341 — `--downstream-of-breaking`). The
-  // wash + header + "ALL" badge moved up to NodeView so they span every
+  // wash + header + "TABLE" badge moved up to NodeView so they span every
   // sidebar tab (Lineage / Columns / Code). SchemaView no longer renders
   // them itself.
   //

@@ -203,12 +203,23 @@ export function ColumnNameCell({
     !isActionAvailable("change_analysis") ||
     (baseIndex !== undefined && currentIndex === undefined);
 
+  // Mirror the `!` badge render rule (see JSX below): only annotate the
+  // tooltip as "impacted" when no other status badge already carries that
+  // signal.
+  const showImpactedTag =
+    !!isImpacted &&
+    !isAdded &&
+    !isRemoved &&
+    !hasStructuralChange &&
+    !definitionChanged;
+
   const tooltipTitle = buildColumnTooltip({
     name,
     status: columnStatus,
     baseType,
     currentType,
     cllAvailable: !isCllDisabled,
+    impacted: showImpactedTag,
   });
 
   return (
@@ -238,30 +249,23 @@ export function ColumnNameCell({
               !
             </span>
           )}
-        {definitionChanged && (
-          <Tooltip
-            title="Definition changed — click to view code"
-            placement="top"
-            onMouseOver={(e) => e.stopPropagation()}
-          >
-            {onViewCode ? (
-              <button
-                type="button"
-                className="schema-change-badge schema-change-badge-changed schema-change-badge-clickable"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onViewCode();
-                }}
-              >
-                ~
-              </button>
-            ) : (
-              <span className="schema-change-badge schema-change-badge-changed">
-                ~
-              </span>
-            )}
-          </Tooltip>
-        )}
+        {definitionChanged &&
+          (onViewCode ? (
+            <button
+              type="button"
+              className="schema-change-badge schema-change-badge-changed schema-change-badge-clickable"
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewCode();
+              }}
+            >
+              ~
+            </button>
+          ) : (
+            <span className="schema-change-badge schema-change-badge-changed">
+              ~
+            </span>
+          ))}
         <Box
           sx={{
             overflow: "hidden",

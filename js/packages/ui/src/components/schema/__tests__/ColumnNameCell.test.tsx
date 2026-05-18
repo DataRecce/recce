@@ -303,7 +303,7 @@ describe("ColumnNameCell", () => {
       expect(onViewCode).toHaveBeenCalledTimes(1);
     });
 
-    test("badge has tooltip with definition changed text", async () => {
+    test("hovering the ~ badge surfaces the single cell-level tooltip (no nested tooltip)", async () => {
       const user = userEvent.setup();
       renderWithMui(
         <ColumnNameCell
@@ -315,10 +315,12 @@ describe("ColumnNameCell", () => {
 
       const badge = screen.getByText("~");
       await user.hover(badge);
-      const tooltip = await screen.findByRole("tooltip");
-      expect(tooltip).toHaveTextContent(
-        "Definition changed — click to view code",
-      );
+      // Exactly one tooltip fires — the cell tooltip — and it shows the
+      // mocked column tooltip text (name + type) rather than the old
+      // nested "Definition changed — click to view code" message.
+      const tooltips = await screen.findAllByRole("tooltip");
+      expect(tooltips).toHaveLength(1);
+      expect(tooltips[0]).toHaveTextContent("user_id INT");
     });
 
     test("does not render definitionChanged badge when hasStructuralChange", () => {
