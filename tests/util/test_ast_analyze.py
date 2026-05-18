@@ -197,6 +197,89 @@ class TestAnalyzeSqlFlags(unittest.TestCase):
         result = analyze_sql(sql)
         self.assertTrue(result.has_cte)
 
+    def test_is_set_operation_false_for_plain_select(self):
+        result = analyze_sql("SELECT id FROM customers")
+        self.assertFalse(result.is_set_operation)
+
+
+class TestAnalyzeSqlCteRefsExclusion(unittest.TestCase):
+    """CTE alias names must not appear in refs — only real upstream tables."""
+
+    def test_cte_alias_excluded_from_refs(self):
+        sql = (
+            "WITH source AS (SELECT * FROM analytics.staging.stg_customers), "
+            "renamed AS (SELECT customer_id AS id FROM source) "
+            "SELECT * FROM renamed"
+        )
+        result = analyze_sql(sql)
+        self.assertEqual(result.refs, ["stg_customers"])
+        self.assertNotIn("source", result.refs)
+        self.assertNotIn("renamed", result.refs)
+
+    def test_real_table_kept_when_name_collides_with_cte_in_other_query(self):
+        # CTE filtering is per-query: a CTE named `orders` inside this model
+        # should drop the `orders` ref, since the outer select reads from
+        # the CTE, not the upstream table.
+        sql = "WITH orders AS (SELECT id FROM customers) SELECT id FROM orders"
+        result = analyze_sql(sql)
+        self.assertEqual(result.refs, ["customers"])
+
+
+class TestAnalyzeSqlSetOperations(unittest.TestCase):
+    """UNION / INTERSECT / EXCEPT must produce merged structure, not silent empty."""
+
+    def test_union_marks_is_set_operation(self):
+        result = analyze_sql("SELECT a FROM t1 UNION SELECT b FROM t2")
+        self.assertTrue(result.is_set_operation)
+
+    def test_union_merges_refs(self):
+        result = analyze_sql("SELECT a FROM t1 UNION SELECT b FROM t2")
+        self.assertEqual(sorted(result.refs), ["t1", "t2"])
+
+    def test_union_merges_projections_from_all_legs(self):
+        sql = "SELECT id, name FROM customers UNION ALL SELECT id, name FROM archived_customers"
+        result = analyze_sql(sql)
+        names = [p.name for p in result.projections]
+        # Both legs contribute: structurally informative for the agent.
+        self.assertEqual(names, ["id", "name", "id", "name"])
+
+    def test_union_merges_filters_from_each_leg(self):
+        sql = (
+            "SELECT id FROM customers WHERE status = 'active' "
+            "UNION ALL "
+            "SELECT id FROM archived_customers WHERE archived_at > '2024-01-01'"
+        )
+        result = analyze_sql(sql)
+        self.assertEqual(len(result.filters), 2)
+        joined = " | ".join(result.filters)
+        self.assertIn("status = 'active'", joined)
+        self.assertIn("archived_at", joined)
+
+    def test_union_all_chain_recurses(self):
+        sql = "SELECT a FROM t1 UNION ALL SELECT a FROM t2 UNION ALL SELECT a FROM t3"
+        result = analyze_sql(sql)
+        self.assertEqual(sorted(result.refs), ["t1", "t2", "t3"])
+        self.assertEqual(len(result.projections), 3)
+
+    def test_union_distinct_true_when_any_leg_distinct(self):
+        sql = "SELECT DISTINCT a FROM t1 UNION ALL SELECT a FROM t2"
+        result = analyze_sql(sql)
+        self.assertTrue(result.distinct)
+
+
+class TestAnalyzeSqlDialect(unittest.TestCase):
+    """Dialect must be forwarded to sqlglot — dialect-specific syntax must parse."""
+
+    def test_bigquery_backticked_identifier_requires_dialect(self):
+        sql = "SELECT user.name FROM `my-project.dataset.users` AS user"
+        # Without dialect, sqlglot's default parser rejects the backticked
+        # qualified identifier and the analyzer flags it unparseable.
+        self.assertTrue(analyze_sql(sql).unparseable)
+        # With dialect=bigquery, the same SQL parses and yields real refs.
+        result = analyze_sql(sql, dialect="bigquery")
+        self.assertFalse(result.unparseable)
+        self.assertEqual(result.refs, ["users"])
+
 
 def _fake_manifest(nodes: dict):
     """Build a duck-typed manifest object: manifest.nodes[model_id] -> SimpleNamespace."""

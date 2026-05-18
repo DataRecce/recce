@@ -904,8 +904,10 @@ class TestRecceMCPServer:
             compiled_code="SELECT id, status FROM customers WHERE status = 'active'",
             raw_code="",
         )
-        mock_context.adapter.manifest = SimpleNamespace(nodes={"model.proj.a": node_a})
-        mock_context.adapter.dialect = None
+        mock_context.adapter.manifest = SimpleNamespace(
+            nodes={"model.proj.a": node_a},
+            metadata=SimpleNamespace(adapter_type="postgres"),
+        )
         # Shape mirrors what DbtAdapter.build_full_cll_map produces:
         # child_map drives downstream, CllColumn.table_id resolves ownership.
         mock_context.adapter.build_full_cll_map.return_value = CllData(
@@ -968,6 +970,60 @@ class TestRecceMCPServer:
         mock_context.adapter.manifest = SimpleNamespace(nodes={})
         with pytest.raises(ValueError, match="compiled SQL"):
             await server._tool_analyze_model({"model_id": "model.proj.missing"})
+
+    @pytest.mark.asyncio
+    async def test_tool_analyze_model_forwards_dialect_from_manifest(self, mcp_server):
+        """Dialect must be sourced from manifest metadata so BigQuery-specific
+        syntax (backticked qualified identifier) parses instead of silently
+        falling through to unparseable=true."""
+        from types import SimpleNamespace
+
+        from recce.models.types import CllData
+
+        server, mock_context = mcp_server
+        mock_context.adapter_type = "dbt"
+
+        # Only parses with dialect=bigquery; default sqlglot rejects this.
+        node = SimpleNamespace(
+            compiled_code="SELECT user.name FROM `my-project.dataset.users` AS user",
+            raw_code="",
+        )
+        mock_context.adapter.manifest = SimpleNamespace(
+            nodes={"model.proj.a": node},
+            metadata=SimpleNamespace(adapter_type="bigquery"),
+        )
+        mock_context.adapter.build_full_cll_map.return_value = CllData()
+
+        result = await server._tool_analyze_model({"model_id": "model.proj.a"})
+
+        assert result["structure"]["unparseable"] is False
+        assert result["structure"]["refs"] == ["users"]
+
+    @pytest.mark.asyncio
+    async def test_tool_analyze_model_falls_back_to_adapter_type(self, mcp_server):
+        """When manifest.metadata.adapter_type is absent, fall back to adapter.type()."""
+        from types import SimpleNamespace
+
+        from recce.models.types import CllData
+
+        server, mock_context = mcp_server
+        mock_context.adapter_type = "dbt"
+
+        node = SimpleNamespace(
+            compiled_code="SELECT user.name FROM `my-project.dataset.users` AS user",
+            raw_code="",
+        )
+        mock_context.adapter.manifest = SimpleNamespace(
+            nodes={"model.proj.a": node},
+            metadata=SimpleNamespace(),  # no adapter_type attr -> getattr returns None
+        )
+        mock_context.adapter.adapter.type.return_value = "bigquery"
+        mock_context.adapter.build_full_cll_map.return_value = CllData()
+
+        result = await server._tool_analyze_model({"model_id": "model.proj.a"})
+
+        assert result["structure"]["unparseable"] is False
+        mock_context.adapter.adapter.type.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_tool_get_server_info(self, mcp_server):

@@ -704,11 +704,15 @@ class RecceMCPServer:
                     description=(
                         "Parse a dbt model's compiled SQL into structured evidence (refs, projections, "
                         "filters, joins, group_by, having, order_by, aggregations, case_expressions, "
-                        "distinct, has_subquery, has_cte) and return its downstream column impact "
-                        "(which other models and columns depend on it). Single-environment tool — "
-                        "does not require target-base/ or git history. Useful for understanding what "
-                        "a model does structurally and who would be affected by changes to it. "
-                        "Only available with dbt adapter.\n\n"
+                        "distinct, has_subquery, has_cte, is_set_operation) and return its downstream "
+                        "column impact (which other models and columns depend on it, 1 hop). "
+                        "Single-environment tool — does not require target-base/ or git history. "
+                        "Useful for understanding what a model does structurally and who would be "
+                        "affected by changes to it. Only available with dbt adapter.\n\n"
+                        "Notes on the structure: refs lists upstream tables/sources only (CTE aliases "
+                        "are excluded). is_set_operation=true means the model is a UNION/INTERSECT/"
+                        "EXCEPT; projections and filters are merged across all legs. downstream covers "
+                        "only direct dependents — for transitive impact, traverse with get_cll.\n\n"
                         "Returns: {model_id, structure: SqlStructure, downstream: {models, columns}}. "
                         "If sqlglot cannot parse the compiled SQL, structure.unparseable=true and "
                         "the agent should fall back to text-level inspection."
@@ -2112,7 +2116,10 @@ class RecceMCPServer:
                 "Run `dbt compile` to populate target/ before calling analyze_model."
             )
 
-        dialect = getattr(dbt_adapter, "dialect", None)
+        # Mirror the dialect lookup used by build_full_cll_map (see DbtAdapter:1078)
+        # — manifest metadata first, then live adapter.type(). Without this, BigQuery /
+        # Snowflake / etc. fall through to sqlglot's default dialect and return unparseable.
+        dialect = getattr(dbt_adapter.manifest.metadata, "adapter_type", None) or dbt_adapter.adapter.type()
         structure = analyze_sql(compiled_sql, dialect=dialect)
 
         cll_data = dbt_adapter.build_full_cll_map()

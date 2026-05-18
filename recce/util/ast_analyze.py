@@ -39,6 +39,7 @@ class SqlStructure(BaseModel):
     distinct: bool = False
     has_subquery: bool = False
     has_cte: bool = False
+    is_set_operation: bool = False
     unparseable: bool = False
 
 
@@ -98,13 +99,33 @@ def _aggregation_info(agg: exp.AggFunc) -> AggregationInfo:
     return AggregationInfo(function=function, column=column_name)
 
 
+def _top_level_selects(tree: exp.Expression) -> list[exp.Select]:
+    """Return the SELECT legs of the outermost tree.
+
+    For a plain SELECT, returns [tree]. For UNION / INTERSECT / EXCEPT (any
+    sqlglot ``exp.Union`` subclass), recurses into ``left`` / ``right`` and
+    returns each leg's SELECT. Selects inside CTEs and subqueries are not
+    returned — those are walked separately by ``find_all`` for aggregations
+    and case expressions.
+    """
+    if isinstance(tree, exp.Union):
+        return _top_level_selects(tree.left) + _top_level_selects(tree.right)
+    if isinstance(tree, exp.Select):
+        return [tree]
+    return []
+
+
 def analyze_sql(compiled_sql: str, dialect: Optional[str] = None) -> SqlStructure:
     try:
         tree = parse_one(compiled_sql, dialect=dialect)
     except SqlglotError:
         return SqlStructure(unparseable=True)
 
-    refs = sorted({t.name for t in tree.find_all(exp.Table)})
+    # Exclude CTE alias names from refs — they are internal aliases, not
+    # upstream tables. Without this, every staging-style model with `WITH
+    # source AS (...) SELECT * FROM source` leaks the CTE name as a "ref".
+    cte_names = {cte.alias_or_name for cte in tree.find_all(exp.CTE)}
+    refs = sorted({t.name for t in tree.find_all(exp.Table) if t.name not in cte_names})
 
     projections: list[ProjectionInfo] = []
     filters: list[str] = []
@@ -114,40 +135,45 @@ def analyze_sql(compiled_sql: str, dialect: Optional[str] = None) -> SqlStructur
     order_by: list[str] = []
     aggregations: list[AggregationInfo] = []
 
-    if isinstance(tree, exp.Select):
-        for select_item in tree.expressions:
+    selects = _top_level_selects(tree)
+    distinct = False
+    for select in selects:
+        for select_item in select.expressions:
             projections.append(_projection_from(select_item))
 
-        where = tree.args.get("where")
+        where = select.args.get("where")
         if where is not None:
             for predicate in _flatten_and(where.this):
                 filters.append(predicate.sql())
 
-        for join in tree.args.get("joins") or []:
+        for join in select.args.get("joins") or []:
             joins.append(_join_info(join))
 
-        group = tree.args.get("group")
+        group = select.args.get("group")
         if group is not None:
             for item in group.expressions:
                 group_by.append(item.sql())
 
-        having_clause = tree.args.get("having")
+        having_clause = select.args.get("having")
         if having_clause is not None:
             having.append(having_clause.this.sql())
 
-        order = tree.args.get("order")
+        order = select.args.get("order")
         if order is not None:
             for item in order.expressions:
                 order_by.append(item.sql())
+
+        if select.args.get("distinct") is not None:
+            distinct = True
 
     for agg in tree.find_all(exp.AggFunc):
         aggregations.append(_aggregation_info(agg))
 
     case_expressions = [c.sql() for c in tree.find_all(exp.Case)]
 
-    distinct = isinstance(tree, exp.Select) and tree.args.get("distinct") is not None
     has_subquery = tree.find(exp.Subquery) is not None
     has_cte = tree.find(exp.With) is not None
+    is_set_operation = isinstance(tree, exp.Union)
 
     return SqlStructure(
         refs=refs,
@@ -162,6 +188,7 @@ def analyze_sql(compiled_sql: str, dialect: Optional[str] = None) -> SqlStructur
         distinct=distinct,
         has_subquery=has_subquery,
         has_cte=has_cte,
+        is_set_operation=is_set_operation,
     )
 
 
