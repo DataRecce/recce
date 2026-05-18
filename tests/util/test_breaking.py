@@ -1533,3 +1533,89 @@ class UnresolvableCteChangeTest(unittest.TestCase):
         )
         result = parse_change_category(original_sql, modified_sql)
         assert result.columns.get("x") == "added", f"expected x=added, got {result.columns}"
+
+    def test_mixed_outer_change_and_unresolvable_cte_change(self):
+        """Mixed-edit guard: when an outer SELECT adds a column AND a CTE
+        introduces an unresolvable internal change, the resolved outer column
+        must keep its real status while the un-traceable columns surface as
+        'unknown'. Previously the `not changed_columns` guard only fired in
+        all-or-nothing cases, silently dropping the CTE-internal half here.
+        Same shape as the original DRC-3409 bug."""
+        original_sql = textwrap.dedent(
+            """
+            with renamed as (
+                select order_id, customer_id, w from Orders
+            ),
+            overridden as (
+                select order_id, customer_id, w from renamed
+            )
+            select order_id, customer_id, w from overridden
+            """
+        )
+        modified_sql = textwrap.dedent(
+            """
+            with renamed as (
+                select order_id, customer_id, w from Orders
+            ),
+            overridden as (
+                select order_id, customer_id,
+                       case when customer_id = 1 then 0 else w end as w
+                from renamed
+            )
+            select order_id, customer_id, w, 1 as new_col from overridden
+            """
+        )
+        result = parse_change_category(original_sql, modified_sql)
+        # Resolved outer add stays loud and accurate.
+        assert result.columns.get("new_col") == "added", f"expected new_col=added, got {result.columns}"
+        # Unresolvable CTE-internal change surfaces per-column as unknown,
+        # not silently dropped.
+        assert result.columns.get("w") == "unknown", f"expected w=unknown, got {result.columns}"
+        assert result.columns.get("order_id") == "unknown", f"expected order_id=unknown, got {result.columns}"
+        assert result.columns.get("customer_id") == "unknown", f"expected customer_id=unknown, got {result.columns}"
+        # Category escalates from non_breaking to unknown: a pure column add
+        # alone would stay non_breaking, but the unresolvable CTE change forces
+        # the loud signal so callers don't treat it as risk-free.
+        assert result.category == "unknown", f"expected unknown, got {result.category}"
+
+    def test_outer_modified_column_keeps_partial_with_unresolvable_cte(self):
+        """When the outer SELECT already produces a partial_breaking signal
+        (e.g. a modified projection) AND there is an unresolvable CTE-internal
+        change, the partial_breaking category is preserved while the uncovered
+        columns still surface as 'unknown'. We don't downgrade partial_breaking
+        to unknown — the loud partial signal stays, the unknown rides
+        alongside."""
+        original_sql = textwrap.dedent(
+            """
+            with renamed as (
+                select order_id, customer_id, w from Orders
+            ),
+            overridden as (
+                select order_id, customer_id, w from renamed
+            )
+            select order_id, customer_id, w from overridden
+            """
+        )
+        modified_sql = textwrap.dedent(
+            """
+            with renamed as (
+                select order_id, customer_id, w from Orders
+            ),
+            overridden as (
+                select order_id, customer_id,
+                       case when customer_id = 1 then 0 else w end as w
+                from renamed
+            )
+            select order_id, customer_id + 1 as customer_id, w from overridden
+            """
+        )
+        result = parse_change_category(original_sql, modified_sql)
+        # The outer-level modification of customer_id stays loud.
+        assert result.columns.get("customer_id") == "modified", f"expected customer_id=modified, got {result.columns}"
+        # The unresolvable inner change still surfaces per-column as unknown
+        # for the columns we couldn't trace.
+        assert result.columns.get("w") == "unknown", f"expected w=unknown, got {result.columns}"
+        assert result.columns.get("order_id") == "unknown", f"expected order_id=unknown, got {result.columns}"
+        # partial_breaking is preserved — we don't downgrade a real partial
+        # signal just because some columns are also unknown.
+        assert result.category == "partial_breaking", f"expected partial_breaking, got {result.category}"
