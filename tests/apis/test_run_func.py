@@ -43,6 +43,26 @@ def test_materialize_run_results():
     assert result == {}
 
 
+def test_materialize_run_results_skips_cancelled_runs():
+    """Cancelled runs with late-arriving results must NOT leak into the
+    aggregate. Regression for the "false-quiet" hole in DRC-3411: the
+    frontend sticky cancelled set is browser-local, so other tabs/devices
+    would otherwise see lineage decorated by a cancelled row_count_diff.
+    """
+    from recce.models.types import Run, RunStatus, RunType
+
+    cancelled_run = Run(
+        type=RunType.ROW_COUNT_DIFF,
+        params={"node_names": ["customers"]},
+        result={"customers": {"base": 1856, "curr": 1856}},
+        status=RunStatus.CANCELLED,
+    )
+
+    result = materialize_run_results([cancelled_run])
+
+    assert result == {}, "Cancelled run leaked into materialized aggregate"
+
+
 # =============================================================================
 # Tests: Params Merge Logic (update_run_result behavior)
 # =============================================================================

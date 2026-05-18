@@ -339,6 +339,8 @@ def materialize_run_results(runs: List[Run], nodes: List[str] = None):
     for run in runs:
         if not run.result:
             continue
+        if run.status == RunStatus.CANCELLED:
+            continue
 
         if run.type == RunType.ROW_COUNT_DIFF:
             for model_name, node_run_result in run.result.items():
