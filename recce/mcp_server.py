@@ -700,6 +700,35 @@ class RecceMCPServer:
             )
             tools.append(
                 Tool(
+                    name="analyze_model",
+                    description=(
+                        "Parse a dbt model's compiled SQL into structured evidence (refs, projections, "
+                        "filters, joins, group_by, having, order_by, aggregations, case_expressions, "
+                        "distinct, has_subquery, has_cte) and return its downstream column impact "
+                        "(which other models and columns depend on it). Single-environment tool — "
+                        "does not require target-base/ or git history. Useful for understanding what "
+                        "a model does structurally and who would be affected by changes to it. "
+                        "Only available with dbt adapter.\n\n"
+                        "Returns: {model_id, structure: SqlStructure, downstream: {models, columns}}. "
+                        "If sqlglot cannot parse the compiled SQL, structure.unparseable=true and "
+                        "the agent should fall back to text-level inspection."
+                    ),
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "model_id": {
+                                "type": "string",
+                                "description": (
+                                    "Full unique ID of the model to analyze " "(e.g., 'model.project.model_name')."
+                                ),
+                            },
+                        },
+                        "required": ["model_id"],
+                    },
+                )
+            )
+            tools.append(
+                Tool(
                     name="get_server_info",
                     description="Get server context information including current backend mode "
                     "('local', 'cloud', or 'none' when unconfigured), adapter type, git branch, "
@@ -1313,6 +1342,8 @@ class RecceMCPServer:
                     result = await self._tool_get_model(arguments)
                 elif name == "get_cll":
                     result = await self._tool_get_cll(arguments)
+                elif name == "analyze_model":
+                    result = await self._tool_analyze_model(arguments)
                 elif name == "get_server_info":
                     result = await self._tool_get_server_info(arguments)
                 elif name == "select_nodes":
@@ -2057,6 +2088,41 @@ class RecceMCPServer:
             change_analysis=arguments.get("change_analysis", False),
         )
         return cll.model_dump(mode="json")
+
+    async def _tool_analyze_model(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Return structural analysis of a model's compiled SQL plus downstream column impact."""
+        model_id = arguments.get("model_id")
+        if not model_id:
+            raise ValueError("model_id is required")
+        if self.context.adapter_type != "dbt":
+            raise ValueError("analyze_model is only available with dbt adapter")
+
+        from recce.adapter.dbt_adapter import DbtAdapter
+        from recce.util.ast_analyze import (
+            analyze_sql,
+            collect_downstream,
+            get_compiled_sql_from_manifest,
+        )
+
+        dbt_adapter: DbtAdapter = self.context.adapter
+        compiled_sql = get_compiled_sql_from_manifest(dbt_adapter.manifest, model_id)
+        if compiled_sql is None:
+            raise ValueError(
+                f"Cannot resolve compiled SQL for {model_id}. "
+                "Run `dbt compile` to populate target/ before calling analyze_model."
+            )
+
+        dialect = getattr(dbt_adapter, "dialect", None)
+        structure = analyze_sql(compiled_sql, dialect=dialect)
+
+        cll_data = dbt_adapter.build_full_cll_map()
+        downstream = collect_downstream(cll_data, model_id)
+
+        return {
+            "model_id": model_id,
+            "structure": structure.model_dump(mode="json"),
+            "downstream": downstream,
+        }
 
     async def _tool_get_server_info(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Get server context information"""

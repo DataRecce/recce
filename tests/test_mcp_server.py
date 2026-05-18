@@ -891,6 +891,85 @@ class TestRecceMCPServer:
             await server._tool_get_cll({})
 
     @pytest.mark.asyncio
+    async def test_tool_analyze_model(self, mcp_server):
+        """Test the analyze_model tool returns structure + downstream"""
+        from types import SimpleNamespace
+
+        from recce.models.types import CllColumn, CllData, CllNode
+
+        server, mock_context = mcp_server
+        mock_context.adapter_type = "dbt"
+
+        node_a = SimpleNamespace(
+            compiled_code="SELECT id, status FROM customers WHERE status = 'active'",
+            raw_code="",
+        )
+        mock_context.adapter.manifest = SimpleNamespace(nodes={"model.proj.a": node_a})
+        mock_context.adapter.dialect = None
+        # Shape mirrors what DbtAdapter.build_full_cll_map produces:
+        # child_map drives downstream, CllColumn.table_id resolves ownership.
+        mock_context.adapter.build_full_cll_map.return_value = CllData(
+            nodes={
+                "model.proj.a": CllNode(
+                    id="model.proj.a",
+                    name="a",
+                    package_name="proj",
+                    resource_type="model",
+                    columns={"id": CllColumn(name="id")},
+                ),
+                "model.proj.b": CllNode(
+                    id="model.proj.b",
+                    name="b",
+                    package_name="proj",
+                    resource_type="model",
+                    columns={"x": CllColumn(name="x")},
+                ),
+            },
+            columns={
+                "model.proj.a_id": CllColumn(id="model.proj.a_id", table_id="model.proj.a", name="id"),
+                "model.proj.b_x": CllColumn(id="model.proj.b_x", table_id="model.proj.b", name="x"),
+            },
+            child_map={
+                "model.proj.a": {"model.proj.b"},
+                "model.proj.a_id": {"model.proj.b_x"},
+            },
+        )
+
+        result = await server._tool_analyze_model({"model_id": "model.proj.a"})
+
+        assert result["model_id"] == "model.proj.a"
+        assert result["structure"]["refs"] == ["customers"]
+        assert len(result["structure"]["filters"]) == 1
+        assert result["downstream"]["models"] == ["model.proj.b"]
+        assert result["downstream"]["columns"] == [{"node": "model.proj.b", "column": "x"}]
+
+    @pytest.mark.asyncio
+    async def test_tool_analyze_model_missing_id(self, mcp_server):
+        """Test analyze_model raises when model_id is missing"""
+        server, _ = mcp_server
+        with pytest.raises(ValueError, match="model_id is required"):
+            await server._tool_analyze_model({})
+
+    @pytest.mark.asyncio
+    async def test_tool_analyze_model_non_dbt(self, mcp_server):
+        """Test analyze_model raises for non-dbt adapter"""
+        server, mock_context = mcp_server
+        mock_context.adapter_type = "sqlmesh"
+        with pytest.raises(ValueError, match="only available with dbt"):
+            await server._tool_analyze_model({"model_id": "model.proj.a"})
+
+    @pytest.mark.asyncio
+    async def test_tool_analyze_model_missing_compiled_sql(self, mcp_server):
+        """Test analyze_model raises when compiled SQL is not available"""
+        from types import SimpleNamespace
+
+        server, mock_context = mcp_server
+        mock_context.adapter_type = "dbt"
+        mock_context.adapter.manifest = SimpleNamespace(nodes={})
+        with pytest.raises(ValueError, match="compiled SQL"):
+            await server._tool_analyze_model({"model_id": "model.proj.missing"})
+
+    @pytest.mark.asyncio
     async def test_tool_get_server_info(self, mcp_server):
         """Test the get_server_info tool"""
         server, mock_context = mcp_server
