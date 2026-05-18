@@ -209,6 +209,28 @@ class TestCommandServer(TestCase):
         mock_state_loader.load.assert_not_called()
         assert result is mock_state_loader
 
+    @patch("uvicorn.run")
+    @patch("recce.server.AppState")
+    def test_cmd_server_with_downstream_of_breaking_implies_new_cll_experience(self, mock_app_state, mock_run):
+        self.runner.invoke(cli_command_server, ["--downstream-of-breaking", "--single-env"])
+        mock_run.assert_called_once()
+
+        app_state_call_args = mock_app_state.call_args
+        app_state_flag = app_state_call_args.kwargs["flag"]
+        assert app_state_flag["downstream_of_breaking"] is True
+        assert app_state_flag["new_cll_experience"] is True
+
+    @patch("uvicorn.run")
+    @patch("recce.server.AppState")
+    def test_cmd_server_without_downstream_of_breaking_both_flags_false(self, mock_app_state, mock_run):
+        self.runner.invoke(cli_command_server, ["--single-env"])
+        mock_run.assert_called_once()
+
+        app_state_call_args = mock_app_state.call_args
+        app_state_flag = app_state_call_args.kwargs["flag"]
+        assert app_state_flag["downstream_of_breaking"] is False
+        assert app_state_flag["new_cll_experience"] is False
+
 
 class TestCommandRun(TestCase):
     def setUp(self):
