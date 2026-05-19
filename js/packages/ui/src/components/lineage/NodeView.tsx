@@ -766,11 +766,11 @@ export function NodeView<TNode extends NodeViewNodeData>({
             </Box>
           )}
 
-          {/* Tabs — when lineageTabContent is provided, "Lineage" is index 0 */}
+          {/* Tabs — "Columns" is always index 0 (default landing tab) */}
           {(() => {
-            const lineageTabIndex = lineageTabContent ? 0 : -1;
-            const columnsTabIndex = lineageTabContent ? 1 : 0;
-            const codeTabIndex = lineageTabContent ? 2 : 1;
+            const columnsTabIndex = 0;
+            const codeTabIndex = 1;
+            const lineageTabIndex = lineageTabContent ? 2 : -1;
             return (
               <>
                 <Tabs
@@ -778,7 +778,6 @@ export function NodeView<TNode extends NodeViewNodeData>({
                   onChange={(_, newValue) => setTabValue(newValue)}
                   sx={{ borderBottom: 1, borderColor: "divider" }}
                 >
-                  {lineageTabContent && <Tab label="Lineage" />}
                   <Tab
                     label={
                       <Box
@@ -831,15 +830,11 @@ export function NodeView<TNode extends NodeViewNodeData>({
                       </Box>
                     }
                   />
+                  {lineageTabContent && <Tab label="Lineage" />}
                 </Tabs>
 
                 {/* Tab panels */}
                 <Box sx={{ overflow: "auto", height: "calc(100% - 48px)" }}>
-                  {lineageTabContent && (
-                    <TabPanel value={tabValue} index={lineageTabIndex}>
-                      <Box sx={{ height: "100%" }}>{lineageTabContent}</Box>
-                    </TabPanel>
-                  )}
                   <TabPanel value={tabValue} index={columnsTabIndex}>
                     <Box sx={{ overflowY: "auto", height: "100%" }}>
                       {isSingleEnv
@@ -861,6 +856,11 @@ export function NodeView<TNode extends NodeViewNodeData>({
                       {NodeSqlView && <NodeSqlView node={node} />}
                     </Box>
                   </TabPanel>
+                  {lineageTabContent && (
+                    <TabPanel value={tabValue} index={lineageTabIndex}>
+                      <Box sx={{ height: "100%" }}>{lineageTabContent}</Box>
+                    </TabPanel>
+                  )}
                 </Box>
               </>
             );
