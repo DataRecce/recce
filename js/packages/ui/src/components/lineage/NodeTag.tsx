@@ -29,6 +29,37 @@ import { findByRunType } from "../run";
 import { getTagRootSx, tagStartElementSx } from "./tags";
 
 // =============================================================================
+// INLINE-CONTENT COMPONENTS
+// =============================================================================
+// These render just the row-count value/diff (no pill background, no refresh
+// button). Used to embed row-count info inline in other UI like action buttons.
+
+export interface RowCountDiffSummaryProps {
+  rowCount: RowCountDiff;
+}
+
+/**
+ * Row count diff display — inline content only. Renders "N → curr rows" plus
+ * an up/down arrow and delta percentage. Use inside buttons or other layouts
+ * where the pill-style RowCountDiffTag would be too heavy.
+ */
+export function RowCountDiffSummary({ rowCount }: RowCountDiffSummaryProps) {
+  return <_RowCountByRate rowCount={rowCount} />;
+}
+
+export interface RowCountSummaryProps {
+  rowCount: RowCount;
+}
+
+/**
+ * Single-env row count display — inline content only. Renders "N rows".
+ */
+export function RowCountSummary({ rowCount }: RowCountSummaryProps) {
+  const label = rowCount.curr === null ? "N/A" : `${rowCount.curr} rows`;
+  return <span>{label}</span>;
+}
+
+// =============================================================================
 // INTERNAL COMPONENTS
 // =============================================================================
 

@@ -16,7 +16,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { getModelInfo, type LineageGraphNode } from "../..";
-import { createSchemaDiffCheck } from "../../api";
+import {
+  createSchemaDiffCheck,
+  type RowCount,
+  type RowCountDiff,
+} from "../../api";
 import {
   useLineageGraphContext,
   useLineageViewContext,
@@ -33,7 +37,6 @@ import {
   EXPLORE_ACTION,
   EXPLORE_SOURCE,
   trackExploreAction,
-  trackPreviewChange,
 } from "../../lib/api/track";
 import { formatSelectColumns } from "../../utils";
 import { SetupConnectionPopover } from "../app";
@@ -43,13 +46,12 @@ import { SchemaView, SingleEnvSchemaView } from "../schema";
 import { computeLineageTabImpactSets } from "./computeLineageTabImpactSets";
 import { LineageTabContent } from "./LineageTabContent";
 import { NodeSqlViewOss } from "./NodeSqlViewOss";
-import { RowCountDiffTag, RowCountTag } from "./NodeTag";
+import { RowCountDiffSummary, RowCountSummary } from "./NodeTag";
 import {
   NodeView as BaseNodeView,
   type NodeViewActionCallbacks,
   type RunTypeIconMap,
 } from "./NodeView";
-import { SandboxViewOss } from "./SandboxViewOss";
 import { NodeTag } from "./tags";
 
 // =============================================================================
@@ -138,6 +140,18 @@ export function NodeViewOss({
   const { primaryKey } = useModelColumns(node.data.name);
   const { apiClient } = useApiConfig();
   const { basePath } = useRouteConfig();
+  const { runsAggregated } = useLineageGraphContext();
+  const isSingleEnv = isSingleEnvOnboarding ?? false;
+
+  const rowCountDisplay = useMemo(() => {
+    const aggregated = runsAggregated?.[node.id];
+    if (isSingleEnv) {
+      const rc = aggregated?.row_count?.result as RowCount | undefined;
+      return rc ? <RowCountSummary rowCount={rc} /> : undefined;
+    }
+    const diff = aggregated?.row_count_diff?.result as RowCountDiff | undefined;
+    return diff ? <RowCountDiffSummary rowCount={diff} /> : undefined;
+  }, [runsAggregated, node.id, isSingleEnv]);
 
   // Fetch model detail (columns, raw_code, primary_key) on demand
   const { data: modelDetailData } = useQuery({
@@ -161,7 +175,6 @@ export function NodeViewOss({
       top_k_diff: findByRunType("top_k_diff").icon,
       histogram_diff: findByRunType("histogram_diff").icon,
       schema_diff: findByRunType("schema_diff").icon,
-      sandbox: findByRunType("sandbox").icon,
     }),
     [],
   );
@@ -299,16 +312,6 @@ export function NodeViewOss({
         );
         router.push(`${basePath}/checks/?id=${check.check_id}`);
       },
-
-      onSandboxClick: () => {
-        if (isActionAvailable("query_diff_with_primary_key")) {
-          setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
-        }
-        trackPreviewChange({
-          action: "explore",
-          node: node.data.name,
-        });
-      },
     }),
     [
       node,
@@ -329,7 +332,7 @@ export function NodeViewOss({
     <BaseNodeView
       node={node}
       onCloseNode={onCloseNode}
-      isSingleEnv={isSingleEnvOnboarding ?? false}
+      isSingleEnv={isSingleEnv}
       featureToggles={featureToggles}
       modelDetail={(() => {
         if (!modelDetail) return undefined;
@@ -367,14 +370,12 @@ export function NodeViewOss({
       NodeSqlView={NodeSqlViewOss}
       // Tag components
       ResourceTypeTag={ResourceTypeTag}
-      RowCountDiffTag={RowCountDiffTag}
-      RowCountTag={RowCountTag}
+      // Row count text rendered inline on the Row Count button
+      rowCountDisplay={rowCountDisplay}
       // Notification for single env
       NotificationComponent={OssNotificationComponent}
       // Connection popover wrapper
       ConnectionPopoverWrapper={SetupConnectionPopover}
-      // Sandbox dialog
-      SandboxDialog={SandboxViewOss}
       // Icons
       runTypeIcons={runTypeIcons}
       // Callbacks

@@ -3,12 +3,10 @@
  * @description Stories for the NodeView component — the node detail sidebar
  * rendered when a user focuses a lineage graph node.
  *
- * Renders the real NodeView and the real SchemaView (ag-grid). SchemaView is
- * wrapped in QueryClientProvider + MockLineageProvider so its server-flag
- * query and lineage context lookups resolve against MSW fixtures. The
- * RowCountDiffTag / RowCountTag / SandboxDialog injection slots take light
- * inline stubs (chips and an empty dialog) so the layout demonstrates the
- * sidebar at parity with production without depending on app-level contexts.
+ * Renders the real NodeView, the real SchemaView (ag-grid), the real
+ * registry icons, and the real NodeTag primitive. SchemaView is wrapped in
+ * QueryClientProvider + MockLineageProvider so its server-flag query and
+ * lineage context lookups resolve against MSW fixtures.
  */
 
 import type {
@@ -26,13 +24,11 @@ import {
 } from "@datarecce/ui/components";
 import { NodeTag } from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
-import Chip from "@mui/material/Chip";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { ComponentType } from "react";
 import { FiArrowRight } from "react-icons/fi";
 import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
 import { fn } from "storybook/test";
@@ -53,11 +49,10 @@ const runTypeIcons: RunTypeIconMap = {
   top_k_diff: findByRunType("top_k_diff").icon,
   histogram_diff: findByRunType("histogram_diff").icon,
   schema_diff: findByRunType("schema_diff").icon,
-  sandbox: findByRunType("sandbox").icon,
 };
 
 // =============================================================================
-// STUB COMPONENTS
+// STUB COMPONENTS (minimal — only the bits that need it)
 // =============================================================================
 
 function StubNodeSqlView({
@@ -92,95 +87,75 @@ function ResourceTypeTag({ node }: { node: NodeViewNodeData }) {
   );
 }
 
-/** Empty Sandbox dialog stub. Story never opens the sandbox. */
-function StubSandboxDialog() {
-  return null;
+// =============================================================================
+// ROW-COUNT DISPLAY HELPERS
+// =============================================================================
+// The production RowCountDiffTag/RowCountTag read from contexts. In stories we
+// pass `rowCountDisplay` directly so the layout is fully controllable.
+
+function RowCountDiffDisplay({ rowCount }: { rowCount: RowCountDiff }) {
+  const { base, curr } = rowCount;
+  const baseLabel = base === null ? "N/A" : `${base} rows`;
+  const currLabel = curr === null ? "N/A" : `${curr} rows`;
+
+  if (base === null && curr === null) return <span>Failed to load</span>;
+  if (base === null || curr === null) {
+    return (
+      <Stack
+        component="span"
+        direction="row"
+        spacing={0.5}
+        sx={{ alignItems: "center" }}
+      >
+        <span>{baseLabel}</span>
+        <FiArrowRight />
+        <span>{currLabel}</span>
+      </Stack>
+    );
+  }
+  if (base === curr) {
+    return (
+      <Stack
+        component="span"
+        direction="row"
+        spacing={0.5}
+        sx={{ alignItems: "center" }}
+      >
+        <span>{currLabel}</span>
+        <Box component="span" sx={{ color: "grey.500", display: "flex" }}>
+          <RiSwapLine />
+        </Box>
+        <Box component="span" sx={{ color: "grey.500" }}>
+          No Change
+        </Box>
+      </Stack>
+    );
+  }
+  const Arrow = base < curr ? RiArrowUpSFill : RiArrowDownSFill;
+  const tone = base < curr ? "success.main" : "error.main";
+  const pct = Math.round(((curr - base) / base) * 100);
+  return (
+    <Stack
+      component="span"
+      direction="row"
+      spacing={0.5}
+      sx={{ alignItems: "center" }}
+    >
+      <span>{currLabel}</span>
+      <Box component="span" sx={{ color: tone, display: "flex" }}>
+        <Arrow />
+      </Box>
+      <Box component="span" sx={{ color: tone }}>
+        {pct > 0 ? "+" : ""}
+        {pct}%
+      </Box>
+    </Stack>
+  );
 }
 
-// =============================================================================
-// ROW-COUNT TAG STUB FACTORIES
-// =============================================================================
-// Production RowCountDiffTag / RowCountTag read from runsAggregated context.
-// In stories we close over fixture data so the chip renders without wiring up
-// a real run-results context.
-
-function makeRowCountDiffTag(
-  rowCount?: RowCountDiff,
-): ComponentType<{ node: NodeViewNodeData; onRefresh?: () => void }> {
-  return function StubRowCountDiffTag() {
-    if (!rowCount) {
-      return <Chip size="small" variant="outlined" label="row count" />;
-    }
-    const { base, curr } = rowCount;
-    const baseLabel = base === null ? "N/A" : `${base} rows`;
-    const currLabel = curr === null ? "N/A" : `${curr} rows`;
-
-    let content: React.ReactNode;
-    if (base === null && curr === null) {
-      content = <span>Failed to load</span>;
-    } else if (base === null || curr === null) {
-      content = (
-        <Stack
-          component="span"
-          direction="row"
-          spacing={0.5}
-          sx={{ alignItems: "center" }}
-        >
-          <span>{baseLabel}</span>
-          <FiArrowRight />
-          <span>{currLabel}</span>
-        </Stack>
-      );
-    } else if (base === curr) {
-      content = (
-        <Stack
-          component="span"
-          direction="row"
-          spacing={0.5}
-          sx={{ alignItems: "center" }}
-        >
-          <span>{currLabel}</span>
-          <Box component="span" sx={{ color: "grey.500", display: "flex" }}>
-            <RiSwapLine />
-          </Box>
-        </Stack>
-      );
-    } else {
-      const Arrow = base < curr ? RiArrowUpSFill : RiArrowDownSFill;
-      const tone = base < curr ? "success.main" : "error.main";
-      const pct = Math.round(((curr - base) / base) * 100);
-      content = (
-        <Stack
-          component="span"
-          direction="row"
-          spacing={0.5}
-          sx={{ alignItems: "center" }}
-        >
-          <span>{currLabel}</span>
-          <Box component="span" sx={{ color: tone, display: "flex" }}>
-            <Arrow />
-          </Box>
-          <Box component="span" sx={{ color: tone }}>
-            {pct > 0 ? "+" : ""}
-            {pct}%
-          </Box>
-        </Stack>
-      );
-    }
-    return <Chip size="small" variant="outlined" label={content} />;
-  };
-}
-
-function makeRowCountTag(
-  rowCount?: RowCount,
-): ComponentType<{ node: NodeViewNodeData; onRefresh?: () => void }> {
-  return function StubRowCountTag() {
-    if (!rowCount) {
-      return <Chip size="small" variant="outlined" label="row count" />;
-    }
-    const label = rowCount.curr === null ? "N/A" : `${rowCount.curr} rows`;
-    return <Chip size="small" variant="outlined" label={label} />;
-  };
+function RowCountDisplay({ rowCount }: { rowCount: RowCount }) {
+  const label = rowCount.curr === null ? "N/A" : `${rowCount.curr} rows`;
+  return <span>{label}</span>;
 }
 
 // =============================================================================
@@ -204,31 +179,25 @@ function createStoryArgs(
 ): {
   node: NodeViewNodeData;
   modelDetail: NodeViewProps["modelDetail"];
-  RowCountDiffTag: ComponentType<{
-    node: NodeViewNodeData;
-    onRefresh?: () => void;
-  }>;
-  RowCountTag: ComponentType<{
-    node: NodeViewNodeData;
-    onRefresh?: () => void;
-  }>;
+  rowCountDisplay?: React.ReactNode;
 } {
   const baseMat = overrides.baseMaterialized ?? overrides.materialized;
   const baseConfig = baseMat ? { materialized: baseMat } : undefined;
   const currentConfig = overrides.materialized
     ? { materialized: overrides.materialized }
     : undefined;
-  const resourceType = overrides.resourceType ?? "model";
 
   const node: NodeViewNodeData = {
     id: `model.jaffle_shop.${overrides.name ?? "stg_orders"}`,
     data: {
       name: overrides.name ?? "stg_orders",
-      resourceType,
+      resourceType: overrides.resourceType ?? "model",
       changeStatus: overrides.changeStatus,
       materialized: overrides.materialized,
     },
   };
+
+  const resourceType = overrides.resourceType ?? "model";
 
   const modelDetail: NodeViewProps["modelDetail"] = {
     base: {
@@ -259,12 +228,14 @@ function createStoryArgs(
     },
   };
 
-  return {
-    node,
-    modelDetail,
-    RowCountDiffTag: makeRowCountDiffTag(overrides.rowCountDiff),
-    RowCountTag: makeRowCountTag(overrides.rowCount),
-  };
+  let rowCountDisplay: React.ReactNode | undefined;
+  if (overrides.rowCountDiff) {
+    rowCountDisplay = <RowCountDiffDisplay rowCount={overrides.rowCountDiff} />;
+  } else if (overrides.rowCount) {
+    rowCountDisplay = <RowCountDisplay rowCount={overrides.rowCount} />;
+  }
+
+  return { node, modelDetail, rowCountDisplay };
 }
 
 const noopCallbacks: NodeViewActionCallbacks = {
@@ -278,7 +249,6 @@ const noopCallbacks: NodeViewActionCallbacks = {
   onTopKDiffClick: fn(),
   onHistogramDiffClick: fn(),
   onAddSchemaDiffClick: fn(),
-  onSandboxClick: fn(),
 };
 
 // =============================================================================
@@ -299,7 +269,7 @@ const meta: Meta<typeof NodeView> = {
     docs: {
       description: {
         component:
-          "Node detail sidebar — header row (name, action buttons, close), tags row (resource type, row count), action buttons for diffs/queries, and tabbed Columns/Code content. Renders the real NodeView and real SchemaView. Story is wrapped in QueryClientProvider + MockLineageProvider so SchemaView's server-flag query and lineage lookups resolve against MSW fixtures.",
+          "Node detail sidebar — header row (name, type tag, close), action buttons for diffs/queries, and tabbed Columns/Code content. Renders the real NodeView and real SchemaView. Story is wrapped in QueryClientProvider + MockLineageProvider so SchemaView's server-flag query and lineage lookups resolve against MSW fixtures.",
       },
     },
   },
@@ -329,7 +299,6 @@ const meta: Meta<typeof NodeView> = {
     SingleEnvSchemaView,
     NodeSqlView: StubNodeSqlView,
     ResourceTypeTag,
-    SandboxDialog: StubSandboxDialog,
     runTypeIcons,
     actionCallbacks: noopCallbacks,
   },
@@ -344,7 +313,8 @@ type Story = StoryObj<typeof NodeView>;
 
 /**
  * Default: matches the production sidebar for a table-materialized model in
- * multi-env mode with row-count data available.
+ * multi-env mode with row-count data available. Mirrors the reference
+ * screenshot (finance_revenue, N/A → 280,844 rows, table materialization).
  */
 export const Default: Story = {
   args: {
@@ -367,7 +337,7 @@ export const Default: Story = {
   },
 };
 
-/** No row count data yet — Row Count tag shows just "row count". */
+/** No row count data yet — Row Count button shows just "Row Count". */
 export const NoRowCountData: Story = {
   args: {
     ...createStoryArgs({ name: "finance_revenue", materialized: "table" }),
@@ -427,19 +397,6 @@ export const CodeChanged: Story = {
       rowCountDiff: { base: 99000, curr: 99231 },
       baseCode: "SELECT * FROM raw.orders",
       currentCode: "SELECT * FROM raw.orders WHERE status != 'deleted'",
-    }),
-  },
-};
-
-/** Materialization changed (view → table). */
-export const MaterializationChanged: Story = {
-  args: {
-    ...createStoryArgs({
-      name: "stg_orders",
-      baseMaterialized: "view",
-      materialized: "table",
-      changeStatus: "modified",
-      rowCountDiff: { base: 1000, curr: 1200 },
     }),
   },
 };
