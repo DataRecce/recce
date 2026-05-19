@@ -1,3 +1,4 @@
+import type { RunsAggregated } from "@datarecce/ui/api";
 import { LineageGraphProvider } from "@datarecce/ui/contexts";
 import type { ReactNode } from "react";
 
@@ -161,10 +162,27 @@ const mockLineageGraph = {
   },
 };
 
-export function MockLineageProvider({ children }: { children: ReactNode }) {
+export interface MockLineageProviderProps {
+  children: ReactNode;
+  /**
+   * Pre-aggregated run results keyed by `node.id`. Components like
+   * `RowCountDiffTag` / `RowCountTag` read row-count data from here. Stories
+   * pass fixture data so the real production components render with realistic
+   * values instead of being stubbed.
+   */
+  runsAggregated?: RunsAggregated;
+}
+
+export function MockLineageProvider({
+  children,
+  runsAggregated,
+}: MockLineageProviderProps) {
   return (
-    // biome-ignore lint/suspicious/noExplicitAny: Mock data doesn't need full type compliance
-    <LineageGraphProvider lineageGraph={mockLineageGraph as any}>
+    <LineageGraphProvider
+      // biome-ignore lint/suspicious/noExplicitAny: Mock data doesn't need full type compliance
+      lineageGraph={mockLineageGraph as any}
+      runsAggregated={runsAggregated}
+    >
       {children}
     </LineageGraphProvider>
   );
