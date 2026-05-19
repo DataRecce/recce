@@ -70,4 +70,25 @@ describe("usePublishedImpactSets", () => {
     expect(second).not.toBe(first);
     expect(second.size).toBe(2);
   });
+
+  it("publishes whole-model impact sets when provided", () => {
+    const { result } = renderHook(() => usePublishedImpactSets());
+
+    expect(result.current.wholeModelImpactedNodeIds.size).toBe(0);
+    expect(result.current.wholeModelChangedNodeIds.size).toBe(0);
+
+    act(() => {
+      result.current.publish({
+        nodeIds: new Set(),
+        columnIds: new Set(),
+        wholeModelImpactedNodeIds: new Set(["a", "b"]),
+        wholeModelChangedNodeIds: new Set(["a"]),
+      });
+    });
+
+    expect(result.current.wholeModelImpactedNodeIds).toEqual(
+      new Set(["a", "b"]),
+    );
+    expect(result.current.wholeModelChangedNodeIds).toEqual(new Set(["a"]));
+  });
 });

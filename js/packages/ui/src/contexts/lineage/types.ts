@@ -260,6 +260,25 @@ export interface LineageViewContextType {
   impactedNodeIds: Set<string>;
   /** Frozen set of column IDs that are impacted, same lifecycle as impactedNodeIds. */
   impactedColumnIds: Set<string>;
+  /**
+   * Models that themselves have a whole-model change (row-shape edit at the
+   * CLL classifier level — `change_category === "breaking"`). Drives the
+   * brown title chip + [TABLE] badge + left stripe in NodeView, and the
+   * brown badge on the LineageNode in the graph. Empty Set when the
+   * `downstream_of_breaking` flag is off.
+   */
+  wholeModelChangedNodeIds: Set<string>;
+  /**
+   * Models that are BFS-downstream of one or more whole-model-changed
+   * models (the set includes the changed models themselves — they are
+   * trivially "impacted" by their own change). Drives the amber title chip
+   * + [TABLE] badge + left stripe in NodeView, and the amber badge on the
+   * LineageNode. Changed-wins: a model may appear in both this set AND in
+   * `wholeModelChangedNodeIds`; consumers must consult
+   * `wholeModelChangedNodeIds` first (use `pickWholeModelFlags`). Empty Set
+   * when the flag is off.
+   */
+  wholeModelImpactedNodeIds: Set<string>;
   /** Set change analysis mode on/off */
   setChangeAnalysisMode: (active: boolean) => void;
 
