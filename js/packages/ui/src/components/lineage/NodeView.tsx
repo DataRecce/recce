@@ -224,8 +224,8 @@ export interface NodeViewProps<
   isWholeModelChanged?: boolean;
   /** This model is downstream of a whole-model change — paints the amber title chip + [TABLE] badge + amber left stripe. Consumer must enforce changed-wins (zero this when isWholeModelChanged is true) via pickWholeModelFlags. */
   isWholeModelImpacted?: boolean;
-  /** Whether the `--downstream-of-breaking` server flag is on. When false, no whole-model UI renders (no title chip, no badge, no left stripe). */
-  downstreamOfBreaking?: boolean;
+  /** Whether the `--whole-model-impact` server flag is on. When false, no whole-model UI renders (no title chip, no badge, no left stripe). */
+  wholeModelImpact?: boolean;
 }
 
 // =============================================================================
@@ -642,7 +642,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
   isActionAvailable = defaultIsActionAvailable,
   isWholeModelChanged = false,
   isWholeModelImpacted = false,
-  downstreamOfBreaking = false,
+  wholeModelImpact = false,
 }: NodeViewProps<TNode>) {
   const withColumns =
     node.data.resourceType === "model" ||
@@ -686,7 +686,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
     node.data.change?.category === "non_breaking" &&
     !isWholeModelChanged &&
     !isWholeModelImpacted;
-  const treatmentKind = downstreamOfBreaking
+  const treatmentKind = wholeModelImpact
     ? wholeModelTreatmentKind({
         isWholeModelChanged,
         isWholeModelImpacted,

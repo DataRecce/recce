@@ -417,7 +417,7 @@ describe("LineageNode", () => {
       ["breaking", "Breaking"],
       ["non_breaking", "Non Breaking"],
       ["partial_breaking", "Partial Breaking"],
-    ])("shows %s category text label when downstreamOfBreaking is false", (category, label) => {
+    ])("shows %s category text label when wholeModelImpact is false", (category, label) => {
       const props = createMockNodeProps(
         { showChangeAnalysis: true, changeCategory: category },
         { label: "test" },
@@ -432,12 +432,12 @@ describe("LineageNode", () => {
       "breaking",
       "non_breaking",
       "partial_breaking",
-    ])("suppresses %s category text label when downstreamOfBreaking is true (badge carries the signal)", (category) => {
+    ])("suppresses %s category text label when wholeModelImpact is true (badge carries the signal)", (category) => {
       const props = createMockNodeProps(
         {
           showChangeAnalysis: true,
           changeCategory: category,
-          downstreamOfBreaking: true,
+          wholeModelImpact: true,
         },
         { label: "test" },
       );
@@ -666,10 +666,10 @@ describe("LineageNode", () => {
   // ==========================================================================
 
   describe("whole-model treatment badge", () => {
-    it("renders the changed badge when isWholeModelChanged is true and downstreamOfBreaking is on", () => {
+    it("renders the changed badge when isWholeModelChanged is true and wholeModelImpact is on", () => {
       const props = createMockNodeProps({
         isWholeModelChanged: true,
-        downstreamOfBreaking: true,
+        wholeModelImpact: true,
       });
       render(<LineageNode {...props} />);
       const badge = screen.getByTestId("whole-model-changed-badge");
@@ -677,10 +677,10 @@ describe("LineageNode", () => {
       expect(badge.textContent).toBe("TABLE");
     });
 
-    it("renders the impacted badge when isWholeModelImpacted is true and downstreamOfBreaking is on", () => {
+    it("renders the impacted badge when isWholeModelImpacted is true and wholeModelImpact is on", () => {
       const props = createMockNodeProps({
         isWholeModelImpacted: true,
-        downstreamOfBreaking: true,
+        wholeModelImpact: true,
       });
       render(<LineageNode {...props} />);
       const badge = screen.getByTestId("whole-model-impacted-badge");
@@ -688,10 +688,10 @@ describe("LineageNode", () => {
       expect(badge.textContent).toBe("TABLE");
     });
 
-    it("renders the additive badge for non_breaking when downstreamOfBreaking is on", () => {
+    it("renders the additive badge for non_breaking when wholeModelImpact is on", () => {
       const props = createMockNodeProps({
         changeCategory: "non_breaking",
-        downstreamOfBreaking: true,
+        wholeModelImpact: true,
       });
       render(<LineageNode {...props} />);
       const badge = screen.getByTestId("whole-model-additive-badge");
@@ -702,7 +702,7 @@ describe("LineageNode", () => {
     it("renders no badge when neither flag is set and category is not additive", () => {
       const props = createMockNodeProps({
         changeCategory: "breaking",
-        downstreamOfBreaking: true,
+        wholeModelImpact: true,
       });
       render(<LineageNode {...props} />);
       expect(
@@ -716,7 +716,7 @@ describe("LineageNode", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("renders no badge when downstreamOfBreaking is off, even if flags are set", () => {
+    it("renders no badge when wholeModelImpact is off, even if flags are set", () => {
       const props = createMockNodeProps({
         isWholeModelChanged: true,
         isWholeModelImpacted: true,

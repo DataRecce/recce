@@ -133,14 +133,14 @@ describe("NodeView", () => {
   });
 
   describe("whole-model treatment", () => {
-    test("renders the changed title chip + badge when isWholeModelChanged is true and downstreamOfBreaking is on", () => {
+    test("renders the changed title chip + badge when isWholeModelChanged is true and wholeModelImpact is on", () => {
       render(
         <NodeView
           node={createNode("model")}
           onCloseNode={vi.fn()}
           isSingleEnv={false}
           isWholeModelChanged
-          downstreamOfBreaking
+          wholeModelImpact
         />,
       );
       expect(
@@ -151,14 +151,14 @@ describe("NodeView", () => {
       ).toBeInTheDocument();
     });
 
-    test("renders the impacted title chip + badge when isWholeModelImpacted is true and downstreamOfBreaking is on", () => {
+    test("renders the impacted title chip + badge when isWholeModelImpacted is true and wholeModelImpact is on", () => {
       render(
         <NodeView
           node={createNode("model")}
           onCloseNode={vi.fn()}
           isSingleEnv={false}
           isWholeModelImpacted
-          downstreamOfBreaking
+          wholeModelImpact
         />,
       );
       expect(
@@ -177,7 +177,7 @@ describe("NodeView", () => {
           isSingleEnv={false}
           isWholeModelChanged
           isWholeModelImpacted
-          downstreamOfBreaking
+          wholeModelImpact
         />,
       );
       expect(
@@ -200,7 +200,7 @@ describe("NodeView", () => {
           node={createNode("model")}
           onCloseNode={vi.fn()}
           isSingleEnv={false}
-          downstreamOfBreaking
+          wholeModelImpact
         />,
       );
       expect(
@@ -230,7 +230,7 @@ describe("NodeView", () => {
           }}
           onCloseNode={vi.fn()}
           isSingleEnv={false}
-          downstreamOfBreaking
+          wholeModelImpact
         />,
       );
       expect(
@@ -241,7 +241,7 @@ describe("NodeView", () => {
       ).not.toBeInTheDocument();
     });
 
-    test("renders no whole-model surfaces when downstreamOfBreaking is off, even if flags are set", () => {
+    test("renders no whole-model surfaces when wholeModelImpact is off, even if flags are set", () => {
       render(
         <NodeView
           node={createNode("model")}

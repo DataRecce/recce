@@ -123,7 +123,7 @@ const lineageNodeBaseProps = {
   hasParents: true,
   hasChildren: true,
   showContent: true,
-  downstreamOfBreaking: true,
+  wholeModelImpact: true,
 };
 
 // =============================================================================
@@ -166,7 +166,7 @@ const baseNodeViewArgs: Partial<NodeViewProps<NodeViewNodeData>> = {
   SchemaView: StubSchemaView,
   NodeSqlView: StubNodeSqlView,
   ResourceTypeTag,
-  downstreamOfBreaking: true,
+  wholeModelImpact: true,
 };
 
 /** Title chip + [TABLE] badge + brown left stripe for a whole-model-changed model. */

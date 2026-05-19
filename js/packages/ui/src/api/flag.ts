@@ -10,7 +10,7 @@ export interface RecceServerFlags {
   impact_at_startup: boolean;
   new_cll_experience: boolean;
   /** Whole-model impact highlighting. Implies new_cll_experience. */
-  downstream_of_breaking: boolean;
+  whole_model_impact: boolean;
 }
 
 /**

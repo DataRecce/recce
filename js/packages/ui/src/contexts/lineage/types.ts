@@ -253,14 +253,14 @@ export interface LineageViewContextType {
   /** Whether the new CLL experience flag is enabled on the server */
   newCllExperience: boolean;
   /**
-   * Whether the `--downstream-of-breaking` server flag is on. Implies
+   * Whether the `--whole-model-impact` server flag is on. Implies
    * `newCllExperience`. Gates the whole-model treatment surfaces (title
    * chip, TABLE/ADD badge, left stripe) AND the suppression of the
    * "Breaking / Non Breaking / Partial Breaking" text labels on the
    * graph node. When false, lineage nodes render the original category
    * text labels and no whole-model UI.
    */
-  downstreamOfBreaking: boolean;
+  wholeModelImpact: boolean;
   // TODO: Move isImpacted to be a per-model state on node data instead of
   // a lookup set, so impact status is part of the graph model rather than
   // a side-channel computed separately.
@@ -274,7 +274,7 @@ export interface LineageViewContextType {
    * CLL classifier level — `change_category === "breaking"`). Drives the
    * brown title chip + [TABLE] badge + left stripe in NodeView, and the
    * brown badge on the LineageNode in the graph. Empty Set when the
-   * `downstream_of_breaking` flag is off.
+   * `--whole-model-impact` flag is off.
    */
   wholeModelChangedNodeIds: Set<string>;
   /**
@@ -285,7 +285,7 @@ export interface LineageViewContextType {
    * LineageNode. Changed-wins: a model may appear in both this set AND in
    * `wholeModelChangedNodeIds`; consumers must consult
    * `wholeModelChangedNodeIds` first (use `pickWholeModelFlags`). Empty Set
-   * when the flag is off.
+   * when the `--whole-model-impact` flag is off.
    */
   wholeModelImpactedNodeIds: Set<string>;
   /** Set change analysis mode on/off */

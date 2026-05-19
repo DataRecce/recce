@@ -139,7 +139,7 @@ export const MINIMAP_NODE_THRESHOLD = 500;
 function computeImpactedSets(
   lineageGraph: LineageGraph,
   cll: ColumnLineageData,
-  downstreamOfBreaking = false,
+  wholeModelImpact = false,
 ): {
   nodeIds: Set<string>;
   columnIds: Set<string>;
@@ -161,7 +161,7 @@ function computeImpactedSets(
       nodeIds.add(nodeId);
     }
   }
-  if (downstreamOfBreaking) {
+  if (wholeModelImpact) {
     const { wholeModelImpactedNodeIds, wholeModelChangedNodeIds } =
       computeWholeModelImpact(lineageGraph, cll);
     return {
@@ -281,7 +281,7 @@ export function PrivateLineageView(
 
   const { data: serverFlags } = useRecceServerFlag();
   const newCllExperience = serverFlags?.new_cll_experience ?? false;
-  const downstreamOfBreaking = serverFlags?.downstream_of_breaking ?? false;
+  const wholeModelImpact = serverFlags?.whole_model_impact ?? false;
   const { runId, showRunId, closeRunResult, runAction, isRunResultOpen } =
     useRecceActionContext();
   const { run } = useRun(runId);
@@ -633,7 +633,7 @@ export function PrivateLineageView(
           ? computeImpactedSets(
               lineageGraph,
               cll,
-              serverFlags?.downstream_of_breaking ?? false,
+              serverFlags?.whole_model_impact ?? false,
             )
           : undefined;
 
@@ -965,7 +965,7 @@ export function PrivateLineageView(
         ? computeImpactedSets(
             lineageGraph,
             cll,
-            serverFlags?.downstream_of_breaking ?? false,
+            serverFlags?.whole_model_impact ?? false,
           )
         : undefined;
 
@@ -1250,7 +1250,7 @@ export function PrivateLineageView(
     },
     changeAnalysisMode,
     newCllExperience,
-    downstreamOfBreaking,
+    wholeModelImpact,
     setChangeAnalysisMode,
     getNodeAction: (nodeId: string) => {
       return multiNodeAction.actionState.actions[nodeId];

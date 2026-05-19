@@ -338,7 +338,7 @@ export function NodeViewOss({
       featureToggles={featureToggles}
       isWholeModelChanged={wholeModelFlags.isWholeModelChanged}
       isWholeModelImpacted={wholeModelFlags.isWholeModelImpacted}
-      downstreamOfBreaking={lineageViewCtx?.downstreamOfBreaking ?? false}
+      wholeModelImpact={lineageViewCtx?.wholeModelImpact ?? false}
       modelDetail={(() => {
         if (!modelDetail) return undefined;
         const hasBase =

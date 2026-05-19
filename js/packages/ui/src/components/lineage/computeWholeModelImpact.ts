@@ -25,7 +25,7 @@ const EMPTY_RESULT: WholeModelImpactSets = {
 /**
  * BFS the lineage graph downstream from every node whose CLL
  * `change_category === "breaking"`. Cheap — runs only when the
- * `downstream_of_breaking` server flag is on.
+ * `whole_model_impact` server flag is on.
  */
 export function computeWholeModelImpact(
   lineageGraph: LineageGraph,
