@@ -488,9 +488,9 @@ function LineageNodeComponent({
           displacing the descriptor + status icons inside it. */}
       <NodeToolbar
         isVisible={isHovered}
-        position={Position.Top}
+        position={Position.Right}
         offset={6}
-        align="end"
+        align="center"
       >
         <Box
           onMouseEnter={beginHover}
@@ -499,16 +499,16 @@ function LineageNodeComponent({
             display: "flex",
             alignItems: "center",
             gap: 0.75,
-            // Invisible bridge above the toolbar so the cursor can land
-            // anywhere between the card edge and the toolbar without losing
-            // hover. Matches the NodeToolbar `offset` below.
+            // Invisible bridge to the left of the toolbar so the cursor can
+            // land anywhere between the card edge and the toolbar without
+            // losing hover. Matches the NodeToolbar `offset`.
             "&::before": {
               content: '""',
               position: "absolute",
-              left: 0,
-              right: 0,
-              bottom: "100%",
-              height: "12px",
+              top: 0,
+              bottom: 0,
+              right: "100%",
+              width: "12px",
             },
             position: "relative",
             px: 0.75,
