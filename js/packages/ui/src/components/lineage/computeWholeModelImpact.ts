@@ -17,11 +17,6 @@ export interface WholeModelImpactSets {
   wholeModelChangedNodeIds: Set<string>;
 }
 
-const EMPTY_RESULT: WholeModelImpactSets = {
-  wholeModelImpactedNodeIds: new Set<string>(),
-  wholeModelChangedNodeIds: new Set<string>(),
-};
-
 /**
  * BFS the lineage graph downstream from every node whose CLL
  * `change_category === "breaking"`. Cheap — runs only when the
@@ -37,7 +32,12 @@ export function computeWholeModelImpact(
       changedNodes.push(nodeId);
     }
   }
-  if (changedNodes.length === 0) return EMPTY_RESULT;
+  if (changedNodes.length === 0) {
+    return {
+      wholeModelImpactedNodeIds: new Set<string>(),
+      wholeModelChangedNodeIds: new Set<string>(),
+    };
+  }
 
   const wholeModelImpactedNodeIds = new Set<string>(changedNodes);
   const wholeModelChangedNodeIds = new Set<string>(changedNodes);
