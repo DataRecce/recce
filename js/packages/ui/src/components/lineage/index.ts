@@ -96,3 +96,5 @@ export * from "./styles";
 export * from "./tags";
 // Top bar component for lineage view
 export * from "./topbar";
+// Whole-model treatment palette (Storybook surfaces import this)
+export { wholeModelTreatmentTokens } from "./wholeModelTreatment";

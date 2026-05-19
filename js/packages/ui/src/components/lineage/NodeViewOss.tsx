@@ -51,6 +51,7 @@ import {
 } from "./NodeView";
 import { SandboxViewOss } from "./SandboxViewOss";
 import { NodeTag } from "./tags";
+import { pickWholeModelFlags } from "./wholeModelHelpers";
 
 // =============================================================================
 // TYPES
@@ -325,12 +326,18 @@ export function NodeViewOss({
     ],
   );
 
+  const wholeModelFlags = lineageViewCtx
+    ? pickWholeModelFlags(node.id, lineageViewCtx)
+    : { isWholeModelChanged: false, isWholeModelImpacted: false };
+
   return (
     <BaseNodeView
       node={node}
       onCloseNode={onCloseNode}
       isSingleEnv={isSingleEnvOnboarding ?? false}
       featureToggles={featureToggles}
+      isWholeModelChanged={wholeModelFlags.isWholeModelChanged}
+      isWholeModelImpacted={wholeModelFlags.isWholeModelImpacted}
       modelDetail={(() => {
         if (!modelDetail) return undefined;
         const hasBase =

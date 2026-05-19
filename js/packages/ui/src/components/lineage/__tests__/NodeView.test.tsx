@@ -131,4 +131,86 @@ describe("NodeView", () => {
       expect(screen.queryByTestId("schema-view")).not.toBeInTheDocument();
     });
   });
+
+  describe("whole-model treatment", () => {
+    test("renders the changed title chip + badge when isWholeModelChanged is true", () => {
+      render(
+        <NodeView
+          node={createNode("model")}
+          onCloseNode={vi.fn()}
+          isSingleEnv={false}
+          isWholeModelChanged
+        />,
+      );
+      expect(
+        screen.getByTestId("whole-model-changed-title-chip"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("whole-model-changed-badge"),
+      ).toBeInTheDocument();
+    });
+
+    test("renders the impacted title chip + badge when isWholeModelImpacted is true", () => {
+      render(
+        <NodeView
+          node={createNode("model")}
+          onCloseNode={vi.fn()}
+          isSingleEnv={false}
+          isWholeModelImpacted
+        />,
+      );
+      expect(
+        screen.getByTestId("whole-model-impacted-title-chip"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("whole-model-impacted-badge"),
+      ).toBeInTheDocument();
+    });
+
+    test("changed-wins: renders the changed treatment when both flags are true (Q11)", () => {
+      render(
+        <NodeView
+          node={createNode("model")}
+          onCloseNode={vi.fn()}
+          isSingleEnv={false}
+          isWholeModelChanged
+          isWholeModelImpacted
+        />,
+      );
+      expect(
+        screen.getByTestId("whole-model-changed-title-chip"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("whole-model-changed-badge"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-impacted-title-chip"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-impacted-badge"),
+      ).not.toBeInTheDocument();
+    });
+
+    test("renders no whole-model surfaces when neither flag is set", () => {
+      render(
+        <NodeView
+          node={createNode("model")}
+          onCloseNode={vi.fn()}
+          isSingleEnv={false}
+        />,
+      );
+      expect(
+        screen.queryByTestId("whole-model-changed-title-chip"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-impacted-title-chip"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-changed-badge"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-impacted-badge"),
+      ).not.toBeInTheDocument();
+    });
+  });
 });

@@ -33,6 +33,12 @@ import {
   getIconForResourceType,
   getStyleForImpacted,
 } from "../styles";
+import { TreatmentChip } from "../TreatmentChip";
+import { getBadgeMeta } from "../wholeModelHelpers";
+import {
+  wholeModelTreatmentKind,
+  wholeModelTreatmentTokens,
+} from "../wholeModelTreatment";
 
 // =============================================================================
 // TYPES
@@ -143,6 +149,10 @@ export interface LineageNodeProps {
   newCllExperience?: boolean;
   /** Whether this node is impacted by CLL analysis */
   isImpacted?: boolean;
+  /** This model itself has a whole-model change — paints brown TABLE. */
+  isWholeModelChanged?: boolean;
+  /** This model is downstream of (impacted by) a whole-model change — paints amber TABLE. Consumer must enforce changed-wins (zero this when isWholeModelChanged is true) via pickWholeModelFlags. */
+  isWholeModelImpacted?: boolean;
 
   // === Callbacks ===
   /** Callback when node is clicked */
@@ -161,10 +171,10 @@ export interface LineageNodeProps {
 // CONSTANTS
 // =============================================================================
 
-const CHANGE_CATEGORY_LABELS: Record<ChangeCategory, string> = {
-  breaking: "Breaking",
-  non_breaking: "Non Breaking",
-  partial_breaking: "Partial Breaking",
+const CHANGE_CATEGORY_LABELS: Record<ChangeCategory, string | null> = {
+  breaking: null,
+  non_breaking: null,
+  partial_breaking: null,
   unknown: "Unknown",
 };
 
@@ -317,6 +327,8 @@ function LineageNodeComponent({
   // New CLL experience props (fall back to data for ReactFlow passthrough)
   newCllExperience: newCllExperienceProp,
   isImpacted: isImpactedProp,
+  isWholeModelChanged = false,
+  isWholeModelImpacted = false,
   // Callbacks
   onNodeClick,
   onNodeDoubleClick,
@@ -552,6 +564,32 @@ function LineageNodeComponent({
               resourceType={resourceType}
             />
 
+            {(() => {
+              const isAdditive =
+                changeCategory === "non_breaking" &&
+                !isWholeModelChanged &&
+                !isWholeModelImpacted;
+              const kind = wholeModelTreatmentKind({
+                isWholeModelChanged,
+                isWholeModelImpacted,
+                isAdditive,
+              });
+              if (!kind) return null;
+              const meta = getBadgeMeta(kind);
+              const tokens = wholeModelTreatmentTokens(kind, isDark);
+              return (
+                <Tooltip title={meta.tooltip} placement="top">
+                  <TreatmentChip
+                    tokens={tokens}
+                    testId={meta.testId}
+                    ariaLabel={meta.ariaLabel}
+                  >
+                    {meta.text}
+                  </TreatmentChip>
+                </Tooltip>
+              );
+            })()}
+
             {/* Hover actions vs icons */}
             {isHovered ? (
               <>
@@ -618,7 +656,9 @@ function LineageNodeComponent({
                   <Box sx={{ flexGrow: 1 }} />
                   {actionTag}
                 </>
-              ) : showChangeAnalysis && changeCategory ? (
+              ) : showChangeAnalysis &&
+                changeCategory &&
+                CHANGE_CATEGORY_LABELS[changeCategory] ? (
                 <Typography
                   sx={{
                     height: 20,

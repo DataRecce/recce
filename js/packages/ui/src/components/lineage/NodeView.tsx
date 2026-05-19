@@ -4,6 +4,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
+import { useTheme } from "@mui/material/styles";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import MuiTooltip from "@mui/material/Tooltip";
@@ -18,6 +19,18 @@ import { IoClose } from "react-icons/io5";
 
 import type { NodeData } from "../../api/info";
 import { DisableTooltipMessages } from "../../constants";
+import { TreatmentChip } from "./TreatmentChip";
+import { getBadgeMeta } from "./wholeModelHelpers";
+import {
+  wholeModelTreatmentKind,
+  wholeModelTreatmentTokens,
+} from "./wholeModelTreatment";
+
+// Tabs height. The sibling tab-content Box below uses
+// `height: calc(100% - 48px)` to fill the remaining vertical space, so this
+// must stay 48 — natural sizing was tried and caused a layout regression
+// because the calc-coupled container is brittle.
+const TABS_HEIGHT = 48;
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -206,6 +219,11 @@ export interface NodeViewProps<
   actionCallbacks?: NodeViewActionCallbacks;
   /** Check if an action is available */
   isActionAvailable?: (runType: string) => boolean;
+
+  /** This model itself has a whole-model change — paints the brown title chip + [TABLE] badge + brown left stripe. */
+  isWholeModelChanged?: boolean;
+  /** This model is downstream of a whole-model change — paints the amber title chip + [TABLE] badge + amber left stripe. Consumer must enforce changed-wins (zero this when isWholeModelChanged is true) via pickWholeModelFlags. */
+  isWholeModelImpacted?: boolean;
 }
 
 // =============================================================================
@@ -620,6 +638,8 @@ export function NodeView<TNode extends NodeViewNodeData>({
   // Injected callbacks
   actionCallbacks,
   isActionAvailable = defaultIsActionAvailable,
+  isWholeModelChanged = false,
+  isWholeModelImpacted = false,
 }: NodeViewProps<TNode>) {
   const withColumns =
     node.data.resourceType === "model" ||
@@ -657,12 +677,31 @@ export function NodeView<TNode extends NodeViewNodeData>({
     },
   };
 
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const treatmentKind = wholeModelTreatmentKind({
+    isWholeModelChanged,
+    isWholeModelImpacted,
+  });
+  const treatmentTokens = treatmentKind
+    ? wholeModelTreatmentTokens(treatmentKind, isDark)
+    : null;
+  const treatmentMeta = treatmentKind ? getBadgeMeta(treatmentKind) : null;
+
+  const lineageTabIndex = lineageTabContent ? 0 : -1;
+  const columnsTabIndex = lineageTabContent ? 1 : 0;
+  const codeTabIndex = lineageTabContent ? 2 : 1;
+
   return (
     <Box
+      className={treatmentTokens ? "cll-experience" : undefined}
       sx={{
         height: "100%",
         display: "flex",
         flexDirection: "column",
+        ...(treatmentTokens && {
+          borderLeft: `3px solid ${treatmentTokens.stripeAccent}`,
+        }),
       }}
     >
       {/* Header row: name + close button */}
@@ -672,18 +711,72 @@ export function NodeView<TNode extends NodeViewNodeData>({
           alignItems: "center",
         }}
       >
-        <Box sx={{ flex: "0 1 20%", p: 2 }}>
-          <Typography
-            variant="subtitle1"
-            className="no-track-pii-safe"
-            sx={{
-              fontWeight: 600,
-            }}
-          >
-            {node.data.name}
-          </Typography>
+        <Box
+          sx={{
+            flex: "1 1 auto",
+            p: 2,
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            minWidth: 0,
+          }}
+        >
+          {treatmentTokens && treatmentMeta && treatmentKind ? (
+            <MuiTooltip title={treatmentMeta.tooltip} placement="top">
+              <TreatmentChip
+                tokens={treatmentTokens}
+                testId={`whole-model-${treatmentKind}-title-chip`}
+                ariaLabel={treatmentMeta.ariaLabel}
+                sx={{
+                  borderRadius: "6px",
+                  height: "auto",
+                  minWidth: 0,
+                  px: 1,
+                  py: 0.25,
+                  fontSize: "1rem",
+                  fontWeight: 600,
+                  lineHeight: 1.4,
+                }}
+              >
+                <Typography
+                  variant="subtitle1"
+                  component="span"
+                  className="no-track-pii-safe"
+                  sx={{
+                    fontWeight: 600,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    color: "inherit",
+                  }}
+                >
+                  {node.data.name}
+                </Typography>
+              </TreatmentChip>
+            </MuiTooltip>
+          ) : (
+            <Typography
+              variant="subtitle1"
+              className="no-track-pii-safe"
+              sx={{
+                fontWeight: 600,
+              }}
+            >
+              {node.data.name}
+            </Typography>
+          )}
+          {treatmentTokens && treatmentMeta && (
+            <MuiTooltip title={treatmentMeta.tooltip} placement="top">
+              <TreatmentChip
+                tokens={treatmentTokens}
+                testId={treatmentMeta.testId}
+                ariaLabel={treatmentMeta.ariaLabel}
+              >
+                {treatmentMeta.text}
+              </TreatmentChip>
+            </MuiTooltip>
+          )}
         </Box>
-        <Box sx={{ flexGrow: 1 }} />
         {!isSingleEnv && isModelSeedOrSnapshot && (
           <ExploreHeaderButtons
             node={node}
@@ -767,104 +860,97 @@ export function NodeView<TNode extends NodeViewNodeData>({
           )}
 
           {/* Tabs — when lineageTabContent is provided, "Lineage" is index 0 */}
-          {(() => {
-            const lineageTabIndex = lineageTabContent ? 0 : -1;
-            const columnsTabIndex = lineageTabContent ? 1 : 0;
-            const codeTabIndex = lineageTabContent ? 2 : 1;
-            return (
-              <>
-                <Tabs
-                  value={tabValue}
-                  onChange={(_, newValue) => setTabValue(newValue)}
-                  sx={{ borderBottom: 1, borderColor: "divider" }}
+          <Tabs
+            value={tabValue}
+            onChange={(_, newValue) => setTabValue(newValue)}
+            sx={{ borderBottom: 1, borderColor: "divider" }}
+          >
+            {lineageTabContent && <Tab label="Lineage" />}
+            <Tab
+              label={
+                <Box
+                  component="span"
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.75,
+                  }}
                 >
-                  {lineageTabContent && <Tab label="Lineage" />}
-                  <Tab
-                    label={
-                      <Box
-                        component="span"
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 0.75,
-                        }}
-                      >
-                        Columns
-                        {hasSchemaChanges && (
-                          <Box
-                            component="span"
-                            sx={{
-                              color: "amber.main",
-                              fontSize: "0.5rem",
-                              lineHeight: 1,
-                            }}
-                          >
-                            ●
-                          </Box>
-                        )}
-                      </Box>
-                    }
-                  />
-                  <Tab
-                    label={
-                      <Box
-                        component="span"
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 0.75,
-                        }}
-                      >
-                        Code
-                        {hasCodeChanges && (
-                          <Box
-                            component="span"
-                            sx={{
-                              color: "amber.main",
-                              fontSize: "0.5rem",
-                              lineHeight: 1,
-                            }}
-                          >
-                            ●
-                          </Box>
-                        )}
-                      </Box>
-                    }
-                  />
-                </Tabs>
-
-                {/* Tab panels */}
-                <Box sx={{ overflow: "auto", height: "calc(100% - 48px)" }}>
-                  {lineageTabContent && (
-                    <TabPanel value={tabValue} index={lineageTabIndex}>
-                      <Box sx={{ height: "100%" }}>{lineageTabContent}</Box>
-                    </TabPanel>
+                  Columns
+                  {hasSchemaChanges && (
+                    <Box
+                      component="span"
+                      sx={{
+                        color: "amber.main",
+                        fontSize: "0.5rem",
+                        lineHeight: 1,
+                      }}
+                    >
+                      ●
+                    </Box>
                   )}
-                  <TabPanel value={tabValue} index={columnsTabIndex}>
-                    <Box sx={{ overflowY: "auto", height: "100%" }}>
-                      {isSingleEnv
-                        ? SingleEnvSchemaView && (
-                            <SingleEnvSchemaView current={current} />
-                          )
-                        : SchemaView && (
-                            <SchemaView
-                              base={base}
-                              current={current}
-                              columnChanges={node.data.change?.columns}
-                              onViewCode={() => setTabValue(codeTabIndex)}
-                            />
-                          )}
-                    </Box>
-                  </TabPanel>
-                  <TabPanel value={tabValue} index={codeTabIndex}>
-                    <Box sx={{ height: "100%" }}>
-                      {NodeSqlView && <NodeSqlView node={node} />}
-                    </Box>
-                  </TabPanel>
                 </Box>
-              </>
-            );
-          })()}
+              }
+            />
+            <Tab
+              label={
+                <Box
+                  component="span"
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.75,
+                  }}
+                >
+                  Code
+                  {hasCodeChanges && (
+                    <Box
+                      component="span"
+                      sx={{
+                        color: "amber.main",
+                        fontSize: "0.5rem",
+                        lineHeight: 1,
+                      }}
+                    >
+                      ●
+                    </Box>
+                  )}
+                </Box>
+              }
+            />
+          </Tabs>
+
+          {/* Tab panels */}
+          <Box
+            sx={{ overflow: "auto", height: `calc(100% - ${TABS_HEIGHT}px)` }}
+          >
+            {lineageTabContent && (
+              <TabPanel value={tabValue} index={lineageTabIndex}>
+                <Box sx={{ height: "100%" }}>{lineageTabContent}</Box>
+              </TabPanel>
+            )}
+            <TabPanel value={tabValue} index={columnsTabIndex}>
+              <Box sx={{ overflowY: "auto", height: "100%" }}>
+                {isSingleEnv
+                  ? SingleEnvSchemaView && (
+                      <SingleEnvSchemaView current={current} />
+                    )
+                  : SchemaView && (
+                      <SchemaView
+                        base={base}
+                        current={current}
+                        columnChanges={node.data.change?.columns}
+                        onViewCode={() => setTabValue(codeTabIndex)}
+                      />
+                    )}
+              </Box>
+            </TabPanel>
+            <TabPanel value={tabValue} index={codeTabIndex}>
+              <Box sx={{ height: "100%" }}>
+                {NodeSqlView && <NodeSqlView node={node} />}
+              </Box>
+            </TabPanel>
+          </Box>
         </Box>
       )}
       {/* Sandbox dialog */}

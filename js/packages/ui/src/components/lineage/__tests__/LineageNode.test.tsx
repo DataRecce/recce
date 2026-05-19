@@ -402,23 +402,22 @@ describe("LineageNode", () => {
   // ==========================================================================
 
   describe("change analysis", () => {
-    const changeCategories: ChangeCategory[] = [
+    it("shows the Unknown label when showChangeAnalysis is true and category is unknown", () => {
+      const props = createMockNodeProps(
+        { showChangeAnalysis: true, changeCategory: "unknown" },
+        { label: "test" },
+      );
+
+      render(<LineageNode {...props} />);
+
+      expect(screen.getByText("Unknown")).toBeInTheDocument();
+    });
+
+    it.each<ChangeCategory>([
       "breaking",
       "non_breaking",
       "partial_breaking",
-      "unknown",
-    ];
-
-    it.each(
-      changeCategories,
-    )("shows %s category label when showChangeAnalysis is true", (category) => {
-      const labels: Record<ChangeCategory, string> = {
-        breaking: "Breaking",
-        non_breaking: "Non Breaking",
-        partial_breaking: "Partial Breaking",
-        unknown: "Unknown",
-      };
-
+    ])("renders no category label for %s (CLL-classified categories rely on the badge instead)", (category) => {
       const props = createMockNodeProps(
         { showChangeAnalysis: true, changeCategory: category },
         { label: "test" },
@@ -426,18 +425,20 @@ describe("LineageNode", () => {
 
       render(<LineageNode {...props} />);
 
-      expect(screen.getByText(labels[category])).toBeInTheDocument();
+      expect(
+        screen.queryByText(/Breaking|Non Breaking|Partial Breaking/),
+      ).not.toBeInTheDocument();
     });
 
-    it("does not show category label when showChangeAnalysis is false", () => {
+    it("does not show any category label when showChangeAnalysis is false", () => {
       const props = createMockNodeProps(
-        { showChangeAnalysis: false, changeCategory: "breaking" },
+        { showChangeAnalysis: false, changeCategory: "unknown" },
         { label: "test" },
       );
 
       render(<LineageNode {...props} />);
 
-      expect(screen.queryByText("Breaking")).not.toBeInTheDocument();
+      expect(screen.queryByText("Unknown")).not.toBeInTheDocument();
     });
   });
 
@@ -644,6 +645,48 @@ describe("LineageNode", () => {
   // ==========================================================================
   // Integration Tests
   // ==========================================================================
+
+  describe("whole-model treatment badge", () => {
+    it("renders the changed badge when isWholeModelChanged is true", () => {
+      const props = createMockNodeProps({ isWholeModelChanged: true });
+      render(<LineageNode {...props} />);
+      const badge = screen.getByTestId("whole-model-changed-badge");
+      expect(badge).toBeInTheDocument();
+      expect(badge.textContent).toBe("TABLE");
+    });
+
+    it("renders the impacted badge when isWholeModelImpacted is true", () => {
+      const props = createMockNodeProps({ isWholeModelImpacted: true });
+      render(<LineageNode {...props} />);
+      const badge = screen.getByTestId("whole-model-impacted-badge");
+      expect(badge).toBeInTheDocument();
+      expect(badge.textContent).toBe("TABLE");
+    });
+
+    it("renders the additive badge for non_breaking with no whole-model flags", () => {
+      const props = createMockNodeProps({
+        changeCategory: "non_breaking",
+      });
+      render(<LineageNode {...props} />);
+      const badge = screen.getByTestId("whole-model-additive-badge");
+      expect(badge).toBeInTheDocument();
+      expect(badge.textContent).toBe("ADD");
+    });
+
+    it("renders no badge when neither flag is set and category is not additive", () => {
+      const props = createMockNodeProps({ changeCategory: "breaking" });
+      render(<LineageNode {...props} />);
+      expect(
+        screen.queryByTestId("whole-model-changed-badge"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-impacted-badge"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-additive-badge"),
+      ).not.toBeInTheDocument();
+    });
+  });
 
   describe("integration", () => {
     it("renders complete node with all features", () => {
