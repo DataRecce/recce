@@ -22,22 +22,24 @@ export function TreatmentChip({
     <Box
       data-testid={testId}
       aria-label={ariaLabel}
-      sx={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: "0.65rem",
-        fontWeight: 700,
-        lineHeight: 1,
-        height: 16,
-        minWidth: 16,
-        px: 0.5,
-        borderRadius: "3px",
-        backgroundColor: tokens.badgeBg,
-        border: `1px solid ${tokens.badgeBorder}`,
-        color: tokens.fg,
-        ...sx,
-      }}
+      sx={[
+        {
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "0.65rem",
+          fontWeight: 700,
+          lineHeight: 1,
+          height: 16,
+          minWidth: 16,
+          px: 0.5,
+          borderRadius: "3px",
+          backgroundColor: tokens.badgeBg,
+          border: `1px solid ${tokens.badgeBorder}`,
+          color: tokens.fg,
+        },
+        sx,
+      ]}
       {...rest}
     >
       {children}
