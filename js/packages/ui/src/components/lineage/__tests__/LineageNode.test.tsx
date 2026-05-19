@@ -27,6 +27,13 @@ vi.mock("@xyflow/react", () => ({
   Handle: ({ type, position }: { type: string; position: string }) => (
     <div data-testid={`handle-${type}`} data-position={position} />
   ),
+  NodeToolbar: ({
+    isVisible,
+    children,
+  }: {
+    isVisible?: boolean;
+    children?: React.ReactNode;
+  }) => (isVisible ? <div data-testid="node-toolbar">{children}</div> : null),
   Position: {
     Left: "left",
     Right: "right",
@@ -93,8 +100,9 @@ describe("LineageNode", () => {
 
       // The label should be visible
       expect(screen.getByText("test")).toBeInTheDocument();
-      // Tooltip is shown on hover - verifying aria-label exists
-      expect(screen.getByLabelText("test")).toBeInTheDocument();
+      // Tooltip is shown on hover - verifying aria-label exists.
+      // Model with no materialization → suffix falls back to "model"
+      expect(screen.getByLabelText("test - model")).toBeInTheDocument();
     });
 
     it("renders label with unknown resource type in tooltip", () => {
@@ -104,7 +112,7 @@ describe("LineageNode", () => {
 
       expect(screen.getByText("test")).toBeInTheDocument();
       // When no resource type, shows "unknown"
-      expect(screen.getByLabelText("test (unknown)")).toBeInTheDocument();
+      expect(screen.getByLabelText("test - unknown")).toBeInTheDocument();
     });
   });
 

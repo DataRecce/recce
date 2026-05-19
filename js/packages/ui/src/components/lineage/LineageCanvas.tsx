@@ -13,7 +13,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import Box from "@mui/material/Box";
-import { useCallback } from "react";
+import { type MouseEvent, useCallback, useMemo } from "react";
 
 import { LineageColumnNode } from "./columns";
 import { LineageEdge, type LineageEdgeData } from "./edges";
@@ -29,6 +29,10 @@ export interface LineageCanvasProps {
   onNodeSelect?: (nodeId: string | null) => void;
   /** Callback when node is double-clicked */
   onNodeDoubleClick?: (nodeId: string) => void;
+  /** Callback when a node's kebab/context-menu icon is clicked */
+  onNodeContextMenu?: (event: MouseEvent, nodeId: string) => void;
+  /** Callback when a node's impact-radius icon is clicked */
+  onShowImpactRadius?: (nodeId: string) => void;
   /** Whether to show minimap */
   showMiniMap?: boolean;
   /** Whether to show controls */
@@ -47,7 +51,7 @@ export interface LineageCanvasProps {
   fitViewOptions?: FitViewOptions;
 }
 
-const nodeTypes = {
+const defaultNodeTypes = {
   lineageNode: LineageNode,
   lineageGraphColumnNode: LineageColumnNode,
 };
@@ -61,6 +65,8 @@ export function LineageCanvas({
   edges: initialEdges,
   onNodeSelect,
   onNodeDoubleClick,
+  onNodeContextMenu,
+  onShowImpactRadius,
   showMiniMap = true,
   showControls = true,
   showBackground = true,
@@ -90,6 +96,22 @@ export function LineageCanvas({
     },
     [onNodeDoubleClick],
   );
+
+  // Wrap LineageNode so per-node callbacks (context menu, impact radius)
+  // flow through ReactFlow's node-type registry to every node instance.
+  const nodeTypes = useMemo(() => {
+    if (!onNodeContextMenu && !onShowImpactRadius) return defaultNodeTypes;
+    return {
+      ...defaultNodeTypes,
+      lineageNode: (props: React.ComponentProps<typeof LineageNode>) => (
+        <LineageNode
+          {...props}
+          onContextMenu={onNodeContextMenu}
+          onShowImpactRadius={onShowImpactRadius}
+        />
+      ),
+    };
+  }, [onNodeContextMenu, onShowImpactRadius]);
 
   return (
     <Box sx={{ width: "100%", height }}>

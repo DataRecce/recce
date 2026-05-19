@@ -18,6 +18,7 @@ import { IoClose } from "react-icons/io5";
 
 import type { NodeData } from "../../api/info";
 import { DisableTooltipMessages } from "../../constants";
+import { formatNodeTooltip } from "./styles";
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -673,15 +674,25 @@ export function NodeView<TNode extends NodeViewNodeData>({
         }}
       >
         <Box sx={{ flex: "0 1 20%", p: 2 }}>
-          <Typography
-            variant="subtitle1"
-            className="no-track-pii-safe"
-            sx={{
-              fontWeight: 600,
-            }}
+          <MuiTooltip
+            title={formatNodeTooltip(
+              node.data.name,
+              node.data.resourceType,
+              node.data.materialized,
+            )}
+            placement="top"
           >
-            {node.data.name}
-          </Typography>
+            <Typography
+              variant="subtitle1"
+              className="no-track-pii-safe"
+              sx={{
+                fontWeight: 600,
+                display: "inline-block",
+              }}
+            >
+              {node.data.name}
+            </Typography>
+          </MuiTooltip>
         </Box>
         <Box sx={{ flexGrow: 1 }} />
         {!isSingleEnv && isModelSeedOrSnapshot && (
