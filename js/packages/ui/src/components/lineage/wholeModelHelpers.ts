@@ -11,7 +11,7 @@ export interface BadgeMeta {
 export function getBadgeMeta(kind: WholeModelTreatmentKind): BadgeMeta {
   if (kind === "changed") {
     return {
-      text: "TABLE",
+      text: "OVERALL Δ",
       tooltip: "Table-wide change",
       ariaLabel: "whole-model change",
       testId: "whole-model-changed-badge",
@@ -19,14 +19,14 @@ export function getBadgeMeta(kind: WholeModelTreatmentKind): BadgeMeta {
   }
   if (kind === "impacted") {
     return {
-      text: "TABLE",
+      text: "OVERALL Δ",
       tooltip: "Table-wide impact",
       ariaLabel: "whole-model impact",
       testId: "whole-model-impacted-badge",
     };
   }
   return {
-    text: "ADD",
+    text: "ADD Δ",
     tooltip: "Additive change",
     ariaLabel: "additive change",
     testId: "whole-model-additive-badge",

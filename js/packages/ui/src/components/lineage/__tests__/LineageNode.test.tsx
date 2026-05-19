@@ -674,7 +674,7 @@ describe("LineageNode", () => {
       render(<LineageNode {...props} />);
       const badge = screen.getByTestId("whole-model-changed-badge");
       expect(badge).toBeInTheDocument();
-      expect(badge.textContent).toBe("TABLE");
+      expect(badge.textContent).toBe("OVERALL Δ");
     });
 
     it("renders the impacted badge when isWholeModelImpacted is true and wholeModelImpact is on", () => {
@@ -685,7 +685,7 @@ describe("LineageNode", () => {
       render(<LineageNode {...props} />);
       const badge = screen.getByTestId("whole-model-impacted-badge");
       expect(badge).toBeInTheDocument();
-      expect(badge.textContent).toBe("TABLE");
+      expect(badge.textContent).toBe("OVERALL Δ");
     });
 
     it("renders the additive badge for non_breaking when wholeModelImpact is on", () => {
@@ -696,7 +696,7 @@ describe("LineageNode", () => {
       render(<LineageNode {...props} />);
       const badge = screen.getByTestId("whole-model-additive-badge");
       expect(badge).toBeInTheDocument();
-      expect(badge.textContent).toBe("ADD");
+      expect(badge.textContent).toBe("ADD Δ");
     });
 
     it("renders no badge when neither flag is set and category is not additive", () => {
