@@ -679,9 +679,14 @@ export function NodeView<TNode extends NodeViewNodeData>({
 
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
+  const isAdditive =
+    node.data.change?.category === "non_breaking" &&
+    !isWholeModelChanged &&
+    !isWholeModelImpacted;
   const treatmentKind = wholeModelTreatmentKind({
     isWholeModelChanged,
     isWholeModelImpacted,
+    isAdditive,
   });
   const treatmentTokens = treatmentKind
     ? wholeModelTreatmentTokens(treatmentKind, isDark)
