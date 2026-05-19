@@ -162,7 +162,8 @@ export interface NodeViewProps<
   };
   /**
    * Optional slot rendered as a "Lineage" tab body. When provided, a tab
-   * labeled "Lineage" appears as the FIRST tab (alongside Columns/Code).
+   * labeled "Lineage" appears as the LAST tab (after Columns/Code).
+   * Columns remains the default landing tab.
    * Consumers inject this to expose the focused node's upstream/downstream
    * without coupling NodeView to the lineage graph context.
    */
