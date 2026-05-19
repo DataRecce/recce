@@ -281,6 +281,7 @@ export function PrivateLineageView(
 
   const { data: serverFlags } = useRecceServerFlag();
   const newCllExperience = serverFlags?.new_cll_experience ?? false;
+  const downstreamOfBreaking = serverFlags?.downstream_of_breaking ?? false;
   const { runId, showRunId, closeRunResult, runAction, isRunResultOpen } =
     useRecceActionContext();
   const { run } = useRun(runId);
@@ -1249,6 +1250,7 @@ export function PrivateLineageView(
     },
     changeAnalysisMode,
     newCllExperience,
+    downstreamOfBreaking,
     setChangeAnalysisMode,
     getNodeAction: (nodeId: string) => {
       return multiNodeAction.actionState.actions[nodeId];

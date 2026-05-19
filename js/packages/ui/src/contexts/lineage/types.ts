@@ -252,6 +252,15 @@ export interface LineageViewContextType {
   changeAnalysisMode: boolean;
   /** Whether the new CLL experience flag is enabled on the server */
   newCllExperience: boolean;
+  /**
+   * Whether the `--downstream-of-breaking` server flag is on. Implies
+   * `newCllExperience`. Gates the whole-model treatment surfaces (title
+   * chip, TABLE/ADD badge, left stripe) AND the suppression of the
+   * "Breaking / Non Breaking / Partial Breaking" text labels on the
+   * graph node. When false, lineage nodes render the original category
+   * text labels and no whole-model UI.
+   */
+  downstreamOfBreaking: boolean;
   // TODO: Move isImpacted to be a per-model state on node data instead of
   // a lookup set, so impact status is part of the graph model rather than
   // a side-channel computed separately.

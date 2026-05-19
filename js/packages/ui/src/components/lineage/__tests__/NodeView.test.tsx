@@ -133,13 +133,14 @@ describe("NodeView", () => {
   });
 
   describe("whole-model treatment", () => {
-    test("renders the changed title chip + badge when isWholeModelChanged is true", () => {
+    test("renders the changed title chip + badge when isWholeModelChanged is true and downstreamOfBreaking is on", () => {
       render(
         <NodeView
           node={createNode("model")}
           onCloseNode={vi.fn()}
           isSingleEnv={false}
           isWholeModelChanged
+          downstreamOfBreaking
         />,
       );
       expect(
@@ -150,13 +151,14 @@ describe("NodeView", () => {
       ).toBeInTheDocument();
     });
 
-    test("renders the impacted title chip + badge when isWholeModelImpacted is true", () => {
+    test("renders the impacted title chip + badge when isWholeModelImpacted is true and downstreamOfBreaking is on", () => {
       render(
         <NodeView
           node={createNode("model")}
           onCloseNode={vi.fn()}
           isSingleEnv={false}
           isWholeModelImpacted
+          downstreamOfBreaking
         />,
       );
       expect(
@@ -175,6 +177,7 @@ describe("NodeView", () => {
           isSingleEnv={false}
           isWholeModelChanged
           isWholeModelImpacted
+          downstreamOfBreaking
         />,
       );
       expect(
@@ -197,6 +200,55 @@ describe("NodeView", () => {
           node={createNode("model")}
           onCloseNode={vi.fn()}
           isSingleEnv={false}
+          downstreamOfBreaking
+        />,
+      );
+      expect(
+        screen.queryByTestId("whole-model-changed-title-chip"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-impacted-title-chip"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-changed-badge"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-impacted-badge"),
+      ).not.toBeInTheDocument();
+    });
+
+    test("renders no NodeView treatment for additive (non_breaking) — additive is per-column, not whole-table", () => {
+      render(
+        <NodeView
+          node={{
+            id: "model.test.additive",
+            data: {
+              name: "additive_model",
+              resourceType: "model",
+              change: { category: "non_breaking" },
+            },
+          }}
+          onCloseNode={vi.fn()}
+          isSingleEnv={false}
+          downstreamOfBreaking
+        />,
+      );
+      expect(
+        screen.queryByTestId("whole-model-additive-title-chip"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-additive-badge"),
+      ).not.toBeInTheDocument();
+    });
+
+    test("renders no whole-model surfaces when downstreamOfBreaking is off, even if flags are set", () => {
+      render(
+        <NodeView
+          node={createNode("model")}
+          onCloseNode={vi.fn()}
+          isSingleEnv={false}
+          isWholeModelChanged
+          isWholeModelImpacted
         />,
       );
       expect(

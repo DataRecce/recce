@@ -224,6 +224,8 @@ export interface NodeViewProps<
   isWholeModelChanged?: boolean;
   /** This model is downstream of a whole-model change — paints the amber title chip + [TABLE] badge + amber left stripe. Consumer must enforce changed-wins (zero this when isWholeModelChanged is true) via pickWholeModelFlags. */
   isWholeModelImpacted?: boolean;
+  /** Whether the `--downstream-of-breaking` server flag is on. When false, no whole-model UI renders (no title chip, no badge, no left stripe). */
+  downstreamOfBreaking?: boolean;
 }
 
 // =============================================================================
@@ -640,6 +642,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
   isActionAvailable = defaultIsActionAvailable,
   isWholeModelChanged = false,
   isWholeModelImpacted = false,
+  downstreamOfBreaking = false,
 }: NodeViewProps<TNode>) {
   const withColumns =
     node.data.resourceType === "model" ||
@@ -683,15 +686,25 @@ export function NodeView<TNode extends NodeViewNodeData>({
     node.data.change?.category === "non_breaking" &&
     !isWholeModelChanged &&
     !isWholeModelImpacted;
-  const treatmentKind = wholeModelTreatmentKind({
-    isWholeModelChanged,
-    isWholeModelImpacted,
-    isAdditive,
-  });
-  const treatmentTokens = treatmentKind
-    ? wholeModelTreatmentTokens(treatmentKind, isDark)
+  const treatmentKind = downstreamOfBreaking
+    ? wholeModelTreatmentKind({
+        isWholeModelChanged,
+        isWholeModelImpacted,
+        isAdditive,
+      })
     : null;
-  const treatmentMeta = treatmentKind ? getBadgeMeta(treatmentKind) : null;
+  // NodeView only paints the title chip / left stripe / [TABLE] badge for
+  // *whole-model* changes (changed or impacted). Additive (non_breaking)
+  // changes are per-column, not whole-table — so they get no NodeView
+  // treatment. The LineageNode graph still shows an [ADD] badge.
+  const isWholeModelTreatment =
+    treatmentKind === "changed" || treatmentKind === "impacted";
+  const treatmentTokens =
+    isWholeModelTreatment && treatmentKind
+      ? wholeModelTreatmentTokens(treatmentKind, isDark)
+      : null;
+  const treatmentMeta =
+    isWholeModelTreatment && treatmentKind ? getBadgeMeta(treatmentKind) : null;
 
   const lineageTabIndex = lineageTabContent ? 0 : -1;
   const columnsTabIndex = lineageTabContent ? 1 : 0;

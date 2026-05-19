@@ -413,11 +413,11 @@ describe("LineageNode", () => {
       expect(screen.getByText("Unknown")).toBeInTheDocument();
     });
 
-    it.each<ChangeCategory>([
-      "breaking",
-      "non_breaking",
-      "partial_breaking",
-    ])("renders no category label for %s (CLL-classified categories rely on the badge instead)", (category) => {
+    it.each<[ChangeCategory, string]>([
+      ["breaking", "Breaking"],
+      ["non_breaking", "Non Breaking"],
+      ["partial_breaking", "Partial Breaking"],
+    ])("shows %s category text label when downstreamOfBreaking is false", (category, label) => {
       const props = createMockNodeProps(
         { showChangeAnalysis: true, changeCategory: category },
         { label: "test" },
@@ -425,8 +425,27 @@ describe("LineageNode", () => {
 
       render(<LineageNode {...props} />);
 
+      expect(screen.getByText(label)).toBeInTheDocument();
+    });
+
+    it.each<ChangeCategory>([
+      "breaking",
+      "non_breaking",
+      "partial_breaking",
+    ])("suppresses %s category text label when downstreamOfBreaking is true (badge carries the signal)", (category) => {
+      const props = createMockNodeProps(
+        {
+          showChangeAnalysis: true,
+          changeCategory: category,
+          downstreamOfBreaking: true,
+        },
+        { label: "test" },
+      );
+
+      render(<LineageNode {...props} />);
+
       expect(
-        screen.queryByText(/Breaking|Non Breaking|Partial Breaking/),
+        screen.queryByText(/^(Breaking|Non Breaking|Partial Breaking)$/),
       ).not.toBeInTheDocument();
     });
 
@@ -647,25 +666,32 @@ describe("LineageNode", () => {
   // ==========================================================================
 
   describe("whole-model treatment badge", () => {
-    it("renders the changed badge when isWholeModelChanged is true", () => {
-      const props = createMockNodeProps({ isWholeModelChanged: true });
+    it("renders the changed badge when isWholeModelChanged is true and downstreamOfBreaking is on", () => {
+      const props = createMockNodeProps({
+        isWholeModelChanged: true,
+        downstreamOfBreaking: true,
+      });
       render(<LineageNode {...props} />);
       const badge = screen.getByTestId("whole-model-changed-badge");
       expect(badge).toBeInTheDocument();
       expect(badge.textContent).toBe("TABLE");
     });
 
-    it("renders the impacted badge when isWholeModelImpacted is true", () => {
-      const props = createMockNodeProps({ isWholeModelImpacted: true });
+    it("renders the impacted badge when isWholeModelImpacted is true and downstreamOfBreaking is on", () => {
+      const props = createMockNodeProps({
+        isWholeModelImpacted: true,
+        downstreamOfBreaking: true,
+      });
       render(<LineageNode {...props} />);
       const badge = screen.getByTestId("whole-model-impacted-badge");
       expect(badge).toBeInTheDocument();
       expect(badge.textContent).toBe("TABLE");
     });
 
-    it("renders the additive badge for non_breaking with no whole-model flags", () => {
+    it("renders the additive badge for non_breaking when downstreamOfBreaking is on", () => {
       const props = createMockNodeProps({
         changeCategory: "non_breaking",
+        downstreamOfBreaking: true,
       });
       render(<LineageNode {...props} />);
       const badge = screen.getByTestId("whole-model-additive-badge");
@@ -674,7 +700,28 @@ describe("LineageNode", () => {
     });
 
     it("renders no badge when neither flag is set and category is not additive", () => {
-      const props = createMockNodeProps({ changeCategory: "breaking" });
+      const props = createMockNodeProps({
+        changeCategory: "breaking",
+        downstreamOfBreaking: true,
+      });
+      render(<LineageNode {...props} />);
+      expect(
+        screen.queryByTestId("whole-model-changed-badge"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-impacted-badge"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-additive-badge"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("renders no badge when downstreamOfBreaking is off, even if flags are set", () => {
+      const props = createMockNodeProps({
+        isWholeModelChanged: true,
+        isWholeModelImpacted: true,
+        changeCategory: "non_breaking",
+      });
       render(<LineageNode {...props} />);
       expect(
         screen.queryByTestId("whole-model-changed-badge"),

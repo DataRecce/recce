@@ -299,6 +299,7 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
     cll,
     impactedNodeIds,
     newCllExperience,
+    downstreamOfBreaking,
     showColumnLevelLineage,
     setChangeAnalysisMode,
   } = lineageViewCtx;
@@ -376,6 +377,7 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
       isImpacted={isImpacted}
       isWholeModelChanged={isWholeModelChanged}
       isWholeModelImpacted={isWholeModelImpacted}
+      downstreamOfBreaking={downstreamOfBreaking}
       // Interactive props
       interactive={interactive}
       selectMode={nodeSelectMode}

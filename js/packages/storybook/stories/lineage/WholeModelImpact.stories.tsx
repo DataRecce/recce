@@ -123,6 +123,7 @@ const lineageNodeBaseProps = {
   hasParents: true,
   hasChildren: true,
   showContent: true,
+  downstreamOfBreaking: true,
 };
 
 // =============================================================================
@@ -165,6 +166,7 @@ const baseNodeViewArgs: Partial<NodeViewProps<NodeViewNodeData>> = {
   SchemaView: StubSchemaView,
   NodeSqlView: StubNodeSqlView,
   ResourceTypeTag,
+  downstreamOfBreaking: true,
 };
 
 /** Title chip + [TABLE] badge + brown left stripe for a whole-model-changed model. */
@@ -187,23 +189,9 @@ export const NodeView_ImpactedTitleChip: NodeViewStory = {
   decorators: nodeViewDecorator,
 };
 
-/** Title chip + [ADD] badge + green left stripe for an additive-only model. */
-export const NodeView_AdditiveTitleChip: NodeViewStory = {
-  render: (args) => (
-    <NodeView
-      {...(args as NodeViewProps<NodeViewNodeData>)}
-      node={{
-        ...nodeViewNode,
-        data: {
-          ...nodeViewNode.data,
-          change: { category: "non_breaking" },
-        },
-      }}
-    />
-  ),
-  args: baseNodeViewArgs,
-  decorators: nodeViewDecorator,
-};
+// Additive (non_breaking) changes don't get a NodeView treatment — they
+// are per-column, not whole-table. The [ADD] badge still appears on the
+// LineageNode graph (see LineageNode_AdditiveBadge below).
 
 // =============================================================================
 // LINEAGENODE STORIES — Layer 4.1 surface (graph badge)

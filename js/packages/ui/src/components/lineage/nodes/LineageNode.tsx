@@ -153,6 +153,8 @@ export interface LineageNodeProps {
   isWholeModelChanged?: boolean;
   /** This model is downstream of (impacted by) a whole-model change — paints amber TABLE. Consumer must enforce changed-wins (zero this when isWholeModelChanged is true) via pickWholeModelFlags. */
   isWholeModelImpacted?: boolean;
+  /** Whether the `--downstream-of-breaking` server flag is on. When false, no whole-model badges render and the original "Breaking / Non Breaking / Partial Breaking" text labels are restored. */
+  downstreamOfBreaking?: boolean;
 
   // === Callbacks ===
   /** Callback when node is clicked */
@@ -171,7 +173,21 @@ export interface LineageNodeProps {
 // CONSTANTS
 // =============================================================================
 
-const CHANGE_CATEGORY_LABELS: Record<ChangeCategory, string | null> = {
+const CHANGE_CATEGORY_LABELS: Record<ChangeCategory, string> = {
+  breaking: "Breaking",
+  non_breaking: "Non Breaking",
+  partial_breaking: "Partial Breaking",
+  unknown: "Unknown",
+};
+
+// Used when `--downstream-of-breaking` is on: the TABLE / ADD badges in
+// the title row carry the breaking/non_breaking/partial_breaking signal
+// instead, so we suppress the text label to avoid double-display.
+// "Unknown" keeps its text label since no badge covers that case.
+const CHANGE_CATEGORY_LABELS_WHOLE_MODEL: Record<
+  ChangeCategory,
+  string | null
+> = {
   breaking: null,
   non_breaking: null,
   partial_breaking: null,
@@ -329,6 +345,7 @@ function LineageNodeComponent({
   isImpacted: isImpactedProp,
   isWholeModelChanged = false,
   isWholeModelImpacted = false,
+  downstreamOfBreaking = false,
   // Callbacks
   onNodeClick,
   onNodeDoubleClick,
@@ -565,6 +582,7 @@ function LineageNodeComponent({
             />
 
             {(() => {
+              if (!downstreamOfBreaking) return null;
               const isAdditive =
                 changeCategory === "non_breaking" &&
                 !isWholeModelChanged &&
@@ -658,7 +676,9 @@ function LineageNodeComponent({
                 </>
               ) : showChangeAnalysis &&
                 changeCategory &&
-                CHANGE_CATEGORY_LABELS[changeCategory] ? (
+                (downstreamOfBreaking
+                  ? CHANGE_CATEGORY_LABELS_WHOLE_MODEL
+                  : CHANGE_CATEGORY_LABELS)[changeCategory] ? (
                 <Typography
                   sx={{
                     height: 20,
@@ -668,7 +688,11 @@ function LineageNodeComponent({
                     fontWeight: 600,
                   }}
                 >
-                  {CHANGE_CATEGORY_LABELS[changeCategory]}
+                  {
+                    (downstreamOfBreaking
+                      ? CHANGE_CATEGORY_LABELS_WHOLE_MODEL
+                      : CHANGE_CATEGORY_LABELS)[changeCategory]
+                  }
                 </Typography>
               ) : selectMode !== "action_result" && runsAggregatedTag ? (
                 runsAggregatedTag
