@@ -117,8 +117,10 @@ export { layout, toReactFlow } from "./components/lineage/lineage";
  */
 export {
   NodeView,
+  type NodeViewActionCallbacks,
   type NodeViewNodeData,
   type NodeViewProps,
+  type RunTypeIconMap,
   type SchemaViewProps,
 } from "./components/lineage/NodeView";
 

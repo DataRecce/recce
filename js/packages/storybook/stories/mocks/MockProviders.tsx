@@ -139,9 +139,25 @@ const mockLineageGraph = {
     base: undefined,
     current: undefined,
   },
+  // Non-null catalogs so SchemaView doesn't render its "catalog.json not
+  // found" warning in stories. Truthiness is all SchemaView checks.
   catalogMetadata: {
-    base: undefined,
-    current: undefined,
+    base: {
+      dbt_version: "1.8.0",
+      dbt_schema_version: "https://schemas.getdbt.com/dbt/catalog/v1.json",
+      generated_at: "2026-05-19T00:00:00Z",
+      adapter_type: "duckdb",
+      env: {},
+      invocation_id: "mock-base",
+    },
+    current: {
+      dbt_version: "1.8.0",
+      dbt_schema_version: "https://schemas.getdbt.com/dbt/catalog/v1.json",
+      generated_at: "2026-05-19T00:00:00Z",
+      adapter_type: "duckdb",
+      env: {},
+      invocation_id: "mock-current",
+    },
   },
 };
 

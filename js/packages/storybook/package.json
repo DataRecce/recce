@@ -12,7 +12,8 @@
     "test:visual:update": "playwright test --update-snapshots"
   },
   "dependencies": {
-    "@datarecce/ui": "workspace:*"
+    "@datarecce/ui": "workspace:*",
+    "@tanstack/react-query": "^5.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
