@@ -235,12 +235,32 @@ export const LineageNode_ImpactedBadge: LineageNodeStory = {
   decorators: lineageNodeDecorator,
 };
 
-/** Green ADD badge for an additive-only model (change_category === "non_breaking"). */
+/** Green +ADD badge for an additive-only model (change_category === "non_breaking"). */
 export const LineageNode_AdditiveBadge: LineageNodeStory = {
   render: (args) => <LineageNode {...args} />,
   args: {
     ...lineageNodeBaseProps,
     changeCategory: "non_breaking",
+  },
+  decorators: lineageNodeDecorator,
+};
+
+/** Brown ~COLUMN badge for a model with its own column-only change (change_category === "partial_breaking"). */
+export const LineageNode_ColumnChangedBadge: LineageNodeStory = {
+  render: (args) => <LineageNode {...args} />,
+  args: {
+    ...lineageNodeBaseProps,
+    changeCategory: "partial_breaking",
+  },
+  decorators: lineageNodeDecorator,
+};
+
+/** Amber !COLUMN badge for a model downstream of a column-only change (isImpacted, no own change). */
+export const LineageNode_ColumnImpactedBadge: LineageNodeStory = {
+  render: (args) => <LineageNode {...args} />,
+  args: {
+    ...lineageNodeBaseProps,
+    isImpacted: true,
   },
   decorators: lineageNodeDecorator,
 };

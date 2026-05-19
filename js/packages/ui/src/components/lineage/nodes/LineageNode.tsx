@@ -587,12 +587,29 @@ function LineageNodeComponent({
                 changeCategory === "non_breaking" &&
                 !isWholeModelChanged &&
                 !isWholeModelImpacted;
+              const isColumnChanged =
+                changeCategory === "partial_breaking" &&
+                !isWholeModelChanged &&
+                !isWholeModelImpacted;
+              const isColumnImpacted =
+                !!isImpacted &&
+                !isWholeModelChanged &&
+                !isWholeModelImpacted &&
+                !isAdditive &&
+                !isColumnChanged;
               const kind = wholeModelTreatmentKind({
                 isWholeModelChanged,
                 isWholeModelImpacted,
                 isAdditive,
+                isColumnChanged,
+                isColumnImpacted,
               });
               if (!kind) return null;
+              // Whole-model kinds are already signalled by other surfaces
+              // (NodeView title chip + left stripe + the node treatment).
+              // Skip the graph badge for them — badges are reserved for
+              // column-only kinds, which lack any other signal.
+              if (kind === "changed" || kind === "impacted") return null;
               const meta = getBadgeMeta(kind);
               const tokens = wholeModelTreatmentTokens(kind, isDark);
               return (

@@ -693,10 +693,11 @@ export function NodeView<TNode extends NodeViewNodeData>({
         isAdditive,
       })
     : null;
-  // NodeView only paints the title chip / left stripe / [TABLE] badge for
-  // *whole-model* changes (changed or impacted). Additive (non_breaking)
-  // changes are per-column, not whole-table — so they get no NodeView
-  // treatment. The LineageNode graph still shows an [ADD] badge.
+  // NodeView paints the title chip + left stripe for whole-model changes
+  // (changed or impacted) — the color signal carries the whole-model
+  // meaning. Per-column treatments (additive, column-changed, column-
+  // impacted) get no NodeView treatment — the LineageNode graph badge
+  // carries their signal instead.
   const isWholeModelTreatment =
     treatmentKind === "changed" || treatmentKind === "impacted";
   const treatmentTokens =
@@ -782,17 +783,6 @@ export function NodeView<TNode extends NodeViewNodeData>({
             >
               {node.data.name}
             </Typography>
-          )}
-          {treatmentTokens && treatmentMeta && (
-            <MuiTooltip title={treatmentMeta.tooltip} placement="top">
-              <TreatmentChip
-                tokens={treatmentTokens}
-                testId={treatmentMeta.testId}
-                ariaLabel={treatmentMeta.ariaLabel}
-              >
-                {treatmentMeta.text}
-              </TreatmentChip>
-            </MuiTooltip>
           )}
         </Box>
         {!isSingleEnv && isModelSeedOrSnapshot && (

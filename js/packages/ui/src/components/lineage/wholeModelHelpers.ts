@@ -11,22 +11,38 @@ export interface BadgeMeta {
 export function getBadgeMeta(kind: WholeModelTreatmentKind): BadgeMeta {
   if (kind === "changed") {
     return {
-      text: "OVERALL Δ",
-      tooltip: "Table-wide change",
+      text: "MODEL",
+      tooltip: "Whole-model change",
       ariaLabel: "whole-model change",
       testId: "whole-model-changed-badge",
     };
   }
   if (kind === "impacted") {
     return {
-      text: "OVERALL Δ",
-      tooltip: "Table-wide impact",
+      text: "MODEL",
+      tooltip: "Whole-model impact",
       ariaLabel: "whole-model impact",
       testId: "whole-model-impacted-badge",
     };
   }
+  if (kind === "column-changed") {
+    return {
+      text: "COLUMN",
+      tooltip: "Column-only change",
+      ariaLabel: "column-only change",
+      testId: "column-changed-badge",
+    };
+  }
+  if (kind === "column-impacted") {
+    return {
+      text: "COLUMN",
+      tooltip: "Column-only impact",
+      ariaLabel: "column-only impact",
+      testId: "column-impacted-badge",
+    };
+  }
   return {
-    text: "ADD Δ",
+    text: "ADD",
     tooltip: "Additive change",
     ariaLabel: "additive change",
     testId: "whole-model-additive-badge",

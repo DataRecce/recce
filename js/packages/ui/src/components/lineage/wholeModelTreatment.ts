@@ -18,7 +18,12 @@
  * - Green (`"additive"`) — additive-only column change (`non_breaking`).
  */
 
-export type WholeModelTreatmentKind = "changed" | "impacted" | "additive";
+export type WholeModelTreatmentKind =
+  | "changed"
+  | "impacted"
+  | "additive"
+  | "column-changed"
+  | "column-impacted";
 
 export interface WholeModelTreatmentTokens {
   /** Left stripe accent on the panel + chip border on the title chip. */
@@ -35,7 +40,7 @@ export function wholeModelTreatmentTokens(
   kind: WholeModelTreatmentKind,
   isDark = false,
 ): WholeModelTreatmentTokens {
-  if (kind === "changed") {
+  if (kind === "changed" || kind === "column-changed") {
     return {
       stripeAccent: "var(--schema-color-changed-accent)",
       fg: isDark ? "rgb(255 200 80)" : "rgb(160 100 0)",
@@ -77,9 +82,13 @@ export function wholeModelTreatmentKind(flags: {
   isWholeModelChanged?: boolean;
   isWholeModelImpacted?: boolean;
   isAdditive?: boolean;
+  isColumnChanged?: boolean;
+  isColumnImpacted?: boolean;
 }): WholeModelTreatmentKind | null {
   if (flags.isWholeModelChanged) return "changed";
   if (flags.isWholeModelImpacted) return "impacted";
   if (flags.isAdditive) return "additive";
+  if (flags.isColumnChanged) return "column-changed";
+  if (flags.isColumnImpacted) return "column-impacted";
   return null;
 }

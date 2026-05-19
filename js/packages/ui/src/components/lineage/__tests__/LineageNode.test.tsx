@@ -666,26 +666,26 @@ describe("LineageNode", () => {
   // ==========================================================================
 
   describe("whole-model treatment badge", () => {
-    it("renders the changed badge when isWholeModelChanged is true and wholeModelImpact is on", () => {
+    it("renders no graph badge for whole-model-changed (signalled by other surfaces)", () => {
       const props = createMockNodeProps({
         isWholeModelChanged: true,
         wholeModelImpact: true,
       });
       render(<LineageNode {...props} />);
-      const badge = screen.getByTestId("whole-model-changed-badge");
-      expect(badge).toBeInTheDocument();
-      expect(badge.textContent).toBe("OVERALL Δ");
+      expect(
+        screen.queryByTestId("whole-model-changed-badge"),
+      ).not.toBeInTheDocument();
     });
 
-    it("renders the impacted badge when isWholeModelImpacted is true and wholeModelImpact is on", () => {
+    it("renders no graph badge for whole-model-impacted (signalled by other surfaces)", () => {
       const props = createMockNodeProps({
         isWholeModelImpacted: true,
         wholeModelImpact: true,
       });
       render(<LineageNode {...props} />);
-      const badge = screen.getByTestId("whole-model-impacted-badge");
-      expect(badge).toBeInTheDocument();
-      expect(badge.textContent).toBe("OVERALL Δ");
+      expect(
+        screen.queryByTestId("whole-model-impacted-badge"),
+      ).not.toBeInTheDocument();
     });
 
     it("renders the additive badge for non_breaking when wholeModelImpact is on", () => {
@@ -696,7 +696,7 @@ describe("LineageNode", () => {
       render(<LineageNode {...props} />);
       const badge = screen.getByTestId("whole-model-additive-badge");
       expect(badge).toBeInTheDocument();
-      expect(badge.textContent).toBe("ADD Δ");
+      expect(badge.textContent).toBe("ADD");
     });
 
     it("renders no badge when neither flag is set and category is not additive", () => {
@@ -713,6 +713,59 @@ describe("LineageNode", () => {
       ).not.toBeInTheDocument();
       expect(
         screen.queryByTestId("whole-model-additive-badge"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("renders the column-changed badge for partial_breaking when wholeModelImpact is on", () => {
+      const props = createMockNodeProps({
+        changeCategory: "partial_breaking",
+        wholeModelImpact: true,
+      });
+      render(<LineageNode {...props} />);
+      const badge = screen.getByTestId("column-changed-badge");
+      expect(badge).toBeInTheDocument();
+      expect(badge.textContent).toBe("COLUMN");
+    });
+
+    it("renders the column-impacted badge for isImpacted nodes without own change when wholeModelImpact is on", () => {
+      const props = createMockNodeProps({
+        isImpacted: true,
+        wholeModelImpact: true,
+      });
+      render(<LineageNode {...props} />);
+      const badge = screen.getByTestId("column-impacted-badge");
+      expect(badge).toBeInTheDocument();
+      expect(badge.textContent).toBe("COLUMN");
+    });
+
+    it("whole-model-impacted suppresses ~COLUMN badge (changed-wins preserved, no model badge either)", () => {
+      const props = createMockNodeProps({
+        isWholeModelImpacted: true,
+        changeCategory: "partial_breaking",
+        wholeModelImpact: true,
+      });
+      render(<LineageNode {...props} />);
+      // Whole-model-impacted resolution wins over column-changed, but
+      // whole-model kinds no longer render a graph badge — only the
+      // signal from other surfaces (color/chip in NodeView).
+      expect(
+        screen.queryByTestId("whole-model-impacted-badge"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("column-changed-badge"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("partial_breaking own change wins over column impact (own change preferred)", () => {
+      const props = createMockNodeProps({
+        isImpacted: true,
+        changeCategory: "partial_breaking",
+        wholeModelImpact: true,
+      });
+      render(<LineageNode {...props} />);
+      expect(screen.getByTestId("column-changed-badge")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("column-impacted-badge"),
       ).not.toBeInTheDocument();
     });
 

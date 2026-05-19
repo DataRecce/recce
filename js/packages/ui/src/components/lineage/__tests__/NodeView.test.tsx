@@ -133,7 +133,7 @@ describe("NodeView", () => {
   });
 
   describe("whole-model treatment", () => {
-    test("renders the changed title chip + badge when isWholeModelChanged is true and wholeModelImpact is on", () => {
+    test("renders the changed title chip (no inline badge) when isWholeModelChanged is true and wholeModelImpact is on", () => {
       render(
         <NodeView
           node={createNode("model")}
@@ -147,11 +147,11 @@ describe("NodeView", () => {
         screen.getByTestId("whole-model-changed-title-chip"),
       ).toBeInTheDocument();
       expect(
-        screen.getByTestId("whole-model-changed-badge"),
-      ).toBeInTheDocument();
+        screen.queryByTestId("whole-model-changed-badge"),
+      ).not.toBeInTheDocument();
     });
 
-    test("renders the impacted title chip + badge when isWholeModelImpacted is true and wholeModelImpact is on", () => {
+    test("renders the impacted title chip (no inline badge) when isWholeModelImpacted is true and wholeModelImpact is on", () => {
       render(
         <NodeView
           node={createNode("model")}
@@ -165,11 +165,11 @@ describe("NodeView", () => {
         screen.getByTestId("whole-model-impacted-title-chip"),
       ).toBeInTheDocument();
       expect(
-        screen.getByTestId("whole-model-impacted-badge"),
-      ).toBeInTheDocument();
+        screen.queryByTestId("whole-model-impacted-badge"),
+      ).not.toBeInTheDocument();
     });
 
-    test("changed-wins: renders the changed treatment when both flags are true (Q11)", () => {
+    test("changed-wins: renders the changed title chip (no badge) when both flags are true (Q11)", () => {
       render(
         <NodeView
           node={createNode("model")}
@@ -184,10 +184,10 @@ describe("NodeView", () => {
         screen.getByTestId("whole-model-changed-title-chip"),
       ).toBeInTheDocument();
       expect(
-        screen.getByTestId("whole-model-changed-badge"),
-      ).toBeInTheDocument();
-      expect(
         screen.queryByTestId("whole-model-impacted-title-chip"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-changed-badge"),
       ).not.toBeInTheDocument();
       expect(
         screen.queryByTestId("whole-model-impacted-badge"),
