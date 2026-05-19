@@ -34,7 +34,7 @@ import {
   getStyleForImpacted,
 } from "../styles";
 import { TreatmentChip } from "../TreatmentChip";
-import { getBadgeMeta } from "../wholeModelHelpers";
+import { getGraphBadgeMeta } from "../wholeModelHelpers";
 import {
   wholeModelTreatmentKind,
   wholeModelTreatmentTokens,
@@ -149,11 +149,11 @@ export interface LineageNodeProps {
   newCllExperience?: boolean;
   /** Whether this node is impacted by CLL analysis */
   isImpacted?: boolean;
-  /** This model itself has a whole-model change — paints brown TABLE. */
+  /** This model itself has a whole-model change. Suppresses the graph badge (the signal lives on NodeView's title chip + stripe) and the change-category text label. */
   isWholeModelChanged?: boolean;
-  /** This model is downstream of (impacted by) a whole-model change — paints amber TABLE. Consumer must enforce changed-wins (zero this when isWholeModelChanged is true) via pickWholeModelFlags. */
+  /** This model is downstream of (impacted by) a whole-model change. Suppresses the graph badge (the signal lives on NodeView's title chip + stripe) and the change-category text label. Consumer must enforce changed-wins (zero this when isWholeModelChanged is true) via pickWholeModelFlags. */
   isWholeModelImpacted?: boolean;
-  /** Whether the `--whole-model-impact` server flag is on. When false, no whole-model badges render and the original "Breaking / Non Breaking / Partial Breaking" text labels are restored. */
+  /** Whether the `--whole-model-impact` server flag is on. When false, no per-column badges render and the original "Breaking / Non Breaking / Partial Breaking" text labels are restored. */
   wholeModelImpact?: boolean;
 
   // === Callbacks ===
@@ -180,9 +180,11 @@ const CHANGE_CATEGORY_LABELS: Record<ChangeCategory, string> = {
   unknown: "Unknown",
 };
 
-// Used when `--whole-model-impact` is on: the TABLE / ADD badges in
-// the title row carry the breaking/non_breaking/partial_breaking signal
-// instead, so we suppress the text label to avoid double-display.
+// Used when `--whole-model-impact` is on. For partial_breaking and
+// non_breaking, the COLUMN / ADD graph badge carries the signal, so we
+// suppress the text label to avoid double-display. For breaking, the
+// graph badge is also suppressed (whole-model kinds signal via NodeView's
+// title chip + stripe) so the LineageNode shows neither badge nor label.
 // "Unknown" keeps its text label since no badge covers that case.
 const CHANGE_CATEGORY_LABELS_WHOLE_MODEL: Record<
   ChangeCategory,
@@ -605,12 +607,11 @@ function LineageNodeComponent({
                 isColumnImpacted,
               });
               if (!kind) return null;
-              // Whole-model kinds are already signalled by other surfaces
-              // (NodeView title chip + left stripe + the node treatment).
-              // Skip the graph badge for them — badges are reserved for
-              // column-only kinds, which lack any other signal.
-              if (kind === "changed" || kind === "impacted") return null;
-              const meta = getBadgeMeta(kind);
+              // Whole-model kinds (changed, impacted) are signalled by
+              // NodeView's title chip + stripe and produce no graph badge —
+              // getGraphBadgeMeta returns null for them.
+              const meta = getGraphBadgeMeta(kind);
+              if (!meta) return null;
               const tokens = wholeModelTreatmentTokens(kind, isDark);
               return (
                 <Tooltip title={meta.tooltip} placement="top">

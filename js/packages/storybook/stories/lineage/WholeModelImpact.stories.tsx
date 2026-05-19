@@ -136,7 +136,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          "Visual smoke for the DRC-3341 whole-model treatment across the NodeView sidebar (title chip + [TABLE]/[ADD] badge + left stripe) and the LineageNode graph badge.",
+          "Visual smoke for the DRC-3341 whole-model treatment across two surfaces: NodeView (title chip + left stripe for whole-model kinds) and LineageNode (ADD / COLUMN graph badge for per-column kinds).",
       },
     },
   },
@@ -169,7 +169,7 @@ const baseNodeViewArgs: Partial<NodeViewProps<NodeViewNodeData>> = {
   wholeModelImpact: true,
 };
 
-/** Title chip + [TABLE] badge + brown left stripe for a whole-model-changed model. */
+/** Brown title chip + brown left stripe for a whole-model-changed model. */
 export const NodeView_ChangedTitleChip: NodeViewStory = {
   render: (args) => <NodeView {...(args as NodeViewProps<NodeViewNodeData>)} />,
   args: {
@@ -179,7 +179,7 @@ export const NodeView_ChangedTitleChip: NodeViewStory = {
   decorators: nodeViewDecorator,
 };
 
-/** Title chip + [TABLE] badge + amber left stripe for a whole-model-impacted model. */
+/** Amber title chip + amber left stripe for a whole-model-impacted model. */
 export const NodeView_ImpactedTitleChip: NodeViewStory = {
   render: (args) => <NodeView {...(args as NodeViewProps<NodeViewNodeData>)} />,
   args: {
@@ -215,27 +215,11 @@ const lineageNodeDecorator: Meta["decorators"] = [
   ),
 ];
 
-/** Brown TABLE badge for a whole-model-changed model. */
-export const LineageNode_ChangedBadge: LineageNodeStory = {
-  render: (args) => <LineageNode {...args} />,
-  args: {
-    ...lineageNodeBaseProps,
-    isWholeModelChanged: true,
-  },
-  decorators: lineageNodeDecorator,
-};
+// Whole-model kinds (isWholeModelChanged / isWholeModelImpacted) intentionally
+// render no graph badge on LineageNode — that signal lives on NodeView's
+// title chip + stripe (see NodeView_ChangedTitleChip / NodeView_ImpactedTitleChip).
 
-/** Amber TABLE badge for a whole-model-impacted model. */
-export const LineageNode_ImpactedBadge: LineageNodeStory = {
-  render: (args) => <LineageNode {...args} />,
-  args: {
-    ...lineageNodeBaseProps,
-    isWholeModelImpacted: true,
-  },
-  decorators: lineageNodeDecorator,
-};
-
-/** Green +ADD badge for an additive-only model (change_category === "non_breaking"). */
+/** Green ADD badge for an additive-only model (change_category === "non_breaking"). */
 export const LineageNode_AdditiveBadge: LineageNodeStory = {
   render: (args) => <LineageNode {...args} />,
   args: {
@@ -245,7 +229,7 @@ export const LineageNode_AdditiveBadge: LineageNodeStory = {
   decorators: lineageNodeDecorator,
 };
 
-/** Brown ~COLUMN badge for a model with its own column-only change (change_category === "partial_breaking"). */
+/** Brown COLUMN badge for a model with its own column-only change (change_category === "partial_breaking"). */
 export const LineageNode_ColumnChangedBadge: LineageNodeStory = {
   render: (args) => <LineageNode {...args} />,
   args: {
@@ -255,7 +239,7 @@ export const LineageNode_ColumnChangedBadge: LineageNodeStory = {
   decorators: lineageNodeDecorator,
 };
 
-/** Amber !COLUMN badge for a model downstream of a column-only change (isImpacted, no own change). */
+/** Amber COLUMN badge for a model downstream of a column-only change (isImpacted, no own change). */
 export const LineageNode_ColumnImpactedBadge: LineageNodeStory = {
   render: (args) => <LineageNode {...args} />,
   args: {

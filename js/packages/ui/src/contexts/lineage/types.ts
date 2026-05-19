@@ -254,11 +254,12 @@ export interface LineageViewContextType {
   newCllExperience: boolean;
   /**
    * Whether the `--whole-model-impact` server flag is on. Implies
-   * `newCllExperience`. Gates the whole-model treatment surfaces (title
-   * chip, TABLE/ADD badge, left stripe) AND the suppression of the
-   * "Breaking / Non Breaking / Partial Breaking" text labels on the
-   * graph node. When false, lineage nodes render the original category
-   * text labels and no whole-model UI.
+   * `newCllExperience`. Gates two surfaces (NodeView title chip + left
+   * stripe for whole-model kinds; LineageNode COLUMN / ADD graph badge
+   * for per-column kinds) AND the suppression of the "Breaking /
+   * Non Breaking / Partial Breaking" text labels on the graph node.
+   * When false, lineage nodes render the original category text labels
+   * and no whole-model UI.
    */
   wholeModelImpact: boolean;
   // TODO: Move isImpacted to be a per-model state on node data instead of
@@ -272,20 +273,22 @@ export interface LineageViewContextType {
   /**
    * Models that themselves have a whole-model change (row-shape edit at the
    * CLL classifier level — `change_category === "breaking"`). Drives the
-   * brown title chip + [TABLE] badge + left stripe in NodeView, and the
-   * brown badge on the LineageNode in the graph. Empty Set when the
-   * `--whole-model-impact` flag is off.
+   * brown title chip + brown left stripe in NodeView. The LineageNode graph
+   * badge is intentionally suppressed for whole-model kinds; the chip +
+   * stripe carry the signal. Empty Set when the `--whole-model-impact`
+   * flag is off.
    */
   wholeModelChangedNodeIds: Set<string>;
   /**
    * Models that are BFS-downstream of one or more whole-model-changed
    * models (the set includes the changed models themselves — they are
    * trivially "impacted" by their own change). Drives the amber title chip
-   * + [TABLE] badge + left stripe in NodeView, and the amber badge on the
-   * LineageNode. Changed-wins: a model may appear in both this set AND in
-   * `wholeModelChangedNodeIds`; consumers must consult
-   * `wholeModelChangedNodeIds` first (use `pickWholeModelFlags`). Empty Set
-   * when the `--whole-model-impact` flag is off.
+   * + amber left stripe in NodeView. The LineageNode graph badge is
+   * intentionally suppressed for whole-model kinds. Changed-wins: a model
+   * may appear in both this set AND in `wholeModelChangedNodeIds`;
+   * consumers must consult `wholeModelChangedNodeIds` first (use
+   * `pickWholeModelFlags`). Empty Set when the `--whole-model-impact` flag
+   * is off.
    */
   wholeModelImpactedNodeIds: Set<string>;
   /** Set change analysis mode on/off */

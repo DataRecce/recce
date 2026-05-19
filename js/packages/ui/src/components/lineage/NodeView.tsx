@@ -20,7 +20,7 @@ import { IoClose } from "react-icons/io5";
 import type { NodeData } from "../../api/info";
 import { DisableTooltipMessages } from "../../constants";
 import { TreatmentChip } from "./TreatmentChip";
-import { getBadgeMeta } from "./wholeModelHelpers";
+import { getTitleChipMeta } from "./wholeModelHelpers";
 import {
   wholeModelTreatmentKind,
   wholeModelTreatmentTokens,
@@ -220,11 +220,11 @@ export interface NodeViewProps<
   /** Check if an action is available */
   isActionAvailable?: (runType: string) => boolean;
 
-  /** This model itself has a whole-model change — paints the brown title chip + [TABLE] badge + brown left stripe. */
+  /** This model itself has a whole-model change — paints the brown title chip + brown left stripe. */
   isWholeModelChanged?: boolean;
-  /** This model is downstream of a whole-model change — paints the amber title chip + [TABLE] badge + amber left stripe. Consumer must enforce changed-wins (zero this when isWholeModelChanged is true) via pickWholeModelFlags. */
+  /** This model is downstream of a whole-model change — paints the amber title chip + amber left stripe. Consumer must enforce changed-wins (zero this when isWholeModelChanged is true) via pickWholeModelFlags. */
   isWholeModelImpacted?: boolean;
-  /** Whether the `--whole-model-impact` server flag is on. When false, no whole-model UI renders (no title chip, no badge, no left stripe). */
+  /** Whether the `--whole-model-impact` server flag is on. When false, no whole-model UI renders (no title chip, no left stripe). */
   wholeModelImpact?: boolean;
 }
 
@@ -682,30 +682,18 @@ export function NodeView<TNode extends NodeViewNodeData>({
 
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const isAdditive =
-    node.data.change?.category === "non_breaking" &&
-    !isWholeModelChanged &&
-    !isWholeModelImpacted;
+  // NodeView only paints whole-model kinds (changed, impacted). The other
+  // kinds (additive, column-changed, column-impacted) are signalled by the
+  // LineageNode graph badge and produce no title chip / stripe here —
+  // `getTitleChipMeta` returns null for them.
   const treatmentKind = wholeModelImpact
-    ? wholeModelTreatmentKind({
-        isWholeModelChanged,
-        isWholeModelImpacted,
-        isAdditive,
-      })
+    ? wholeModelTreatmentKind({ isWholeModelChanged, isWholeModelImpacted })
     : null;
-  // NodeView paints the title chip + left stripe for whole-model changes
-  // (changed or impacted) — the color signal carries the whole-model
-  // meaning. Per-column treatments (additive, column-changed, column-
-  // impacted) get no NodeView treatment — the LineageNode graph badge
-  // carries their signal instead.
-  const isWholeModelTreatment =
-    treatmentKind === "changed" || treatmentKind === "impacted";
+  const treatmentMeta = treatmentKind ? getTitleChipMeta(treatmentKind) : null;
   const treatmentTokens =
-    isWholeModelTreatment && treatmentKind
+    treatmentMeta && treatmentKind
       ? wholeModelTreatmentTokens(treatmentKind, isDark)
       : null;
-  const treatmentMeta =
-    isWholeModelTreatment && treatmentKind ? getBadgeMeta(treatmentKind) : null;
 
   const lineageTabIndex = lineageTabContent ? 0 : -1;
   const columnsTabIndex = lineageTabContent ? 1 : 0;
