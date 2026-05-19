@@ -38,7 +38,7 @@ export function TreatmentChip({
           border: `1px solid ${tokens.badgeBorder}`,
           color: tokens.fg,
         },
-        sx,
+        ...(Array.isArray(sx) ? sx : sx ? [sx] : []),
       ]}
       {...rest}
     >
