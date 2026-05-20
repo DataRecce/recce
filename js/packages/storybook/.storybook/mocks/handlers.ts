@@ -113,6 +113,20 @@ export const handlers = [
     return HttpResponse.json(response);
   }),
 
+  // Handler for /api/flag endpoint
+  // Used by useRecceServerFlag (e.g. via SchemaView)
+  http.get("/api/flag", () => {
+    return HttpResponse.json({
+      data: {
+        single_env_onboarding: false,
+        show_relaunch_hint: false,
+        disable_cll_cache: false,
+        impact_at_startup: false,
+        new_cll_experience: false,
+      },
+    });
+  }),
+
   // Handler for /api/info endpoint
   // Used by various components to get server info
   http.get("/api/info", () => {
