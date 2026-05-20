@@ -498,7 +498,10 @@ function LineageNodeComponent({
             gap: 0.75,
             // Invisible bridge to the left of the toolbar so the cursor can
             // land anywhere between the card edge and the toolbar without
-            // losing hover. Matches the NodeToolbar `offset`.
+            // losing hover. Intentionally wider than the NodeToolbar `offset`
+            // (12px bridge vs 6px gap) — the extra buffer gives the user a
+            // generous target to actually hit on the way from the card to
+            // the kebab.
             "&::before": {
               content: '""',
               position: "absolute",

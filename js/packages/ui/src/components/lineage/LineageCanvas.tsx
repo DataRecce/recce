@@ -13,7 +13,13 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import Box from "@mui/material/Box";
-import { type MouseEvent, useCallback, useMemo, useRef } from "react";
+import {
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 
 import { LineageColumnNode } from "./columns";
 import { LineageEdge, type LineageEdgeData } from "./edges";
@@ -101,20 +107,26 @@ export function LineageCanvas({
   // created at most twice in a component's lifetime (once when the prop
   // transitions from absent to present), regardless of caller stability.
   const onNodeContextMenuRef = useRef(onNodeContextMenu);
-  onNodeContextMenuRef.current = onNodeContextMenu;
+  useEffect(() => {
+    onNodeContextMenuRef.current = onNodeContextMenu;
+  }, [onNodeContextMenu]);
   const hasContextMenu = onNodeContextMenu != null;
   const nodeTypes = useMemo(() => {
     if (!hasContextMenu) return defaultNodeTypes;
+    const LineageNodeWithContextMenu = (
+      props: React.ComponentProps<typeof LineageNode>,
+    ) => (
+      <LineageNode
+        {...props}
+        onContextMenu={(event, nodeId) =>
+          onNodeContextMenuRef.current?.(event, nodeId)
+        }
+      />
+    );
+    LineageNodeWithContextMenu.displayName = "LineageNodeWithContextMenu";
     return {
       ...defaultNodeTypes,
-      lineageNode: (props: React.ComponentProps<typeof LineageNode>) => (
-        <LineageNode
-          {...props}
-          onContextMenu={(event, nodeId) =>
-            onNodeContextMenuRef.current?.(event, nodeId)
-          }
-        />
-      ),
+      lineageNode: LineageNodeWithContextMenu,
     };
   }, [hasContextMenu]);
 
