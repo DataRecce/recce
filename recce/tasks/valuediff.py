@@ -27,6 +27,32 @@ class ValueDiffResult(BaseModel):
 
 
 class ValueDiffMixin:
+    @staticmethod
+    def _build_column_case_lookup(dbt_adapter, model: str) -> dict:
+        """Return {lower(physical_name): physical_name} for both base and current relations.
+
+        Snowflake (and other case-folding databases) store unquoted DDL identifiers in
+        uppercase.  User-supplied column names from check params follow the dbt manifest
+        convention (lowercase).  Passing them directly to adapter.quote() produces a
+        case-sensitive quoted identifier that the database cannot resolve.
+
+        This lookup lets callers normalise a user-supplied lowercase name to the physical
+        name before quoting, mirroring the pattern already used by profile_diff.
+        """
+        lookup: dict = {}
+        for base in (True, False):
+            try:
+                for col in dbt_adapter.get_columns(model, base=base):
+                    name = col.column if hasattr(col, "column") else col.name
+                    lookup[name.lower()] = name
+            except Exception:
+                pass
+        return lookup
+
+    def _normalise_identifier(self, identifier: str, lookup: dict) -> str:
+        """Map a user-supplied identifier to its physical catalog name, or return as-is."""
+        return lookup.get(identifier.lower(), identifier)
+
     def _verify_primary_key(self, dbt_adapter, primary_key: Union[str, List[str]], model: str):
         self.update_progress(message=f"Verify primary key: {primary_key}")
         composite = True if isinstance(primary_key, List) else False
@@ -111,17 +137,28 @@ class ValueDiffTask(Task, ValueDiffMixin):
         column_groups = {}
         composite = True if isinstance(primary_key, List) else False
 
+        # Build a {lower(physical_name): physical_name} lookup from the catalog so that
+        # user-supplied lowercase identifiers (e.g. "customer_id") are mapped to the
+        # physical name the database actually stores (e.g. "CUSTOMER_ID" on Snowflake).
+        # This must happen before get_columns() is called for the columns-list path so
+        # that the lookup covers both branches uniformly.
+        case_lookup = self._build_column_case_lookup(dbt_adapter, model)
+
         if columns is None or len(columns) == 0:
             base_columns = [column.column for column in dbt_adapter.get_columns(model, base=True)]
             curr_columns = [column.column for column in dbt_adapter.get_columns(model, base=False)]
             columns = [column for column in base_columns if column in curr_columns]
+        else:
+            columns = [self._normalise_identifier(c, case_lookup) for c in columns]
         completed = 0
 
         if composite:
+            primary_key = [self._normalise_identifier(pk, case_lookup) for pk in primary_key]
             for primary_key_comp in primary_key[::-1]:
                 if primary_key_comp not in columns:
                     columns.insert(0, primary_key_comp)
         else:
+            primary_key = self._normalise_identifier(primary_key, case_lookup)
             if primary_key not in columns:
                 columns.insert(0, primary_key)
 
@@ -368,16 +405,25 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
     ):
         composite = True if isinstance(primary_key, List) else False
 
+        # Normalise user-supplied identifiers to physical catalog names before quoting.
+        # On Snowflake (default quoting config), physical columns are stored uppercase;
+        # adapter.quote("customer_id") → '"customer_id"' which Snowflake cannot resolve.
+        case_lookup = self._build_column_case_lookup(dbt_adapter, model)
+
         if columns is None or len(columns) == 0:
             base_columns = [column.column for column in dbt_adapter.get_columns(model, base=True)]
             curr_columns = [column.column for column in dbt_adapter.get_columns(model, base=False)]
             columns = [column for column in base_columns if column in curr_columns]
+        else:
+            columns = [self._normalise_identifier(c, case_lookup) for c in columns]
 
         if composite:
+            primary_key = [self._normalise_identifier(pk, case_lookup) for pk in primary_key]
             for primary_key_comp in primary_key[::-1]:
                 if primary_key_comp not in columns:
                     columns.insert(0, primary_key_comp)
         else:
+            primary_key = self._normalise_identifier(primary_key, case_lookup)
             if primary_key not in columns:
                 columns.insert(0, primary_key)
 
