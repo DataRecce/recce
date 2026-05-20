@@ -618,6 +618,25 @@ export function getIconForMaterialization(
   }
 }
 
+/**
+ * Tooltip label for a node: "<name> - <kind>", or just "<name>" if we have
+ * nothing meaningful to append.
+ *
+ * For models, "kind" is the materialization (view/table/incremental/…) when
+ * available; otherwise the resource type. For non-models the resource type
+ * itself (seed/source/snapshot/…) is the kind.
+ */
+export function formatNodeTooltip(
+  name: string,
+  resourceType?: string,
+  materialized?: string,
+): string {
+  if (!resourceType) return name;
+  const kind =
+    resourceType === "model" ? materialized || resourceType : resourceType;
+  return `${name} - ${kind}`;
+}
+
 // =============================================================================
 // STYLE CONSTANTS
 // =============================================================================

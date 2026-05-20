@@ -27,6 +27,13 @@ vi.mock("@xyflow/react", () => ({
   Handle: ({ type, position }: { type: string; position: string }) => (
     <div data-testid={`handle-${type}`} data-position={position} />
   ),
+  NodeToolbar: ({
+    isVisible,
+    children,
+  }: {
+    isVisible?: boolean;
+    children?: React.ReactNode;
+  }) => (isVisible ? <div data-testid="node-toolbar">{children}</div> : null),
   Position: {
     Left: "left",
     Right: "right",
@@ -93,18 +100,18 @@ describe("LineageNode", () => {
 
       // The label should be visible
       expect(screen.getByText("test")).toBeInTheDocument();
-      // Tooltip is shown on hover - verifying aria-label exists
-      expect(screen.getByLabelText("test")).toBeInTheDocument();
+      // Tooltip is shown on hover - verifying aria-label exists.
+      // Model with no materialization → suffix falls back to "model"
+      expect(screen.getByLabelText("test - model")).toBeInTheDocument();
     });
 
-    it("renders label with unknown resource type in tooltip", () => {
+    it("renders label with no suffix when resource type is missing", () => {
       const props = createMockNodeProps({}, { label: "test" });
 
       render(<LineageNode {...props} />);
 
       expect(screen.getByText("test")).toBeInTheDocument();
-      // When no resource type, shows "unknown"
-      expect(screen.getByLabelText("test (unknown)")).toBeInTheDocument();
+      expect(screen.getByLabelText("test")).toBeInTheDocument();
     });
   });
 
@@ -588,6 +595,25 @@ describe("LineageNode", () => {
         fireEvent.click(element);
         fireEvent.doubleClick(element);
       }).not.toThrow();
+    });
+
+    it("reveals kebab on hover and calls onContextMenu when clicked", () => {
+      const onContextMenu = vi.fn();
+      const props = createMockNodeProps({ onContextMenu }, { label: "test" });
+
+      const { container } = render(<LineageNode {...props} />);
+      const element = container.firstChild as HTMLElement;
+
+      // Toolbar is hidden until hover.
+      expect(screen.queryByTestId("node-toolbar")).not.toBeInTheDocument();
+
+      fireEvent.mouseEnter(element);
+
+      expect(screen.getByTestId("node-toolbar")).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId("lineage-node-kebab"));
+
+      expect(onContextMenu).toHaveBeenCalledTimes(1);
+      expect(onContextMenu.mock.calls[0][1]).toBe("test-node-1");
     });
   });
 
