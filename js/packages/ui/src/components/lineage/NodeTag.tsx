@@ -31,43 +31,45 @@ import { getTagRootSx, tagStartElementSx } from "./tags";
 // =============================================================================
 // INLINE-CONTENT COMPONENTS
 // =============================================================================
-// These render just the row-count value/diff (no pill background, no refresh
-// button). Used to embed row-count info inline in other UI like action buttons.
-
-export interface RowCountDiffSummaryProps {
-  rowCount: RowCountDiff;
-}
-
-/**
- * Row count diff display — inline content only. Renders "N → curr rows" plus
- * an up/down arrow and delta percentage. Use inside buttons or other layouts
- * where the pill-style RowCountDiffTag would be too heavy.
- */
-export function RowCountDiffSummary({ rowCount }: RowCountDiffSummaryProps) {
-  return <_RowCountByRate rowCount={rowCount} />;
-}
+// Renders just the row-count value/diff (no pill background, no refresh button).
+// Used to embed row-count info inline in other UI like action buttons.
 
 export interface RowCountSummaryProps {
-  rowCount: RowCount;
+  /**
+   * Either a single-env `RowCount` ("N rows") or a `RowCountDiff` with
+   * `base`/`curr` for the diff display ("N → M rows ↑ +X%").
+   */
+  rowCount: RowCount | RowCountDiff;
 }
 
 /**
- * Single-env row count display — inline content only. Renders "N rows".
+ * Row-count display — inline content only. Accepts either a single-env
+ * `RowCount` ("N rows") or a `RowCountDiff` ("N → M rows ↑ +X%"). Use inside
+ * buttons or other tight layouts where the pill-style tag would be too heavy.
  */
 export function RowCountSummary({ rowCount }: RowCountSummaryProps) {
-  const label = rowCount.curr === null ? "N/A" : `${rowCount.curr} rows`;
-  return <span>{label}</span>;
+  if ("base" in rowCount) {
+    return <_RowCountByRate rowCount={rowCount} />;
+  }
+  return <span>{formatRowCountValue(rowCount.curr)}</span>;
 }
 
 // =============================================================================
-// INTERNAL COMPONENTS
+// INTERNAL HELPERS
 // =============================================================================
+
+// `null` → "N/A"; otherwise thousands-separated count + singular/plural.
+// Matches the existing format in NodeRunsAggregated.tsx (graph node body).
+function formatRowCountValue(n: number | null): string {
+  if (n === null) return "N/A";
+  return `${n.toLocaleString()} ${n === 1 ? "row" : "rows"}`;
+}
 
 function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
   const base = rowCount.base;
   const current = rowCount.curr;
-  const baseLabel = rowCount.base === null ? "N/A" : `${rowCount.base} rows`;
-  const currentLabel = rowCount.curr === null ? "N/A" : `${rowCount.curr} rows`;
+  const baseLabel = formatRowCountValue(base);
+  const currentLabel = formatRowCountValue(current);
 
   if (base === null && current === null) {
     return <> Failed to load</>;

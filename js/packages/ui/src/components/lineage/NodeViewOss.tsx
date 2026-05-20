@@ -46,7 +46,7 @@ import { SchemaView, SingleEnvSchemaView } from "../schema";
 import { computeLineageTabImpactSets } from "./computeLineageTabImpactSets";
 import { LineageTabContent } from "./LineageTabContent";
 import { NodeSqlViewOss } from "./NodeSqlViewOss";
-import { RowCountDiffSummary, RowCountSummary } from "./NodeTag";
+import { RowCountSummary } from "./NodeTag";
 import {
   NodeView as BaseNodeView,
   type NodeViewActionCallbacks,
@@ -114,7 +114,6 @@ function OssNotificationComponent({ onClose }: { onClose: () => void }) {
  * - Action callbacks that integrate with OSS contexts (tracking, navigation)
  * - Run type icons from the OSS registry
  * - Connection popover wrapper for database setup prompts
- * - Sandbox dialog component
  */
 export function NodeViewOss({
   node,
@@ -145,12 +144,10 @@ export function NodeViewOss({
 
   const rowCountDisplay = useMemo(() => {
     const aggregated = runsAggregated?.[node.id];
-    if (isSingleEnv) {
-      const rc = aggregated?.row_count?.result as RowCount | undefined;
-      return rc ? <RowCountSummary rowCount={rc} /> : undefined;
-    }
-    const diff = aggregated?.row_count_diff?.result as RowCountDiff | undefined;
-    return diff ? <RowCountDiffSummary rowCount={diff} /> : undefined;
+    const rc = isSingleEnv
+      ? (aggregated?.row_count?.result as RowCount | undefined)
+      : (aggregated?.row_count_diff?.result as RowCountDiff | undefined);
+    return rc ? <RowCountSummary rowCount={rc} /> : undefined;
   }, [runsAggregated, node.id, isSingleEnv]);
 
   // Fetch model detail (columns, raw_code, primary_key) on demand

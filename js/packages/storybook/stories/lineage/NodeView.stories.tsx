@@ -15,11 +15,7 @@ import type {
   NodeViewProps,
   RunTypeIconMap,
 } from "@datarecce/ui/advanced";
-import {
-  NodeView,
-  RowCountDiffSummary,
-  RowCountSummary,
-} from "@datarecce/ui/advanced";
+import { NodeView, RowCountSummary } from "@datarecce/ui/advanced";
 import type { RowCount, RowCountDiff } from "@datarecce/ui/api";
 import {
   findByRunType,
@@ -158,12 +154,10 @@ function createStoryArgs(
     },
   };
 
-  let rowCountDisplay: React.ReactNode | undefined;
-  if (overrides.rowCountDiff) {
-    rowCountDisplay = <RowCountDiffSummary rowCount={overrides.rowCountDiff} />;
-  } else if (overrides.rowCount) {
-    rowCountDisplay = <RowCountSummary rowCount={overrides.rowCount} />;
-  }
+  const rc = overrides.rowCountDiff ?? overrides.rowCount;
+  const rowCountDisplay: React.ReactNode | undefined = rc ? (
+    <RowCountSummary rowCount={rc} />
+  ) : undefined;
 
   return { node, modelDetail, rowCountDisplay };
 }

@@ -79,25 +79,6 @@ export function trackHistoryAction(props: HistoryActionProps) {
   track("[Web] history_action", props);
 }
 
-interface PreviewChangeProps {
-  action: "explore" | "run" | "close";
-  node?: string;
-  status?: "success" | "failure";
-}
-
-export function trackPreviewChange(props: PreviewChangeProps) {
-  track("[Experiment] preview_change", props);
-}
-
-interface PreviewChangeFeedbackProps {
-  feedback: "like" | "dislike" | "form";
-  node?: string;
-}
-
-export function trackPreviewChangeFeedback(props: PreviewChangeFeedbackProps) {
-  track("[Experiment] preview_change", props);
-}
-
 interface SingleEnvironmentProps {
   action:
     | "onboarding"
