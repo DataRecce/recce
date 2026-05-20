@@ -265,4 +265,25 @@ describe("NodeView", () => {
       ).not.toBeInTheDocument();
     });
   });
+
+  describe("default landing tab", () => {
+    // DRC-3468: Columns must be the default tab even when lineageTabContent
+    // is provided. Without this assertion, a regression that re-inverts the
+    // tab indices would pass — existing tests only exercise the 2-tab branch.
+    test("lands on Columns (not Lineage) when lineageTabContent is provided", () => {
+      render(
+        <NodeView
+          node={createNode("model", testColumns)}
+          modelDetail={createModelDetail(testColumns)}
+          onCloseNode={vi.fn()}
+          isSingleEnv={false}
+          SchemaView={MockSchemaView}
+          lineageTabContent={<div data-testid="lineage-content">lineage</div>}
+        />,
+      );
+
+      expect(screen.getByTestId("schema-view")).toBeInTheDocument();
+      expect(screen.queryByTestId("lineage-content")).not.toBeInTheDocument();
+    });
+  });
 });

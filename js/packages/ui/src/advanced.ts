@@ -113,12 +113,19 @@ export {
  */
 export { layout, toReactFlow } from "./components/lineage/lineage";
 /**
+ * Row-count tags rendered inside `NodeView`. They read row-count data from
+ * `LineageGraphProvider`'s `runsAggregated` prop, keyed by `node.id`.
+ */
+export { RowCountDiffTag, RowCountTag } from "./components/lineage/NodeTag";
+/**
  * Node detail panel with Columns and Code tabs.
  */
 export {
   NodeView,
+  type NodeViewActionCallbacks,
   type NodeViewNodeData,
   type NodeViewProps,
+  type RunTypeIconMap,
   type SchemaViewProps,
 } from "./components/lineage/NodeView";
 

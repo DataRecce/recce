@@ -26,12 +26,6 @@ import {
   wholeModelTreatmentTokens,
 } from "./wholeModelTreatment";
 
-// Tabs height. The sibling tab-content Box below uses
-// `height: calc(100% - 48px)` to fill the remaining vertical space, so this
-// must stay 48 — natural sizing was tried and caused a layout regression
-// because the calc-coupled container is brittle.
-const TABS_HEIGHT = 48;
-
 // =============================================================================
 // TYPE DEFINITIONS
 // =============================================================================
@@ -175,7 +169,8 @@ export interface NodeViewProps<
   };
   /**
    * Optional slot rendered as a "Lineage" tab body. When provided, a tab
-   * labeled "Lineage" appears as the FIRST tab (alongside Columns/Code).
+   * labeled "Lineage" appears as the LAST tab (after Columns/Code).
+   * Columns remains the default landing tab.
    * Consumers inject this to expose the focused node's upstream/downstream
    * without coupling NodeView to the lineage graph context.
    */
@@ -695,9 +690,9 @@ export function NodeView<TNode extends NodeViewNodeData>({
       ? wholeModelTreatmentTokens(treatmentKind, isDark)
       : null;
 
-  const lineageTabIndex = lineageTabContent ? 0 : -1;
-  const columnsTabIndex = lineageTabContent ? 1 : 0;
-  const codeTabIndex = lineageTabContent ? 2 : 1;
+  const columnsTabIndex = 0;
+  const codeTabIndex = 1;
+  const lineageTabIndex = lineageTabContent ? 2 : -1;
 
   return (
     <Box
@@ -855,13 +850,12 @@ export function NodeView<TNode extends NodeViewNodeData>({
             </Box>
           )}
 
-          {/* Tabs — when lineageTabContent is provided, "Lineage" is index 0 */}
+          {/* Tabs — "Columns" is always index 0 (default landing tab). DRC-3468. */}
           <Tabs
             value={tabValue}
             onChange={(_, newValue) => setTabValue(newValue)}
             sx={{ borderBottom: 1, borderColor: "divider" }}
           >
-            {lineageTabContent && <Tab label="Lineage" />}
             <Tab
               label={
                 <Box
@@ -914,17 +908,13 @@ export function NodeView<TNode extends NodeViewNodeData>({
                 </Box>
               }
             />
+            {lineageTabContent && <Tab label="Lineage" />}
           </Tabs>
 
-          {/* Tab panels */}
-          <Box
-            sx={{ overflow: "auto", height: `calc(100% - ${TABS_HEIGHT}px)` }}
-          >
-            {lineageTabContent && (
-              <TabPanel value={tabValue} index={lineageTabIndex}>
-                <Box sx={{ height: "100%" }}>{lineageTabContent}</Box>
-              </TabPanel>
-            )}
+          {/* Tab panels. The 48px subtracted below must match MUI's default
+              Tabs height — natural sizing was tried and caused a layout
+              regression because the calc-coupled container is brittle. */}
+          <Box sx={{ overflow: "auto", height: "calc(100% - 48px)" }}>
             <TabPanel value={tabValue} index={columnsTabIndex}>
               <Box sx={{ overflowY: "auto", height: "100%" }}>
                 {isSingleEnv
@@ -946,6 +936,11 @@ export function NodeView<TNode extends NodeViewNodeData>({
                 {NodeSqlView && <NodeSqlView node={node} />}
               </Box>
             </TabPanel>
+            {lineageTabContent && (
+              <TabPanel value={tabValue} index={lineageTabIndex}>
+                <Box sx={{ height: "100%" }}>{lineageTabContent}</Box>
+              </TabPanel>
+            )}
           </Box>
         </Box>
       )}

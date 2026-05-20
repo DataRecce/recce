@@ -41,6 +41,7 @@ const config: StorybookConfig = {
       ),
       "@datarecce/ui/advanced": resolve(__dirname, "../../ui/src/advanced.ts"),
       "@datarecce/ui/api": resolve(__dirname, "../../ui/src/api.ts"),
+      "@datarecce/ui/theme": resolve(__dirname, "../../ui/src/theme/index.ts"),
       "@datarecce/ui": resolve(__dirname, "../../ui/src/index.ts"),
     };
 
