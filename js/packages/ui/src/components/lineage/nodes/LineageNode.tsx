@@ -34,8 +34,10 @@ import {
   getStyleForImpacted,
 } from "../styles";
 import { TreatmentChip } from "../TreatmentChip";
-import { getGraphBadgeMeta } from "../wholeModelHelpers";
 import {
+  type GraphBadgeMeta,
+  getGraphBadgeMeta,
+  type WholeModelTreatmentTokens,
   wholeModelTreatmentKind,
   wholeModelTreatmentTokens,
 } from "../wholeModelTreatment";
@@ -180,23 +182,50 @@ const CHANGE_CATEGORY_LABELS: Record<ChangeCategory, string> = {
   unknown: "Unknown",
 };
 
-// Used when `--whole-model-impact` is on. For partial_breaking and
-// non_breaking, the COLUMN / ADD graph badge carries the signal, so we
-// suppress the text label to avoid double-display. For breaking, the
-// graph badge is also suppressed (whole-model kinds signal via NodeView's
-// title chip + stripe) so the LineageNode shows neither badge nor label.
-// "Unknown" keeps its text label since no badge covers that case.
-const CHANGE_CATEGORY_LABELS_WHOLE_MODEL: Record<
-  ChangeCategory,
-  string | null
-> = {
-  breaking: null,
-  non_breaking: null,
-  partial_breaking: null,
-  unknown: "Unknown",
-};
-
 const DEFAULT_COLUMN_HEIGHT = 28;
+
+// =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
+
+interface LineageNodeBadgeResolution {
+  meta: GraphBadgeMeta;
+  tokens: WholeModelTreatmentTokens;
+}
+
+/**
+ * Resolve the per-column graph badge for a LineageNode. Returns `null` when
+ * the node has no badge — either because `--whole-model-impact` is off,
+ * no treatment applies, or the kind is a whole-model kind (changed /
+ * impacted) which is signalled on NodeView's title chip + stripe instead.
+ *
+ * `wholeModelTreatmentKind` enforces changed-wins precedence, so the input
+ * `isAdditive` / `isColumnChanged` / `isColumnImpacted` flags don't need
+ * to be guarded against the whole-model flags.
+ */
+function resolveLineageNodeBadge(
+  inputs: {
+    wholeModelImpact: boolean;
+    isWholeModelChanged: boolean;
+    isWholeModelImpacted: boolean;
+    isImpacted: boolean;
+    changeCategory?: ChangeCategory;
+  },
+  isDark: boolean,
+): LineageNodeBadgeResolution | null {
+  if (!inputs.wholeModelImpact) return null;
+  const kind = wholeModelTreatmentKind({
+    isWholeModelChanged: inputs.isWholeModelChanged,
+    isWholeModelImpacted: inputs.isWholeModelImpacted,
+    isAdditive: inputs.changeCategory === "non_breaking",
+    isColumnChanged: inputs.changeCategory === "partial_breaking",
+    isColumnImpacted: inputs.isImpacted,
+  });
+  if (!kind) return null;
+  const meta = getGraphBadgeMeta(kind);
+  if (!meta) return null;
+  return { meta, tokens: wholeModelTreatmentTokens(kind, isDark) };
+}
 
 // =============================================================================
 // ICONS
@@ -491,6 +520,27 @@ function LineageNodeComponent({
     onShowImpactRadius?.(id);
   };
 
+  const wholeModelBadge = resolveLineageNodeBadge(
+    {
+      wholeModelImpact,
+      isWholeModelChanged,
+      isWholeModelImpacted,
+      isImpacted,
+      changeCategory,
+    },
+    isDark,
+  );
+
+  // When --whole-model-impact is on, the COLUMN / ADD graph badge and the
+  // NodeView title chip + stripe carry the signal — suppress the text
+  // label except for "unknown", which has no badge equivalent.
+  const changeCategoryLabel =
+    showChangeAnalysis &&
+    changeCategory &&
+    (!wholeModelImpact || changeCategory === "unknown")
+      ? CHANGE_CATEGORY_LABELS[changeCategory]
+      : null;
+
   return (
     <Box
       onClick={() => onNodeClick?.(id)}
@@ -583,48 +633,17 @@ function LineageNodeComponent({
               resourceType={resourceType}
             />
 
-            {(() => {
-              if (!wholeModelImpact) return null;
-              const isAdditive =
-                changeCategory === "non_breaking" &&
-                !isWholeModelChanged &&
-                !isWholeModelImpacted;
-              const isColumnChanged =
-                changeCategory === "partial_breaking" &&
-                !isWholeModelChanged &&
-                !isWholeModelImpacted;
-              const isColumnImpacted =
-                !!isImpacted &&
-                !isWholeModelChanged &&
-                !isWholeModelImpacted &&
-                !isAdditive &&
-                !isColumnChanged;
-              const kind = wholeModelTreatmentKind({
-                isWholeModelChanged,
-                isWholeModelImpacted,
-                isAdditive,
-                isColumnChanged,
-                isColumnImpacted,
-              });
-              if (!kind) return null;
-              // Whole-model kinds (changed, impacted) are signalled by
-              // NodeView's title chip + stripe and produce no graph badge —
-              // getGraphBadgeMeta returns null for them.
-              const meta = getGraphBadgeMeta(kind);
-              if (!meta) return null;
-              const tokens = wholeModelTreatmentTokens(kind, isDark);
-              return (
-                <Tooltip title={meta.tooltip} placement="top">
-                  <TreatmentChip
-                    tokens={tokens}
-                    testId={meta.testId}
-                    ariaLabel={meta.ariaLabel}
-                  >
-                    {meta.text}
-                  </TreatmentChip>
-                </Tooltip>
-              );
-            })()}
+            {wholeModelBadge && (
+              <Tooltip title={wholeModelBadge.meta.tooltip} placement="top">
+                <TreatmentChip
+                  tokens={wholeModelBadge.tokens}
+                  testId={wholeModelBadge.meta.testId}
+                  ariaLabel={wholeModelBadge.meta.ariaLabel}
+                >
+                  {wholeModelBadge.meta.text}
+                </TreatmentChip>
+              </Tooltip>
+            )}
 
             {/* Hover actions vs icons */}
             {isHovered ? (
@@ -692,11 +711,7 @@ function LineageNodeComponent({
                   <Box sx={{ flexGrow: 1 }} />
                   {actionTag}
                 </>
-              ) : showChangeAnalysis &&
-                changeCategory &&
-                (wholeModelImpact
-                  ? CHANGE_CATEGORY_LABELS_WHOLE_MODEL
-                  : CHANGE_CATEGORY_LABELS)[changeCategory] ? (
+              ) : changeCategoryLabel ? (
                 <Typography
                   sx={{
                     height: 20,
@@ -706,11 +721,7 @@ function LineageNodeComponent({
                     fontWeight: 600,
                   }}
                 >
-                  {
-                    (wholeModelImpact
-                      ? CHANGE_CATEGORY_LABELS_WHOLE_MODEL
-                      : CHANGE_CATEGORY_LABELS)[changeCategory]
-                  }
+                  {changeCategoryLabel}
                 </Typography>
               ) : selectMode !== "action_result" && runsAggregatedTag ? (
                 runsAggregatedTag

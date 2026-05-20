@@ -1,24 +1,44 @@
 /**
- * Visual tokens for the DRC-3341 whole-model treatment and the adjacent
- * column-only / additive badges.
+ * Resolution pipeline + visual tokens for the DRC-3341 whole-model
+ * treatment and the adjacent column-only / additive badges.
  *
- * Two surfaces paint from these tokens:
+ * Top-to-bottom: source → flags → kind → (tokens | surface metadata).
+ *
+ * Two surfaces consume this pipeline:
  *
  * - NodeView title chip + left stripe — wraps the model name in the sidebar
  *   header (colored by `fg` / `badgeBg` / `badgeBorder`) and paints a single
  *   accent stripe along the sidebar panel root (colored by `stripeAccent`).
- *   Only whole-model kinds (`changed`, `impacted`) reach this surface.
+ *   Only whole-model kinds (`changed`, `impacted`) reach this surface;
+ *   `getTitleChipMeta` returns null for the others.
  *
  * - LineageNode graph badge — `[ADD]` / `[COLUMN]` primitive painted on the
  *   lineage canvas node. Only per-column kinds (`additive`, `column-changed`,
- *   `column-impacted`) reach this surface; whole-model kinds are signalled
- *   by the NodeView surface instead.
+ *   `column-impacted`) reach this surface; `getGraphBadgeMeta` returns null
+ *   for whole-model kinds.
  *
  * Palettes:
  * - Brown — `changed` (whole-model) and `column-changed` (column-only).
  * - Amber — `impacted` (whole-model) and `column-impacted` (column-only).
  * - Green — `additive` (column-only).
  */
+
+import type { LineageViewContextType } from "../../contexts/lineage/types";
+import {
+  cllAdditiveAccent,
+  cllAdditiveBadgeBg,
+  cllAdditiveBadgeFg,
+  cllChangedAccent,
+  cllChangedBadgeBg,
+  cllChangedBadgeFg,
+  cllImpactedAccent,
+  cllImpactedBadgeBg,
+  cllImpactedBadgeFg,
+} from "./styles";
+
+// ============================================================================
+// Types
+// ============================================================================
 
 export type WholeModelTreatmentKind =
   | "changed"
@@ -38,36 +58,47 @@ export interface WholeModelTreatmentTokens {
   badgeBorder: string;
 }
 
-export function wholeModelTreatmentTokens(
-  kind: WholeModelTreatmentKind,
-  isDark = false,
-): WholeModelTreatmentTokens {
-  switch (kind) {
-    case "changed":
-    case "column-changed":
-      return {
-        stripeAccent: "var(--schema-color-changed-accent)",
-        fg: isDark ? "rgb(255 200 80)" : "rgb(160 100 0)",
-        badgeBg: isDark ? "rgb(255 173 21 / 0.2)" : "rgb(255 173 21 / 0.25)",
-        badgeBorder: "rgb(212 133 11)",
-      };
-    case "additive":
-      return {
-        stripeAccent: "var(--schema-color-added-accent)",
-        fg: isDark ? "rgb(80 200 100)" : "rgb(22 110 40)",
-        badgeBg: "rgb(46 160 67 / 0.2)",
-        badgeBorder: isDark ? "rgb(80 200 100)" : "rgb(46 160 67)",
-      };
-    case "impacted":
-    case "column-impacted":
-      return {
-        stripeAccent: "var(--schema-color-impacted-accent)",
-        fg: isDark ? "rgb(252 211 77)" : "rgb(146 64 14)",
-        badgeBg: isDark ? "rgb(180 83 9 / 0.25)" : "rgb(252 211 77 / 0.35)",
-        badgeBorder: isDark ? "rgb(180 83 9)" : "rgb(252 211 77)",
-      };
-  }
+export interface GraphBadgeMeta {
+  text: string;
+  tooltip: string;
+  ariaLabel: string;
+  testId: string;
 }
+
+export interface TitleChipMeta {
+  tooltip: string;
+  ariaLabel: string;
+}
+
+// ============================================================================
+// Source → flags
+// ============================================================================
+
+/**
+ * Resolve `{isWholeModelChanged, isWholeModelImpacted}` for a node, with
+ * changed-wins enforced at the consumer boundary.
+ *
+ * This is the second half of the changed-wins invariant (Q11): a model
+ * that appears in both context sets is treated as changed, never as
+ * impacted. The first half lives in `wholeModelTreatmentKind`'s
+ * short-circuit. Defence-in-depth.
+ */
+export function pickWholeModelFlags(
+  modelId: string,
+  ctx: Pick<
+    LineageViewContextType,
+    "wholeModelChangedNodeIds" | "wholeModelImpactedNodeIds"
+  >,
+): { isWholeModelChanged: boolean; isWholeModelImpacted: boolean } {
+  const isWholeModelChanged = ctx.wholeModelChangedNodeIds.has(modelId);
+  const isWholeModelImpacted =
+    ctx.wholeModelImpactedNodeIds.has(modelId) && !isWholeModelChanged;
+  return { isWholeModelChanged, isWholeModelImpacted };
+}
+
+// ============================================================================
+// Flags → kind
+// ============================================================================
 
 /**
  * Resolve the treatment kind from the mutually-exclusive flags. Returns
@@ -79,11 +110,6 @@ export function wholeModelTreatmentTokens(
  * 3. `additive` — model's own change is purely additive (`non_breaking`).
  * 4. `column-changed` — model's own change is column-only (`partial_breaking`).
  * 5. `column-impacted` — model is downstream of a column-only change.
- *
- * The short-circuit at step 1 is the first half of the changed-wins
- * invariant (Q11). The second half lives in `pickWholeModelFlags`,
- * which zeroes `isWholeModelImpacted` whenever `isWholeModelChanged` is
- * true. Defence-in-depth.
  */
 export function wholeModelTreatmentKind(flags: {
   isWholeModelChanged?: boolean;
@@ -98,4 +124,106 @@ export function wholeModelTreatmentKind(flags: {
   if (flags.isColumnChanged) return "column-changed";
   if (flags.isColumnImpacted) return "column-impacted";
   return null;
+}
+
+// ============================================================================
+// Kind → visual tokens
+// ============================================================================
+
+export function wholeModelTreatmentTokens(
+  kind: WholeModelTreatmentKind,
+  isDark = false,
+): WholeModelTreatmentTokens {
+  const mode = isDark ? "dark" : "light";
+  switch (kind) {
+    case "changed":
+    case "column-changed":
+      return {
+        stripeAccent: "var(--schema-color-changed-accent)",
+        fg: cllChangedBadgeFg[mode],
+        badgeBg: cllChangedBadgeBg[mode],
+        badgeBorder: cllChangedAccent,
+      };
+    case "additive":
+      return {
+        stripeAccent: "var(--schema-color-added-accent)",
+        fg: cllAdditiveBadgeFg[mode],
+        badgeBg: cllAdditiveBadgeBg,
+        badgeBorder: cllAdditiveAccent[mode],
+      };
+    case "impacted":
+    case "column-impacted":
+      return {
+        stripeAccent: "var(--schema-color-impacted-accent)",
+        fg: cllImpactedBadgeFg[mode],
+        badgeBg: cllImpactedBadgeBg[mode],
+        badgeBorder: cllImpactedAccent[mode],
+      };
+  }
+}
+
+// ============================================================================
+// Kind → surface metadata
+// ============================================================================
+
+/**
+ * Metadata for the LineageNode graph-badge surface. Returns `null` for
+ * whole-model kinds (`changed`, `impacted`) — those are signalled by
+ * NodeView's title chip + left stripe, not by a graph badge.
+ */
+export function getGraphBadgeMeta(
+  kind: WholeModelTreatmentKind,
+): GraphBadgeMeta | null {
+  switch (kind) {
+    case "additive":
+      return {
+        text: "ADD",
+        tooltip: "Additive change",
+        ariaLabel: "additive change",
+        testId: "whole-model-additive-badge",
+      };
+    case "column-changed":
+      return {
+        text: "COLUMN",
+        tooltip: "Column-only change",
+        ariaLabel: "column-only change",
+        testId: "column-changed-badge",
+      };
+    case "column-impacted":
+      return {
+        text: "COLUMN",
+        tooltip: "Column-only impact",
+        ariaLabel: "column-only impact",
+        testId: "column-impacted-badge",
+      };
+    case "changed":
+    case "impacted":
+      return null;
+  }
+}
+
+/**
+ * Metadata for the NodeView title-chip surface. Returns `null` for
+ * per-column kinds (`additive`, `column-changed`, `column-impacted`) —
+ * those are signalled by a LineageNode graph badge, not by a title chip.
+ */
+export function getTitleChipMeta(
+  kind: WholeModelTreatmentKind,
+): TitleChipMeta | null {
+  switch (kind) {
+    case "changed":
+      return {
+        tooltip: "Whole-model change",
+        ariaLabel: "whole-model change",
+      };
+    case "impacted":
+      return {
+        tooltip: "Whole-model impact",
+        ariaLabel: "whole-model impact",
+      };
+    case "additive":
+    case "column-changed":
+    case "column-impacted":
+      return null;
+  }
 }

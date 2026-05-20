@@ -20,8 +20,11 @@ import { IoClose } from "react-icons/io5";
 import type { NodeData } from "../../api/info";
 import { DisableTooltipMessages } from "../../constants";
 import { TreatmentChip } from "./TreatmentChip";
-import { getTitleChipMeta } from "./wholeModelHelpers";
 import {
+  getTitleChipMeta,
+  type TitleChipMeta,
+  type WholeModelTreatmentKind,
+  type WholeModelTreatmentTokens,
   wholeModelTreatmentKind,
   wholeModelTreatmentTokens,
 } from "./wholeModelTreatment";
@@ -578,6 +581,36 @@ function DiffActionButtons({
   );
 }
 
+interface TitleChipResolution {
+  kind: WholeModelTreatmentKind;
+  meta: TitleChipMeta;
+  tokens: WholeModelTreatmentTokens;
+}
+
+/**
+ * Resolve the title-chip render data for NodeView's header. Returns `null`
+ * when the model has no whole-model treatment (no chip, no left stripe).
+ *
+ * `getTitleChipMeta` returns null for per-column kinds (additive,
+ * column-changed, column-impacted) — those surface on the LineageNode
+ * graph badge instead, so we never paint a title chip for them.
+ */
+function resolveTitleChip(
+  flags: {
+    wholeModelImpact: boolean;
+    isWholeModelChanged: boolean;
+    isWholeModelImpacted: boolean;
+  },
+  isDark: boolean,
+): TitleChipResolution | null {
+  if (!flags.wholeModelImpact) return null;
+  const kind = wholeModelTreatmentKind(flags);
+  if (!kind) return null;
+  const meta = getTitleChipMeta(kind);
+  if (!meta) return null;
+  return { kind, meta, tokens: wholeModelTreatmentTokens(kind, isDark) };
+}
+
 // =============================================================================
 // MAIN COMPONENT
 // =============================================================================
@@ -679,16 +712,12 @@ export function NodeView<TNode extends NodeViewNodeData>({
   const isDark = theme.palette.mode === "dark";
   // NodeView only paints whole-model kinds (changed, impacted). The other
   // kinds (additive, column-changed, column-impacted) are signalled by the
-  // LineageNode graph badge and produce no title chip / stripe here —
-  // `getTitleChipMeta` returns null for them.
-  const treatmentKind = wholeModelImpact
-    ? wholeModelTreatmentKind({ isWholeModelChanged, isWholeModelImpacted })
-    : null;
-  const treatmentMeta = treatmentKind ? getTitleChipMeta(treatmentKind) : null;
-  const treatmentTokens =
-    treatmentMeta && treatmentKind
-      ? wholeModelTreatmentTokens(treatmentKind, isDark)
-      : null;
+  // LineageNode graph badge — `getTitleChipMeta` returns null for them, so
+  // we never reach the title-chip render path for those kinds.
+  const titleChip = resolveTitleChip(
+    { wholeModelImpact, isWholeModelChanged, isWholeModelImpacted },
+    isDark,
+  );
 
   const columnsTabIndex = 0;
   const codeTabIndex = 1;
@@ -696,13 +725,13 @@ export function NodeView<TNode extends NodeViewNodeData>({
 
   return (
     <Box
-      className={treatmentTokens ? "cll-experience" : undefined}
+      className={titleChip ? "cll-experience" : undefined}
       sx={{
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        ...(treatmentTokens && {
-          borderLeft: `3px solid ${treatmentTokens.stripeAccent}`,
+        ...(titleChip && {
+          borderLeft: `3px solid ${titleChip.tokens.stripeAccent}`,
         }),
       }}
     >
@@ -723,22 +752,13 @@ export function NodeView<TNode extends NodeViewNodeData>({
             minWidth: 0,
           }}
         >
-          {treatmentTokens && treatmentMeta && treatmentKind ? (
-            <MuiTooltip title={treatmentMeta.tooltip} placement="top">
+          {titleChip ? (
+            <MuiTooltip title={titleChip.meta.tooltip} placement="top">
               <TreatmentChip
-                tokens={treatmentTokens}
-                testId={`whole-model-${treatmentKind}-title-chip`}
-                ariaLabel={treatmentMeta.ariaLabel}
-                sx={{
-                  borderRadius: "6px",
-                  height: "auto",
-                  minWidth: 0,
-                  px: 1,
-                  py: 0.25,
-                  fontSize: "1rem",
-                  fontWeight: 600,
-                  lineHeight: 1.4,
-                }}
+                tokens={titleChip.tokens}
+                variant="titleChip"
+                testId={`whole-model-${titleChip.kind}-title-chip`}
+                ariaLabel={titleChip.meta.ariaLabel}
               >
                 <Typography
                   variant="subtitle1"

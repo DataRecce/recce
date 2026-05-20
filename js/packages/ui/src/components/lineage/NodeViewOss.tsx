@@ -51,7 +51,7 @@ import {
 } from "./NodeView";
 import { SandboxViewOss } from "./SandboxViewOss";
 import { NodeTag } from "./tags";
-import { pickWholeModelFlags } from "./wholeModelHelpers";
+import { pickWholeModelFlags } from "./wholeModelTreatment";
 
 // =============================================================================
 // TYPES

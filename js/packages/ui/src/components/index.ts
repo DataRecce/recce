@@ -53,12 +53,7 @@ export type {
   LineageViewProps,
   LineageViewRef,
 } from "./lineage";
-export {
-  LineageCanvas,
-  LineagePageOss,
-  LineageView,
-  wholeModelTreatmentTokens,
-} from "./lineage";
+export { LineageCanvas, LineagePageOss, LineageView } from "./lineage";
 // Notification components
 export type { NotificationProps } from "./notifications";
 export { LineageViewNotification } from "./notifications";

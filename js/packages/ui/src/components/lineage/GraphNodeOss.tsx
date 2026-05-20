@@ -39,7 +39,7 @@ import {
   type SelectMode,
 } from "./nodes";
 import { getIconForChangeStatus } from "./styles";
-import { pickWholeModelFlags } from "./wholeModelHelpers";
+import { pickWholeModelFlags } from "./wholeModelTreatment";
 
 // =============================================================================
 // TYPES
