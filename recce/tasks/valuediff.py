@@ -331,9 +331,22 @@ class ValueDiffTask(Task, ValueDiffMixin):
             model: str = self.params.model
             columns: List[str] = self.params.columns
 
+            # Normalise primary_key BEFORE _verify_primary_key so the composite
+            # path's adapter.quote() calls receive physical catalog names (e.g.
+            # "CUSTOMER_ID" on Snowflake, not "customer_id").
+            case_lookup = self._build_column_case_lookup(dbt_adapter, model)
+            if isinstance(primary_key, list):
+                primary_key = [self._normalise_identifier(pk, case_lookup) for pk in primary_key]
+            else:
+                primary_key = self._normalise_identifier(primary_key, case_lookup)
+
             self._verify_primary_key(dbt_adapter, primary_key, model)
             self.check_cancel()
 
+            # _query_value_diff rebuilds case_lookup internally; passing the already-
+            # normalised primary_key here is a defensive duplicate that keeps both
+            # paths consistent and avoids a second get_columns() round-trip on the
+            # happy path (the internal rebuild still runs for the columns list).
             return self._query_value_diff(dbt_adapter, primary_key, model, columns=columns)
 
     def cancel(self):
@@ -526,6 +539,15 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
             primary_key: Union[str, List[str]] = self.params.primary_key
             model: str = self.params.model
             columns: List[str] = self.params.columns
+
+            # Normalise primary_key BEFORE _verify_primary_key (same rationale as
+            # ValueDiffTask.execute — composite path quotes via adapter.quote(col)
+            # directly, so identifiers must already be in physical catalog case).
+            case_lookup = self._build_column_case_lookup(dbt_adapter, model)
+            if isinstance(primary_key, list):
+                primary_key = [self._normalise_identifier(pk, case_lookup) for pk in primary_key]
+            else:
+                primary_key = self._normalise_identifier(primary_key, case_lookup)
 
             self._verify_primary_key(dbt_adapter, primary_key, model)
             self.check_cancel()
