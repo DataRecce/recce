@@ -2728,6 +2728,14 @@ def mcp_server(state_file, sse, host, port, **kwargs):
     # Start in HTTP/SSE mode with custom host and port
     recce mcp-server --sse --host 0.0.0.0 --port 9000
 
+    \b
+    # Cloud mode: connect to a Recce Cloud session
+    recce mcp-server --cloud --session <SID> --api-token <token>
+
+    \b
+    # Cloud mode using profile.yml token (after login)
+    recce mcp-server --cloud --session <SID>
+
     SSE Connection URL (when using --sse): http://<host>:<port>/sse
     """
     import asyncio
