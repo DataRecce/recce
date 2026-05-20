@@ -1,3 +1,4 @@
+import type { RunsAggregated } from "@datarecce/ui/api";
 import { LineageGraphProvider } from "@datarecce/ui/contexts";
 import type { ReactNode } from "react";
 
@@ -139,16 +140,49 @@ const mockLineageGraph = {
     base: undefined,
     current: undefined,
   },
+  // Non-null catalogs so SchemaView doesn't render its "catalog.json not
+  // found" warning in stories. Truthiness is all SchemaView checks.
   catalogMetadata: {
-    base: undefined,
-    current: undefined,
+    base: {
+      dbt_version: "1.8.0",
+      dbt_schema_version: "https://schemas.getdbt.com/dbt/catalog/v1.json",
+      generated_at: "2026-05-19T00:00:00Z",
+      adapter_type: "duckdb",
+      env: {},
+      invocation_id: "mock-base",
+    },
+    current: {
+      dbt_version: "1.8.0",
+      dbt_schema_version: "https://schemas.getdbt.com/dbt/catalog/v1.json",
+      generated_at: "2026-05-19T00:00:00Z",
+      adapter_type: "duckdb",
+      env: {},
+      invocation_id: "mock-current",
+    },
   },
 };
 
-export function MockLineageProvider({ children }: { children: ReactNode }) {
+export interface MockLineageProviderProps {
+  children: ReactNode;
+  /**
+   * Pre-aggregated run results keyed by `node.id`. Components like
+   * `RowCountDiffTag` / `RowCountTag` read row-count data from here. Stories
+   * pass fixture data so the real production components render with realistic
+   * values instead of being stubbed.
+   */
+  runsAggregated?: RunsAggregated;
+}
+
+export function MockLineageProvider({
+  children,
+  runsAggregated,
+}: MockLineageProviderProps) {
   return (
-    // biome-ignore lint/suspicious/noExplicitAny: Mock data doesn't need full type compliance
-    <LineageGraphProvider lineageGraph={mockLineageGraph as any}>
+    <LineageGraphProvider
+      // biome-ignore lint/suspicious/noExplicitAny: Mock data doesn't need full type compliance
+      lineageGraph={mockLineageGraph as any}
+      runsAggregated={runsAggregated}
+    >
       {children}
     </LineageGraphProvider>
   );
