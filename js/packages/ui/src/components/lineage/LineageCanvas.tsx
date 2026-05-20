@@ -13,7 +13,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import Box from "@mui/material/Box";
-import { type MouseEvent, useCallback, useMemo } from "react";
+import { type MouseEvent, useCallback, useMemo, useRef } from "react";
 
 import { LineageColumnNode } from "./columns";
 import { LineageEdge, type LineageEdgeData } from "./edges";
@@ -31,8 +31,6 @@ export interface LineageCanvasProps {
   onNodeDoubleClick?: (nodeId: string) => void;
   /** Callback when a node's kebab/context-menu icon is clicked */
   onNodeContextMenu?: (event: MouseEvent, nodeId: string) => void;
-  /** Callback when a node's impact-radius icon is clicked */
-  onShowImpactRadius?: (nodeId: string) => void;
   /** Whether to show minimap */
   showMiniMap?: boolean;
   /** Whether to show controls */
@@ -66,7 +64,6 @@ export function LineageCanvas({
   onNodeSelect,
   onNodeDoubleClick,
   onNodeContextMenu,
-  onShowImpactRadius,
   showMiniMap = true,
   showControls = true,
   showBackground = true,
@@ -97,21 +94,29 @@ export function LineageCanvas({
     [onNodeDoubleClick],
   );
 
-  // Wrap LineageNode so per-node callbacks (context menu, impact radius)
-  // flow through ReactFlow's node-type registry to every node instance.
+  // Wrap LineageNode so the context-menu callback flows through ReactFlow's
+  // node-type registry to every node instance. ReactFlow re-mounts all nodes
+  // whenever the `nodeTypes` map changes identity, so we route the caller's
+  // callback through a ref-backed stable wrapper: the wrapper component is
+  // created at most twice in a component's lifetime (once when the prop
+  // transitions from absent to present), regardless of caller stability.
+  const onNodeContextMenuRef = useRef(onNodeContextMenu);
+  onNodeContextMenuRef.current = onNodeContextMenu;
+  const hasContextMenu = onNodeContextMenu != null;
   const nodeTypes = useMemo(() => {
-    if (!onNodeContextMenu && !onShowImpactRadius) return defaultNodeTypes;
+    if (!hasContextMenu) return defaultNodeTypes;
     return {
       ...defaultNodeTypes,
       lineageNode: (props: React.ComponentProps<typeof LineageNode>) => (
         <LineageNode
           {...props}
-          onContextMenu={onNodeContextMenu}
-          onShowImpactRadius={onShowImpactRadius}
+          onContextMenu={(event, nodeId) =>
+            onNodeContextMenuRef.current?.(event, nodeId)
+          }
         />
       ),
     };
-  }, [onNodeContextMenu, onShowImpactRadius]);
+  }, [hasContextMenu]);
 
   return (
     <Box sx={{ width: "100%", height }}>

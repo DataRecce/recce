@@ -297,10 +297,7 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
     cll,
     impactedNodeIds,
     newCllExperience,
-    showColumnLevelLineage,
-    setChangeAnalysisMode,
   } = useLineageViewContextSafe();
-  const { isActionAvailable } = useLineageGraphContext();
   const isImpacted = newCllExperience ? impactedNodeIds.has(id) : false;
 
   // Computed state
@@ -347,15 +344,6 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
     showContextMenu(event, nodeProps as unknown as LineageGraphNode);
   };
 
-  const handleShowImpactRadius = (nodeId: string) => {
-    setChangeAnalysisMode(true);
-    void showColumnLevelLineage({
-      node_id: nodeId,
-      change_analysis: true,
-      no_upstream: true,
-    });
-  };
-
   return (
     <LineageNode
       id={id}
@@ -390,11 +378,6 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
       // Callbacks
       onSelect={handleSelect}
       onContextMenu={handleContextMenu}
-      onShowImpactRadius={
-        changeStatus === "modified" && isActionAvailable("change_analysis")
-          ? handleShowImpactRadius
-          : undefined
-      }
     />
   );
 }

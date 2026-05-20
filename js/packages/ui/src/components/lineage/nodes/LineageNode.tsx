@@ -162,8 +162,6 @@ export interface LineageNodeProps {
   onSelect?: (nodeId: string) => void;
   /** Callback when context menu is requested */
   onContextMenu?: (event: MouseEvent, nodeId: string) => void;
-  /** Callback when impact radius button is clicked */
-  onShowImpactRadius?: (nodeId: string) => void;
 }
 
 // =============================================================================
@@ -315,7 +313,6 @@ function LineageNodeComponent({
   onNodeDoubleClick,
   onSelect,
   onContextMenu,
-  onShowImpactRadius,
 }: LineageNodeProps) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -336,7 +333,7 @@ function LineageNodeComponent({
   }, [cancelHoverHide]);
   const scheduleHoverHide = useCallback(() => {
     cancelHoverHide();
-    hoverHideTimer.current = setTimeout(() => setIsHovered(false), 150);
+    hoverHideTimer.current = setTimeout(() => setIsHovered(false), 500);
   }, [cancelHoverHide]);
   useEffect(() => () => cancelHoverHide(), [cancelHoverHide]);
 
@@ -514,16 +511,16 @@ function LineageNodeComponent({
             px: 0.75,
             py: 0.5,
             borderRadius: 1,
-            backgroundColor: isDark ? "#2a2a2a" : "#ffffff",
+            backgroundColor: "background.paper",
             border: "1px solid",
-            borderColor: isDark ? "#444" : "#ddd",
+            borderColor: "divider",
             boxShadow:
               "0 2px 6px rgb(0 0 0 / 0.15), 0 1px 2px rgb(0 0 0 / 0.1)",
-            color: isDark ? "#fff" : "#000",
           }}
         >
           {onContextMenu && (
             <Box
+              data-testid="lineage-node-kebab"
               onClick={handleContextMenuClick}
               sx={{
                 cursor: "pointer",

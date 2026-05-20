@@ -683,12 +683,10 @@ export function NodeView<TNode extends NodeViewNodeData>({
             placement="top"
           >
             <Typography
+              component="span"
               variant="subtitle1"
               className="no-track-pii-safe"
-              sx={{
-                fontWeight: 600,
-                display: "inline-block",
-              }}
+              sx={{ fontWeight: 600 }}
             >
               {node.data.name}
             </Typography>

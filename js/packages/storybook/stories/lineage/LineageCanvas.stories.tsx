@@ -79,10 +79,6 @@ const meta: Meta<typeof LineageCanvas> = {
       description: "Callback when node kebab/context-menu is clicked",
       action: "nodeContextMenu",
     },
-    onShowImpactRadius: {
-      description: "Callback when node impact-radius icon is clicked",
-      action: "showImpactRadius",
-    },
     showMiniMap: {
       description: "Whether to show the minimap",
       control: "boolean",
