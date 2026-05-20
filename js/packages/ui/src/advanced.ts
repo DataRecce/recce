@@ -115,8 +115,17 @@ export { layout, toReactFlow } from "./components/lineage/lineage";
 /**
  * Row-count tags rendered inside `NodeView`. They read row-count data from
  * `LineageGraphProvider`'s `runsAggregated` prop, keyed by `node.id`.
+ *
+ * `RowCountDiffSummary` / `RowCountSummary` are inline-content variants (no
+ * pill background, no refresh button) intended for embedding in buttons or
+ * other tight layouts via `NodeView`'s `rowCountDisplay` slot.
  */
-export { RowCountDiffTag, RowCountTag } from "./components/lineage/NodeTag";
+export {
+  RowCountDiffSummary,
+  RowCountDiffTag,
+  RowCountSummary,
+  RowCountTag,
+} from "./components/lineage/NodeTag";
 /**
  * Node detail panel with Columns and Code tabs.
  */
