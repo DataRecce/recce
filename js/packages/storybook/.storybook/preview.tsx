@@ -1,8 +1,6 @@
+import { theme } from "@datarecce/ui/theme";
 import CssBaseline from "@mui/material/CssBaseline";
-import {
-  createTheme,
-  ThemeProvider as MuiThemeProvider,
-} from "@mui/material/styles";
+import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 import type { Preview } from "@storybook/react-vite";
 import "chartjs-adapter-date-fns";
 import { useEffect } from "react";
@@ -20,17 +18,9 @@ if (typeof window !== "undefined") {
   });
 }
 
-const lightTheme = createTheme({
-  palette: {
-    mode: "light",
-  },
-});
-
-const darkTheme = createTheme({
-  palette: {
-    mode: "dark",
-  },
-});
+// The @datarecce/ui theme uses CSS-variables mode with `colorSchemeSelector:
+// "class"`, so a single theme drives both light and dark modes — the global
+// decorator below toggles the `.dark` class on <html>.
 
 const preview: Preview = {
   parameters: {
@@ -63,15 +53,15 @@ const preview: Preview = {
   decorators: [
     (Story, context) => {
       const isDark = context.globals.theme === "dark";
-      const muiTheme = isDark ? darkTheme : lightTheme;
 
       // Manually manage .dark class on document element for useIsDark() hook
+      // and for the CSS-variables theme's class-based color scheme selector.
       useEffect(() => {
         document.documentElement.classList.toggle("dark", isDark);
       }, [isDark]);
 
       return (
-        <MuiThemeProvider theme={muiTheme}>
+        <MuiThemeProvider theme={theme}>
           <CssBaseline />
           <Story />
         </MuiThemeProvider>
