@@ -1,0 +1,26 @@
+name: "perf_bench"
+config-version: 2
+version: "0.1"
+
+profile: "perf_bench"
+
+model-paths: ["models"]
+target-path: "target"
+clean-targets:
+  - "target"
+  - "target-base"
+  - "logs"
+
+require-dbt-version: [">=1.0.0", "<2.0.0"]
+
+vars:
+  # Tunables for the synthetic wide table. Override via `dbt run --vars '{...}'`.
+  wide_rows: 100000
+  wide_seed: 1
+  # When > 0, the "current" run shifts a fraction of the rows in a few columns
+  # so paired distributions differ between base and current.
+  wide_drift: 0.0
+
+models:
+  perf_bench:
+    materialized: table

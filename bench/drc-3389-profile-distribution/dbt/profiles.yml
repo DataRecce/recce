@@ -1,0 +1,13 @@
+perf_bench:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "perf_bench.duckdb"
+      threads: 8
+      schema: dev_current
+    base:
+      type: duckdb
+      path: "perf_bench.duckdb"
+      threads: 8
+      schema: dev_base

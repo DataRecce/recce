@@ -1,0 +1,24 @@
+name: "perf_bench_sf"
+config-version: 2
+version: "0.1"
+
+profile: "perf_bench_sf"
+
+model-paths: ["models"]
+target-path: "target"
+clean-targets:
+  - "target"
+  - "target-base"
+  - "logs"
+
+require-dbt-version: [">=1.0.0", "<2.0.0"]
+
+vars:
+  # Reduced size for ~3min Snowflake compute budget.
+  wide_rows: 100000
+  wide_seed: 1
+  wide_drift: 0.0
+
+models:
+  perf_bench_sf:
+    materialized: table

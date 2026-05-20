@@ -1,0 +1,23 @@
+perf_bench_sf:
+  target: current
+  outputs:
+    current:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE') }}"
+      warehouse: LOAD_WH
+      database: JAFFLE_SHOP_GOLDEN
+      schema: DRC3389_BENCH_CURR
+      threads: 4
+    base:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE') }}"
+      warehouse: LOAD_WH
+      database: JAFFLE_SHOP_GOLDEN
+      schema: DRC3389_BENCH_BASE
+      threads: 4

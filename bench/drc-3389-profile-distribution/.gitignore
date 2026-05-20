@@ -1,0 +1,16 @@
+# DuckDB + Snowflake fixtures' build artifacts — regenerate with scripts/setup_fixture*.sh
+dbt/perf_bench.duckdb
+dbt/target/
+dbt/target-base/
+dbt/logs/
+dbt/.user.yml
+dbt_sf/target/
+dbt_sf/target-base/
+dbt_sf/logs/
+dbt_sf/.user.yml
+
+# Benchmark output — produced by scripts/bench.py. The PNG visualization
+# checked into the repo is the exception (lives at results/histogram_styles_comparison.png).
+results/*.csv
+results/*.json
+!results/histogram_styles_comparison.png
