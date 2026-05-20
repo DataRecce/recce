@@ -18,6 +18,7 @@ import { IoClose } from "react-icons/io5";
 
 import type { NodeData } from "../../api/info";
 import { DisableTooltipMessages } from "../../constants";
+import { formatNodeTooltip } from "./styles";
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -155,7 +156,8 @@ export interface NodeViewProps<
   };
   /**
    * Optional slot rendered as a "Lineage" tab body. When provided, a tab
-   * labeled "Lineage" appears as the FIRST tab (alongside Columns/Code).
+   * labeled "Lineage" appears as the LAST tab (after Columns/Code).
+   * Columns remains the default landing tab.
    * Consumers inject this to expose the focused node's upstream/downstream
    * without coupling NodeView to the lineage graph context.
    */
@@ -633,21 +635,31 @@ export function NodeView<TNode extends NodeViewNodeData>({
           gap: 1,
         }}
       >
-        <Typography
-          variant="subtitle1"
-          className="no-track-pii-safe"
-          sx={{
-            fontWeight: 600,
-            flex: "0 1 auto",
-            mr: "auto",
-            minWidth: 0,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
+        <MuiTooltip
+          title={formatNodeTooltip(
+            node.data.name,
+            node.data.resourceType,
+            node.data.materialized,
+          )}
+          placement="top"
         >
-          {node.data.name}
-        </Typography>
+          <Typography
+            component="span"
+            variant="subtitle1"
+            className="no-track-pii-safe"
+            sx={{
+              fontWeight: 600,
+              flex: "0 1 auto",
+              mr: "auto",
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {node.data.name}
+          </Typography>
+        </MuiTooltip>
         {ResourceTypeTag && (
           <Box sx={{ color: "text.secondary", flexShrink: 0 }}>
             <ResourceTypeTag node={node} />
@@ -706,11 +718,11 @@ export function NodeView<TNode extends NodeViewNodeData>({
             </Box>
           )}
 
-          {/* Tabs — when lineageTabContent is provided, "Lineage" is index 0 */}
+          {/* Tabs — "Columns" is always index 0 (default landing tab) */}
           {(() => {
-            const lineageTabIndex = lineageTabContent ? 0 : -1;
-            const columnsTabIndex = lineageTabContent ? 1 : 0;
-            const codeTabIndex = lineageTabContent ? 2 : 1;
+            const columnsTabIndex = 0;
+            const codeTabIndex = 1;
+            const lineageTabIndex = lineageTabContent ? 2 : -1;
             return (
               <>
                 <Tabs
@@ -718,7 +730,6 @@ export function NodeView<TNode extends NodeViewNodeData>({
                   onChange={(_, newValue) => setTabValue(newValue)}
                   sx={{ borderBottom: 1, borderColor: "divider" }}
                 >
-                  {lineageTabContent && <Tab label="Lineage" />}
                   <Tab
                     label={
                       <Box
@@ -771,15 +782,11 @@ export function NodeView<TNode extends NodeViewNodeData>({
                       </Box>
                     }
                   />
+                  {lineageTabContent && <Tab label="Lineage" />}
                 </Tabs>
 
                 {/* Tab panels */}
                 <Box sx={{ overflow: "auto", height: "calc(100% - 48px)" }}>
-                  {lineageTabContent && (
-                    <TabPanel value={tabValue} index={lineageTabIndex}>
-                      <Box sx={{ height: "100%" }}>{lineageTabContent}</Box>
-                    </TabPanel>
-                  )}
                   <TabPanel value={tabValue} index={columnsTabIndex}>
                     <Box sx={{ overflowY: "auto", height: "100%" }}>
                       {isSingleEnv
@@ -811,6 +818,11 @@ export function NodeView<TNode extends NodeViewNodeData>({
                       {NodeSqlView && <NodeSqlView node={node} />}
                     </Box>
                   </TabPanel>
+                  {lineageTabContent && (
+                    <TabPanel value={tabValue} index={lineageTabIndex}>
+                      <Box sx={{ height: "100%" }}>{lineageTabContent}</Box>
+                    </TabPanel>
+                  )}
                 </Box>
               </>
             );

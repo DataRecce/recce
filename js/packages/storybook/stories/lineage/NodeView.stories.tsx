@@ -15,7 +15,11 @@ import type {
   NodeViewProps,
   RunTypeIconMap,
 } from "@datarecce/ui/advanced";
-import { NodeView } from "@datarecce/ui/advanced";
+import {
+  NodeView,
+  RowCountDiffSummary,
+  RowCountSummary,
+} from "@datarecce/ui/advanced";
 import type { RowCount, RowCountDiff } from "@datarecce/ui/api";
 import {
   findByRunType,
@@ -25,12 +29,9 @@ import {
 import { NodeTag } from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
-import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { FiArrowRight } from "react-icons/fi";
-import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
 import { fn } from "storybook/test";
 import { MockLineageProvider } from "../mocks/MockProviders";
 
@@ -85,77 +86,6 @@ function ResourceTypeTag({ node }: { node: NodeViewNodeData }) {
       materialized={node.data.materialized}
     />
   );
-}
-
-// =============================================================================
-// ROW-COUNT DISPLAY HELPERS
-// =============================================================================
-// The production RowCountDiffTag/RowCountTag read from contexts. In stories we
-// pass `rowCountDisplay` directly so the layout is fully controllable.
-
-function RowCountDiffDisplay({ rowCount }: { rowCount: RowCountDiff }) {
-  const { base, curr } = rowCount;
-  const baseLabel = base === null ? "N/A" : `${base} rows`;
-  const currLabel = curr === null ? "N/A" : `${curr} rows`;
-
-  if (base === null && curr === null) return <span>Failed to load</span>;
-  if (base === null || curr === null) {
-    return (
-      <Stack
-        component="span"
-        direction="row"
-        spacing={0.5}
-        sx={{ alignItems: "center" }}
-      >
-        <span>{baseLabel}</span>
-        <FiArrowRight />
-        <span>{currLabel}</span>
-      </Stack>
-    );
-  }
-  if (base === curr) {
-    return (
-      <Stack
-        component="span"
-        direction="row"
-        spacing={0.5}
-        sx={{ alignItems: "center" }}
-      >
-        <span>{currLabel}</span>
-        <Box component="span" sx={{ color: "grey.500", display: "flex" }}>
-          <RiSwapLine />
-        </Box>
-        <Box component="span" sx={{ color: "grey.500" }}>
-          No Change
-        </Box>
-      </Stack>
-    );
-  }
-  const Arrow = base < curr ? RiArrowUpSFill : RiArrowDownSFill;
-  const tone = base < curr ? "success.main" : "error.main";
-  const pct = Math.round(((curr - base) / base) * 100);
-  return (
-    <Stack
-      component="span"
-      direction="row"
-      spacing={0.5}
-      sx={{ alignItems: "center" }}
-    >
-      <span>{currLabel}</span>
-      <Box component="span" sx={{ color: tone, display: "flex" }}>
-        <Arrow />
-      </Box>
-      <Box component="span" sx={{ color: tone }}>
-        {pct > 0 ? "+" : ""}
-        {pct}%
-      </Box>
-    </Stack>
-  );
-}
-
-function RowCountDisplay({ rowCount }: { rowCount: RowCount }) {
-  const label = rowCount.curr === null ? "N/A" : `${rowCount.curr} rows`;
-  return <span>{label}</span>;
 }
 
 // =============================================================================
@@ -230,9 +160,9 @@ function createStoryArgs(
 
   let rowCountDisplay: React.ReactNode | undefined;
   if (overrides.rowCountDiff) {
-    rowCountDisplay = <RowCountDiffDisplay rowCount={overrides.rowCountDiff} />;
+    rowCountDisplay = <RowCountDiffSummary rowCount={overrides.rowCountDiff} />;
   } else if (overrides.rowCount) {
-    rowCountDisplay = <RowCountDisplay rowCount={overrides.rowCount} />;
+    rowCountDisplay = <RowCountSummary rowCount={overrides.rowCount} />;
   }
 
   return { node, modelDetail, rowCountDisplay };
@@ -397,6 +327,19 @@ export const CodeChanged: Story = {
       rowCountDiff: { base: 99000, curr: 99231 },
       baseCode: "SELECT * FROM raw.orders",
       currentCode: "SELECT * FROM raw.orders WHERE status != 'deleted'",
+    }),
+  },
+};
+
+/** Materialization changed (view → table). */
+export const MaterializationChanged: Story = {
+  args: {
+    ...createStoryArgs({
+      name: "stg_orders",
+      baseMaterialized: "view",
+      materialized: "table",
+      changeStatus: "modified",
+      rowCountDiff: { base: 1000, curr: 1200 },
     }),
   },
 };
