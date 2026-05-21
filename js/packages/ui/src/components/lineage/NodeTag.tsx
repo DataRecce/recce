@@ -72,7 +72,7 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
   const currentLabel = formatRowCountValue(current);
 
   if (base === null && current === null) {
-    return <> Failed to load</>;
+    return <>Failed to load</>;
   }
   if (base === null || current === null) {
     return (

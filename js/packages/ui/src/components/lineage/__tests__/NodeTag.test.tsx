@@ -18,7 +18,9 @@ describe("RowCountSummary (single-env shape)", () => {
   test("renders thousands-separated count for plural rows", () => {
     const rc: RowCount = { curr: 99231 };
     render(<RowCountSummary rowCount={rc} />);
-    expect(screen.getByText("99,231 rows")).toBeInTheDocument();
+    expect(
+      screen.getByText(`${(99231).toLocaleString()} rows`),
+    ).toBeInTheDocument();
   });
 
   test("renders singular 'row' when count is 1", () => {
@@ -44,7 +46,9 @@ describe("RowCountSummary (diff shape)", () => {
   test("renders base-only arrow when curr is null", () => {
     const rc: RowCountDiff = { base: 1000, curr: null };
     render(<RowCountSummary rowCount={rc} />);
-    expect(screen.getByText("1,000 rows")).toBeInTheDocument();
+    expect(
+      screen.getByText(`${(1000).toLocaleString()} rows`),
+    ).toBeInTheDocument();
     expect(screen.getByText("N/A")).toBeInTheDocument();
   });
 
@@ -52,20 +56,26 @@ describe("RowCountSummary (diff shape)", () => {
     const rc: RowCountDiff = { base: null, curr: 1000 };
     render(<RowCountSummary rowCount={rc} />);
     expect(screen.getByText("N/A")).toBeInTheDocument();
-    expect(screen.getByText("1,000 rows")).toBeInTheDocument();
+    expect(
+      screen.getByText(`${(1000).toLocaleString()} rows`),
+    ).toBeInTheDocument();
   });
 
   test("renders 'No Change' when base equals curr", () => {
     const rc: RowCountDiff = { base: 1200, curr: 1200 };
     render(<RowCountSummary rowCount={rc} />);
-    expect(screen.getByText("1,200 rows")).toBeInTheDocument();
+    expect(
+      screen.getByText(`${(1200).toLocaleString()} rows`),
+    ).toBeInTheDocument();
     expect(screen.getByText("No Change")).toBeInTheDocument();
   });
 
   test("renders increase delta when curr > base", () => {
     const rc: RowCountDiff = { base: 1000, curr: 1200 };
     render(<RowCountSummary rowCount={rc} />);
-    expect(screen.getByText("1,200 rows")).toBeInTheDocument();
+    expect(
+      screen.getByText(`${(1200).toLocaleString()} rows`),
+    ).toBeInTheDocument();
     expect(screen.getByText(/\+20/)).toBeInTheDocument();
   });
 
