@@ -689,9 +689,10 @@ export function NodeView<TNode extends NodeViewNodeData>({
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        ...(titleChip && {
-          borderLeft: `3px solid ${titleChip.tokens.stripeAccent}`,
-        }),
+        // Reserve the 3px stripe even when no treatment applies, so the
+        // content doesn't shift horizontally when navigating between models
+        // with and without whole-model treatment.
+        borderLeft: `3px solid ${titleChip ? titleChip.tokens.stripeAccent : "transparent"}`,
       }}
     >
       {/* Header row: name, type tag, close button */}
@@ -728,7 +729,6 @@ export function NodeView<TNode extends NodeViewNodeData>({
                   tokens={titleChip.tokens}
                   variant="titleChip"
                   testId={`whole-model-${titleChip.kind}-title-chip`}
-                  ariaLabel={titleChip.meta.ariaLabel}
                   sx={{
                     flex: "0 1 auto",
                     mr: "auto",

@@ -150,7 +150,7 @@ export function wholeModelTreatmentTokens(
       return {
         stripeAccent: "var(--schema-color-added-accent)",
         fg: cllAdditiveBadgeFg[mode],
-        badgeBg: cllAdditiveBadgeBg,
+        badgeBg: cllAdditiveBadgeBg[mode],
         badgeBorder: cllAdditiveAccent[mode],
       };
     case "impacted":

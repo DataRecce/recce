@@ -767,7 +767,10 @@ export const cllAdditiveAccent = {
   dark: "rgb(80 200 100)",
 } as const;
 
-export const cllAdditiveBadgeBg = "rgb(46 160 67 / 0.2)";
+export const cllAdditiveBadgeBg = {
+  light: "rgb(46 160 67 / 0.2)",
+  dark: "rgb(46 160 67 / 0.2)",
+} as const;
 
 export const cllAdditiveBadgeFg = {
   light: "rgb(22 110 40)",

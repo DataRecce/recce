@@ -692,15 +692,19 @@ describe("LineageNode", () => {
   // ==========================================================================
 
   describe("whole-model treatment badge", () => {
+    // Whole-model kinds (`changed`, `impacted`) signal via NodeView's title
+    // chip + left stripe, not via a graph badge. Assert structurally — any
+    // element whose testId ends in `-badge` would catch a regression that
+    // re-introduces a graph badge under any naming.
     it("renders no graph badge for whole-model-changed (signalled by other surfaces)", () => {
       const props = createMockNodeProps({
         isWholeModelChanged: true,
         wholeModelImpact: true,
       });
-      render(<LineageNode {...props} />);
+      const { container } = render(<LineageNode {...props} />);
       expect(
-        screen.queryByTestId("whole-model-changed-badge"),
-      ).not.toBeInTheDocument();
+        container.querySelectorAll('[data-testid$="-badge"]'),
+      ).toHaveLength(0);
     });
 
     it("renders no graph badge for whole-model-impacted (signalled by other surfaces)", () => {
@@ -708,10 +712,10 @@ describe("LineageNode", () => {
         isWholeModelImpacted: true,
         wholeModelImpact: true,
       });
-      render(<LineageNode {...props} />);
+      const { container } = render(<LineageNode {...props} />);
       expect(
-        screen.queryByTestId("whole-model-impacted-badge"),
-      ).not.toBeInTheDocument();
+        container.querySelectorAll('[data-testid$="-badge"]'),
+      ).toHaveLength(0);
     });
 
     it("renders the additive badge for non_breaking when wholeModelImpact is on", () => {
@@ -730,16 +734,10 @@ describe("LineageNode", () => {
         changeCategory: "breaking",
         wholeModelImpact: true,
       });
-      render(<LineageNode {...props} />);
+      const { container } = render(<LineageNode {...props} />);
       expect(
-        screen.queryByTestId("whole-model-changed-badge"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByTestId("whole-model-impacted-badge"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByTestId("whole-model-additive-badge"),
-      ).not.toBeInTheDocument();
+        container.querySelectorAll('[data-testid$="-badge"]'),
+      ).toHaveLength(0);
     });
 
     it("renders the column-changed badge for partial_breaking when wholeModelImpact is on", () => {

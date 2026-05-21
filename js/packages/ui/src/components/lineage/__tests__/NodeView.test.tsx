@@ -159,8 +159,12 @@ describe("NodeView", () => {
   });
 
   describe("whole-model treatment", () => {
+    // NodeView signals whole-model kinds via a title chip + left stripe and
+    // never renders a graph badge of any kind. The structural badge check
+    // (`[data-testid$="-badge"]` returns 0) catches a regression that
+    // re-introduces a badge surface under any naming.
     test("renders the changed title chip (no inline badge) when isWholeModelChanged is true and wholeModelImpact is on", () => {
-      render(
+      const { container } = render(
         <NodeView
           node={createNode("model")}
           onCloseNode={vi.fn()}
@@ -173,12 +177,12 @@ describe("NodeView", () => {
         screen.getByTestId("whole-model-changed-title-chip"),
       ).toBeInTheDocument();
       expect(
-        screen.queryByTestId("whole-model-changed-badge"),
-      ).not.toBeInTheDocument();
+        container.querySelectorAll('[data-testid$="-badge"]'),
+      ).toHaveLength(0);
     });
 
     test("renders the impacted title chip (no inline badge) when isWholeModelImpacted is true and wholeModelImpact is on", () => {
-      render(
+      const { container } = render(
         <NodeView
           node={createNode("model")}
           onCloseNode={vi.fn()}
@@ -191,12 +195,12 @@ describe("NodeView", () => {
         screen.getByTestId("whole-model-impacted-title-chip"),
       ).toBeInTheDocument();
       expect(
-        screen.queryByTestId("whole-model-impacted-badge"),
-      ).not.toBeInTheDocument();
+        container.querySelectorAll('[data-testid$="-badge"]'),
+      ).toHaveLength(0);
     });
 
     test("changed-wins: renders the changed title chip (no badge) when both flags are true (Q11)", () => {
-      render(
+      const { container } = render(
         <NodeView
           node={createNode("model")}
           onCloseNode={vi.fn()}
@@ -213,15 +217,12 @@ describe("NodeView", () => {
         screen.queryByTestId("whole-model-impacted-title-chip"),
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByTestId("whole-model-changed-badge"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByTestId("whole-model-impacted-badge"),
-      ).not.toBeInTheDocument();
+        container.querySelectorAll('[data-testid$="-badge"]'),
+      ).toHaveLength(0);
     });
 
     test("renders no whole-model surfaces when neither flag is set", () => {
-      render(
+      const { container } = render(
         <NodeView
           node={createNode("model")}
           onCloseNode={vi.fn()}
@@ -230,21 +231,15 @@ describe("NodeView", () => {
         />,
       );
       expect(
-        screen.queryByTestId("whole-model-changed-title-chip"),
-      ).not.toBeInTheDocument();
+        container.querySelectorAll('[data-testid$="-title-chip"]'),
+      ).toHaveLength(0);
       expect(
-        screen.queryByTestId("whole-model-impacted-title-chip"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByTestId("whole-model-changed-badge"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByTestId("whole-model-impacted-badge"),
-      ).not.toBeInTheDocument();
+        container.querySelectorAll('[data-testid$="-badge"]'),
+      ).toHaveLength(0);
     });
 
     test("renders no NodeView treatment for additive (non_breaking) — additive is per-column, not whole-table", () => {
-      render(
+      const { container } = render(
         <NodeView
           node={{
             id: "model.test.additive",
@@ -260,15 +255,15 @@ describe("NodeView", () => {
         />,
       );
       expect(
-        screen.queryByTestId("whole-model-additive-title-chip"),
-      ).not.toBeInTheDocument();
+        container.querySelectorAll('[data-testid$="-title-chip"]'),
+      ).toHaveLength(0);
       expect(
-        screen.queryByTestId("whole-model-additive-badge"),
-      ).not.toBeInTheDocument();
+        container.querySelectorAll('[data-testid$="-badge"]'),
+      ).toHaveLength(0);
     });
 
     test("renders no whole-model surfaces when wholeModelImpact is off, even if flags are set", () => {
-      render(
+      const { container } = render(
         <NodeView
           node={createNode("model")}
           onCloseNode={vi.fn()}
@@ -278,17 +273,11 @@ describe("NodeView", () => {
         />,
       );
       expect(
-        screen.queryByTestId("whole-model-changed-title-chip"),
-      ).not.toBeInTheDocument();
+        container.querySelectorAll('[data-testid$="-title-chip"]'),
+      ).toHaveLength(0);
       expect(
-        screen.queryByTestId("whole-model-impacted-title-chip"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByTestId("whole-model-changed-badge"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByTestId("whole-model-impacted-badge"),
-      ).not.toBeInTheDocument();
+        container.querySelectorAll('[data-testid$="-badge"]'),
+      ).toHaveLength(0);
     });
   });
 
