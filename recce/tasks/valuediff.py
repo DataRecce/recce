@@ -120,6 +120,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
         primary_key: Union[str, List[str]],
         model: str,
         columns: List[str] = None,
+        case_lookup: dict = None,
     ):
         """
         Query value diff between base and current relations.
@@ -130,6 +131,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
         :param primary_key: Single column name or list of column names for composite key.
         :param model: The model name to compare.
         :param columns: Optional list of columns to compare. If None, uses common columns.
+        :param case_lookup: Pre-built {lower(name): physical_name} lookup; built here if not provided.
         :return: ValueDiffResult with summary and per-column match data, or None if invalid.
         """
         import agate
@@ -137,12 +139,9 @@ class ValueDiffTask(Task, ValueDiffMixin):
         column_groups = {}
         composite = True if isinstance(primary_key, List) else False
 
-        # Build a {lower(physical_name): physical_name} lookup from the catalog so that
-        # user-supplied lowercase identifiers (e.g. "customer_id") are mapped to the
-        # physical name the database actually stores (e.g. "CUSTOMER_ID" on Snowflake).
-        # This must happen before get_columns() is called for the columns-list path so
-        # that the lookup covers both branches uniformly.
-        case_lookup = self._build_column_case_lookup(dbt_adapter, model)
+        # Use the caller-supplied lookup when available to avoid redundant get_columns() calls.
+        if case_lookup is None:
+            case_lookup = self._build_column_case_lookup(dbt_adapter, model)
 
         if columns is None or len(columns) == 0:
             base_columns = [column.column for column in dbt_adapter.get_columns(model, base=True)]
@@ -343,11 +342,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
             self._verify_primary_key(dbt_adapter, primary_key, model)
             self.check_cancel()
 
-            # _query_value_diff rebuilds case_lookup internally; passing the already-
-            # normalised primary_key here is a defensive duplicate that keeps both
-            # paths consistent and avoids a second get_columns() round-trip on the
-            # happy path (the internal rebuild still runs for the columns list).
-            return self._query_value_diff(dbt_adapter, primary_key, model, columns=columns)
+            return self._query_value_diff(dbt_adapter, primary_key, model, columns=columns, case_lookup=case_lookup)
 
     def cancel(self):
         super().cancel()
@@ -415,13 +410,13 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
         primary_key: Union[str, List[str]],
         model: str,
         columns: List[str] = None,
+        case_lookup: dict = None,
     ):
         composite = True if isinstance(primary_key, List) else False
 
-        # Normalise user-supplied identifiers to physical catalog names before quoting.
-        # On Snowflake (default quoting config), physical columns are stored uppercase;
-        # adapter.quote("customer_id") → '"customer_id"' which Snowflake cannot resolve.
-        case_lookup = self._build_column_case_lookup(dbt_adapter, model)
+        # Use the caller-supplied lookup when available to avoid redundant get_columns() calls.
+        if case_lookup is None:
+            case_lookup = self._build_column_case_lookup(dbt_adapter, model)
 
         if columns is None or len(columns) == 0:
             base_columns = [column.column for column in dbt_adapter.get_columns(model, base=True)]
@@ -552,7 +547,7 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
             self._verify_primary_key(dbt_adapter, primary_key, model)
             self.check_cancel()
 
-            return self._query_value_diff(dbt_adapter, primary_key, model, columns)
+            return self._query_value_diff(dbt_adapter, primary_key, model, columns, case_lookup=case_lookup)
 
     def cancel(self):
         from recce.adapter.dbt_adapter import DbtAdapter
