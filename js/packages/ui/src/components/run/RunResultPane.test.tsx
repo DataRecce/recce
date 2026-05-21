@@ -103,4 +103,39 @@ describe("RunResultPane sticky-cancel gating", () => {
       screen.getByRole("button", { name: /add to checklist/i }),
     ).toBeInTheDocument();
   });
+
+  /**
+   * Regression for the status header race observed during PR #1376 screenshot
+   * verification: even with RunView gating + same-tab broadcast in place, the
+   * RunStatusAndDateDisplay still rendered "Running" because it read run.status
+   * directly. Late waitRun polls that write Running back into the cache must
+   * not flip the visible status text once the user has cancelled locally.
+   */
+  test("status header shows Cancelled when run is in sticky cancel set (DRC-3411 race)", () => {
+    localStorage.setItem("recce:canceledRuns", JSON.stringify([RUN_ID]));
+
+    // Cache state mid-race: late waitRun poll has written `Running` back.
+    const runWithRunningStatus = {
+      run_id: RUN_ID,
+      type: "query",
+      status: "Running",
+      run_at: new Date().toISOString(),
+      // biome-ignore lint/suspicious/noExplicitAny: test fixture
+    } as any;
+
+    renderWithProviders(
+      <RunResultPane
+        runId={RUN_ID}
+        run={runWithRunningStatus}
+        isRunning
+        onAddToChecklist={vi.fn()}
+        onGoToCheck={vi.fn()}
+      />,
+    );
+
+    // Status header must read Cancelled, not Running.
+    const headerText = document.body.textContent ?? "";
+    expect(headerText).toMatch(/Cancelled/);
+    expect(headerText).not.toMatch(/Running・/);
+  });
 });

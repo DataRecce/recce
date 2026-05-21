@@ -582,8 +582,17 @@ DefaultAddToCheckButton.displayName = "DefaultAddToCheckButton";
  * Run status and date display component
  */
 const RunStatusAndDateDisplay = memo(({ run }: { run: Run }) => {
-  const statusText =
-    run.status || (run.result ? "Finished" : run.error ? "Failed" : "unknown");
+  // If the user has clicked Cancel locally for this run, treat the status as
+  // Cancelled regardless of what the cached run.status says. This guards
+  // against the in-flight `waitRun` poll race surfaced on DRC-3411 (PR #1376):
+  // a late poll can write `Running` back into the cache after the user
+  // cancels, briefly reverting the header from "Cancelled" to "Running".
+  const canceledRuns = useCanceledRuns();
+  const userCanceled = !!run.run_id && canceledRuns.has(run.run_id);
+  const statusText = userCanceled
+    ? "Cancelled"
+    : run.status ||
+      (run.result ? "Finished" : run.error ? "Failed" : "unknown");
 
   // Determine color based on status
   const getStatusColor = (status: string) => {
