@@ -2,6 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 
 const STORAGE_KEY = "recce:canceledRuns";
 const MAX_ENTRIES = 200;
+// Custom event name used to broadcast `add()` calls to other hook instances
+// in the SAME tab. The `storage` event only fires for cross-tab writes, so
+// without this, sibling components (e.g. RunView and useRun) would diverge:
+// useRun writes the runId, but RunView's hook instance keeps its old `ids`
+// state and `has(runId)` returns false. This caused the in-flight `waitRun`
+// poll to revert RunView from Cancelled back to Running on PR #1376.
+const SAME_TAB_EVENT = "recce:canceledRuns:changed";
 
 function readFromStorage(): string[] {
   if (typeof window === "undefined") return [];
@@ -55,9 +62,14 @@ export function useCanceledRuns(): UseCanceledRunsResult {
         setIds(readFromStorage());
       }
     };
+    // Same-tab cross-instance sync: when ANY hook instance calls `add()` it
+    // dispatches a custom event so sibling instances refresh from storage.
+    const onSameTab = () => setIds(readFromStorage());
     window.addEventListener("storage", onStorage);
+    window.addEventListener(SAME_TAB_EVENT, onSameTab);
     return () => {
       window.removeEventListener("storage", onStorage);
+      window.removeEventListener(SAME_TAB_EVENT, onSameTab);
     };
   }, []);
 
@@ -72,6 +84,14 @@ export function useCanceledRuns(): UseCanceledRunsResult {
           ? next.slice(next.length - MAX_ENTRIES)
           : next;
       writeToStorage(trimmed);
+      // Broadcast to other hook instances in the same tab.
+      if (typeof window !== "undefined") {
+        try {
+          window.dispatchEvent(new Event(SAME_TAB_EVENT));
+        } catch {
+          // Silently ignore — older browsers / restricted contexts.
+        }
+      }
       return trimmed;
     });
   }, []);

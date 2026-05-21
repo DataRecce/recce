@@ -61,4 +61,25 @@ describe("useCanceledRuns", () => {
     const { result } = renderHook(() => useCanceledRuns());
     expect(result.current.has("anything")).toBe(false);
   });
+
+  /**
+   * Regression: sibling hook instances in the SAME tab must observe each
+   * other's add() calls. Before the same-tab broadcast was added, RunView's
+   * useCanceledRuns kept stale `ids` after useRun.onCancel called
+   * canceledRuns.add(runId) — the `storage` event only fires cross-tab.
+   * That stale state is what allowed the in-flight waitRun poll to revert
+   * the UI from Cancelled back to Running on PR #1376.
+   */
+  test("add() broadcasts to sibling instances in the same tab", () => {
+    const { result: a } = renderHook(() => useCanceledRuns());
+    const { result: b } = renderHook(() => useCanceledRuns());
+    expect(a.current.has("run-sibling")).toBe(false);
+    expect(b.current.has("run-sibling")).toBe(false);
+    act(() => {
+      a.current.add("run-sibling");
+    });
+    // Both instances must see it.
+    expect(a.current.has("run-sibling")).toBe(true);
+    expect(b.current.has("run-sibling")).toBe(true);
+  });
 });
