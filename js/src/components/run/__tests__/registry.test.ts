@@ -15,8 +15,10 @@
 // Imports
 // ============================================================================
 
-import type { RunType } from "@datarecce/ui/api";
-import { findByRunType } from "@datarecce/ui/components/run";
+import {
+  findByRunType,
+  type RegisteredRunType,
+} from "@datarecce/ui/components/run";
 
 // ============================================================================
 // Test Suites
@@ -166,7 +168,7 @@ describe("registry", () => {
 
     describe("icon consistency", () => {
       it("all run types have icons that are functions", () => {
-        const runTypes: RunType[] = [
+        const runTypes: RegisteredRunType[] = [
           "lineage_diff",
           "schema_diff",
           "query",
@@ -196,7 +198,7 @@ describe("registry", () => {
 
     describe("title consistency", () => {
       it("all run types have non-empty string titles", () => {
-        const runTypes: RunType[] = [
+        const runTypes: RegisteredRunType[] = [
           "lineage_diff",
           "schema_diff",
           "query",
@@ -348,7 +350,7 @@ describe("registry", () => {
 
     describe("edge cases", () => {
       it("handles all valid run types without errors", () => {
-        const runTypes: RunType[] = [
+        const runTypes: RegisteredRunType[] = [
           "lineage_diff",
           "schema_diff",
           "query",
