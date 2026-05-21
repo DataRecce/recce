@@ -1619,3 +1619,46 @@ class UnresolvableCteChangeTest(unittest.TestCase):
         # partial_breaking is preserved — we don't downgrade a real partial
         # signal just because some columns are also unknown.
         assert result.category == "partial_breaking", f"expected partial_breaking, got {result.category}"
+
+    def test_breaking_cte_without_column_attribution(self):
+        """Pins behavior for a CTE whose change is category-level "breaking"
+        with no per-column attribution (e.g. DISTINCT added with the same
+        projection list, WHERE clause introduced).
+
+        This is the shape that `_unresolvable_cte_change` branch
+        `src_change.category == "breaking" and not src_change.columns`
+        was written to detect. In current code that branch is gated by the
+        outer-scope guard `change_category != "breaking"` at
+        `breaking.py:277`; the upstream propagation at `breaking.py:75-79`
+        sets the outer category to "breaking" first, so the branch never
+        fires in practice. We surface "breaking" with empty columns rather
+        than per-column "unknown".
+
+        Pinning current behavior so a future fix that broadens the loud-fail
+        to tag columns even when the outer category is already "breaking"
+        will visibly flip this assertion."""
+        original_sql = textwrap.dedent(
+            """
+            with renamed as (
+                select order_id, customer_id, w from Orders
+            )
+            select order_id, customer_id, w from renamed
+            """
+        )
+        modified_sql = textwrap.dedent(
+            """
+            with renamed as (
+                select distinct order_id, customer_id, w from Orders
+            )
+            select order_id, customer_id, w from renamed
+            """
+        )
+        result = parse_change_category(original_sql, modified_sql)
+        # The DISTINCT inside the CTE is non-deterministic w.r.t. row counts,
+        # so the outer category propagates as "breaking" via the upstream
+        # check in `_diff_select_scope`.
+        assert result.category == "breaking", f"expected breaking, got {result.category}"
+        # Outer columns are currently silent (no per-column attribution).
+        # When branch C is wired up, every outer column should surface as
+        # "unknown" — see follow-up DRC-3409 thread.
+        assert result.columns == {}, f"expected empty columns, got {result.columns}"
