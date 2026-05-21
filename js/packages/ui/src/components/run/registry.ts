@@ -93,10 +93,47 @@ export interface RunRegistry {
   lineage_diff: RegistryEntry<never>;
   schema_diff: RegistryEntry<never>;
   simple: RegistryEntry<never>;
-  // PR 1 stub (DRC-3390). Backend-only run type — feeds into schema-view
-  // cells rather than a stand-alone result view. PR 3 may add a focused
-  // result view if the design calls for one.
-  profile_distribution: RegistryEntry<never>;
+}
+
+/**
+ * Subset of {@link RunType} that has a registry entry — i.e., the user-facing
+ * run types that surface as checklist items with a title, icon, and (for
+ * most) a result view. Backend-only run types like ``profile_distribution``
+ * are deliberately *not* in this set: their results feed into other views
+ * (the schema cells) rather than rendering as stand-alone checklist runs.
+ */
+export type RegisteredRunType = keyof RunRegistry;
+
+/**
+ * Enumeration of registered run types. Iterate this (not ``RUN_TYPES``) when
+ * you need to walk every type that has a checklist-displayable entry.
+ */
+export const REGISTERED_RUN_TYPES: readonly RegisteredRunType[] = [
+  "query",
+  "query_base",
+  "query_diff",
+  "row_count",
+  "row_count_diff",
+  "profile",
+  "profile_diff",
+  "value_diff",
+  "value_diff_detail",
+  "top_k_diff",
+  "histogram_diff",
+  "lineage_diff",
+  "schema_diff",
+  "simple",
+] as const;
+
+/**
+ * Runtime guard narrowing an arbitrary {@link RunType} to a registered one.
+ * Use this when a value typed as ``RunType`` (e.g., ``check.type``) needs to
+ * be passed to {@link findByRunType}.
+ */
+export function isRegisteredRunType(
+  runType: RunType,
+): runType is RegisteredRunType {
+  return (REGISTERED_RUN_TYPES as readonly RunType[]).includes(runType);
 }
 
 // ============================================================================
@@ -202,10 +239,6 @@ export const registry: RunRegistry = {
     title: "Simple",
     icon: TbEyeEdit,
   },
-  profile_distribution: {
-    title: "Profile Distribution",
-    icon: TbChartHistogram,
-  },
 };
 
 // ============================================================================
@@ -225,7 +258,9 @@ export const registry: RunRegistry = {
  * console.log(entry.icon); // TbSql
  * ```
  */
-export function findByRunType<T extends RunType>(runType: T): RunRegistry[T] {
+export function findByRunType<T extends RegisteredRunType>(
+  runType: T,
+): RunRegistry[T] {
   return registry[runType];
 }
 
@@ -287,6 +322,6 @@ export function createRunTypeRegistry(
  */
 export function createBoundFindByRunType(
   reg: RunRegistry,
-): <T extends RunType>(runType: T) => RunRegistry[T] {
-  return <T extends RunType>(runType: T) => reg[runType];
+): <T extends RegisteredRunType>(runType: T) => RunRegistry[T] {
+  return <T extends RegisteredRunType>(runType: T) => reg[runType];
 }

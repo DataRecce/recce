@@ -18,6 +18,7 @@ import {
 } from "../api";
 import {
   findByRunType,
+  isRegisteredRunType,
   type RegistryEntry,
   type RunFormParamTypes,
   type RunFormProps,
@@ -153,7 +154,11 @@ export function RecceActionAdapter({ children }: RecceActionAdapterProps) {
           }
         }
 
-        const run = findByRunType(type as RunType);
+        const runType = type as RunType;
+        if (!isRegisteredRunType(runType)) {
+          throw new Error(`Run type ${type} does not have a result view`);
+        }
+        const run = findByRunType(runType);
         const RunResultView = run.RunResultView as
           | RegistryEntry["RunResultView"]
           | undefined;

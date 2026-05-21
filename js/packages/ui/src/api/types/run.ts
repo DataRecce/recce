@@ -431,8 +431,12 @@ export function isValidRunType(value: string): value is RunType {
 /**
  * Run types that support screenshot/ref functionality.
  * These are run types that render a visual result view with forwardRef support.
+ *
+ * Declared with ``as const satisfies readonly RunType[]`` so the literal-tuple
+ * type survives — that lets {@link runTypeHasRef} act as a true type guard
+ * narrowing to ``RunTypeWithRef`` instead of bare ``boolean``.
  */
-const RUN_TYPES_WITH_REF: readonly RunType[] = [
+const RUN_TYPES_WITH_REF = [
   "query",
   "query_base",
   "query_diff",
@@ -444,12 +448,19 @@ const RUN_TYPES_WITH_REF: readonly RunType[] = [
   "value_diff_detail",
   "top_k_diff",
   "histogram_diff",
-] as const;
+] as const satisfies readonly RunType[];
+
+/**
+ * Subset of {@link RunType} whose result view supports forwardRef. A narrower
+ * type than ``RunType`` so a positive {@link runTypeHasRef} check transitively
+ * narrows to a registered run type (every entry here also has a registry entry).
+ */
+export type RunTypeWithRef = (typeof RUN_TYPES_WITH_REF)[number];
 
 /**
  * Check if a run type supports ref forwarding (for screenshots).
  * Run types with refs can capture screenshots of their result views.
  */
-export function runTypeHasRef(runType: RunType): boolean {
-  return RUN_TYPES_WITH_REF.includes(runType);
+export function runTypeHasRef(runType: RunType): runType is RunTypeWithRef {
+  return (RUN_TYPES_WITH_REF as readonly RunType[]).includes(runType);
 }

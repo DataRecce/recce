@@ -78,6 +78,9 @@ export {
   createRunTypeRegistry,
   defaultRunTypeConfig,
   findByRunType,
+  isRegisteredRunType,
+  REGISTERED_RUN_TYPES,
+  type RegisteredRunType,
   type RunRegistry,
   registry,
 } from "./registry";
