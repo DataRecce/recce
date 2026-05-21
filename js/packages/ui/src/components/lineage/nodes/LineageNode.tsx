@@ -36,7 +36,6 @@ import {
 } from "react";
 import { DIM_FILTER } from "../config/zoomConstants";
 import {
-  formatNodeTooltip,
   getIconForChangeStatus,
   getIconForMaterialization,
   getIconForResourceType,
@@ -46,6 +45,7 @@ import { TreatmentChip } from "../TreatmentChip";
 import {
   type GraphBadgeMeta,
   getGraphBadgeMeta,
+  getTitleRowTooltip,
   type WholeModelTreatmentTokens,
   wholeModelTreatmentKind,
   wholeModelTreatmentTokens,
@@ -260,26 +260,9 @@ const KebabIcon = () => (
 // =============================================================================
 
 /**
- * Node title with tooltip
+ * Node title (name) — tooltip lives on the parent title row, not here.
  */
-function NodeTitle({
-  name,
-  color,
-  resourceType,
-  materialized,
-  extraTooltip,
-}: {
-  name: string;
-  color: string;
-  resourceType?: string;
-  materialized?: string;
-  extraTooltip?: string;
-}) {
-  const baseTooltip = formatNodeTooltip(name, resourceType, materialized);
-  const tooltipTitle = extraTooltip
-    ? `${baseTooltip} - ${extraTooltip}`
-    : baseTooltip;
-
+function NodeTitle({ name, color }: { name: string; color: string }) {
   return (
     <Box
       sx={{
@@ -290,9 +273,7 @@ function NodeTitle({
         whiteSpace: "nowrap",
       }}
     >
-      <Tooltip title={tooltipTitle} placement="top">
-        <span>{name}</span>
-      </Tooltip>
+      <span>{name}</span>
     </Box>
   );
 }
@@ -541,6 +522,19 @@ function LineageNodeComponent({
     isDark,
   );
 
+  // Shared with NodeView via getTitleRowTooltip — keep the hover text in
+  // sync across the canvas card and the sidebar.
+  const titleRowTooltip = getTitleRowTooltip(
+    { name: label, resourceType, materialized },
+    {
+      wholeModelImpact,
+      isWholeModelChanged,
+      isWholeModelImpacted,
+      isImpacted,
+      changeCategory,
+    },
+  );
+
   // When --whole-model-impact is on, the COLUMN / ADD graph badge and the
   // NodeView title chip + stripe carry the signal — suppress the text
   // label except for "unknown", which has no badge equivalent.
@@ -679,30 +673,24 @@ function LineageNodeComponent({
             flexDirection: "column",
           }}
         >
-          {/* Title row */}
-          <Box
-            sx={{
-              display: "flex",
-              width: "100%",
-              textAlign: "left",
-              fontWeight: 600,
-              flex: 1,
-              p: 0.5,
-              gap: "5px",
-              alignItems: "center",
-              visibility: showContent ? "inherit" : "hidden",
-            }}
-          >
-            <NodeTitle
-              name={label}
-              color={titleColor}
-              resourceType={resourceType}
-              materialized={materialized}
-              extraTooltip={wholeModelBadge?.meta.tooltip}
-            />
+          {/* Title row — single tooltip covers name + badge + status icons */}
+          <Tooltip title={titleRowTooltip} placement="top">
+            <Box
+              sx={{
+                display: "flex",
+                width: "100%",
+                textAlign: "left",
+                fontWeight: 600,
+                flex: 1,
+                p: 0.5,
+                gap: "5px",
+                alignItems: "center",
+                visibility: showContent ? "inherit" : "hidden",
+              }}
+            >
+              <NodeTitle name={label} color={titleColor} />
 
-            {wholeModelBadge && (
-              <Tooltip title={wholeModelBadge.meta.tooltip} placement="top">
+              {wholeModelBadge && (
                 <TreatmentChip
                   tokens={wholeModelBadge.tokens}
                   testId={wholeModelBadge.meta.testId}
@@ -710,21 +698,21 @@ function LineageNodeComponent({
                 >
                   {wholeModelBadge.meta.text}
                 </TreatmentChip>
-              </Tooltip>
-            )}
+              )}
 
-            {/* Descriptor + status — always visible */}
-            {ResourceIcon && (
-              <Box sx={{ fontSize: 16, color: iconColor }}>
-                <ResourceIcon aria-hidden="true" />
-              </Box>
-            )}
-            {changeStatus && IconChangeStatus && (
-              <Box sx={{ color: changeStatusIconColor }}>
-                <IconChangeStatus aria-hidden="true" />
-              </Box>
-            )}
-          </Box>
+              {/* Descriptor + status — always visible */}
+              {ResourceIcon && (
+                <Box sx={{ fontSize: 16, color: iconColor }}>
+                  <ResourceIcon aria-hidden="true" />
+                </Box>
+              )}
+              {changeStatus && IconChangeStatus && (
+                <Box sx={{ color: changeStatusIconColor }}>
+                  <IconChangeStatus aria-hidden="true" />
+                </Box>
+              )}
+            </Box>
+          </Tooltip>
 
           {/* Bottom row - action tags, change analysis, or runs aggregated */}
           <Box

@@ -723,22 +723,21 @@ export const cllChangeStatusBackgroundsDark: Record<
  * `.cll-experience` — keep both in sync by hand (no build-time check).
  */
 const IMPACTED_HUE_LIGHT = "252 211 77"; // matches cllChangeStatusColors.impacted
-const IMPACTED_HUE_DARK = "180 83 9";
 
 export const cllImpactedAccent = {
   light: cllChangeStatusColors.impacted,
-  dark: `rgb(${IMPACTED_HUE_DARK})`,
+  dark: `rgb(${IMPACTED_HUE_LIGHT})`,
 } as const;
 
 export const cllImpactedBadgeBg = {
   light: `rgb(${IMPACTED_HUE_LIGHT} / 0.35)`,
-  dark: `rgb(${IMPACTED_HUE_DARK} / 0.25)`,
+  dark: `rgb(${IMPACTED_HUE_LIGHT} / 0.18)`,
 } as const;
 
 export const cllImpactedBadgeFg = {
   // Text-contrast hue, not derivable from the accent.
   light: "rgb(146 64 14)",
-  dark: cllImpactedAccent.light,
+  dark: `rgb(${IMPACTED_HUE_LIGHT})`,
 } as const;
 
 /**

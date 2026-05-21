@@ -24,6 +24,7 @@
  */
 
 import type { LineageViewContextType } from "../../contexts/lineage/types";
+import type { ChangeCategory } from "./nodes";
 import {
   cllAdditiveAccent,
   cllAdditiveBadgeBg,
@@ -34,6 +35,7 @@ import {
   cllImpactedAccent,
   cllImpactedBadgeBg,
   cllImpactedBadgeFg,
+  formatNodeTooltip,
 } from "./styles";
 
 // ============================================================================
@@ -226,4 +228,55 @@ export function getTitleChipMeta(
     case "column-impacted":
       return null;
   }
+}
+
+// ============================================================================
+// Unified hover tooltip
+// ============================================================================
+
+/**
+ * Treatment-only suffix for hover tooltips. Returns the kind's user-facing
+ * label (`Whole-model change`, `Additive change`, …) or `undefined` if no
+ * treatment applies. Used by both the LineageNode card and the NodeView
+ * sidebar to keep their hover text in sync.
+ */
+export function getTreatmentTooltipSuffix(flags: {
+  wholeModelImpact: boolean;
+  isWholeModelChanged: boolean;
+  isWholeModelImpacted: boolean;
+  isImpacted: boolean;
+  changeCategory?: ChangeCategory;
+}): string | undefined {
+  if (!flags.wholeModelImpact) return undefined;
+  const kind = wholeModelTreatmentKind({
+    isWholeModelChanged: flags.isWholeModelChanged,
+    isWholeModelImpacted: flags.isWholeModelImpacted,
+    isAdditive: flags.changeCategory === "non_breaking",
+    isColumnChanged: flags.changeCategory === "partial_breaking",
+    isColumnImpacted: flags.isImpacted,
+  });
+  if (!kind) return undefined;
+  return getTitleChipMeta(kind)?.tooltip ?? getGraphBadgeMeta(kind)?.tooltip;
+}
+
+/**
+ * Full title-row tooltip used by both LineageNode and NodeView. Combines
+ * `formatNodeTooltip` ("name - kind") with the treatment suffix when one
+ * applies, producing e.g. "orders - table - Whole-model change".
+ */
+export function getTitleRowTooltip(
+  node: {
+    name: string;
+    resourceType?: string;
+    materialized?: string;
+  },
+  flags: Parameters<typeof getTreatmentTooltipSuffix>[0],
+): string {
+  const base = formatNodeTooltip(
+    node.name,
+    node.resourceType,
+    node.materialized,
+  );
+  const suffix = getTreatmentTooltipSuffix(flags);
+  return suffix ? `${base} - ${suffix}` : base;
 }

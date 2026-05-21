@@ -339,6 +339,7 @@ export function NodeViewOss({
       isWholeModelChanged={wholeModelFlags.isWholeModelChanged}
       isWholeModelImpacted={wholeModelFlags.isWholeModelImpacted}
       wholeModelImpact={lineageViewCtx?.wholeModelImpact ?? false}
+      isImpacted={impactedNodeIds?.has(node.id) ?? false}
       modelDetail={(() => {
         if (!modelDetail) return undefined;
         const hasBase =

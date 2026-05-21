@@ -4,7 +4,6 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
-import { useTheme } from "@mui/material/styles";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import MuiTooltip from "@mui/material/Tooltip";
@@ -16,13 +15,14 @@ import {
   useState,
 } from "react";
 import { IoClose } from "react-icons/io5";
-
 import type { NodeData } from "../../api/info";
 import { DisableTooltipMessages } from "../../constants";
-import { formatNodeTooltip } from "./styles";
+import { useThemeColors } from "../../hooks";
+import type { ChangeCategory } from "./nodes";
 import { TreatmentChip } from "./TreatmentChip";
 import {
   getTitleChipMeta,
+  getTitleRowTooltip,
   type TitleChipMeta,
   type WholeModelTreatmentKind,
   type WholeModelTreatmentTokens,
@@ -218,6 +218,8 @@ export interface NodeViewProps<
   isWholeModelImpacted?: boolean;
   /** Whether the `--whole-model-impact` server flag is on. When false, no whole-model UI renders (no title chip, no left stripe). */
   wholeModelImpact?: boolean;
+  /** This model is downstream of any breaking change. Only feeds the title-row hover tooltip (column-impacted kind) — no visual chip in NodeView. */
+  isImpacted?: boolean;
 }
 
 // =============================================================================
@@ -633,6 +635,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
   isWholeModelChanged = false,
   isWholeModelImpacted = false,
   wholeModelImpact = false,
+  isImpacted = false,
   rowCountDisplay,
 }: NodeViewProps<TNode>) {
   const withColumns =
@@ -667,8 +670,9 @@ export function NodeView<TNode extends NodeViewNodeData>({
     actionCallbacks?.onAddSchemaDiffClick != null;
   const SchemaDiffIcon = runTypeIcons?.schema_diff ?? DefaultIcon;
 
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  // useTheme().palette.mode === "dark" does NOT work with this codebase's
+  // MUI colorSchemes setup — useThemeColors() is the correct accessor.
+  const { isDark } = useThemeColors();
   // NodeView only paints whole-model kinds (changed, impacted). The other
   // kinds (additive, column-changed, column-impacted) are signalled by the
   // LineageNode graph badge — `getTitleChipMeta` returns null for them, so
@@ -701,14 +705,22 @@ export function NodeView<TNode extends NodeViewNodeData>({
         }}
       >
         {(() => {
-          const baseTooltip = formatNodeTooltip(
-            node.data.name,
-            node.data.resourceType,
-            node.data.materialized,
+          const tooltipText = getTitleRowTooltip(
+            {
+              name: node.data.name,
+              resourceType: node.data.resourceType,
+              materialized: node.data.materialized,
+            },
+            {
+              wholeModelImpact,
+              isWholeModelChanged,
+              isWholeModelImpacted,
+              isImpacted,
+              changeCategory: node.data.change?.category as
+                | ChangeCategory
+                | undefined,
+            },
           );
-          const tooltipText = titleChip
-            ? `${baseTooltip} - ${titleChip.meta.tooltip}`
-            : baseTooltip;
           return (
             <MuiTooltip title={tooltipText} placement="top">
               {titleChip ? (
