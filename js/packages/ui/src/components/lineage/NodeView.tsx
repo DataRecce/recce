@@ -68,7 +68,6 @@ export interface RunTypeIconMap {
   top_k_diff?: ComponentType<{ fontSize?: string }>;
   histogram_diff?: ComponentType<{ fontSize?: string }>;
   schema_diff?: ComponentType<{ fontSize?: string }>;
-  sandbox?: ComponentType<{ fontSize?: string }>;
 }
 
 /**
@@ -79,6 +78,11 @@ export interface SchemaViewProps {
   current?: NodeData;
   columnChanges?: Record<string, "added" | "removed" | "modified"> | null;
   onViewCode?: () => void;
+  /**
+   * Optional action element rendered alongside the schema legend (e.g.
+   * "Add schema diff to checklist" button). Diff mode only.
+   */
+  headerAction?: ReactNode;
 }
 
 /**
@@ -102,15 +106,6 @@ export interface NotificationComponentProps {
 export interface ConnectionPopoverWrapperProps {
   display: boolean;
   children: ReactNode;
-}
-
-/**
- * Props for the SandboxDialog component.
- */
-export interface SandboxDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  current?: NodeData;
 }
 
 /**
@@ -138,8 +133,6 @@ export interface NodeViewActionCallbacks {
   onHistogramDiffClick?: () => void;
   /** Called when Add Schema Diff button is clicked */
   onAddSchemaDiffClick?: () => void;
-  /** Called when Sandbox button is clicked */
-  onSandboxClick?: () => void;
 }
 
 /**
@@ -190,18 +183,18 @@ export interface NodeViewProps<
   SingleEnvSchemaView?: ComponentType<SingleEnvSchemaViewProps>;
   /** Node SQL view component */
   NodeSqlView?: ComponentType<{ node: TNode }>;
-  /** Row count diff tag component */
-  RowCountDiffTag?: ComponentType<{ node: TNode; onRefresh?: () => void }>;
-  /** Row count tag component (single env) */
-  RowCountTag?: ComponentType<{ node: TNode; onRefresh?: () => void }>;
-  /** Resource type tag component */
+  /** Resource type tag component (rendered in the header row) */
   ResourceTypeTag?: ComponentType<{ node: TNode }>;
   /** Notification component for single env mode */
   NotificationComponent?: ComponentType<NotificationComponentProps>;
   /** Wrapper component for buttons that need connection popover */
   ConnectionPopoverWrapper?: ComponentType<ConnectionPopoverWrapperProps>;
-  /** Sandbox dialog component */
-  SandboxDialog?: ComponentType<SandboxDialogProps>;
+  /**
+   * Optional inline display rendered after "Row Count" on the row count
+   * action button (e.g. "N/A → 280,844 rows" with delta arrow). Omit when
+   * no row-count data is available yet.
+   */
+  rowCountDisplay?: ReactNode;
 
   // =========================================================================
   // DEPENDENCY INJECTION: Icons
@@ -286,6 +279,7 @@ interface SingleEnvActionButtonsProps {
   actionCallbacks?: NodeViewActionCallbacks;
   runTypeIcons?: RunTypeIconMap;
   isActionAvailable: (runType: string) => boolean;
+  rowCountDisplay?: ReactNode;
 }
 
 function SingleEnvActionButtons({
@@ -293,6 +287,7 @@ function SingleEnvActionButtons({
   actionCallbacks,
   runTypeIcons,
   isActionAvailable,
+  rowCountDisplay,
 }: SingleEnvActionButtonsProps) {
   const isAddedOrRemoved =
     node.data.changeStatus === "added" || node.data.changeStatus === "removed";
@@ -329,6 +324,7 @@ function SingleEnvActionButtons({
         sx={{ textTransform: "none" }}
       >
         Row Count
+        {rowCountDisplay != null && <>:&nbsp;{rowCountDisplay}</>}
       </Button>
       <MuiTooltip
         title={getDisableReason(isAddedOrRemoved, "profile", isActionAvailable)}
@@ -352,62 +348,27 @@ function SingleEnvActionButtons({
   );
 }
 
-interface ExploreHeaderButtonsProps {
-  node: NodeViewNodeData;
-  actionCallbacks?: NodeViewActionCallbacks;
-  runTypeIcons?: RunTypeIconMap;
-  featureToggles?: NodeViewProps["featureToggles"];
-  ConnectionPopoverWrapper: ComponentType<{
-    display: boolean;
-    children: ReactNode;
-  }>;
+/**
+ * "Add schema diff to checklist" button — rendered inside the Columns tab
+ * next to the schema legend (not in the header row).
+ */
+interface AddSchemaDiffButtonProps {
+  onClick?: () => void;
+  Icon: ComponentType<{ fontSize?: string }>;
 }
 
-function ExploreHeaderButtons({
-  actionCallbacks,
-  runTypeIcons,
-  featureToggles,
-  ConnectionPopoverWrapper,
-}: ExploreHeaderButtonsProps) {
-  const metadataOnly = featureToggles?.mode === "metadata only";
-
-  const SchemaDiffIcon = runTypeIcons?.schema_diff ?? DefaultIcon;
-  const SandboxIcon = runTypeIcons?.sandbox ?? DefaultIcon;
-
+function AddSchemaDiffButton({ onClick, Icon }: AddSchemaDiffButtonProps) {
   return (
-    <Stack
-      direction="row"
-      sx={{
-        alignItems: "center",
-        flexWrap: "wrap",
-        gap: 1,
-        mr: 1,
-      }}
+    <Button
+      size="xsmall"
+      variant="outlined"
+      color="neutral"
+      startIcon={<Icon fontSize="small" />}
+      onClick={onClick}
+      sx={{ textTransform: "none" }}
     >
-      <Button
-        size="xsmall"
-        variant="outlined"
-        color="neutral"
-        startIcon={<SchemaDiffIcon fontSize="small" />}
-        onClick={actionCallbacks?.onAddSchemaDiffClick}
-        sx={{ textTransform: "none" }}
-      >
-        Add schema diff to checklist
-      </Button>
-      <ConnectionPopoverWrapper display={metadataOnly}>
-        <Button
-          size="xsmall"
-          variant="outlined"
-          color="neutral"
-          startIcon={<SandboxIcon fontSize="small" />}
-          onClick={actionCallbacks?.onSandboxClick}
-          disabled={featureToggles?.disableDatabaseQuery}
-          sx={{ textTransform: "none" }}
-        >
-          Sandbox
-        </Button>
-      </ConnectionPopoverWrapper>
-    </Stack>
+      Add schema diff to checklist
+    </Button>
   );
 }
 
@@ -421,6 +382,7 @@ interface DiffActionButtonsProps {
     display: boolean;
     children: ReactNode;
   }>;
+  rowCountDisplay?: ReactNode;
 }
 
 function DiffActionButtons({
@@ -430,6 +392,7 @@ function DiffActionButtons({
   featureToggles,
   isActionAvailable,
   ConnectionPopoverWrapper,
+  rowCountDisplay,
 }: DiffActionButtonsProps) {
   const metadataOnly = featureToggles?.mode === "metadata only";
   const isAddedOrRemoved =
@@ -506,6 +469,7 @@ function DiffActionButtons({
             sx={{ textTransform: "none" }}
           >
             Row Count
+            {rowCountDisplay != null && <>:&nbsp;{rowCountDisplay}</>}
           </Button>
         </ConnectionPopoverWrapper>
         {wrapButton(
@@ -658,12 +622,9 @@ export function NodeView<TNode extends NodeViewNodeData>({
   SchemaView,
   SingleEnvSchemaView,
   NodeSqlView,
-  RowCountDiffTag,
-  RowCountTag,
   ResourceTypeTag,
   NotificationComponent,
   ConnectionPopoverWrapper = DefaultConnectionWrapper,
-  SandboxDialog,
   // Injected icons
   runTypeIcons,
   // Injected callbacks
@@ -672,6 +633,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
   isWholeModelChanged = false,
   isWholeModelImpacted = false,
   wholeModelImpact = false,
+  rowCountDisplay,
 }: NodeViewProps<TNode>) {
   const withColumns =
     node.data.resourceType === "model" ||
@@ -679,7 +641,6 @@ export function NodeView<TNode extends NodeViewNodeData>({
     node.data.resourceType === "source" ||
     node.data.resourceType === "snapshot";
 
-  const [isSandboxOpen, setIsSandboxOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(true);
   const [tabValue, setTabValue] = useState(0);
 
@@ -700,14 +661,11 @@ export function NodeView<TNode extends NodeViewNodeData>({
     node.data.resourceType === "seed" ||
     node.data.resourceType === "snapshot";
 
-  // Extended callbacks that include sandbox open
-  const extendedCallbacks: NodeViewActionCallbacks = {
-    ...actionCallbacks,
-    onSandboxClick: () => {
-      actionCallbacks?.onSandboxClick?.();
-      setIsSandboxOpen(true);
-    },
-  };
+  const showAddSchemaDiff =
+    !isSingleEnv &&
+    isModelSeedOrSnapshot &&
+    actionCallbacks?.onAddSchemaDiffClick != null;
+  const SchemaDiffIcon = runTypeIcons?.schema_diff ?? DefaultIcon;
 
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -719,10 +677,6 @@ export function NodeView<TNode extends NodeViewNodeData>({
     { wholeModelImpact, isWholeModelChanged, isWholeModelImpacted },
     isDark,
   );
-
-  const columnsTabIndex = 0;
-  const codeTabIndex = 1;
-  const lineageTabIndex = lineageTabContent ? 2 : -1;
 
   return (
     <Box
@@ -736,105 +690,84 @@ export function NodeView<TNode extends NodeViewNodeData>({
         }),
       }}
     >
-      {/* Header row: name + close button */}
+      {/* Header row: name, type tag, close button */}
       <Stack
         direction="row"
         sx={{
           alignItems: "center",
+          px: 2,
+          py: 1.5,
+          gap: 1,
         }}
       >
-        <Box
-          sx={{
-            flex: "1 1 auto",
-            p: 2,
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            minWidth: 0,
-          }}
-        >
-          {(() => {
-            const baseTooltip = formatNodeTooltip(
-              node.data.name,
-              node.data.resourceType,
-              node.data.materialized,
-            );
-            const tooltipText = titleChip
-              ? `${baseTooltip} - ${titleChip.meta.tooltip}`
-              : baseTooltip;
-            return (
-              <MuiTooltip title={tooltipText} placement="top">
-                {titleChip ? (
-                  <TreatmentChip
-                    tokens={titleChip.tokens}
-                    variant="titleChip"
-                    testId={`whole-model-${titleChip.kind}-title-chip`}
-                    ariaLabel={titleChip.meta.ariaLabel}
-                  >
-                    <Typography
-                      variant="subtitle1"
-                      component="span"
-                      className="no-track-pii-safe"
-                      sx={{
-                        fontWeight: 600,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        color: "inherit",
-                      }}
-                    >
-                      {node.data.name}
-                    </Typography>
-                  </TreatmentChip>
-                ) : (
+        {(() => {
+          const baseTooltip = formatNodeTooltip(
+            node.data.name,
+            node.data.resourceType,
+            node.data.materialized,
+          );
+          const tooltipText = titleChip
+            ? `${baseTooltip} - ${titleChip.meta.tooltip}`
+            : baseTooltip;
+          return (
+            <MuiTooltip title={tooltipText} placement="top">
+              {titleChip ? (
+                <TreatmentChip
+                  tokens={titleChip.tokens}
+                  variant="titleChip"
+                  testId={`whole-model-${titleChip.kind}-title-chip`}
+                  ariaLabel={titleChip.meta.ariaLabel}
+                  sx={{
+                    flex: "0 1 auto",
+                    mr: "auto",
+                    minWidth: 0,
+                  }}
+                >
                   <Typography
-                    component="span"
                     variant="subtitle1"
+                    component="span"
                     className="no-track-pii-safe"
-                    sx={{ fontWeight: 600 }}
+                    sx={{
+                      fontWeight: 600,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      color: "inherit",
+                    }}
                   >
                     {node.data.name}
                   </Typography>
-                )}
-              </MuiTooltip>
-            );
-          })()}
-        </Box>
-        {!isSingleEnv && isModelSeedOrSnapshot && (
-          <ExploreHeaderButtons
-            node={node}
-            actionCallbacks={extendedCallbacks}
-            runTypeIcons={runTypeIcons}
-            featureToggles={featureToggles}
-            ConnectionPopoverWrapper={ConnectionPopoverWrapper}
-          />
+                </TreatmentChip>
+              ) : (
+                <Typography
+                  component="span"
+                  variant="subtitle1"
+                  className="no-track-pii-safe"
+                  sx={{
+                    fontWeight: 600,
+                    flex: "0 1 auto",
+                    mr: "auto",
+                    minWidth: 0,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {node.data.name}
+                </Typography>
+              )}
+            </MuiTooltip>
+          );
+        })()}
+        {ResourceTypeTag && (
+          <Box sx={{ color: "text.secondary", flexShrink: 0 }}>
+            <ResourceTypeTag node={node} />
+          </Box>
         )}
-        <Box sx={{ flex: "0 1 1%" }}>
-          <IconButton size="small" onClick={onCloseNode}>
-            <IoClose />
-          </IconButton>
-        </Box>
+        <IconButton size="small" onClick={onCloseNode} sx={{ flexShrink: 0 }}>
+          <IoClose />
+        </IconButton>
       </Stack>
-      {/* Tags row: resource type, row count */}
-      <Box sx={{ color: "text.secondary", pl: 2 }}>
-        <Stack direction="row" spacing={1}>
-          {ResourceTypeTag && <ResourceTypeTag node={node} />}
-          {isModelSeedOrSnapshot &&
-            (isSingleEnv
-              ? RowCountTag && (
-                  <RowCountTag
-                    node={node}
-                    onRefresh={actionCallbacks?.onRowCountClick}
-                  />
-                )
-              : RowCountDiffTag && (
-                  <RowCountDiffTag
-                    node={node}
-                    onRefresh={actionCallbacks?.onRowCountDiffClick}
-                  />
-                ))}
-        </Stack>
-      </Box>
       {/* Action buttons row */}
       {isModelSeedOrSnapshot && (
         <Box sx={{ pl: 2, py: 1 }}>
@@ -844,15 +777,17 @@ export function NodeView<TNode extends NodeViewNodeData>({
               actionCallbacks={actionCallbacks}
               runTypeIcons={runTypeIcons}
               isActionAvailable={isActionAvailable}
+              rowCountDisplay={rowCountDisplay}
             />
           ) : (
             <DiffActionButtons
               node={node}
-              actionCallbacks={extendedCallbacks}
+              actionCallbacks={actionCallbacks}
               runTypeIcons={runTypeIcons}
               featureToggles={featureToggles}
               isActionAvailable={isActionAvailable}
               ConnectionPopoverWrapper={ConnectionPopoverWrapper}
+              rowCountDisplay={rowCountDisplay}
             />
           )}
         </Box>
@@ -882,107 +817,116 @@ export function NodeView<TNode extends NodeViewNodeData>({
             </Box>
           )}
 
-          {/* Tabs — "Columns" is always index 0 (default landing tab). DRC-3468. */}
-          <Tabs
-            value={tabValue}
-            onChange={(_, newValue) => setTabValue(newValue)}
-            sx={{ borderBottom: 1, borderColor: "divider" }}
-          >
-            <Tab
-              label={
-                <Box
-                  component="span"
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.75,
-                  }}
+          {/* Tabs — "Columns" is always index 0 (default landing tab) */}
+          {(() => {
+            const columnsTabIndex = 0;
+            const codeTabIndex = 1;
+            const lineageTabIndex = lineageTabContent ? 2 : -1;
+            return (
+              <>
+                <Tabs
+                  value={tabValue}
+                  onChange={(_, newValue) => setTabValue(newValue)}
+                  sx={{ borderBottom: 1, borderColor: "divider" }}
                 >
-                  Columns
-                  {hasSchemaChanges && (
-                    <Box
-                      component="span"
-                      sx={{
-                        color: "amber.main",
-                        fontSize: "0.5rem",
-                        lineHeight: 1,
-                      }}
-                    >
-                      ●
-                    </Box>
-                  )}
-                </Box>
-              }
-            />
-            <Tab
-              label={
-                <Box
-                  component="span"
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.75,
-                  }}
-                >
-                  Code
-                  {hasCodeChanges && (
-                    <Box
-                      component="span"
-                      sx={{
-                        color: "amber.main",
-                        fontSize: "0.5rem",
-                        lineHeight: 1,
-                      }}
-                    >
-                      ●
-                    </Box>
-                  )}
-                </Box>
-              }
-            />
-            {lineageTabContent && <Tab label="Lineage" />}
-          </Tabs>
+                  <Tab
+                    label={
+                      <Box
+                        component="span"
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.75,
+                        }}
+                      >
+                        Columns
+                        {hasSchemaChanges && (
+                          <Box
+                            component="span"
+                            sx={{
+                              color: "amber.main",
+                              fontSize: "0.5rem",
+                              lineHeight: 1,
+                            }}
+                          >
+                            ●
+                          </Box>
+                        )}
+                      </Box>
+                    }
+                  />
+                  <Tab
+                    label={
+                      <Box
+                        component="span"
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.75,
+                        }}
+                      >
+                        Code
+                        {hasCodeChanges && (
+                          <Box
+                            component="span"
+                            sx={{
+                              color: "amber.main",
+                              fontSize: "0.5rem",
+                              lineHeight: 1,
+                            }}
+                          >
+                            ●
+                          </Box>
+                        )}
+                      </Box>
+                    }
+                  />
+                  {lineageTabContent && <Tab label="Lineage" />}
+                </Tabs>
 
-          {/* Tab panels. The 48px subtracted below must match MUI's default
-              Tabs height — natural sizing was tried and caused a layout
-              regression because the calc-coupled container is brittle. */}
-          <Box sx={{ overflow: "auto", height: "calc(100% - 48px)" }}>
-            <TabPanel value={tabValue} index={columnsTabIndex}>
-              <Box sx={{ overflowY: "auto", height: "100%" }}>
-                {isSingleEnv
-                  ? SingleEnvSchemaView && (
-                      <SingleEnvSchemaView current={current} />
-                    )
-                  : SchemaView && (
-                      <SchemaView
-                        base={base}
-                        current={current}
-                        columnChanges={node.data.change?.columns}
-                        onViewCode={() => setTabValue(codeTabIndex)}
-                      />
-                    )}
-              </Box>
-            </TabPanel>
-            <TabPanel value={tabValue} index={codeTabIndex}>
-              <Box sx={{ height: "100%" }}>
-                {NodeSqlView && <NodeSqlView node={node} />}
-              </Box>
-            </TabPanel>
-            {lineageTabContent && (
-              <TabPanel value={tabValue} index={lineageTabIndex}>
-                <Box sx={{ height: "100%" }}>{lineageTabContent}</Box>
-              </TabPanel>
-            )}
-          </Box>
+                {/* Tab panels */}
+                <Box sx={{ overflow: "auto", height: "calc(100% - 48px)" }}>
+                  <TabPanel value={tabValue} index={columnsTabIndex}>
+                    <Box sx={{ overflowY: "auto", height: "100%" }}>
+                      {isSingleEnv
+                        ? SingleEnvSchemaView && (
+                            <SingleEnvSchemaView current={current} />
+                          )
+                        : SchemaView && (
+                            <SchemaView
+                              base={base}
+                              current={current}
+                              columnChanges={node.data.change?.columns}
+                              onViewCode={() => setTabValue(codeTabIndex)}
+                              headerAction={
+                                showAddSchemaDiff ? (
+                                  <AddSchemaDiffButton
+                                    onClick={
+                                      actionCallbacks?.onAddSchemaDiffClick
+                                    }
+                                    Icon={SchemaDiffIcon}
+                                  />
+                                ) : undefined
+                              }
+                            />
+                          )}
+                    </Box>
+                  </TabPanel>
+                  <TabPanel value={tabValue} index={codeTabIndex}>
+                    <Box sx={{ height: "100%" }}>
+                      {NodeSqlView && <NodeSqlView node={node} />}
+                    </Box>
+                  </TabPanel>
+                  {lineageTabContent && (
+                    <TabPanel value={tabValue} index={lineageTabIndex}>
+                      <Box sx={{ height: "100%" }}>{lineageTabContent}</Box>
+                    </TabPanel>
+                  )}
+                </Box>
+              </>
+            );
+          })()}
         </Box>
-      )}
-      {/* Sandbox dialog */}
-      {SandboxDialog && (
-        <SandboxDialog
-          isOpen={isSandboxOpen}
-          onClose={() => setIsSandboxOpen(false)}
-          current={current}
-        />
       )}
     </Box>
   );
