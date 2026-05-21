@@ -753,49 +753,52 @@ export function NodeView<TNode extends NodeViewNodeData>({
             minWidth: 0,
           }}
         >
-          {titleChip ? (
-            <MuiTooltip title={titleChip.meta.tooltip} placement="top">
-              <TreatmentChip
-                tokens={titleChip.tokens}
-                variant="titleChip"
-                testId={`whole-model-${titleChip.kind}-title-chip`}
-                ariaLabel={titleChip.meta.ariaLabel}
-              >
-                <Typography
-                  variant="subtitle1"
-                  component="span"
-                  className="no-track-pii-safe"
-                  sx={{
-                    fontWeight: 600,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    color: "inherit",
-                  }}
-                >
-                  {node.data.name}
-                </Typography>
-              </TreatmentChip>
-            </MuiTooltip>
-          ) : (
-            <MuiTooltip
-              title={formatNodeTooltip(
-                node.data.name,
-                node.data.resourceType,
-                node.data.materialized,
-              )}
-              placement="top"
-            >
-              <Typography
-                component="span"
-                variant="subtitle1"
-                className="no-track-pii-safe"
-                sx={{ fontWeight: 600 }}
-              >
-                {node.data.name}
-              </Typography>
-            </MuiTooltip>
-          )}
+          {(() => {
+            const baseTooltip = formatNodeTooltip(
+              node.data.name,
+              node.data.resourceType,
+              node.data.materialized,
+            );
+            const tooltipText = titleChip
+              ? `${baseTooltip} - ${titleChip.meta.tooltip}`
+              : baseTooltip;
+            return (
+              <MuiTooltip title={tooltipText} placement="top">
+                {titleChip ? (
+                  <TreatmentChip
+                    tokens={titleChip.tokens}
+                    variant="titleChip"
+                    testId={`whole-model-${titleChip.kind}-title-chip`}
+                    ariaLabel={titleChip.meta.ariaLabel}
+                  >
+                    <Typography
+                      variant="subtitle1"
+                      component="span"
+                      className="no-track-pii-safe"
+                      sx={{
+                        fontWeight: 600,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        color: "inherit",
+                      }}
+                    >
+                      {node.data.name}
+                    </Typography>
+                  </TreatmentChip>
+                ) : (
+                  <Typography
+                    component="span"
+                    variant="subtitle1"
+                    className="no-track-pii-safe"
+                    sx={{ fontWeight: 600 }}
+                  >
+                    {node.data.name}
+                  </Typography>
+                )}
+              </MuiTooltip>
+            );
+          })()}
         </Box>
         {!isSingleEnv && isModelSeedOrSnapshot && (
           <ExploreHeaderButtons
