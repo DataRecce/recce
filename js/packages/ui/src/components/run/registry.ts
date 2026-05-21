@@ -92,7 +92,6 @@ export interface RunRegistry {
   histogram_diff: RegistryEntry<HTMLDivElement>;
   lineage_diff: RegistryEntry<never>;
   schema_diff: RegistryEntry<never>;
-  sandbox: RegistryEntry<never>;
   simple: RegistryEntry<never>;
 }
 
@@ -194,10 +193,6 @@ export const registry: RunRegistry = {
     RunResultView:
       HistogramDiffResultView as RegistryEntry<HTMLDivElement>["RunResultView"],
     RunForm: HistogramDiffForm,
-  },
-  sandbox: {
-    title: "Sandbox",
-    icon: TbEyeEdit,
   },
   simple: {
     title: "Simple",
