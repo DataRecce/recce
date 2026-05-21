@@ -66,6 +66,7 @@ import { forwardRef } from "react";
 
 import type { Run } from "../../api";
 import { useIsDark } from "../../hooks";
+import { useCanceledRuns } from "../../hooks/useCanceledRuns";
 import type { RunResultViewProps } from "./types";
 
 // ============================================================================
@@ -190,7 +191,10 @@ export interface RunViewProps {
  *
  * States:
  * 1. **Error state**: Shows error message from API response or run.error
- * 2. **Cancelled state**: Shows terminal "Cancelled" indicator when run.status === "Cancelled"
+ * 2. **Cancelled state**: Shows terminal "Cancelled" indicator when
+ *    `run.status === "Cancelled"` OR when the user already clicked Cancel for
+ *    this `run_id` (tracked in `useCanceledRuns`). The second case guards
+ *    against late `Running` writes from in-flight `waitRun` polls (DRC-3411).
  * 3. **Running state**: Shows loading spinner with progress and cancel button
  * 4. **Loading state**: Shows spinner when run is undefined
  * 5. **Result state**: Renders RunResultView or children with run results
@@ -229,9 +233,20 @@ export const RunView = forwardRef<unknown, RunViewProps>(function RunView(
   ref,
 ) {
   const isDark = useIsDark();
+  const canceledRuns = useCanceledRuns();
   const errorMessage =
     (error as ApiError | undefined)?.response?.data?.detail ?? run?.error;
-  const isCancelled = run?.status === "Cancelled";
+  // A run is treated as cancelled when:
+  //   1. The backend has acknowledged the cancel (run.status === "Cancelled"), OR
+  //   2. The user has clicked Cancel locally (run_id present in useCanceledRuns).
+  //
+  // The second branch guards against the race surfaced on PR #1376 / DRC-3411:
+  // an in-flight `waitRun` poll can resolve after the user clicks Cancel and
+  // write `Running` back into the React Query cache, briefly flipping the UI
+  // back to Running. By gating the Running render on userCanceled below we
+  // ignore those late "Running" writes for runs the user already cancelled.
+  const isUserCanceled = run?.run_id != null && canceledRuns.has(run.run_id);
+  const isCancelled = run?.status === "Cancelled" || isUserCanceled;
 
   // ============================================================================
   // Error State
@@ -282,7 +297,10 @@ export const RunView = forwardRef<unknown, RunViewProps>(function RunView(
   // ============================================================================
   // Running State
   // ============================================================================
-  if (isRunning || run?.status === "Running") {
+  // Note: isUserCanceled is already handled above (isCancelled short-circuits),
+  // but we also exclude it here defensively so a parent passing `isRunning`
+  // explicitly cannot override the Cancelled render for this run.
+  if ((isRunning || run?.status === "Running") && !isUserCanceled) {
     let loadingMessage = "Loading...";
     if (progress?.message) {
       loadingMessage = progress.message;
