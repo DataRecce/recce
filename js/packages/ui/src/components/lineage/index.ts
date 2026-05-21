@@ -58,17 +58,6 @@ export {
   type RunTypeIconMap,
 } from "./NodeView";
 export * from "./nodes";
-// Sandbox view component with dependency-injected editors and forms
-export {
-  type SandboxDiffEditorProps,
-  type SandboxNodeData,
-  type SandboxQueryFormProps,
-  type SandboxRunResultPaneProps,
-  type SandboxTrackingCallbacks,
-  SandboxView as BaseSandboxView,
-  type SandboxViewProps as BaseSandboxViewProps,
-} from "./SandboxView";
-export { SandboxViewOss } from "./SandboxViewOss";
 // Server disconnected modal components
 export {
   type LinkComponentProps,
