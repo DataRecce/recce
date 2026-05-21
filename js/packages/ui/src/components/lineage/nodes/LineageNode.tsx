@@ -42,14 +42,7 @@ import {
   getStyleForImpacted,
 } from "../styles";
 import { TreatmentChip } from "../TreatmentChip";
-import {
-  type GraphBadgeMeta,
-  getGraphBadgeMeta,
-  getTitleRowTooltip,
-  type WholeModelTreatmentTokens,
-  wholeModelTreatmentKind,
-  wholeModelTreatmentTokens,
-} from "../wholeModelTreatment";
+import { getTitleRowTooltip, pickGraphBadge } from "../wholeModelTreatment";
 
 // =============================================================================
 // TYPES
@@ -162,7 +155,7 @@ export interface LineageNodeProps {
   isImpacted?: boolean;
   /** This model itself has a whole-model change. Suppresses the graph badge (the signal lives on NodeView's title chip + stripe) and the change-category text label. */
   isWholeModelChanged?: boolean;
-  /** This model is downstream of (impacted by) a whole-model change. Suppresses the graph badge (the signal lives on NodeView's title chip + stripe) and the change-category text label. Consumer must enforce changed-wins (zero this when isWholeModelChanged is true) via pickWholeModelFlags. */
+  /** This model is downstream of (impacted by) a whole-model change. Suppresses the graph badge (the signal lives on NodeView's title chip + stripe) and the change-category text label. Precedence is enforced internally: `isWholeModelChanged` outranks this flag. */
   isWholeModelImpacted?: boolean;
   /** Whether the `--whole-model-impact` server flag is on. When false, no per-column badges render and the original "Breaking / Non Breaking / Partial Breaking" text labels are restored. */
   wholeModelImpact?: boolean;
@@ -190,49 +183,6 @@ const CHANGE_CATEGORY_LABELS: Record<ChangeCategory, string> = {
 };
 
 const DEFAULT_COLUMN_HEIGHT = 28;
-
-// =============================================================================
-// HELPER FUNCTIONS
-// =============================================================================
-
-interface LineageNodeBadgeResolution {
-  meta: GraphBadgeMeta;
-  tokens: WholeModelTreatmentTokens;
-}
-
-/**
- * Resolve the per-column graph badge for a LineageNode. Returns `null` when
- * the node has no badge — either because `--whole-model-impact` is off,
- * no treatment applies, or the kind is a whole-model kind (changed /
- * impacted) which is signalled on NodeView's title chip + stripe instead.
- *
- * `wholeModelTreatmentKind` enforces changed-wins precedence, so the input
- * `isAdditive` / `isColumnChanged` / `isColumnImpacted` flags don't need
- * to be guarded against the whole-model flags.
- */
-function resolveLineageNodeBadge(
-  inputs: {
-    wholeModelImpact: boolean;
-    isWholeModelChanged: boolean;
-    isWholeModelImpacted: boolean;
-    isImpacted: boolean;
-    changeCategory?: ChangeCategory;
-  },
-  isDark: boolean,
-): LineageNodeBadgeResolution | null {
-  if (!inputs.wholeModelImpact) return null;
-  const kind = wholeModelTreatmentKind({
-    isWholeModelChanged: inputs.isWholeModelChanged,
-    isWholeModelImpacted: inputs.isWholeModelImpacted,
-    isAdditive: inputs.changeCategory === "non_breaking",
-    isColumnChanged: inputs.changeCategory === "partial_breaking",
-    isColumnImpacted: inputs.isImpacted,
-  });
-  if (!kind) return null;
-  const meta = getGraphBadgeMeta(kind);
-  if (!meta) return null;
-  return { meta, tokens: wholeModelTreatmentTokens(kind, isDark) };
-}
 
 // =============================================================================
 // ICONS
@@ -511,28 +461,20 @@ function LineageNodeComponent({
     onContextMenu?.(e, id);
   };
 
-  const wholeModelBadge = resolveLineageNodeBadge(
-    {
-      wholeModelImpact,
-      isWholeModelChanged,
-      isWholeModelImpacted,
-      isImpacted,
-      changeCategory,
-    },
-    isDark,
-  );
+  const treatmentInputs = {
+    wholeModelImpact,
+    isWholeModelChanged,
+    isWholeModelImpacted,
+    isImpacted,
+    changeCategory,
+  };
+  const wholeModelBadge = pickGraphBadge(treatmentInputs, isDark);
 
   // Shared with NodeView via getTitleRowTooltip — keep the hover text in
   // sync across the canvas card and the sidebar.
   const titleRowTooltip = getTitleRowTooltip(
     { name: label, resourceType, materialized },
-    {
-      wholeModelImpact,
-      isWholeModelChanged,
-      isWholeModelImpacted,
-      isImpacted,
-      changeCategory,
-    },
+    treatmentInputs,
   );
 
   // When --whole-model-impact is on, the COLUMN / ADD graph badge and the
@@ -693,10 +635,10 @@ function LineageNodeComponent({
               {wholeModelBadge && (
                 <TreatmentChip
                   tokens={wholeModelBadge.tokens}
-                  testId={wholeModelBadge.meta.testId}
-                  ariaLabel={wholeModelBadge.meta.ariaLabel}
+                  testId={wholeModelBadge.testId}
+                  ariaLabel={wholeModelBadge.ariaLabel}
                 >
-                  {wholeModelBadge.meta.text}
+                  {wholeModelBadge.text}
                 </TreatmentChip>
               )}
 
