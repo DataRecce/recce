@@ -49,6 +49,11 @@ vi.mock("@datarecce/ui/components/run", () => ({
     RunResultView: () => <div>Result View</div>,
     RunForm: undefined,
   })),
+  // PR 1 (DRC-3390) gated `findByRunType` calls behind `isRegisteredRunType`
+  // inside RecceActionAdapter. The mock replaces the whole module, so we
+  // need to stub the guard too — return true for the run types the tests
+  // exercise so the adapter doesn't bail out before calling submitRun.
+  isRegisteredRunType: vi.fn(() => true),
   RunModalOss: vi.fn(({ isOpen, onClose, title }) =>
     isOpen ? (
       <div data-testid="run-modal">
