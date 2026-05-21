@@ -267,13 +267,18 @@ function NodeTitle({
   color,
   resourceType,
   materialized,
+  extraTooltip,
 }: {
   name: string;
   color: string;
   resourceType?: string;
   materialized?: string;
+  extraTooltip?: string;
 }) {
-  const tooltipTitle = formatNodeTooltip(name, resourceType, materialized);
+  const baseTooltip = formatNodeTooltip(name, resourceType, materialized);
+  const tooltipTitle = extraTooltip
+    ? `${baseTooltip} - ${extraTooltip}`
+    : baseTooltip;
 
   return (
     <Box
@@ -693,6 +698,7 @@ function LineageNodeComponent({
               color={titleColor}
               resourceType={resourceType}
               materialized={materialized}
+              extraTooltip={wholeModelBadge?.meta.tooltip}
             />
 
             {wholeModelBadge && (
