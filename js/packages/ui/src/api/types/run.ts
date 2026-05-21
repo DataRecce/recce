@@ -41,7 +41,6 @@ import type {
  */
 export type RunType =
   | "simple"
-  | "sandbox"
   | "query"
   | "query_base"
   | "query_diff"
@@ -183,11 +182,6 @@ export type Run =
       result?: undefined;
     })
   | (BaseRun & {
-      type: "sandbox";
-      params?: undefined;
-      result?: undefined;
-    })
-  | (BaseRun & {
       type: "query";
       params?: QueryRunParams;
       result?: QueryResult;
@@ -262,13 +256,6 @@ export type Run =
  */
 export function isSimpleRun(run: Run): run is Run & { type: "simple" } {
   return run.type === "simple";
-}
-
-/**
- * Type guard for sandbox runs
- */
-export function isSandboxRun(run: Run): run is Run & { type: "sandbox" } {
-  return run.type === "sandbox";
 }
 
 /**
@@ -383,7 +370,6 @@ export function isHistogramDiffRun(
  */
 export const RUN_TYPES: readonly RunType[] = [
   "simple",
-  "sandbox",
   "query",
   "query_base",
   "query_diff",

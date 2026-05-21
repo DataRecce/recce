@@ -1,5 +1,6 @@
 import MuiAlert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
 import "./style.css";
 import type {
   CellClickedEvent,
@@ -9,6 +10,7 @@ import type {
 } from "ag-grid-community";
 import {
   forwardRef,
+  type ReactNode,
   Ref,
   useCallback,
   useEffect,
@@ -78,6 +80,8 @@ interface SchemaViewProps {
   > | null;
   /** Callback when user clicks a definition-changed badge to view SQL diff */
   onViewCode?: () => void;
+  /** Optional action element rendered next to the legend (e.g. add-to-checklist button) */
+  headerAction?: ReactNode;
 }
 
 function PrivateSingleEnvSchemaView(
@@ -219,6 +223,7 @@ export function PrivateSchemaView(
     showMenu = true,
     columnChanges,
     onViewCode,
+    headerAction,
   }: SchemaViewProps,
   ref: Ref<DataGridHandle>,
 ) {
@@ -400,7 +405,18 @@ export function PrivateSchemaView(
         <></>
       )}
 
-      <SchemaLegend />
+      <Stack
+        direction="row"
+        sx={{
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 1,
+          pr: 1,
+        }}
+      >
+        <SchemaLegend />
+        {headerAction}
+      </Stack>
       {rows.length > 0 && (
         <ScreenshotDataGrid
           style={{

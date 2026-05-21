@@ -54,18 +54,41 @@ function createModelDetail(columns?: Record<string, NodeColumnData>) {
 }
 
 /**
- * Mock SchemaView that renders column names as testable elements.
+ * Mock SchemaView that renders column names AND the optional `headerAction`
+ * slot, so tests can assert the diff-mode "Add schema diff" button is wired.
  */
 function MockSchemaView({
   base,
   current,
+  headerAction,
 }: {
   base?: { columns?: Record<string, NodeColumnData | undefined> };
   current?: { columns?: Record<string, NodeColumnData | undefined> };
+  headerAction?: React.ReactNode;
 }) {
   const cols = current?.columns ?? base?.columns ?? {};
   return (
     <div data-testid="schema-view">
+      {headerAction != null && (
+        <div data-testid="schema-header-action">{headerAction}</div>
+      )}
+      {Object.keys(cols).map((name) => (
+        <span key={name} data-testid={`column-${name}`}>
+          {name}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function MockSingleEnvSchemaView({
+  current,
+}: {
+  current?: { columns?: Record<string, NodeColumnData | undefined> };
+}) {
+  const cols = current?.columns ?? {};
+  return (
+    <div data-testid="single-env-schema-view">
       {Object.keys(cols).map((name) => (
         <span key={name} data-testid={`column-${name}`}>
           {name}
@@ -78,6 +101,7 @@ function MockSchemaView({
 function renderNodeView(
   node: NodeViewNodeData,
   columns?: Record<string, NodeColumnData>,
+  overrides: Partial<React.ComponentProps<typeof NodeView>> = {},
 ) {
   return render(
     <NodeView
@@ -86,6 +110,8 @@ function renderNodeView(
       onCloseNode={vi.fn()}
       isSingleEnv={false}
       SchemaView={MockSchemaView}
+      SingleEnvSchemaView={MockSingleEnvSchemaView}
+      {...overrides}
     />,
   );
 }
@@ -129,6 +155,65 @@ describe("NodeView", () => {
       renderNodeView(createNode("exposure"));
 
       expect(screen.queryByTestId("schema-view")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("default landing tab", () => {
+    // DRC-3468: Columns must be the default tab even when lineageTabContent
+    // is provided. Without this assertion, a regression that re-inverts the
+    // tab indices would pass — existing tests only exercise the 2-tab branch.
+    test("lands on Columns (not Lineage) when lineageTabContent is provided", () => {
+      render(
+        <NodeView
+          node={createNode("model", testColumns)}
+          modelDetail={createModelDetail(testColumns)}
+          onCloseNode={vi.fn()}
+          isSingleEnv={false}
+          SchemaView={MockSchemaView}
+          lineageTabContent={<div data-testid="lineage-content">lineage</div>}
+        />,
+      );
+
+      expect(screen.getByTestId("schema-view")).toBeInTheDocument();
+      expect(screen.queryByTestId("lineage-content")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Sandbox removal regression guard", () => {
+    test("does not render a Sandbox button anywhere in the node view", () => {
+      renderNodeView(createNode("model", testColumns), testColumns);
+
+      expect(
+        screen.queryByRole("button", { name: /sandbox/i }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/sandbox/i)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("'Add schema diff to checklist' placement", () => {
+    test("renders headerAction in diff mode when onAddSchemaDiffClick is provided", () => {
+      renderNodeView(createNode("model", testColumns), testColumns, {
+        actionCallbacks: { onAddSchemaDiffClick: vi.fn() },
+      });
+
+      expect(screen.getByTestId("schema-header-action")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /add schema diff to checklist/i }),
+      ).toBeInTheDocument();
+    });
+
+    test("does not render headerAction in single-env mode", () => {
+      renderNodeView(createNode("model", testColumns), testColumns, {
+        isSingleEnv: true,
+        actionCallbacks: { onAddSchemaDiffClick: vi.fn() },
+      });
+
+      expect(
+        screen.queryByTestId("schema-header-action"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /add schema diff to checklist/i }),
+      ).not.toBeInTheDocument();
     });
   });
 });
