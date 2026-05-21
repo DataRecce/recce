@@ -16,4 +16,10 @@ export const cacheKeys = {
   flag: () => ["flag"],
   instanceInfo: () => ["instance_info"],
   user: () => ["user"],
+  /**
+   * Cache key for inline profile-distribution runs. Keyed by model so
+   * each schema row caches independently and PR 4's lineage pre-warm
+   * can hydrate the cache without colliding across models.
+   */
+  profileDistribution: (model: string) => ["profile_distribution", model],
 };

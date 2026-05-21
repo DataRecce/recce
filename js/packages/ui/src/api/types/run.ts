@@ -264,12 +264,77 @@ export interface ProfileDistributionParams {
 }
 
 /**
- * Profile distribution result - per-column paired distributions.
- * PR 1 stub; PR 2 populates columns with quantile-binned histogram + top-K payloads.
+ * Quantile-binned histogram payload for a continuous column.
+ *
+ * `bin_edges` has length 12 (11 bins). `base_density[i]` /
+ * `current_density[i]` is a constant-area density value: bar area =
+ * density × bin width = proportion of rows in that bin. Renderers should
+ * draw heights proportional to density and widths proportional to span.
+ */
+export interface ProfileDistributionHistogramPayload {
+  kind: "histogram";
+  /** Length 12 — the 11 quantile-bin boundaries. */
+  bin_edges: number[];
+  /** Length 11 — base-environment density per bin (count / total / span). */
+  base_density: number[];
+  /** Length 11 — current-environment density per bin. */
+  current_density: number[];
+  /** Total row count contributing to base_density. */
+  base_total: number;
+  /** Total row count contributing to current_density. */
+  current_total: number;
+}
+
+/**
+ * Top-K payload for a categorical column.
+ *
+ * Values are the union of top-K from base and current. When a value is
+ * missing on one side, its count is 0 there — the renderer leaves a gap
+ * so paired bars align visually. `trimmed` indicates the backend dropped
+ * a long tail past K.
+ */
+export interface ProfileDistributionTopKPayload {
+  kind: "topk";
+  values: string[];
+  base_counts: number[];
+  current_counts: number[];
+  base_total: number;
+  current_total: number;
+  /** True when the original distribution had more values than K and the tail was dropped. */
+  trimmed: boolean;
+}
+
+/**
+ * Per-column failure marker. Backend uses this when a single column's
+ * probe raised — others in the same task can still succeed. Frontend
+ * skips rendering (no spinner) for any slot with this shape.
+ */
+export interface ProfileDistributionNullPayload {
+  kind: null;
+  reason?: string;
+}
+
+/**
+ * Per-column distribution result — discriminated by `kind`.
+ *
+ * See DRC-3390 for the locked payload contract.
+ */
+export type ProfileDistributionColumnResult =
+  | ProfileDistributionHistogramPayload
+  | ProfileDistributionTopKPayload
+  | ProfileDistributionNullPayload;
+
+/**
+ * Profile distribution result — per-column paired distributions OR
+ * a single envelope-level `unsupported` marker when the adapter can't
+ * run the approx-aggregates path at all.
  */
 export interface ProfileDistributionResult {
-  columns?: Record<string, unknown>;
+  /** Per-column payloads keyed by column name. Absent when status === "unsupported". */
+  columns?: Record<string, ProfileDistributionColumnResult>;
+  /** "ok" for normal runs; "unsupported" triggers the adapter banner. */
   status?: "ok" | "unsupported";
+  /** Human-readable explanation when status === "unsupported". */
   reason?: string;
 }
 

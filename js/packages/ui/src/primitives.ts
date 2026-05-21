@@ -306,6 +306,38 @@ export {
   type HistogramDataset,
   type HistogramDataType,
 } from "./components/data/HistogramChart";
+export {
+  InlineProfileDistributionCell,
+  type InlineProfileDistributionCellProps,
+} from "./components/data/InlineProfileDistributionCell";
+/**
+ * Paired-histogram cells for inline profile-distribution rendering (DRC-3390).
+ *
+ * @remarks
+ * `PairedHistogramContinuous` renders a quantile-bin, constant-area paired
+ * bar chart for continuous columns. `PairedHistogramDiscrete` renders a
+ * top-K paired bar chart with gap-on-absent semantics for categorical
+ * columns. `InlineProfileDistributionCell` is the schema-row integration
+ * that wraps loading / error / empty / data states in a single fixed-size
+ * slot. `ProfileDistributionUnsupportedBanner` surfaces the once-per-task
+ * "adapter doesn't support this feature" envelope.
+ */
+export {
+  computeContinuousLayout,
+  PairedHistogramContinuous,
+  type PairedHistogramContinuousData,
+  type PairedHistogramContinuousProps,
+} from "./components/data/PairedHistogramContinuous";
+export {
+  computeDiscreteSlots,
+  PairedHistogramDiscrete,
+  type PairedHistogramDiscreteData,
+  type PairedHistogramDiscreteProps,
+} from "./components/data/PairedHistogramDiscrete";
+export {
+  ProfileDistributionUnsupportedBanner,
+  type ProfileDistributionUnsupportedBannerProps,
+} from "./components/data/ProfileDistributionUnsupportedBanner";
 /**
  * Screenshot data grid primitives (AG Grid wrapper).
  *
@@ -327,7 +359,6 @@ export {
   ScreenshotDataGrid,
   type ScreenshotDataGridProps,
 } from "./components/data/ScreenshotDataGrid";
-
 /**
  * Top-K bar chart primitives (value distribution).
  *

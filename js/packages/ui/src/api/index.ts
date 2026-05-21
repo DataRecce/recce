@@ -122,6 +122,22 @@ export type {
   TopKViewOptions,
 } from "./profile";
 export { submitProfileDiff } from "./profile";
+// Profile Distribution API (paired histograms / top-K — DRC-3390)
+export type {
+  ProfileDistributionColumnResult,
+  ProfileDistributionHistogramPayload,
+  ProfileDistributionNullPayload,
+  ProfileDistributionParams,
+  ProfileDistributionResult,
+  ProfileDistributionTopKPayload,
+} from "./profileDistribution";
+export {
+  isHistogramPayload,
+  isNullPayload,
+  isTopKPayload,
+  isUnsupportedResult,
+  submitProfileDistribution,
+} from "./profileDistribution";
 // Row Count API
 export type {
   RowCount,

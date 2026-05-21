@@ -1,0 +1,240 @@
+/**
+ * @file PairedHistogramContinuous.test.tsx
+ * @description Tests for the constant-area paired histogram cell (DRC-3390 PR 3).
+ *
+ * Visual behavior covered:
+ *   - One <g> per bin
+ *   - Bar widths track the quantile span (constant-area), not slot-uniform
+ *   - Heights track density relative to max density across both envs
+ *   - Differential rect colored by which env exceeds the other in that bin
+ *   - Agreement zone (min(base, current)) uses the checkerboard SVG pattern
+ *   - Light / dark theme bar colors
+ *   - Endpoint + midpoint labels
+ *   - Degenerate / zero / mismatched payloads don't crash
+ */
+
+import { render } from "@testing-library/react";
+import {
+  computeContinuousLayout,
+  PairedHistogramContinuous,
+  type PairedHistogramContinuousData,
+} from "../PairedHistogramContinuous";
+
+// 11 bins with quantile-driven widths: tight in the middle, wide at the
+// edges (typical for a long-tailed distribution where APPROX_PERCENTILE
+// hits 80% of the mass between bins 3 and 7).
+const sampleData: PairedHistogramContinuousData = {
+  binEdges: [0, 10, 25, 50, 80, 120, 165, 220, 290, 400, 600, 1000],
+  baseDensity: [
+    0.01, 0.02, 0.04, 0.06, 0.08, 0.07, 0.05, 0.03, 0.015, 0.005, 0.001,
+  ],
+  currentDensity: [
+    0.02, 0.03, 0.045, 0.055, 0.085, 0.065, 0.04, 0.025, 0.012, 0.006, 0.0015,
+  ],
+  baseTotal: 10_000,
+  currentTotal: 12_000,
+};
+
+describe("PairedHistogramContinuous", () => {
+  it("renders one group per bin", () => {
+    const { container } = render(
+      <PairedHistogramContinuous data={sampleData} />,
+    );
+    const groups = container.querySelectorAll("svg > g");
+    expect(groups.length).toBe(sampleData.baseDensity.length);
+  });
+
+  it("uses default cell-density dimensions when not provided", () => {
+    const { container } = render(
+      <PairedHistogramContinuous data={sampleData} />,
+    );
+    const svg = container.querySelector("svg");
+    expect(svg?.getAttribute("width")).toBe("140");
+    expect(svg?.getAttribute("height")).toBe("36");
+  });
+
+  it("respects custom width and height", () => {
+    const { container } = render(
+      <PairedHistogramContinuous data={sampleData} width={240} height={92} />,
+    );
+    const svg = container.querySelector("svg");
+    expect(svg?.getAttribute("width")).toBe("240");
+    expect(svg?.getAttribute("height")).toBe("92");
+  });
+
+  it("renders endpoint labels when showEndpoints is true", () => {
+    const { container } = render(
+      <PairedHistogramContinuous data={sampleData} showEndpoints />,
+    );
+    const texts = Array.from(container.querySelectorAll("text"));
+    // Title <title> element is also a "text" node in some queries; filter
+    // to only the SVG <text> elements (which carry textContent).
+    const labels = texts.map((t) => t.textContent).filter(Boolean);
+    expect(labels).toContain("0");
+    expect(labels).toContain("1.0K");
+  });
+
+  it("does not render endpoint labels by default", () => {
+    const { container } = render(
+      <PairedHistogramContinuous data={sampleData} />,
+    );
+    // Only the <title> for accessibility; no SVG <text> for axis labels.
+    const textNodes = container.querySelectorAll("svg > g text");
+    expect(textNodes.length).toBe(0);
+  });
+
+  it("renders midpoint when showMidpoint is true", () => {
+    const { container } = render(
+      <PairedHistogramContinuous
+        data={sampleData}
+        showEndpoints
+        showMidpoint
+      />,
+    );
+    const labels = Array.from(container.querySelectorAll("text")).map(
+      (t) => t.textContent,
+    );
+    expect(labels).toContain("500"); // midpoint of [0, 1000] — integer renders verbatim
+  });
+
+  it("light theme uses the light bar palette (#F6AD55 / #63B3ED)", () => {
+    const { container } = render(
+      <PairedHistogramContinuous data={sampleData} />,
+    );
+    const fills = Array.from(container.querySelectorAll("svg rect")).map((r) =>
+      r.getAttribute("fill"),
+    );
+    expect(fills.some((f) => f === "#F6AD55")).toBe(true);
+    expect(fills.some((f) => f === "#63B3ED")).toBe(true);
+  });
+
+  it("dark theme uses the dark bar palette (#FBD38D / #90CDF4)", () => {
+    const { container } = render(
+      <PairedHistogramContinuous data={sampleData} theme="dark" />,
+    );
+    const fills = Array.from(container.querySelectorAll("svg rect")).map((r) =>
+      r.getAttribute("fill"),
+    );
+    expect(fills.some((f) => f === "#FBD38D")).toBe(true);
+    expect(fills.some((f) => f === "#90CDF4")).toBe(true);
+  });
+
+  it("differential rect is blue when current density exceeds base", () => {
+    // Single-bin payload: current density >> base density. Should produce
+    // a single solid blue rect (no agreement zone since baseH would be 0).
+    const data: PairedHistogramContinuousData = {
+      binEdges: [0, 10],
+      baseDensity: [0],
+      currentDensity: [0.5],
+      baseTotal: 0,
+      currentTotal: 5,
+    };
+    const { container } = render(<PairedHistogramContinuous data={data} />);
+    const fills = Array.from(container.querySelectorAll("svg rect"))
+      .map((r) => r.getAttribute("fill"))
+      // ignore pattern <rect> children (their fill is just a color but they
+      // live inside <defs>, not the chart area) and the invisible hit-target
+      // rects (fill="transparent").
+      .filter((f) => f && f !== "transparent");
+    // Only the differential rect should remain — it's blue (current dominates).
+    expect(fills).toContain("#63B3ED");
+  });
+
+  it("handles bin-edge / density length mismatch by rendering an empty SVG", () => {
+    const broken: PairedHistogramContinuousData = {
+      binEdges: [0, 1, 2],
+      baseDensity: [1, 2, 3, 4],
+      currentDensity: [1, 1, 1, 1],
+      baseTotal: 10,
+      currentTotal: 4,
+    };
+    const { container } = render(<PairedHistogramContinuous data={broken} />);
+    // No bin groups rendered, but the SVG frame is still there.
+    expect(container.querySelectorAll("svg > g").length).toBe(0);
+    expect(container.querySelector("svg")).toBeInTheDocument();
+  });
+
+  it("handles a zero-span payload (degenerate column) by falling back to uniform widths", () => {
+    const collapsed: PairedHistogramContinuousData = {
+      binEdges: [5, 5, 5],
+      baseDensity: [0.5, 0.5],
+      currentDensity: [0.5, 0.5],
+      baseTotal: 2,
+      currentTotal: 2,
+    };
+    const layout = computeContinuousLayout(collapsed, 140);
+    expect(layout.bins.length).toBe(2);
+    // Uniform fallback: both bins same width.
+    expect(layout.bins[0].width).toBeCloseTo(70, 5);
+    expect(layout.bins[1].width).toBeCloseTo(70, 5);
+  });
+
+  it("hover-title carries percentage breakdown per bin", () => {
+    const { container } = render(
+      <PairedHistogramContinuous data={sampleData} />,
+    );
+    const titles = Array.from(container.querySelectorAll("svg title")).map(
+      (t) => t.textContent,
+    );
+    // Most-common hover format: "10–25 [base: 30.0%, current: ...]" — at
+    // least one title should contain both percentages.
+    expect(
+      titles.some((t) => t?.includes("base:") && t.includes("current:")),
+    ).toBe(true);
+  });
+
+  it("uses custom formatter for endpoint labels", () => {
+    const { container } = render(
+      <PairedHistogramContinuous
+        data={sampleData}
+        showEndpoints
+        formatValue={(v) => `$${v}`}
+      />,
+    );
+    const labels = Array.from(container.querySelectorAll("text")).map(
+      (t) => t.textContent,
+    );
+    expect(labels).toContain("$0");
+    expect(labels).toContain("$1000");
+  });
+
+  it("computeContinuousLayout: bar widths sum to the available width", () => {
+    const layout = computeContinuousLayout(sampleData, 140);
+    const total = layout.bins.reduce((s, b) => s + b.width, 0);
+    expect(total).toBeCloseTo(140, 1);
+  });
+
+  it("computeContinuousLayout: empty payload returns empty bins", () => {
+    const empty: PairedHistogramContinuousData = {
+      binEdges: [],
+      baseDensity: [],
+      currentDensity: [],
+      baseTotal: 0,
+      currentTotal: 0,
+    };
+    const layout = computeContinuousLayout(empty, 140);
+    expect(layout.bins).toEqual([]);
+    expect(layout.maxDensity).toBe(0);
+  });
+
+  it("accepts className prop", () => {
+    const { container } = render(
+      <PairedHistogramContinuous data={sampleData} className="my-chart" />,
+    );
+    expect(container.querySelector("svg")?.getAttribute("class")).toBe(
+      "my-chart",
+    );
+  });
+
+  it("renders an accessible aria-label", () => {
+    const { container } = render(
+      <PairedHistogramContinuous
+        data={sampleData}
+        ariaLabel="customer order amount"
+      />,
+    );
+    expect(container.querySelector("svg")?.getAttribute("aria-label")).toBe(
+      "customer order amount",
+    );
+  });
+});

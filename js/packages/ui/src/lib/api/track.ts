@@ -293,3 +293,53 @@ interface LineageSelectionProps {
 export function trackLineageSelection(props: LineageSelectionProps) {
   track("[Web] lineage_selection", props);
 }
+
+// ---------------------------------------------------------------------
+// Profile distribution (paired histograms — DRC-3390)
+// ---------------------------------------------------------------------
+// One event family covers both the per-task lifecycle and the pre-warm
+// path (PR 4). PR 3 only emits `request` / `result`. PR 4 adds the
+// `prewarm_triggered` / `prewarm_completed` / `prewarm_hit_on_open`
+// values to `phase` without changing the event name.
+
+/**
+ * Phase of a profile-distribution task lifecycle.
+ *
+ * - `request`: fired when the frontend submits the run.
+ * - `result`: fired when the run finishes (either successfully, with an
+ *   error, or returning the unsupported-adapter envelope). Wall-time
+ *   from request → result is captured by `total_wall_ms`.
+ * - `prewarm_*`: reserved for PR 4.
+ */
+export type ProfileDistributionPhase =
+  | "request"
+  | "result"
+  | "prewarm_triggered"
+  | "prewarm_completed"
+  | "prewarm_hit_on_open";
+
+interface ProfileDistributionEventProps {
+  phase: ProfileDistributionPhase;
+  /** dbt model `unique_id` (or similar caller-stable identifier). */
+  model?: string;
+  /** Total time from request submit to result, in milliseconds (result phase only). */
+  total_wall_ms?: number;
+  /** Backend-reported column count in the result. */
+  column_count?: number;
+  /** How many of those columns came back as `kind: null` (per-column failure). */
+  error_count?: number;
+  /** True when the result envelope was `status: "unsupported"`. */
+  unsupported?: boolean;
+  /** True when the result came from the in-session memoization cache (PR 2). */
+  cache_hit?: boolean;
+  /** Free-form additional context. Keep flat — Amplitude doesn't like nested. */
+  [key: string]: unknown;
+}
+
+/**
+ * Emit a profile-distribution analytics event. Tracked under a single
+ * event name so funnel + cohort queries can group by `phase`.
+ */
+export function trackProfileDistribution(props: ProfileDistributionEventProps) {
+  track("[Web] profile_distribution", props);
+}
