@@ -44,9 +44,9 @@ jobs:
           # For workflow_run, checkout the same ref that triggered the parent workflow
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
-          version: 10
+          version: 11.1.1
 
       - name: Setup Node 24
         uses: actions/setup-node@v4

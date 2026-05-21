@@ -10,7 +10,7 @@ const meta: Meta<typeof ScreenshotBox> = {
     docs: {
       description: {
         component:
-          "A container component that can be captured as a screenshot. Forwards its ref to allow parent components to capture the element using html-to-image or similar libraries. Commonly used to wrap charts, tables, or other visualizations that need to be exported as images.",
+          "A container component that can be captured as a screenshot. Forwards its ref to allow parent components to capture the element using snapdom or similar libraries. Commonly used to wrap charts, tables, or other visualizations that need to be exported as images.",
       },
     },
     layout: "centered",
@@ -230,7 +230,7 @@ export const WithCaptureButton: Story = {
     docs: {
       description: {
         story:
-          "Example showing how to use the ref to capture a screenshot. The actual capture functionality requires html-to-image or similar library in a real application.",
+          "Example showing how to use the ref to capture a screenshot. The actual capture functionality requires snapdom or similar library in a real application.",
       },
     },
   },
@@ -239,11 +239,11 @@ export const WithCaptureButton: Story = {
 
     const handleCapture = () => {
       if (screenshotRef.current) {
-        // In a real app, you would use html-to-image here:
-        // import { toPng } from 'html-to-image';
-        // const dataUrl = await toPng(screenshotRef.current);
+        // In a real app, you would use snapdom here:
+        // import { snapdom } from '@zumer/snapdom';
+        // const canvas = await snapdom.toCanvas(screenshotRef.current);
         alert(
-          "Screenshot would be captured here!\n\nIn a real implementation, use html-to-image:\n\nimport { toPng } from 'html-to-image';\nconst dataUrl = await toPng(ref.current);",
+          "Screenshot would be captured here!\n\nIn a real implementation, use snapdom:\n\nimport { snapdom } from '@zumer/snapdom';\nconst canvas = await snapdom.toCanvas(ref.current);",
         );
       }
     };

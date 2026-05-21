@@ -24,10 +24,19 @@ import Checkbox from "@mui/material/Checkbox";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { Handle, Position } from "@xyflow/react";
-import { type MouseEvent, memo, type ReactNode, useState } from "react";
+import { Handle, NodeToolbar, Position } from "@xyflow/react";
+import {
+  type MouseEvent,
+  memo,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { DIM_FILTER } from "../config/zoomConstants";
 import {
+  formatNodeTooltip,
   getIconForChangeStatus,
   getIconForMaterialization,
   getIconForResourceType,
@@ -153,8 +162,6 @@ export interface LineageNodeProps {
   onSelect?: (nodeId: string) => void;
   /** Callback when context menu is requested */
   onContextMenu?: (event: MouseEvent, nodeId: string) => void;
-  /** Callback when impact radius button is clicked */
-  onShowImpactRadius?: (nodeId: string) => void;
 }
 
 // =============================================================================
@@ -191,23 +198,6 @@ const KebabIcon = () => (
   </svg>
 );
 
-/**
- * Impact radius icon (dot circle)
- */
-const ImpactRadiusIcon = () => (
-  <svg
-    stroke="currentColor"
-    fill="currentColor"
-    strokeWidth="0"
-    viewBox="0 0 512 512"
-    height="1em"
-    width="1em"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path d="M256 56c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m0-48C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 168c-44.183 0-80 35.817-80 80s35.817 80 80 80 80-35.817 80-80-35.817-80-80-80z" />
-  </svg>
-);
-
 // =============================================================================
 // HELPER COMPONENTS
 // =============================================================================
@@ -219,13 +209,14 @@ function NodeTitle({
   name,
   color,
   resourceType,
+  materialized,
 }: {
   name: string;
   color: string;
   resourceType?: string;
+  materialized?: string;
 }) {
-  const tooltipTitle =
-    resourceType === "model" ? name : `${name} (${resourceType || "unknown"})`;
+  const tooltipTitle = formatNodeTooltip(name, resourceType, materialized);
 
   return (
     <Box
@@ -322,9 +313,29 @@ function LineageNodeComponent({
   onNodeDoubleClick,
   onSelect,
   onContextMenu,
-  onShowImpactRadius,
 }: LineageNodeProps) {
   const [isHovered, setIsHovered] = useState(false);
+
+  // Bridge the hover gap between the card and the floating toolbar:
+  // the toolbar is portaled outside the card, so moving from card -> toolbar
+  // fires mouseleave on the card. A short grace period lets the cursor land
+  // on the toolbar (which clears the timer) before the toolbar hides.
+  const hoverHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelHoverHide = useCallback(() => {
+    if (hoverHideTimer.current) {
+      clearTimeout(hoverHideTimer.current);
+      hoverHideTimer.current = null;
+    }
+  }, []);
+  const beginHover = useCallback(() => {
+    cancelHoverHide();
+    setIsHovered(true);
+  }, [cancelHoverHide]);
+  const scheduleHoverHide = useCallback(() => {
+    cancelHoverHide();
+    hoverHideTimer.current = setTimeout(() => setIsHovered(false), 500);
+  }, [cancelHoverHide]);
+  useEffect(() => () => cancelHoverHide(), [cancelHoverHide]);
 
   const {
     label,
@@ -454,18 +465,12 @@ function LineageNodeComponent({
     onContextMenu?.(e, id);
   };
 
-  const handleImpactRadiusClick = (e: MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onShowImpactRadius?.(id);
-  };
-
   return (
     <Box
       onClick={() => onNodeClick?.(id)}
       onDoubleClick={() => onNodeDoubleClick?.(id)}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={beginHover}
+      onMouseLeave={scheduleHoverHide}
       sx={{
         display: "flex",
         flexDirection: "column",
@@ -476,6 +481,62 @@ function LineageNodeComponent({
         filter: nodeFilter,
       }}
     >
+      {/* Floating hover toolbar — actions appear above the card without
+          displacing the descriptor + status icons inside it. */}
+      <NodeToolbar
+        isVisible={isHovered}
+        position={Position.Right}
+        offset={6}
+        align="center"
+      >
+        <Box
+          onMouseEnter={beginHover}
+          onMouseLeave={scheduleHoverHide}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.75,
+            // Invisible bridge to the left of the toolbar so the cursor can
+            // land anywhere between the card edge and the toolbar without
+            // losing hover. Intentionally wider than the NodeToolbar `offset`
+            // (12px bridge vs 6px gap) — the extra buffer gives the user a
+            // generous target to actually hit on the way from the card to
+            // the kebab.
+            "&::before": {
+              content: '""',
+              position: "absolute",
+              top: 0,
+              bottom: 0,
+              right: "100%",
+              width: "12px",
+            },
+            position: "relative",
+            px: 0.75,
+            py: 0.5,
+            borderRadius: 1,
+            backgroundColor: "background.paper",
+            border: "1px solid",
+            borderColor: "divider",
+            boxShadow:
+              "0 2px 6px rgb(0 0 0 / 0.15), 0 1px 2px rgb(0 0 0 / 0.1)",
+          }}
+        >
+          {onContextMenu && (
+            <Box
+              data-testid="lineage-node-kebab"
+              onClick={handleContextMenuClick}
+              sx={{
+                cursor: "pointer",
+                color: "text.secondary",
+                "&:hover": { color: "text.primary" },
+              }}
+            >
+              <KebabIcon />
+            </Box>
+          )}
+        </Box>
+      </NodeToolbar>
+
       {/* Main node container */}
       <Box
         sx={{
@@ -550,54 +611,19 @@ function LineageNodeComponent({
               name={label}
               color={titleColor}
               resourceType={resourceType}
+              materialized={materialized}
             />
 
-            {/* Hover actions vs icons */}
-            {isHovered ? (
-              <>
-                {changeStatus === "modified" && onShowImpactRadius && (
-                  <Tooltip title="Show Impact Radius" placement="top">
-                    <Box
-                      onClick={handleImpactRadiusClick}
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                        color: "text.secondary",
-                        "&:hover": { color: "text.primary" },
-                      }}
-                    >
-                      <ImpactRadiusIcon />
-                    </Box>
-                  </Tooltip>
-                )}
-                {onContextMenu && (
-                  <Box
-                    onClick={handleContextMenuClick}
-                    sx={{
-                      cursor: "pointer",
-                      color: "text.secondary",
-                      "&:hover": { color: "text.primary" },
-                    }}
-                  >
-                    <KebabIcon />
-                  </Box>
-                )}
-              </>
-            ) : (
-              <>
-                {ResourceIcon && (
-                  <Box sx={{ fontSize: 16, color: iconColor }}>
-                    <ResourceIcon aria-hidden="true" />
-                  </Box>
-                )}
-                {changeStatus && IconChangeStatus && (
-                  <Box sx={{ color: changeStatusIconColor }}>
-                    <IconChangeStatus aria-hidden="true" />
-                  </Box>
-                )}
-              </>
+            {/* Descriptor + status — always visible */}
+            {ResourceIcon && (
+              <Box sx={{ fontSize: 16, color: iconColor }}>
+                <ResourceIcon aria-hidden="true" />
+              </Box>
+            )}
+            {changeStatus && IconChangeStatus && (
+              <Box sx={{ color: changeStatusIconColor }}>
+                <IconChangeStatus aria-hidden="true" />
+              </Box>
             )}
           </Box>
 

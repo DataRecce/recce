@@ -4,7 +4,7 @@ import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 import type { Edge, Node } from "@xyflow/react";
-import { toPng } from "html-to-image";
+import { snapdom } from "@zumer/snapdom";
 import {
   forwardRef,
   type Ref,
@@ -291,13 +291,16 @@ export const LineageView = forwardRef<LineageViewRef, LineageViewProps>(
       }
 
       try {
-        const dataUrl = await toPng(containerRef.current, {
+        // dpr: 1, scale: 2 produces exactly 2x CSS pixels regardless of
+        // device DPR, matching html-to-image's previous pixelRatio: 2 semantics.
+        // (snapdom's default dpr is window.devicePixelRatio; without dpr: 1
+        // we'd get 4x on retina displays.)
+        const blob = await snapdom.toBlob(containerRef.current, {
           backgroundColor: "#ffffff",
-          pixelRatio: 2,
+          dpr: 1,
+          scale: 2,
+          type: "png",
         });
-
-        const response = await fetch(dataUrl);
-        const blob = await response.blob();
 
         await navigator.clipboard.write([
           new ClipboardItem({

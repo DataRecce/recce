@@ -213,6 +213,7 @@ vi.mock("@datarecce/ui", () => ({
 vi.mock("@datarecce/ui/api", () => ({
   cacheKeys: {
     checks: vi.fn(() => ["checks"]),
+    lineage: vi.fn(() => ["lineage"]),
   },
   getCll: vi.fn().mockResolvedValue(undefined),
   select: vi.fn().mockResolvedValue({ nodes: [] }),
@@ -349,14 +350,6 @@ vi.mock("@datarecce/ui/components/lineage/SetupConnectionBannerOss", () => ({
   default: vi.fn(() => null),
 }));
 
-vi.mock("@datarecce/ui/hooks/useValueDiffAlertDialogOss", () => ({
-  __esModule: true,
-  default: vi.fn(() => ({
-    confirm: vi.fn().mockResolvedValue(true),
-    AlertDialog: null,
-  })),
-}));
-
 // Mock useMultiNodesAction
 const mockMultiNodesAction = {
   actionState: {
@@ -436,8 +429,13 @@ vi.mock("@tanstack/react-query", () => ({
   useMutation: vi.fn(() => ({
     mutateAsync: vi.fn().mockResolvedValue(undefined),
   })),
+  useQuery: vi.fn(() => ({
+    data: undefined,
+  })),
   useQueryClient: vi.fn(() => ({
     invalidateQueries: vi.fn().mockResolvedValue(undefined),
+    getQueryData: vi.fn().mockReturnValue(undefined),
+    setQueryData: vi.fn(),
   })),
 }));
 
