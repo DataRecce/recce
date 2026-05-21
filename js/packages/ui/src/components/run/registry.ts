@@ -93,6 +93,10 @@ export interface RunRegistry {
   lineage_diff: RegistryEntry<never>;
   schema_diff: RegistryEntry<never>;
   simple: RegistryEntry<never>;
+  // PR 1 stub (DRC-3390). Backend-only run type — feeds into schema-view
+  // cells rather than a stand-alone result view. PR 3 may add a focused
+  // result view if the design calls for one.
+  profile_distribution: RegistryEntry<never>;
 }
 
 // ============================================================================
@@ -197,6 +201,10 @@ export const registry: RunRegistry = {
   simple: {
     title: "Simple",
     icon: TbEyeEdit,
+  },
+  profile_distribution: {
+    title: "Profile Distribution",
+    icon: TbChartHistogram,
   },
 };
 

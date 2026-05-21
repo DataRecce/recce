@@ -53,7 +53,8 @@ export type RunType =
   | "row_count_diff"
   | "lineage_diff"
   | "top_k_diff"
-  | "histogram_diff";
+  | "histogram_diff"
+  | "profile_distribution";
 
 // ============================================================================
 // Run Status Types
@@ -157,6 +158,7 @@ export type RunParamTypes =
   | LineageDiffParams
   | TopKDiffParams
   | HistogramDiffParams
+  | ProfileDistributionParams
   | undefined;
 
 // ============================================================================
@@ -245,7 +247,31 @@ export type Run =
       type: "histogram_diff";
       params?: HistogramDiffParams;
       result?: HistogramDiffResult;
+    })
+  | (BaseRun & {
+      type: "profile_distribution";
+      params?: ProfileDistributionParams;
+      result?: ProfileDistributionResult;
     });
+
+/**
+ * Profile distribution params - used by profile_distribution runs.
+ * PR 1 stub; PR 2 populates the shape (model name + optional column list).
+ */
+export interface ProfileDistributionParams {
+  model?: string;
+  columns?: string[];
+}
+
+/**
+ * Profile distribution result - per-column paired distributions.
+ * PR 1 stub; PR 2 populates columns with quantile-binned histogram + top-K payloads.
+ */
+export interface ProfileDistributionResult {
+  columns?: Record<string, unknown>;
+  status?: "ok" | "unsupported";
+  reason?: string;
+}
 
 // ============================================================================
 // Type Guards
@@ -361,6 +387,15 @@ export function isHistogramDiffRun(
   return run.type === "histogram_diff";
 }
 
+/**
+ * Type guard for profile_distribution runs
+ */
+export function isProfileDistributionRun(
+  run: Run,
+): run is Run & { type: "profile_distribution" } {
+  return run.type === "profile_distribution";
+}
+
 // ============================================================================
 // Utility Types
 // ============================================================================
@@ -383,6 +418,7 @@ export const RUN_TYPES: readonly RunType[] = [
   "lineage_diff",
   "top_k_diff",
   "histogram_diff",
+  "profile_distribution",
 ] as const;
 
 /**

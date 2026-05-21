@@ -65,6 +65,7 @@ from ...models.types import (
 from ...tasks import (
     HistogramDiffTask,
     ProfileDiffTask,
+    ProfileDistributionTask,
     QueryBaseTask,
     QueryDiffTask,
     QueryTask,
@@ -89,6 +90,10 @@ dbt_supported_registry: Dict[RunType, Type[Task]] = {
     RunType.ROW_COUNT_DIFF: RowCountDiffTask,
     RunType.TOP_K_DIFF: TopKDiffTask,
     RunType.HISTOGRAM_DIFF: HistogramDiffTask,
+    # PR 1 stub. PR 2 wires the full approx_all pipeline. Always registered;
+    # the frontend uses the ``inline_profile`` server flag to decide whether
+    # to fire the task.
+    RunType.PROFILE_DISTRIBUTION: ProfileDistributionTask,
 }
 
 # Reference: https://github.com/AltimateAI/vscode-dbt-power-user/blob/master/dbt_core_integration.py
