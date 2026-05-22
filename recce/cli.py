@@ -2869,6 +2869,104 @@ def mcp_server(state_file, sse, host, port, **kwargs):
         exit(1)
 
 
+@cli.command(cls=TrackCommand)
+@click.argument("state_file", required=False)
+@click.option(
+    "--sse",
+    is_flag=True,
+    default=False,
+    help="Reserved for future iters — stdio is hardcoded in iter 1",
+)
+@click.option(
+    "--host",
+    default="localhost",
+    help="Host to bind to (reserved for future iters)",
+)
+@click.option("--port", default=8000, type=int, help="Port to bind to (reserved for future iters)")
+@add_options(dbt_related_options)
+@add_options(sqlmesh_related_options)
+@add_options(recce_options)
+@add_options(recce_dbt_artifact_dir_options)
+@add_options(recce_hidden_options)
+def mcp_widget_server(state_file, sse, host, port, **kwargs):
+    """
+    Start the Recce MCP Widget Server (iter 1 POC — local mode only).
+
+    Cloud session / snapshot modes are not supported. Register both
+    `recce mcp-server` and `recce mcp-widget-server` entries in Claude
+    Desktop config with RECCE_MCP_WIDGETS=1 env var set on both.
+
+    STATE_FILE is the path to the recce state file (optional).
+    """
+    import asyncio
+
+    from rich.console import Console
+
+    from recce.config import RecceConfig
+
+    # In stdio mode, stdout is the JSON-RPC transport — all human-readable
+    # output must go to stderr to avoid MCP client parse errors.
+    console = Console(stderr=True)
+
+    try:
+        from recce.widget_server import run_widget_server
+    except ImportError as e:
+        console.print(f"[[red]Error[/red]] Failed to import widget server: {e}")
+        console.print(r"Please install the MCP package: pip install 'recce\[mcp]'")
+        exit(1)
+
+    # Initialize Recce Config
+    RecceConfig(config_file=kwargs.get("config"))
+
+    handle_debug_flag(**kwargs)
+
+    patch_derived_args(kwargs)
+
+    # Reject any cloud / session kwargs — not supported in iter 1
+    if kwargs.get("cloud") or kwargs.get("cloud_session"):
+        console.print(
+            "[[red]Error[/red]] recce mcp-widget-server does not support cloud/session mode in iter 1. "
+            "Use recce mcp-server for cloud sessions."
+        )
+        exit(1)
+
+    # Local state file
+    if state_file:
+        state_loader = create_state_loader_by_args(state_file, **kwargs)
+        kwargs["state_loader"] = state_loader
+
+    # Single Environment Onboarding Mode fallback
+    project_dir_path = Path(kwargs.get("project_dir") or "./")
+    target_path = project_dir_path.joinpath(Path(kwargs.get("target_path", "target")))
+    target_base_path = project_dir_path.joinpath(Path(kwargs.get("target_base_path", "target-base")))
+    if target_path.is_dir() and not target_base_path.is_dir():
+        kwargs["single_env"] = True
+        kwargs["target_base_path"] = kwargs.get("target_path")
+        console.print(
+            "[yellow]Base artifacts not found. "
+            "Starting in single-environment mode (diffs will show no changes).[/yellow]"
+        )
+        console.print("To enable diffing: dbt docs generate --target-path target-base")
+
+    console.print("Starting Recce MCP Widget Server in stdio mode (iter 1 POC, local mode only)...")
+
+    # Ensure cloud=False so run_widget_server doesn't see a stale patched value
+    kwargs["cloud"] = False
+
+    try:
+        asyncio.run(run_widget_server(sse=False, host=host, port=port, **kwargs))
+    except (asyncio.CancelledError, KeyboardInterrupt):
+        console.print("[yellow]MCP Widget Server interrupted[/yellow]")
+        exit(0)
+    except Exception as e:
+        console.print(f"[[red]Error[/red]] Failed to start MCP widget server: {e}")
+        if kwargs.get("debug"):
+            import traceback
+
+            traceback.print_exc()
+        exit(1)
+
+
 @cli.group("cache", short_help="Manage column-level lineage cache.")
 def cache():
     """Manage column-level lineage cache."""

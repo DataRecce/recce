@@ -50,6 +50,16 @@ SINGLE_ENV_WARNING = (
     "Run `dbt docs generate --target-path target-base` to enable diffing."
 )
 
+# When RECCE_MCP_WIDGETS=1 is set, these tools are served by `recce mcp-widget-server`
+# instead of the main `recce mcp-server`. The main server omits them from list_tools
+# and raises in call_tool if the agent calls them anyway. See recce/widget_server.py.
+WIDGET_TOOLS = {"row_count_diff", "schema_diff"}
+
+
+def _widgets_enabled() -> bool:
+    """Read RECCE_MCP_WIDGETS env at call time (not import time) so tests can monkeypatch."""
+    return os.environ.get("RECCE_MCP_WIDGETS", "").strip() in ("1", "true", "True")
+
 
 class InstanceSpawningError(RuntimeError):
     """Raised when a Recce Cloud session instance is not ready yet."""
@@ -1219,6 +1229,10 @@ class RecceMCPServer:
                     )
                 )
 
+            # When widgets enabled, defer widget-eligible tools to recce mcp-widget-server.
+            if _widgets_enabled():
+                tools = [t for t in tools if t.name not in WIDGET_TOOLS]
+
             self.mcp_logger.log_list_tools(tools)
 
             # Log available tools to console
@@ -1240,6 +1254,14 @@ class RecceMCPServer:
             logger.info(f"[MCP] Arguments: {json.dumps(log_arguments, indent=2)}")
 
             try:
+                # Widget-mode coordination: if RECCE_MCP_WIDGETS=1 the widget server owns these
+                # tools. If the agent reaches us anyway, the widget-server entry isn't wired.
+                if _widgets_enabled() and name in WIDGET_TOOLS:
+                    raise ValueError(
+                        f"Tool '{name}' is served by `recce mcp-widget-server` when RECCE_MCP_WIDGETS=1. "
+                        f"Ensure that entry is registered in your Claude Desktop config alongside `recce mcp-server`."
+                    )
+
                 # Check if tool is blocked in non-server mode
                 blocked_tools_in_non_server = {
                     "row_count_diff",
