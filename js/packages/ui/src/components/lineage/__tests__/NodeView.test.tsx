@@ -158,6 +158,129 @@ describe("NodeView", () => {
     });
   });
 
+  describe("whole-model treatment", () => {
+    // NodeView signals whole-model kinds via a title chip + left stripe and
+    // never renders a graph badge of any kind. The structural badge check
+    // (`[data-testid$="-badge"]` returns 0) catches a regression that
+    // re-introduces a badge surface under any naming.
+    test("renders the changed title chip (no inline badge) when isWholeModelChanged is true and wholeModelImpact is on", () => {
+      const { container } = render(
+        <NodeView
+          node={createNode("model")}
+          onCloseNode={vi.fn()}
+          isSingleEnv={false}
+          isWholeModelChanged
+          wholeModelImpact
+        />,
+      );
+      expect(
+        screen.getByTestId("whole-model-changed-title-chip"),
+      ).toBeInTheDocument();
+      expect(
+        container.querySelectorAll('[data-testid$="-badge"]'),
+      ).toHaveLength(0);
+    });
+
+    test("renders the impacted title chip (no inline badge) when isWholeModelImpacted is true and wholeModelImpact is on", () => {
+      const { container } = render(
+        <NodeView
+          node={createNode("model")}
+          onCloseNode={vi.fn()}
+          isSingleEnv={false}
+          isWholeModelImpacted
+          wholeModelImpact
+        />,
+      );
+      expect(
+        screen.getByTestId("whole-model-impacted-title-chip"),
+      ).toBeInTheDocument();
+      expect(
+        container.querySelectorAll('[data-testid$="-badge"]'),
+      ).toHaveLength(0);
+    });
+
+    test("changed-wins: renders the changed title chip (no badge) when both flags are true (Q11)", () => {
+      const { container } = render(
+        <NodeView
+          node={createNode("model")}
+          onCloseNode={vi.fn()}
+          isSingleEnv={false}
+          isWholeModelChanged
+          isWholeModelImpacted
+          wholeModelImpact
+        />,
+      );
+      expect(
+        screen.getByTestId("whole-model-changed-title-chip"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-impacted-title-chip"),
+      ).not.toBeInTheDocument();
+      expect(
+        container.querySelectorAll('[data-testid$="-badge"]'),
+      ).toHaveLength(0);
+    });
+
+    test("renders no whole-model surfaces when neither flag is set", () => {
+      const { container } = render(
+        <NodeView
+          node={createNode("model")}
+          onCloseNode={vi.fn()}
+          isSingleEnv={false}
+          wholeModelImpact
+        />,
+      );
+      expect(
+        container.querySelectorAll('[data-testid$="-title-chip"]'),
+      ).toHaveLength(0);
+      expect(
+        container.querySelectorAll('[data-testid$="-badge"]'),
+      ).toHaveLength(0);
+    });
+
+    test("renders no NodeView treatment for additive (non_breaking) — additive is per-column, not whole-table", () => {
+      const { container } = render(
+        <NodeView
+          node={{
+            id: "model.test.additive",
+            data: {
+              name: "additive_model",
+              resourceType: "model",
+              change: { category: "non_breaking" },
+            },
+          }}
+          onCloseNode={vi.fn()}
+          isSingleEnv={false}
+          wholeModelImpact
+        />,
+      );
+      expect(
+        container.querySelectorAll('[data-testid$="-title-chip"]'),
+      ).toHaveLength(0);
+      expect(
+        container.querySelectorAll('[data-testid$="-badge"]'),
+      ).toHaveLength(0);
+    });
+
+    test("renders no whole-model surfaces when wholeModelImpact is off, even if flags are set", () => {
+      const { container } = render(
+        <NodeView
+          node={createNode("model")}
+          onCloseNode={vi.fn()}
+          isSingleEnv={false}
+          isWholeModelChanged
+          isWholeModelImpacted
+        />,
+      );
+      expect(
+        container.querySelectorAll('[data-testid$="-title-chip"]'),
+      ).toHaveLength(0);
+      expect(
+        container.querySelectorAll('[data-testid$="-badge"]'),
+      ).toHaveLength(0);
+    });
+  });
+
   describe("default landing tab", () => {
     // DRC-3468: Columns must be the default tab even when lineageTabContent
     // is provided. Without this assertion, a regression that re-inverts the
