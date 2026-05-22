@@ -76,7 +76,8 @@ async def row_count_diff(
         }.items()
         if v is not None
     }
-    return await _recce_server._tool_row_count_diff(arguments)
+    result = await _recce_server._tool_row_count_diff(arguments)
+    return {"models": result}
 
 
 @mcp.resource(
@@ -110,16 +111,14 @@ async def schema_diff(
     packages: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """Get schema diff (column changes) between base and current environments."""
-    arguments = {
-        k: v
-        for k, v in {
-            "select": select,
-            "exclude": exclude,
-            "packages": packages,
-        }.items()
-        if v is not None
-    }
-    return await _recce_server._tool_schema_diff(arguments)
+    lineage_diff = _recce_server.context.get_lineage_diff().model_dump(mode="json")
+    rich_result = _recce_server._compute_schema_changes(
+        lineage_diff,
+        select=select,
+        exclude=exclude,
+        packages=packages if packages is not None else None,
+    )
+    return {"models": rich_result}
 
 
 @mcp.resource(

@@ -22,8 +22,24 @@ deps-*.yml
 recce.yml
 STATUS.md
 
-# Ignore build artifacts from frontend
-recce/data
+# Ignore build artifacts from frontend.
+# recce/data/mcp/*.html are SOURCE files (widget HTML for MCP Apps) — not build output.
+# git negation cannot un-ignore files under an ignored directory, so we ignore
+# specific subdirs instead of the whole recce/data tree.
+recce/data/.gitkeep
+recce/data/_next/
+recce/data/chunks/
+recce/data/*.html
+recce/data/*.js
+recce/data/*.css
+recce/data/*.json
+recce/data/*.txt
+recce/data/*.xml
+recce/data/*.ico
+recce/data/*.png
+recce/data/*.svg
+recce/data/*.woff
+recce/data/*.woff2
 
 # ignore Claude logs and plans at any nesting
 **/docs/plans/**/*.md

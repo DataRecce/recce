@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Schema Diff</title>
+  <style>
+    body { font-family: system-ui, sans-serif; font-size: 14px; margin: 0; padding: 12px; color: #1a1a1a; }
+    h2 { margin: 0 0 16px; font-size: 16px; }
+    h3 { margin: 16px 0 8px; font-size: 14px; color: #374151; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
+    h4 { margin: 10px 0 4px; font-size: 13px; font-weight: 600; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
+    th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid #e5e7eb; }
+    th { font-weight: 600; background: #f9fafb; font-size: 12px; }
+    .added td { background: #f0fdf4; }
+    .removed td { background: #fff7f7; }
+    .changed td { background: #fffbeb; }
+    .pill {
+      display: inline-block; padding: 1px 7px; border-radius: 10px;
+      font-size: 11px; font-weight: 500;
+    }
+    .pill-added   { background: #d1fae5; color: #065f46; }
+    .pill-removed { background: #fee2e2; color: #991b1b; }
+    .pill-changed { background: #fef3c7; color: #92400e; }
+    .unchanged { color: #6b7280; font-size: 13px; margin: 4px 0; }
+    .empty { color: #6b7280; padding: 16px 0; }
+    .model-block { margin-bottom: 20px; }
+    .arrow { color: #9ca3af; margin: 0 4px; }
+  </style>
+</head>
+<body>
+  <div id="root">Loading…</div>
+  <script type="module">
+    import { App } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+
+    const app = new App({ name: "Recce Schema Diff", version: "1.0.0" });
+    await app.connect();
+
+    app.ontoolresult = ({ structuredContent }) => {
+      render(structuredContent ?? {});
+    };
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function renderModelBlock(nodeId, m) {
+      const added = m.added ?? [];
+      const removed = m.removed ?? [];
+      const typeChanged = m.type_changed ?? [];
+      const unchangedCount = m.unchanged_count ?? 0;
+      const hasChanges = added.length > 0 || removed.length > 0 || typeChanged.length > 0;
+
+      let html = `<div class="model-block"><h3>${escapeHtml(nodeId)}</h3>`;
+
+      if (!hasChanges && unchangedCount > 0) {
+        html += `<p class="unchanged">No schema changes (${unchangedCount} column${unchangedCount !== 1 ? "s" : ""} unchanged)</p>`;
+        return html + "</div>";
+      }
+
+      if (added.length > 0) {
+        html += `<h4><span class="pill pill-added">+${added.length} Added</span></h4>`;
+        html += `<table><thead><tr><th>Column</th><th>Type</th></tr></thead><tbody>`;
+        html += added.map(c => `<tr class="added"><td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.type ?? "")}</td></tr>`).join("");
+        html += `</tbody></table>`;
+      }
+
+      if (removed.length > 0) {
+        html += `<h4><span class="pill pill-removed">-${removed.length} Removed</span></h4>`;
+        html += `<table><thead><tr><th>Column</th><th>Type</th></tr></thead><tbody>`;
+        html += removed.map(c => `<tr class="removed"><td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.type ?? "")}</td></tr>`).join("");
+        html += `</tbody></table>`;
+      }
+
+      if (typeChanged.length > 0) {
+        html += `<h4><span class="pill pill-changed">${typeChanged.length} Type Changed</span></h4>`;
+        html += `<table><thead><tr><th>Column</th><th>Base Type</th><th></th><th>Current Type</th></tr></thead><tbody>`;
+        html += typeChanged.map(c => `<tr class="changed">
+          <td>${escapeHtml(c.name)}</td>
+          <td>${escapeHtml(c.base_type ?? "")}</td>
+          <td class="arrow">→</td>
+          <td>${escapeHtml(c.curr_type ?? "")}</td>
+        </tr>`).join("");
+        html += `</tbody></table>`;
+      }
+
+      if (unchangedCount > 0) {
+        html += `<p class="unchanged">${unchangedCount} column${unchangedCount !== 1 ? "s" : ""} unchanged</p>`;
+      }
+
+      return html + "</div>";
+    }
+
+    function render(data) {
+      const models = data.models ?? {};
+      const entries = Object.entries(models);
+      if (entries.length === 0) {
+        document.getElementById("root").innerHTML =
+          `<h2>Schema Diff</h2><p class="empty">No models found.</p>`;
+        return;
+      }
+
+      const blocks = entries.map(([nodeId, m]) => renderModelBlock(nodeId, m)).join("");
+      document.getElementById("root").innerHTML = `<h2>Schema Diff</h2>${blocks}`;
+    }
+  </script>
+</body>
+</html>

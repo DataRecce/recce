@@ -1498,26 +1498,33 @@ class RecceMCPServer:
 
         return result
 
-    async def _tool_schema_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """Get schema diff (column changes) between base and current"""
-        # Extract filter arguments
-        select = arguments.get("select")
-        exclude = arguments.get("exclude")
-        packages = arguments.get("packages")
+    def _compute_schema_changes(
+        self,
+        lineage_diff: Dict[str, Any],
+        select: Optional[str] = None,
+        exclude: Optional[str] = None,
+        packages: Optional[List[str]] = None,
+    ) -> Dict[str, Dict[str, Any]]:
+        """Compute per-model schema changes as a rich nested dict.
 
-        # Get lineage diff from adapter
-        lineage_diff = self.context.get_lineage_diff().model_dump(mode="json")
+        Returns:
+            {node_id: {
+                "added":        [{"name": str, "type": str}, ...],
+                "removed":      [{"name": str, "type": str}, ...],
+                "type_changed": [{"name": str, "base_type": str, "curr_type": str}, ...],
+                "unchanged_count": int,
+            }}
 
-        # Get all nodes from current environment
+        Used by both the low-level mcp-server (flattened to DataFrame) and the
+        FastMCP widget server (returned as structuredContent for schema_diff.html).
+        """
         current_nodes = {}
         if "current" in lineage_diff and "nodes" in lineage_diff["current"]:
             current_nodes = lineage_diff["current"]["nodes"]
 
-        # Filter to only nodes that exist in both base and current (exclude added nodes)
         base_nodes = lineage_diff.get("base", {}).get("nodes", {})
         nodes_to_compare = set(current_nodes.keys()) & set(base_nodes.keys())
 
-        # Apply filtering if arguments provided
         if select or exclude or packages:
             selected_node_ids = self.context.adapter.select_nodes(
                 select=select,
@@ -1526,34 +1533,59 @@ class RecceMCPServer:
             )
             nodes_to_compare = nodes_to_compare & selected_node_ids
 
-        # Build schema changes
-        schema_changes = []
-
+        result: Dict[str, Dict[str, Any]] = {}
         for node_id in nodes_to_compare:
-            base_node = base_nodes.get(node_id, {})
-            current_node = current_nodes.get(node_id, {})
+            base_columns = base_nodes.get(node_id, {}).get("columns", {})
+            current_columns = current_nodes.get(node_id, {}).get("columns", {})
 
-            base_columns = base_node.get("columns", {})
-            current_columns = current_node.get("columns", {})
-
-            # Get column names in base and current
             base_col_names = set(base_columns.keys())
             current_col_names = set(current_columns.keys())
 
-            # Find added columns (in current but not in base)
-            for col_name in current_col_names - base_col_names:
-                schema_changes.append((node_id, col_name, "added"))
+            added = [
+                {"name": col, "type": current_columns[col].get("type", "")}
+                for col in sorted(current_col_names - base_col_names)
+            ]
+            removed = [
+                {"name": col, "type": base_columns[col].get("type", "")}
+                for col in sorted(base_col_names - current_col_names)
+            ]
+            type_changed = []
+            unchanged_count = 0
+            for col in sorted(base_col_names & current_col_names):
+                base_type = base_columns[col].get("type")
+                curr_type = current_columns[col].get("type")
+                if base_type != curr_type:
+                    type_changed.append({"name": col, "base_type": base_type, "curr_type": curr_type})
+                else:
+                    unchanged_count += 1
 
-            # Find removed columns (in base but not in current)
-            for col_name in base_col_names - current_col_names:
-                schema_changes.append((node_id, col_name, "removed"))
+            result[node_id] = {
+                "added": added,
+                "removed": removed,
+                "type_changed": type_changed,
+                "unchanged_count": unchanged_count,
+            }
+        return result
 
-            # Find modified columns (in both but with different types)
-            for col_name in base_col_names & current_col_names:
-                base_col_type = base_columns[col_name].get("type")
-                current_col_type = current_columns[col_name].get("type")
-                if base_col_type != current_col_type:
-                    schema_changes.append((node_id, col_name, "modified"))
+    async def _tool_schema_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Get schema diff (column changes) between base and current"""
+        select = arguments.get("select")
+        exclude = arguments.get("exclude")
+        packages = arguments.get("packages")
+
+        lineage_diff = self.context.get_lineage_diff().model_dump(mode="json")
+        rich_changes = self._compute_schema_changes(lineage_diff, select=select, exclude=exclude, packages=packages)
+
+        # Flatten rich dict → (node_id, column, change_status) triples for DataFrame output.
+        # Preserves the existing low-level mcp-server response contract exactly.
+        schema_changes = []
+        for node_id, m in rich_changes.items():
+            for col in m["added"]:
+                schema_changes.append((node_id, col["name"], "added"))
+            for col in m["removed"]:
+                schema_changes.append((node_id, col["name"], "removed"))
+            for col in m["type_changed"]:
+                schema_changes.append((node_id, col["name"], "modified"))
 
         # Check if there are more than 100 rows
         limit = 100
