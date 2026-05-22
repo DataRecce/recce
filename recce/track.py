@@ -58,7 +58,7 @@ class TrackCommand(Command):
         if params.get("debug"):
             console.print_exception(show_locals=True)
         else:
-            print(traceback.format_exc())
+            print(traceback.format_exc(), file=sys.stderr)
             # console.print('[bold red]Error:[/bold red] ', end='')
             # console.out(msg, highlight=False)
 

@@ -2746,6 +2746,12 @@ def mcp_server(state_file, sse, host, port, **kwargs):
         console.print(r"Please install the MCP package: pip install 'recce\[mcp]'")
         exit(1)
 
+    # Claude Desktop spawns MCP servers with cwd=/. chdir to --project-dir
+    # before RecceConfig so it can find/create recce.yml relative to the project.
+    project_dir = kwargs.get("project_dir")
+    if project_dir:
+        os.chdir(project_dir)
+
     # Initialize Recce Config
     RecceConfig(config_file=kwargs.get("config"))
 
@@ -2912,6 +2918,12 @@ def mcp_widget_server(state_file, sse, host, port, **kwargs):
         console.print(f"[[red]Error[/red]] Failed to import widget server: {e}")
         console.print(r"Please install the MCP package: pip install 'recce\[mcp]'")
         exit(1)
+
+    # Claude Desktop spawns MCP servers with cwd=/. chdir to --project-dir
+    # before RecceConfig so it can find/create recce.yml relative to the project.
+    project_dir = kwargs.get("project_dir")
+    if project_dir:
+        os.chdir(project_dir)
 
     # Initialize Recce Config
     RecceConfig(config_file=kwargs.get("config"))
