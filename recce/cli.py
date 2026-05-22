@@ -2898,8 +2898,6 @@ def mcp_widget_server(state_file, sse, host, port, **kwargs):
 
     STATE_FILE is the path to the recce state file (optional).
     """
-    import asyncio
-
     from rich.console import Console
 
     from recce.config import RecceConfig
@@ -2954,8 +2952,10 @@ def mcp_widget_server(state_file, sse, host, port, **kwargs):
     kwargs["cloud"] = False
 
     try:
-        asyncio.run(run_widget_server(sse=False, host=host, port=port, **kwargs))
-    except (asyncio.CancelledError, KeyboardInterrupt):
+        # run_widget_server is synchronous — mcp.run(transport="stdio") manages
+        # its own asyncio event loop internally. Do NOT wrap in asyncio.run().
+        run_widget_server(sse=False, host=host, port=port, **kwargs)
+    except KeyboardInterrupt:
         console.print("[yellow]MCP Widget Server interrupted[/yellow]")
         exit(0)
     except Exception as e:

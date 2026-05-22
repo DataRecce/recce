@@ -11,7 +11,7 @@ widget server serves them with `_meta.ui.resourceUri` widget metadata.
 
 import importlib.resources
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from mcp.server.fastmcp import FastMCP
 
@@ -59,14 +59,23 @@ def _read_widget_html(name: str) -> str:
         "ui/resourceUri": "ui://recce/row_count_diff.html",
     },
 )
-async def row_count_diff(**arguments) -> Dict[str, Any]:
-    """
-    Expected arguments:
-    - node_names: List[str] (optional) — model names to check
-    - node_ids: List[str] (optional) — node IDs to check
-    - select: str (optional) — dbt selector syntax
-    - exclude: str (optional) — dbt selector to exclude models
-    """
+async def row_count_diff(
+    node_names: Optional[List[str]] = None,
+    node_ids: Optional[List[str]] = None,
+    select: Optional[str] = None,
+    exclude: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Compare row counts between base and current environments."""
+    arguments = {
+        k: v
+        for k, v in {
+            "node_names": node_names,
+            "node_ids": node_ids,
+            "select": select,
+            "exclude": exclude,
+        }.items()
+        if v is not None
+    }
     return await _recce_server._tool_row_count_diff(arguments)
 
 
@@ -95,13 +104,21 @@ def row_count_diff_resource() -> str:
         "ui/resourceUri": "ui://recce/schema_diff.html",
     },
 )
-async def schema_diff(**arguments) -> Dict[str, Any]:
-    """
-    Expected arguments:
-    - select: str (optional) — dbt selector syntax to filter models
-    - exclude: str (optional) — dbt selector syntax to exclude models
-    - packages: List[str] (optional) — list of packages to filter
-    """
+async def schema_diff(
+    select: Optional[str] = None,
+    exclude: Optional[str] = None,
+    packages: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Get schema diff (column changes) between base and current environments."""
+    arguments = {
+        k: v
+        for k, v in {
+            "select": select,
+            "exclude": exclude,
+            "packages": packages,
+        }.items()
+        if v is not None
+    }
     return await _recce_server._tool_schema_diff(arguments)
 
 
@@ -126,6 +143,9 @@ def run_widget_server(**kwargs) -> None:
     Iter 1 is LOCAL MODE ONLY — cloud/session kwargs are not supported.
     Register both `recce mcp-server` and `recce mcp-widget-server` entries
     in Claude Desktop config with RECCE_MCP_WIDGETS=1 set on both.
+
+    mcp.run(transport="stdio") manages its own asyncio event loop internally.
+    Do NOT wrap this function in asyncio.run().
     """
     global _recce_server
 
