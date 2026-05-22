@@ -103,56 +103,126 @@ Create a single self-contained HTML file. Import the MCP Apps SDK from unpkg
 <body>
   <div id="root">Loading…</div>
   <script type="module">
-    import { App } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+    import {
+      App,
+      applyDocumentTheme,
+      applyHostStyleVariables,
+      applyHostFonts,
+    } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
 
     const app = new App({ name: "My Tool", version: "1.0.0" });
-    await app.connect();
+
+    // Apply host theme on every context change (theme switch, font change, etc.)
+    app.onhostcontextchanged = (ctx) => {
+      if (ctx.theme) applyDocumentTheme(ctx.theme);
+      if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+      if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
+    };
 
     app.ontoolresult = ({ structuredContent }) => {
       const models = structuredContent?.models ?? {};
       document.getElementById("root").textContent = JSON.stringify(models, null, 2);
     };
+
+    app.onteardown = async () => { return {}; };
+
+    await app.connect();
+
+    // Apply theme from initial context if available before first change event
+    const initialCtx = app.getHostContext?.();
+    if (initialCtx) {
+      if (initialCtx.theme) applyDocumentTheme(initialCtx.theme);
+      if (initialCtx.styles?.variables) applyHostStyleVariables(initialCtx.styles.variables);
+      if (initialCtx.styles?.css?.fonts) applyHostFonts(initialCtx.styles.css.fonts);
+    }
   </script>
 </body>
 </html>
 ```
 
-`structuredContent` is populated automatically by FastMCP when the `@mcp.tool`
-handler returns a dict (see "structuredContent contract" below). The `models`
-key is the wrapping convention this codebase uses — your render function reads
-from `structuredContent.models`.
+`structuredContent` comes from the `CallToolResult.structuredContent` set in the
+Python handler (see "structuredContent contract" below). The `models` key is the
+wrapping convention this codebase uses — your render function reads from
+`structuredContent.models`.
+
+SDK theme helpers (`applyDocumentTheme`, `applyHostStyleVariables`,
+`applyHostFonts`) actively apply design tokens from the host context via
+`postMessage`. Use `var(--token, fallback)` in CSS as a defensive layer in case
+the helper hasn't fired yet (race condition on first load).
 
 Add the HTML file to git normally — it escapes the broad `recce/data` gitignore
 via per-extension rules in `.gitignore` (see "Gotchas").
 
 ### Step 3 — Add a `@mcp.tool` delegate in `recce/widget_server.py`
 
+Define Pydantic input and output models first, then the tool handler:
+
 ```python
+from pydantic import BaseModel, Field
+from mcp.types import CallToolResult, TextContent
+
+class MyToolInput(BaseModel):
+    select: Optional[str] = Field(
+        default=None,
+        description="dbt selector syntax",
+    )
+    exclude: Optional[str] = Field(
+        default=None,
+        description="dbt selector syntax for exclusion",
+    )
+
+class MyToolModel(BaseModel):
+    # ... fields matching the data shape for one model
+    pass
+
+class MyToolOutput(BaseModel):
+    models: Dict[str, MyToolModel]
+
 @mcp.tool(
     name="<tool>",
-    description="Human-readable description Claude uses to pick this tool.",
+    annotations={
+        "title": "My Tool (Widget)",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,
+    },
     meta={
         "ui": {"resourceUri": "ui://recce/<tool>.html"},
         "ui/resourceUri": "ui://recce/<tool>.html",
     },
 )
-async def <tool>(
-    select: Optional[str] = None,
-    exclude: Optional[str] = None,
-) -> Dict[str, Any]:
-    """One-line docstring."""
-    result = await _recce_server._tool_<tool>({"select": select, "exclude": exclude})
-    return {"models": result}
+async def <tool>(args: MyToolInput) -> CallToolResult:
+    """One-line summary.
+
+    Use when: ...
+    Don't use when: ...
+    Returns: CallToolResult with structuredContent: MyToolOutput shape.
+    """
+    result = await _recce_server._tool_<tool>(args.model_dump(exclude_none=True))
+    output = MyToolOutput(
+        models={name: MyToolModel(**v) for name, v in result.items()},
+    )
+    return CallToolResult(
+        content=[TextContent(type="text", text="<Tool> rendered in widget.")],
+        structuredContent=output.model_dump(),
+    )
 ```
 
 Key requirements:
-- Use **typed params** (`Optional[str]`, `Optional[List[str]]`, etc.) — never
-  `**kwargs`. FastMCP infers the JSON `inputSchema` from type hints. Without a
-  schema the tool is uncallable from Claude Desktop.
+- Use a **Pydantic BaseModel input** (`MyToolInput`) with `Field(description=...)`
+  on every param. FastMCP infers the JSON `inputSchema` from the model schema.
+  Without a schema the tool is uncallable from Claude Desktop.
+- Use a **Pydantic BaseModel output** (`MyToolOutput`). This generates a clean
+  `outputSchema` and prevents FastMCP's `{result: ...}` wrapping that occurs
+  with bare `Dict[str, Any]` returns.
+- **Return `CallToolResult` explicitly** with a one-sentence `content` string.
+  The agent reads only the short content text; the widget reads `structuredContent`.
+- `annotations` dict is required: `readOnlyHint`, `destructiveHint`,
+  `idempotentHint`, `openWorldHint`, `title`.
 - `meta` needs **both** the nested key (`"ui": {"resourceUri": ...}`) and the
   flat key (`"ui/resourceUri": ...`) — the qr-server reference pattern. Dropping
   either key breaks widget attachment in some Claude Desktop versions.
-- Return `{"models": result}` so widget HTML can read a uniform `structuredContent.models`.
 
 ### Step 4 — Add a `@mcp.resource` handler in `recce/widget_server.py`
 
@@ -160,7 +230,12 @@ Key requirements:
 @mcp.resource(
     uri="ui://recce/<tool>.html",
     mime_type="text/html;profile=mcp-app",
-    meta={"ui": {"csp": {"resourceDomains": ["https://unpkg.com"]}}},
+    meta={
+        "ui": {
+            "csp": {"resourceDomains": ["https://unpkg.com"]},
+            "prefersBorder": False,  # widget manages its own padding/border
+        },
+    },
 )
 def <tool>_resource() -> str:
     return _read_widget_html("<tool>")
@@ -206,14 +281,24 @@ as the worked example.
 
 ## structuredContent Contract
 
-When a FastMCP `@mcp.tool` async function returns a `dict`, FastMCP
-automatically populates both:
+When a `@mcp.tool` handler returns a `CallToolResult` explicitly, it controls
+exactly what goes into `content` (for non-widget MCP clients) and
+`structuredContent` (for widget-capable clients like Claude Desktop):
 
-- `content`: a text serialisation of the dict (for non-widget MCP clients)
-- `structuredContent`: the dict itself (for widget-capable clients like
-  Claude Desktop)
+```python
+return CallToolResult(
+    content=[TextContent(type="text", text="Tool rendered in widget.")],
+    structuredContent=output.model_dump(),   # Pydantic BaseModel → clean dict
+)
+```
 
-The widget HTML receives `structuredContent` in the `app.ontoolresult` callback:
+- `content`: a short one-sentence string the agent reads. Never a JSON dump of
+  the full data — that would cause the agent to re-render the data as a text
+  table ("dual-render"), defeating the widget.
+- `structuredContent`: the Pydantic output model dumped to a dict. Widget HTML
+  reads this in the `app.ontoolresult` callback.
+
+The widget HTML receives `structuredContent` directly:
 
 ```js
 app.ontoolresult = ({ structuredContent }) => {
@@ -222,10 +307,14 @@ app.ontoolresult = ({ structuredContent }) => {
 };
 ```
 
-This codebase always wraps tool results as `{"models": <actual_result>}` before
-returning from the `@mcp.tool` delegate. This keeps all widget HTML uniform —
-every widget reads from `structuredContent.models`, regardless of the underlying
-tool's native shape.
+This codebase always puts model data under a `models` key in the Pydantic output
+model. This keeps all widget HTML uniform — every widget reads from
+`structuredContent.models`, regardless of the underlying tool's native shape.
+
+**Why Pydantic models, not bare `Dict[str, Any]`:** FastMCP wraps bare `Dict`
+returns in a `{result: ...}` envelope at the protocol level. Pydantic return
+types (or explicit `CallToolResult`) bypass this and emit the clean dict shape
+directly. Always use Pydantic models for widget tool outputs.
 
 ---
 
@@ -235,10 +324,20 @@ tool's native shape.
   Version 1.7.2 was tested in the Day 0 spike and found incompatible. Do not
   float the version or use `@latest`.
 
-- **`@mcp.tool` must use typed params — never `**kwargs`.** FastMCP cannot
-  infer an `inputSchema` from `**kwargs`. Without a schema, Claude Desktop
-  registers the tool in `tools/list` but cannot construct a `tools/call` —
-  the tool appears available but is silently uncallable.
+- **`@mcp.tool` input must be a Pydantic BaseModel — never bare `**kwargs` or
+  bare typed params.** Using a Pydantic input model gives each parameter a
+  `description` field in the JSON `inputSchema`, which improves LLM tool
+  selection. FastMCP generates `inputSchema` from the Pydantic model schema.
+  Without a schema, Claude Desktop registers the tool in `tools/list` but
+  cannot construct a `tools/call` — the tool appears available but is silently
+  uncallable.
+
+- **`@mcp.tool` output must be a Pydantic BaseModel or explicit `CallToolResult`
+  — never bare `Dict[str, Any]`.** FastMCP wraps bare `Dict` returns in a
+  `{result: ...}` envelope at the protocol level. Pydantic return types or
+  explicit `CallToolResult` bypass this and emit the clean dict shape. Widget
+  JS reads `structuredContent.models`; if `{result: ...}` wrapping is present,
+  the widget sees an empty `models` key and renders "No models found."
 
 - **`@mcp.tool` meta needs both key forms.** The `meta` dict must contain:
   - `"ui": {"resourceUri": "ui://recce/<tool>.html"}` (nested, canonical)
@@ -260,8 +359,40 @@ tool's native shape.
 
 - **In stdio transport mode, stdout is JSON-RPC.** Any `print()` or
   `logging.info()` output written to stdout will corrupt the MCP framing.
-  Configure logging to write to `stderr` only (see `logging.basicConfig` in
-  `run_widget_server()`). Never add bare `print()` calls in `widget_server.py`.
+  Configure logging to write to `stderr` only (see `logging.basicConfig(stream=sys.stderr)`
+  in `run_widget_server()`). Never add bare `print()` calls in `widget_server.py`.
+
+- **CSS token naming: use `danger`, not `error`.** The MCP Apps spec enum
+  `McpUiStyleVariableKey` uses `--color-text-danger` and
+  `--color-background-danger`. There is no `--color-text-error` token — using
+  it in a `var()` fallback chain causes the CSS fallback to fire even when the
+  host provides design tokens.
+
+---
+
+## Python vs TypeScript SDK Support
+
+The `@modelcontextprotocol/ext-apps` package provides TypeScript SDK
+helpers (`registerAppTool`, `registerAppResource`, etc.) but no
+dedicated Python package. Python servers use the base `mcp` SDK
+(`FastMCP`) and manually wire the MCP Apps wire shape via
+`@mcp.tool(meta={"ui": {"resourceUri": "..."}})` and
+`@mcp.resource(mime_type="text/html;profile=mcp-app", meta={"ui": {...}})`.
+
+The qr-server example in the official ext-apps examples directory is
+the canonical Python reference for MCP Apps server-side patterns:
+https://github.com/modelcontextprotocol/ext-apps/tree/main/examples/qr-server
+
+Widget HTML JS-side helpers (`applyDocumentTheme`,
+`applyHostStyleVariables`, `applyHostFonts`, `App` class) ARE available
+to Python servers — they live in `@modelcontextprotocol/ext-apps@0.4.0`
+loaded into the widget iframe via unpkg CDN. They work regardless of
+which server language emits the JSON-RPC.
+
+Recce stays on Python because (1) `recce/mcp_server.py` is 3000+ LOC
+of Python with deep dbt integration, switching languages for widget
+ergonomics is poor ROI, and (2) qr-server proves the Python path is
+documented and supported. Reconsider if ext-apps publishes a Python SDK.
 
 ---
 
