@@ -224,6 +224,29 @@ class TestAnalyzeSqlCteRefsExclusion(unittest.TestCase):
         result = analyze_sql(sql)
         self.assertEqual(result.refs, ["customers"])
 
+    def test_qualified_table_not_dropped_by_unqualified_cte_collision(self):
+        # If a CTE is named `orders` and the query also reads `raw.orders`,
+        # the qualified ref must survive — CTE shadowing applies only to
+        # unqualified identifiers.
+        sql = (
+            "WITH orders AS (SELECT id FROM staging_orders) "
+            "SELECT id FROM orders WHERE id IN (SELECT order_id FROM raw.orders)"
+        )
+        result = analyze_sql(sql)
+        self.assertIn("orders", result.refs)
+        self.assertIn("staging_orders", result.refs)
+
+    def test_three_part_qualified_ref_not_dropped_by_cte_collision(self):
+        # `catalog.schema.orders` carries a catalog as well as a db — the CTE
+        # exclusion must still let it through.
+        sql = (
+            "WITH orders AS (SELECT id FROM staging_orders) "
+            "SELECT id FROM orders UNION ALL SELECT id FROM analytics.public.orders"
+        )
+        result = analyze_sql(sql)
+        self.assertIn("orders", result.refs)
+        self.assertIn("staging_orders", result.refs)
+
 
 class TestAnalyzeSqlSetOperations(unittest.TestCase):
     """UNION / INTERSECT / EXCEPT must produce merged structure, not silent empty."""
@@ -266,6 +289,54 @@ class TestAnalyzeSqlSetOperations(unittest.TestCase):
         result = analyze_sql(sql)
         self.assertTrue(result.distinct)
 
+    def test_intersect_marks_is_set_operation(self):
+        result = analyze_sql("SELECT a FROM t1 INTERSECT SELECT b FROM t2")
+        self.assertTrue(result.is_set_operation)
+
+    def test_intersect_merges_refs_and_projections(self):
+        result = analyze_sql("SELECT id FROM t1 INTERSECT SELECT id FROM t2")
+        self.assertEqual(sorted(result.refs), ["t1", "t2"])
+        self.assertEqual([p.name for p in result.projections], ["id", "id"])
+
+    def test_intersect_merges_filters_from_each_leg(self):
+        sql = (
+            "SELECT id FROM customers WHERE status = 'active' "
+            "INTERSECT "
+            "SELECT id FROM archived_customers WHERE archived_at > '2024-01-01'"
+        )
+        result = analyze_sql(sql)
+        self.assertEqual(len(result.filters), 2)
+        joined = " | ".join(result.filters)
+        self.assertIn("status = 'active'", joined)
+        self.assertIn("archived_at", joined)
+
+    def test_except_marks_is_set_operation(self):
+        result = analyze_sql("SELECT a FROM t1 EXCEPT SELECT b FROM t2")
+        self.assertTrue(result.is_set_operation)
+
+    def test_except_merges_refs_and_projections(self):
+        result = analyze_sql("SELECT id FROM t1 EXCEPT SELECT id FROM t2")
+        self.assertEqual(sorted(result.refs), ["t1", "t2"])
+        self.assertEqual([p.name for p in result.projections], ["id", "id"])
+
+    def test_intersect_chain_recurses(self):
+        sql = "SELECT a FROM t1 INTERSECT SELECT a FROM t2 INTERSECT SELECT a FROM t3"
+        result = analyze_sql(sql)
+        self.assertEqual(sorted(result.refs), ["t1", "t2", "t3"])
+        self.assertEqual(len(result.projections), 3)
+
+    def test_intersect_distinct_true_when_any_leg_distinct(self):
+        result = analyze_sql("SELECT DISTINCT a FROM t1 INTERSECT SELECT a FROM t2")
+        self.assertTrue(result.distinct)
+
+    def test_mixed_union_and_intersect_merges_all_legs(self):
+        # `a UNION b INTERSECT c` — both set-op kinds must contribute their legs.
+        sql = "SELECT a FROM t1 UNION SELECT a FROM t2 INTERSECT SELECT a FROM t3"
+        result = analyze_sql(sql)
+        self.assertTrue(result.is_set_operation)
+        self.assertEqual(sorted(result.refs), ["t1", "t2", "t3"])
+        self.assertEqual(len(result.projections), 3)
+
 
 class TestAnalyzeSqlDialect(unittest.TestCase):
     """Dialect must be forwarded to sqlglot — dialect-specific syntax must parse."""
@@ -288,7 +359,7 @@ def _fake_manifest(nodes: dict):
 
 class TestGetCompiledSqlFromManifest(unittest.TestCase):
     def test_returns_compiled_code_when_present(self):
-        node = SimpleNamespace(compiled_code="SELECT 1", raw_code="select 1")
+        node = SimpleNamespace(compiled_code="SELECT 1", raw_code="select 1", resource_type="model")
         manifest = _fake_manifest({"model.x.a": node})
         self.assertEqual(get_compiled_sql_from_manifest(manifest, "model.x.a"), "SELECT 1")
 
@@ -297,9 +368,27 @@ class TestGetCompiledSqlFromManifest(unittest.TestCase):
         self.assertIsNone(get_compiled_sql_from_manifest(manifest, "model.x.missing"))
 
     def test_returns_none_when_compiled_code_missing(self):
-        node = SimpleNamespace(compiled_code=None, raw_code="select 1")
+        node = SimpleNamespace(compiled_code=None, raw_code="select 1", resource_type="model")
         manifest = _fake_manifest({"model.x.a": node})
         self.assertIsNone(get_compiled_sql_from_manifest(manifest, "model.x.a"))
+
+    def test_accepts_seed_and_snapshot(self):
+        # Mirror CllNode.build_cll_node's accepted set: {model, seed, snapshot}.
+        for resource_type in ("seed", "snapshot"):
+            node = SimpleNamespace(compiled_code="SELECT 1", raw_code="select 1", resource_type=resource_type)
+            manifest = _fake_manifest({f"{resource_type}.x.a": node})
+            self.assertEqual(get_compiled_sql_from_manifest(manifest, f"{resource_type}.x.a"), "SELECT 1")
+
+    def test_rejects_non_analyzable_resource_types(self):
+        # Lock the allow-list contract: anything outside {model, seed, snapshot}
+        # must raise — covers test, analysis, operation, exposure.
+        for resource_type in ("test", "analysis", "operation", "exposure"):
+            node = SimpleNamespace(compiled_code="SELECT * FROM dummy", raw_code="", resource_type=resource_type)
+            manifest = _fake_manifest({f"{resource_type}.x.foo": node})
+            with self.assertRaises(ValueError) as ctx:
+                get_compiled_sql_from_manifest(manifest, f"{resource_type}.x.foo")
+            # Error message should identify the rejected resource type so an agent can correct course.
+            self.assertIn(resource_type, str(ctx.exception))
 
 
 class TestCollectDownstream(unittest.TestCase):

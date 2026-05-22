@@ -103,12 +103,13 @@ def _top_level_selects(tree: exp.Expression) -> list[exp.Select]:
     """Return the SELECT legs of the outermost tree.
 
     For a plain SELECT, returns [tree]. For UNION / INTERSECT / EXCEPT (any
-    sqlglot ``exp.Union`` subclass), recurses into ``left`` / ``right`` and
-    returns each leg's SELECT. Selects inside CTEs and subqueries are not
-    returned — those are walked separately by ``find_all`` for aggregations
-    and case expressions.
+    sqlglot ``exp.SetOperation`` subclass — Union, Intersect, and Except all
+    inherit from SetOperation independently, not from each other), recurses
+    into ``left`` / ``right`` and returns each leg's SELECT. Selects inside
+    CTEs and subqueries are not returned — those are walked separately by
+    ``find_all`` for aggregations and case expressions.
     """
-    if isinstance(tree, exp.Union):
+    if isinstance(tree, exp.SetOperation):
         return _top_level_selects(tree.left) + _top_level_selects(tree.right)
     if isinstance(tree, exp.Select):
         return [tree]
@@ -124,8 +125,13 @@ def analyze_sql(compiled_sql: str, dialect: Optional[str] = None) -> SqlStructur
     # Exclude CTE alias names from refs — they are internal aliases, not
     # upstream tables. Without this, every staging-style model with `WITH
     # source AS (...) SELECT * FROM source` leaks the CTE name as a "ref".
+    # Only unqualified table references can resolve to a CTE; a qualified
+    # name like `raw.orders` still refers to the real table even if a CTE
+    # named `orders` exists in the same tree.
     cte_names = {cte.alias_or_name for cte in tree.find_all(exp.CTE)}
-    refs = sorted({t.name for t in tree.find_all(exp.Table) if t.name not in cte_names})
+    refs = sorted(
+        {t.name for t in tree.find_all(exp.Table) if not (t.name in cte_names and not t.db and not t.catalog)}
+    )
 
     projections: list[ProjectionInfo] = []
     filters: list[str] = []
@@ -173,7 +179,7 @@ def analyze_sql(compiled_sql: str, dialect: Optional[str] = None) -> SqlStructur
 
     has_subquery = tree.find(exp.Subquery) is not None
     has_cte = tree.find(exp.With) is not None
-    is_set_operation = isinstance(tree, exp.Union)
+    is_set_operation = isinstance(tree, exp.SetOperation)
 
     return SqlStructure(
         refs=refs,
@@ -192,10 +198,19 @@ def analyze_sql(compiled_sql: str, dialect: Optional[str] = None) -> SqlStructur
     )
 
 
+_ANALYZABLE_RESOURCE_TYPES = frozenset({"model", "seed", "snapshot"})
+
+
 def get_compiled_sql_from_manifest(manifest: Any, model_id: str) -> Optional[str]:
     node = manifest.nodes.get(model_id)
     if node is None:
         return None
+    resource_type = getattr(node, "resource_type", None)
+    if resource_type is not None and resource_type not in _ANALYZABLE_RESOURCE_TYPES:
+        raise ValueError(
+            f"Node {model_id} has resource_type={resource_type!r}; "
+            f"analyze_model only supports {sorted(_ANALYZABLE_RESOURCE_TYPES)}."
+        )
     compiled = getattr(node, "compiled_code", None)
     return compiled or None
 

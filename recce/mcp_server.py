@@ -698,39 +698,47 @@ class RecceMCPServer:
                     },
                 )
             )
-            tools.append(
-                Tool(
-                    name="analyze_model",
-                    description=(
-                        "Parse a dbt model's compiled SQL into structured evidence (refs, projections, "
-                        "filters, joins, group_by, having, order_by, aggregations, case_expressions, "
-                        "distinct, has_subquery, has_cte, is_set_operation) and return its downstream "
-                        "column impact (which other models and columns depend on it, 1 hop). "
-                        "Single-environment tool — does not require target-base/ or git history. "
-                        "Useful for understanding what a model does structurally and who would be "
-                        "affected by changes to it. Only available with dbt adapter.\n\n"
-                        "Notes on the structure: refs lists upstream tables/sources only (CTE aliases "
-                        "are excluded). is_set_operation=true means the model is a UNION/INTERSECT/"
-                        "EXCEPT; projections and filters are merged across all legs. downstream covers "
-                        "only direct dependents — for transitive impact, traverse with get_cll.\n\n"
-                        "Returns: {model_id, structure: SqlStructure, downstream: {models, columns}}. "
-                        "If sqlglot cannot parse the compiled SQL, structure.unparseable=true and "
-                        "the agent should fall back to text-level inspection."
-                    ),
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "model_id": {
-                                "type": "string",
-                                "description": (
-                                    "Full unique ID of the model to analyze " "(e.g., 'model.project.model_name')."
-                                ),
+            # analyze_model is local-only: it relies on the local dbt manifest and
+            # the adapter-side _full_cll_map cache. The cloud backend (RecceMCPCloudBackend)
+            # does not implement it, so advertising it in cloud mode would surface a
+            # ValueError("Unknown tool: analyze_model") when an agent tries to call it.
+            if self.backend is None:
+                tools.append(
+                    Tool(
+                        name="analyze_model",
+                        description=(
+                            "Parse a dbt model's compiled SQL into structured evidence (refs, projections, "
+                            "filters, joins, group_by, having, order_by, aggregations, case_expressions, "
+                            "distinct, has_subquery, has_cte, is_set_operation) and return its downstream "
+                            "column impact (which other models and columns depend on it, 1 hop). "
+                            "Single-environment tool — does not require target-base/ or git history. "
+                            "Useful for understanding what a model does structurally and who would be "
+                            "affected by changes to it. Only available with dbt adapter in local mode.\n\n"
+                            "Notes on the structure: refs lists upstream tables/sources only (CTE aliases "
+                            "are excluded). is_set_operation=true means the model is a UNION/INTERSECT/"
+                            "EXCEPT; projections and filters are merged across all legs. downstream covers "
+                            "only direct dependents — for transitive impact, traverse with get_cll.\n\n"
+                            "Performance: the first call per session builds the full column-level lineage "
+                            "map (potentially seconds on large projects); subsequent calls reuse the cached "
+                            "map and are fast.\n\n"
+                            "Returns: {model_id, structure: SqlStructure, downstream: {models, columns}}. "
+                            "If sqlglot cannot parse the compiled SQL, structure.unparseable=true and "
+                            "the agent should fall back to text-level inspection."
+                        ),
+                        inputSchema={
+                            "type": "object",
+                            "properties": {
+                                "model_id": {
+                                    "type": "string",
+                                    "description": (
+                                        "Full unique ID of the model to analyze " "(e.g., 'model.project.model_name')."
+                                    ),
+                                },
                             },
+                            "required": ["model_id"],
                         },
-                        "required": ["model_id"],
-                    },
+                    )
                 )
-            )
             tools.append(
                 Tool(
                     name="get_server_info",

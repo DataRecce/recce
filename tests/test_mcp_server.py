@@ -6,7 +6,11 @@ import pytest
 # Skip all tests in this module if mcp is not available
 pytest.importorskip("mcp")
 
-from mcp.types import CallToolRequest, CallToolRequestParams  # noqa: E402
+from mcp.types import (  # noqa: E402
+    CallToolRequest,
+    CallToolRequestParams,
+    ListToolsRequest,
+)
 
 from recce.core import RecceContext  # noqa: E402
 from recce.mcp_server import RecceMCPServer, run_mcp_server  # noqa: E402
@@ -1024,6 +1028,42 @@ class TestRecceMCPServer:
 
         assert result["structure"]["unparseable"] is False
         mock_context.adapter.adapter.type.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_tool_analyze_model_rejects_test_resource_type(self, mcp_server):
+        """analyze_model must refuse non-{model,seed,snapshot} nodes so an agent
+        doesn't accidentally analyze a dbt test's compiled SQL as if it were a model."""
+        from types import SimpleNamespace
+
+        server, mock_context = mcp_server
+        mock_context.adapter_type = "dbt"
+
+        test_node = SimpleNamespace(
+            compiled_code="SELECT * FROM model_a WHERE id IS NULL",
+            raw_code="",
+            resource_type="test",
+        )
+        mock_context.adapter.manifest = SimpleNamespace(
+            nodes={"test.proj.not_null_model_a_id": test_node},
+            metadata=SimpleNamespace(adapter_type="postgres"),
+        )
+
+        with pytest.raises(ValueError, match="resource_type"):
+            await server._tool_analyze_model({"model_id": "test.proj.not_null_model_a_id"})
+
+    @pytest.mark.asyncio
+    async def test_analyze_model_advertised_in_local_mode_only(self):
+        """analyze_model is local-only; advertising it in cloud mode would surface
+        a 'Unknown tool' error because RecceMCPCloudBackend doesn't implement it."""
+        local_server = RecceMCPServer(MagicMock(spec=RecceContext), backend=None)
+        cloud_server = RecceMCPServer(MagicMock(spec=RecceContext), backend=MagicMock())
+        req = ListToolsRequest(method="tools/list", params=None)
+
+        local_tools = (await local_server.server.request_handlers[ListToolsRequest](req)).root.tools
+        cloud_tools = (await cloud_server.server.request_handlers[ListToolsRequest](req)).root.tools
+
+        assert any(t.name == "analyze_model" for t in local_tools)
+        assert not any(t.name == "analyze_model" for t in cloud_tools)
 
     @pytest.mark.asyncio
     async def test_tool_get_server_info(self, mcp_server):
