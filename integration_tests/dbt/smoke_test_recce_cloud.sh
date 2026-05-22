@@ -117,13 +117,16 @@ fi
 echo "Created session: $SESSION_ID ($SESSION_NAME)"
 
 # --------------------------------------------------------------------
-# 7. Pre-condition: the new session has no isolated base yet
+# 7. Auto-snapshot post-condition: the new session was cloned from the
+# shared base at upload time (DRC-3309 default-on auto-snapshot).
 # --------------------------------------------------------------------
 recce-cloud list --json | jq -e --arg i "$SESSION_ID" \
-    '.[] | select(.id == $i) | .has_isolated_base == false' > /dev/null
+    '.[] | select(.id == $i) | .has_isolated_base == true' > /dev/null
+echo "Auto-snapshot post-condition passed (has_isolated_base == true)"
 
 # --------------------------------------------------------------------
-# 8. Upload SESSION BASE artifacts (isolated base)
+# 8. Upload SESSION BASE artifacts explicitly (idempotent overwrite of
+# the auto-snapshot from step 7).
 # --------------------------------------------------------------------
 recce-cloud upload --session-base --session-id "$SESSION_ID" --target-path target-base
 recce-cloud list --json | jq -e --arg i "$SESSION_ID" \
