@@ -45,3 +45,4 @@ output/*
 
 .env*
 !.env.example
+.gbrain-source
