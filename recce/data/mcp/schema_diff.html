@@ -30,7 +30,7 @@
       .unchanged-msg { color: var(--color-text-secondary, #9ca3af) !important; }
       .empty { color: var(--color-text-secondary, #9ca3af) !important; }
       tr.added td   { background: var(--color-background-success, rgba(5,150,105,0.12)) !important; }
-      tr.removed td { background: var(--color-background-warning, rgba(220,38,38,0.10)) !important; }
+      tr.removed td { background: var(--color-background-danger, rgba(220,38,38,0.10)) !important; }
       tr.changed td { background: var(--color-background-info, rgba(37,99,235,0.10)) !important; }
     }
 
@@ -87,7 +87,7 @@
       white-space: nowrap;
     }
     .pill-added   { background: var(--color-background-success, #d1fae5); color: var(--color-text-success, #065f46); }
-    .pill-removed { background: var(--color-background-warning, #fee2e2); color: var(--color-text-error, #991b1b); }
+    .pill-removed { background: var(--color-background-danger, #fee2e2); color: var(--color-text-danger, #991b1b); }
     .pill-changed { background: var(--color-background-info, #dbeafe); color: var(--color-text-info, #1e40af); }
 
     /* ── Tables ─────────────────────────────────────────────────────── */
@@ -110,7 +110,7 @@
 
     /* Row colors */
     tr.added   td { background: var(--color-background-success, #f0fdf4); }
-    tr.removed td { background: var(--color-background-warning, #fff7f7); }
+    tr.removed td { background: var(--color-background-danger, #fff7f7); }
     tr.changed td { background: var(--color-background-info, #eff6ff); }
 
     /* Arrow between types */
@@ -135,30 +135,39 @@
 <body>
   <div id="root">Loading…</div>
   <script type="module">
-    import { App } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+    import {
+      App,
+      applyDocumentTheme,
+      applyHostStyleVariables,
+      applyHostFonts,
+    } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
 
     const app = new App({ name: "Recce Schema Diff", version: "1.0.0" });
+
+    // Apply host theme on every context change (theme switch, font change, etc.)
+    app.onhostcontextchanged = (ctx) => {
+      if (ctx.theme) applyDocumentTheme(ctx.theme);
+      if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+      if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
+    };
+
+    app.ontoolresult = ({ structuredContent }) => {
+      render(structuredContent ?? {});
+    };
+
+    app.onteardown = async () => {
+      return {};
+    };
+
     await app.connect();
 
-    app.ontoolresult = (result) => {
-      let data = result?.structuredContent;
-      if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
-        // FastMCP may not auto-populate structuredContent for Dict[str, Any] returns;
-        // fall back to parsing the text-serialized content payload.
-        const textPart = result?.content?.find?.(c => c.type === 'text')?.text;
-        if (textPart) {
-          try { data = JSON.parse(textPart); } catch (e) { /* leave data as-is */ }
-        }
-      }
-      data = data ?? {};
-      // FastMCP wraps Dict[str, Any] returns under a `result` key when there's no
-      // explicit Pydantic return-type. Unwrap if present so the renderer sees the
-      // same shape regardless of how the server emits structuredContent.
-      if (data && typeof data === 'object' && data.result && typeof data.result === 'object' && !data.models) {
-        data = data.result;
-      }
-      render(data);
-    };
+    // Apply theme from initial host context if available before first change event
+    const initialCtx = app.getHostContext?.();
+    if (initialCtx) {
+      if (initialCtx.theme) applyDocumentTheme(initialCtx.theme);
+      if (initialCtx.styles?.variables) applyHostStyleVariables(initialCtx.styles.variables);
+      if (initialCtx.styles?.css?.fonts) applyHostFonts(initialCtx.styles.css.fonts);
+    }
 
     function escapeHtml(s) {
       return String(s)
@@ -227,8 +236,7 @@
 
     function render(data) {
       const models = data.models ?? {};
-      // Skip keys starting with "_" for defensive uniformity (e.g. potential future _warning keys)
-      const entries = Object.entries(models).filter(([k]) => !k.startsWith('_'));
+      const entries = Object.entries(models);
 
       if (entries.length === 0) {
         document.getElementById("root").innerHTML =

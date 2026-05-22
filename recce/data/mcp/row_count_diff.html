@@ -107,7 +107,7 @@
       white-space: nowrap;
     }
     .diff-pos { color: var(--color-text-warning, #d97706); font-weight: 500; }
-    .diff-neg { color: var(--color-text-error, #dc2626); font-weight: 500; }
+    .diff-neg { color: var(--color-text-danger, #dc2626); font-weight: 500; }
     .diff-pct { font-size: 11px; color: var(--color-text-tertiary, #9ca3af); margin-left: 4px; }
     .na { color: var(--color-text-tertiary, #9ca3af); font-style: italic; }
 
@@ -138,9 +138,9 @@
       background: var(--color-background-secondary, #f3f4f6);
       color: var(--color-text-secondary, #6b7280);
     }
-    .badge-error {
-      background: var(--color-background-secondary, #fee2e2);
-      color: var(--color-text-error, #991b1b);
+    .badge-danger {
+      background: var(--color-background-danger, #fee2e2);
+      color: var(--color-text-danger, #991b1b);
     }
 
     /* ── Misc ───────────────────────────────────────────────────────── */
@@ -157,30 +157,39 @@
 <body>
   <div id="root">Loading…</div>
   <script type="module">
-    import { App } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+    import {
+      App,
+      applyDocumentTheme,
+      applyHostStyleVariables,
+      applyHostFonts,
+    } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
 
     const app = new App({ name: "Recce Row Count Diff", version: "1.0.0" });
+
+    // Apply host theme on every context change (theme switch, font change, etc.)
+    app.onhostcontextchanged = (ctx) => {
+      if (ctx.theme) applyDocumentTheme(ctx.theme);
+      if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+      if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
+    };
+
+    app.ontoolresult = ({ structuredContent }) => {
+      render(structuredContent ?? {});
+    };
+
+    app.onteardown = async () => {
+      return {};
+    };
+
     await app.connect();
 
-    app.ontoolresult = (result) => {
-      let data = result?.structuredContent;
-      if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
-        // FastMCP may not auto-populate structuredContent for Dict[str, Any] returns;
-        // fall back to parsing the text-serialized content payload.
-        const textPart = result?.content?.find?.(c => c.type === 'text')?.text;
-        if (textPart) {
-          try { data = JSON.parse(textPart); } catch (e) { /* leave data as-is */ }
-        }
-      }
-      data = data ?? {};
-      // FastMCP wraps Dict[str, Any] returns under a `result` key when there's no
-      // explicit Pydantic return-type. Unwrap if present so the renderer sees the
-      // same shape regardless of how the server emits structuredContent.
-      if (data && typeof data === 'object' && data.result && typeof data.result === 'object' && !data.models) {
-        data = data.result;
-      }
-      render(data);
-    };
+    // Apply theme from initial host context if available before first change event
+    const initialCtx = app.getHostContext?.();
+    if (initialCtx) {
+      if (initialCtx.theme) applyDocumentTheme(initialCtx.theme);
+      if (initialCtx.styles?.variables) applyHostStyleVariables(initialCtx.styles.variables);
+      if (initialCtx.styles?.css?.fonts) applyHostFonts(initialCtx.styles.css.fonts);
+    }
 
     function escapeHtml(s) {
       return String(s)
@@ -224,7 +233,7 @@
         return `<span class="badge badge-secondary">&#9651; Not in base</span>`;
       }
       if (bs !== "ok" || cs !== "ok") {
-        return `<span class="badge badge-error">&#9888; ${escapeHtml(cs || bs || "error")}</span>`;
+        return `<span class="badge badge-danger">&#9888; ${escapeHtml(cs || bs || "error")}</span>`;
       }
       // Both ok
       if (b === null || c === null) return `<span class="badge badge-secondary">&#8212; N/A</span>`;
@@ -234,9 +243,8 @@
 
     function render(data) {
       const models = data.models ?? {};
-      const warning = models._warning ?? null;
-      // Skip keys starting with "_" (e.g. _warning injected by single-env mode)
-      const entries = Object.entries(models).filter(([k]) => !k.startsWith('_'));
+      const warning = data.warning ?? null;
+      const entries = Object.entries(models);
 
       if (entries.length === 0) {
         document.getElementById("root").innerHTML =
