@@ -723,20 +723,56 @@ export const cllChangeStatusBackgroundsDark: Record<
  * `.cll-experience` — keep both in sync by hand (no build-time check).
  */
 const IMPACTED_HUE_LIGHT = "252 211 77"; // matches cllChangeStatusColors.impacted
-const IMPACTED_HUE_DARK = "180 83 9";
 
 export const cllImpactedAccent = {
   light: cllChangeStatusColors.impacted,
-  dark: `rgb(${IMPACTED_HUE_DARK})`,
+  dark: `rgb(${IMPACTED_HUE_LIGHT})`,
 } as const;
 
 export const cllImpactedBadgeBg = {
   light: `rgb(${IMPACTED_HUE_LIGHT} / 0.35)`,
-  dark: `rgb(${IMPACTED_HUE_DARK} / 0.25)`,
+  dark: `rgb(${IMPACTED_HUE_LIGHT} / 0.18)`,
 } as const;
 
 export const cllImpactedBadgeFg = {
   // Text-contrast hue, not derivable from the accent.
   light: "rgb(146 64 14)",
-  dark: cllImpactedAccent.light,
+  dark: `rgb(${IMPACTED_HUE_LIGHT})`,
+} as const;
+
+/**
+ * Changed accent + badge palette. Mirrors `--schema-color-changed-accent`
+ * and `--schema-badge-changed-{bg,fg}` in ../schema/style.css under
+ * `.cll-experience` — keep both in sync by hand (no build-time check).
+ */
+export const cllChangedAccent = cllChangeStatusColors.modified;
+
+export const cllChangedBadgeBg = {
+  light: "rgb(255 173 21 / 0.25)",
+  dark: "rgb(255 173 21 / 0.2)",
+} as const;
+
+export const cllChangedBadgeFg = {
+  light: "rgb(160 100 0)",
+  dark: "rgb(255 200 80)",
+} as const;
+
+/**
+ * Additive accent + badge palette. Mirrors `--schema-color-added-accent`
+ * and `--schema-badge-added-{bg,fg}` in ../schema/style.css — keep both in
+ * sync by hand (no build-time check).
+ */
+export const cllAdditiveAccent = {
+  light: cllChangeStatusColors.added,
+  dark: "rgb(80 200 100)",
+} as const;
+
+export const cllAdditiveBadgeBg = {
+  light: "rgb(46 160 67 / 0.2)",
+  dark: "rgb(46 160 67 / 0.2)",
+} as const;
+
+export const cllAdditiveBadgeFg = {
+  light: "rgb(22 110 40)",
+  dark: cllAdditiveAccent.dark,
 } as const;

@@ -97,4 +97,27 @@ describe("buildColumnTooltip", () => {
   it("returns just name when no status and no types", () => {
     expect(buildColumnTooltip({ name: "col" })).toBe("col");
   });
+
+  it("appends impacted suffix when impacted is true", () => {
+    expect(
+      buildColumnTooltip({
+        name: "col",
+        status: "unchanged",
+        currentType: "VARCHAR(50)",
+        impacted: true,
+      }),
+    ).toBe("col VARCHAR(50) · impacted");
+  });
+
+  it("places impacted suffix before the cllAvailable suffix", () => {
+    expect(
+      buildColumnTooltip({
+        name: "col",
+        status: "unchanged",
+        currentType: "VARCHAR(50)",
+        impacted: true,
+        cllAvailable: true,
+      }),
+    ).toBe("col VARCHAR(50) · impacted · Click for column lineage");
+  });
 });

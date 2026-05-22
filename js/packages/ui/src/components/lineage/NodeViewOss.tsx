@@ -53,6 +53,7 @@ import {
   type RunTypeIconMap,
 } from "./NodeView";
 import { NodeTag } from "./tags";
+import { pickWholeModelFlags } from "./wholeModelTreatment";
 
 // =============================================================================
 // TYPES
@@ -325,12 +326,20 @@ export function NodeViewOss({
     ],
   );
 
+  const wholeModelFlags = lineageViewCtx
+    ? pickWholeModelFlags(node.id, lineageViewCtx)
+    : { isWholeModelChanged: false, isWholeModelImpacted: false };
+
   return (
     <BaseNodeView
       node={node}
       onCloseNode={onCloseNode}
       isSingleEnv={isSingleEnv}
       featureToggles={featureToggles}
+      isWholeModelChanged={wholeModelFlags.isWholeModelChanged}
+      isWholeModelImpacted={wholeModelFlags.isWholeModelImpacted}
+      wholeModelImpact={lineageViewCtx?.wholeModelImpact ?? false}
+      isImpacted={impactedNodeIds?.has(node.id) ?? false}
       modelDetail={(() => {
         if (!modelDetail) return undefined;
         const hasBase =
