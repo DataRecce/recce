@@ -40,7 +40,7 @@ recce run --cloud
 # Recce state
 recce cloud download
 recce cloud purge --force
-recce cloud upload recce_state.json
+recce cloud upload recce_state.json --force
 
 # Recce Summary
 recce summary --cloud

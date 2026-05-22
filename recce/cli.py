@@ -1765,6 +1765,11 @@ def purge(**kwargs):
     type=click.STRING,
     envvar="RECCE_STATE_PASSWORD",
 )
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Overwrite an existing cloud state file without prompting.",
+)
 @add_options(recce_options)
 def upload(state_file, **kwargs):
     """
@@ -1780,6 +1785,7 @@ def upload(state_file, **kwargs):
         "github_token": kwargs.get("cloud_token"),
         "password": kwargs.get("password"),
     }
+    force_overwrite = kwargs.get("force", False)
 
     console = Console()
 
@@ -1808,8 +1814,9 @@ def upload(state_file, **kwargs):
 
     cloud_state_file_exists = state_manager.check_cloud_state_exists()
 
-    if cloud_state_file_exists and not click.confirm("\nDo you want to overwrite the existing state file?"):
-        return 0
+    if cloud_state_file_exists and not force_overwrite:
+        if not click.confirm("\nDo you want to overwrite the existing state file?"):
+            return 0
 
     console.print(state_manager.upload_state_to_cloud(state_loader.state))
 
