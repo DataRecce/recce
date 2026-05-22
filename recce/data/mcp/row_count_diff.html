@@ -4,26 +4,154 @@
   <meta charset="UTF-8" />
   <title>Row Count Diff</title>
   <style>
-    body { font-family: system-ui, sans-serif; font-size: 14px; margin: 0; padding: 12px; color: #1a1a1a; }
-    h2 { margin: 0 0 12px; font-size: 16px; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #e5e7eb; }
-    th { font-weight: 600; background: #f9fafb; }
-    td.num { text-align: right; font-variant-numeric: tabular-nums; }
-    .badge {
-      display: inline-block; padding: 2px 8px; border-radius: 12px;
-      font-size: 12px; font-weight: 500;
+    /* ── Base reset + design tokens ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+      font-size: 13px;
+      margin: 0;
+      padding: 12px 16px 20px;
+      color: var(--color-text-primary, #1a1a1a);
+      background: var(--color-background-primary, #ffffff);
+      line-height: 1.4;
     }
-    .badge-ok-neutral  { background: #f3f4f6; color: #374151; }
-    .badge-ok-added    { background: #d1fae5; color: #065f46; }
-    .badge-ok-removed  { background: #ffedd5; color: #9a3412; }
-    .badge-error       { background: #fee2e2; color: #991b1b; }
-    .diff-pos { color: #059669; }
-    .diff-neg { color: #dc2626; }
-    .na { color: #9ca3af; font-style: italic; }
+    /* Light-mode hardcoded fallbacks are inline above.
+       Dark-mode fallback for non-Claude hosts (OS preference respected): */
+    @media (prefers-color-scheme: dark) {
+      body {
+        color: var(--color-text-primary, #e5e7eb);
+        background: var(--color-background-primary, #1a1a1a);
+      }
+      .card    { background: var(--color-background-secondary, #27272a) !important; }
+      th       { background: var(--color-background-secondary, #27272a) !important; color: var(--color-text-secondary, #9ca3af) !important; }
+      td, th   { border-color: var(--color-border-tertiary, #3f3f46) !important; }
+      .na      { color: var(--color-text-tertiary, #6b7280) !important; }
+      .empty, .warning { color: var(--color-text-secondary, #9ca3af) !important; }
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0 12px;
+      margin-bottom: 4px;
+    }
+    .header-icon {
+      font-size: 18px;
+      line-height: 1;
+      color: var(--color-text-secondary, #6b7280);
+    }
+    .header-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-text-primary, #1a1a1a);
+    }
+    .header-count {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--color-text-secondary, #6b7280);
+    }
+
+    /* ── Summary cards ──────────────────────────────────────────────── */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .card {
+      background: var(--color-background-secondary, #f9fafb);
+      border-radius: var(--border-radius-md, 8px);
+      padding: 10px 14px;
+    }
+    .card-label {
+      font-size: 11px;
+      color: var(--color-text-secondary, #6b7280);
+      margin-bottom: 4px;
+    }
+    .card-value {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--color-text-primary, #1a1a1a);
+    }
+    .card-value.warning { color: var(--color-text-warning, #d97706); }
+    .card-value.info    { color: var(--color-text-info, #2563eb); }
+    .card-value.success { color: var(--color-text-success, #059669); }
+
+    /* ── Table ──────────────────────────────────────────────────────── */
+    table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    th {
+      text-align: left;
+      padding: 7px 10px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--color-text-secondary, #6b7280);
+      background: var(--color-background-secondary, #f9fafb);
+      border-bottom: 1px solid var(--color-border-tertiary, #e5e7eb);
+    }
+    td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--color-border-tertiary, #e5e7eb);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    td.model-name {
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+      font-size: 12px;
+      color: var(--color-text-primary, #1a1a1a);
+      max-width: 240px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .diff-pos { color: var(--color-text-warning, #d97706); font-weight: 500; }
+    .diff-neg { color: var(--color-text-error, #dc2626); font-weight: 500; }
+    .diff-pct { font-size: 11px; color: var(--color-text-tertiary, #9ca3af); margin-left: 4px; }
+    .na { color: var(--color-text-tertiary, #9ca3af); font-style: italic; }
+
+    /* ── Status badges ──────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: var(--border-radius-sm, 4px);
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .badge-warning {
+      background: var(--color-background-warning, #fef3c7);
+      color: var(--color-text-warning, #92400e);
+    }
+    .badge-success {
+      background: var(--color-background-success, #d1fae5);
+      color: var(--color-text-success, #065f46);
+    }
+    .badge-info {
+      background: var(--color-background-info, #dbeafe);
+      color: var(--color-text-info, #1e40af);
+    }
+    .badge-secondary {
+      background: var(--color-background-secondary, #f3f4f6);
+      color: var(--color-text-secondary, #6b7280);
+    }
+    .badge-error {
+      background: var(--color-background-secondary, #fee2e2);
+      color: var(--color-text-error, #991b1b);
+    }
+
+    /* ── Misc ───────────────────────────────────────────────────────── */
+    .empty   { color: var(--color-text-secondary, #6b7280); padding: 16px 0; }
+    .warning-msg {
+      color: var(--color-text-secondary, #6b7280);
+      font-style: italic;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
     #root { min-height: 40px; }
-    .empty { color: #6b7280; padding: 16px 0; }
-    .warning { color: #6b7280; font-style: italic; font-size: 13px; margin-bottom: 8px; }
   </style>
 </head>
 <body>
@@ -65,25 +193,43 @@
       return `<span class="na">N/A (${escapeHtml(status)})</span>`;
     }
 
-    function formatDiff(diff) {
-      if (diff === null) return `<span class="na">—</span>`;
-      if (diff > 0) return `<span class="diff-pos">+${diff.toLocaleString()}</span>`;
-      if (diff < 0) return `<span class="diff-neg">${diff.toLocaleString()}</span>`;
-      return `<span>0</span>`;
+    function formatDiff(base, curr) {
+      // CRITICAL: === null (not !value) — 0 is a valid row count
+      if (base === null || curr === null) return `<span class="na">—</span>`;
+      const d = curr - base;
+      if (d === 0) return `<span style="color:var(--color-text-secondary,#6b7280)">0</span>`;
+      const sign = d > 0 ? "+" : "";
+      const pct = base === 0 ? "∞" : `${Math.abs(d / base * 100).toFixed(1)}%`;
+      const cls = d > 0 ? "diff-pos" : "diff-neg";
+      return `<span class="${cls}">${sign}${d.toLocaleString()}</span><span class="diff-pct">(${sign}${pct})</span>`;
     }
 
-    function badgeClass(baseOk, currOk, diff) {
-      if (!baseOk || !currOk) return "badge-error";
-      if (diff === null || diff === 0) return "badge-ok-neutral";
-      return diff > 0 ? "badge-ok-added" : "badge-ok-removed";
-    }
+    function getBadge(name, m) {
+      const bs = m.base_meta?.status;
+      const cs = m.curr_meta?.status;
+      // CRITICAL: === null (not !value)
+      const b = m.base;
+      const c = m.curr;
 
-    function badgeLabel(baseOk, currOk, baseMeta, currMeta, diff) {
-      if (!baseOk) return baseMeta?.status ?? "error";
-      if (!currOk) return currMeta?.status ?? "error";
-      if (diff === null) return "n/a";
-      if (diff === 0) return "unchanged";
-      return diff > 0 ? "added" : "removed";
+      if (bs === "unsupported_resource_type" || cs === "unsupported_resource_type") {
+        return `<span class="badge badge-secondary">&#9711; Seed (unsupported)</span>`;
+      }
+      if (bs === "not_in_manifest" && cs === "ok") {
+        return `<span class="badge badge-info">&#43; New model</span>`;
+      }
+      if (cs === "not_in_manifest") {
+        return `<span class="badge badge-secondary">&#9651; Not in current</span>`;
+      }
+      if (bs === "not_in_manifest") {
+        return `<span class="badge badge-secondary">&#9651; Not in base</span>`;
+      }
+      if (bs !== "ok" || cs !== "ok") {
+        return `<span class="badge badge-error">&#9888; ${escapeHtml(cs || bs || "error")}</span>`;
+      }
+      // Both ok
+      if (b === null || c === null) return `<span class="badge badge-secondary">&#8212; N/A</span>`;
+      if (b === c) return `<span class="badge badge-success">&#10003; Unchanged</span>`;
+      return `<span class="badge badge-warning">&#8593; Row count changed</span>`;
     }
 
     function render(data) {
@@ -91,45 +237,83 @@
       const warning = models._warning ?? null;
       // Skip keys starting with "_" (e.g. _warning injected by single-env mode)
       const entries = Object.entries(models).filter(([k]) => !k.startsWith('_'));
+
       if (entries.length === 0) {
         document.getElementById("root").innerHTML =
-          `<h2>Row Count Diff</h2><p class="empty">No models found.</p>`;
+          `<div class="header"><span class="header-icon">&#9783;</span><span class="header-title">Row count diff</span></div><p class="empty">No models found.</p>`;
         return;
       }
 
+      // Summary counts
+      let changed = 0, newModels = 0, unchanged = 0;
+      for (const [, m] of entries) {
+        const bs = m.base_meta?.status;
+        const cs = m.curr_meta?.status;
+        if (bs === "not_in_manifest" && cs === "ok") { newModels++; continue; }
+        if (bs === "ok" && cs === "ok") {
+          if (m.base === m.curr) unchanged++;
+          else changed++;
+        }
+      }
+      const total = entries.length;
+
       const warningHtml = warning
-        ? `<div class="warning">${escapeHtml(warning)}</div>`
-        : '';
+        ? `<div class="warning-msg">&#9888; ${escapeHtml(warning)}</div>` : '';
 
       const rows = entries.map(([name, m]) => {
         // CRITICAL: === null (not !value) — 0 is a valid row count
-        const baseOk = m.base_meta?.status === "ok";
-        const currOk = m.curr_meta?.status === "ok";
         const baseStr = m.base === null ? formatNa(m.base_meta) : m.base.toLocaleString();
         const currStr = m.curr === null ? formatNa(m.curr_meta) : m.curr.toLocaleString();
-        const diff = (m.base !== null && m.curr !== null) ? (m.curr - m.base) : null;
-        const cls = badgeClass(baseOk, currOk, diff);
-        const label = badgeLabel(baseOk, currOk, m.base_meta, m.curr_meta, diff);
+        const diffStr = formatDiff(m.base, m.curr);
+        const badge = getBadge(name, m);
         return `<tr>
-          <td>${escapeHtml(name)}</td>
+          <td class="model-name">${escapeHtml(name)}</td>
           <td class="num">${baseStr}</td>
           <td class="num">${currStr}</td>
-          <td class="num">${formatDiff(diff)}</td>
-          <td><span class="badge ${cls}">${escapeHtml(label)}</span></td>
+          <td class="num">${diffStr}</td>
+          <td>${badge}</td>
         </tr>`;
       });
 
       document.getElementById("root").innerHTML = `
-        <h2>Row Count Diff</h2>
+        <div class="header">
+          <span class="header-icon">&#9783;</span>
+          <span class="header-title">Row count diff</span>
+          <span class="header-count">${total} model${total !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="cards">
+          <div class="card">
+            <div class="card-label">Models compared</div>
+            <div class="card-value">${total}</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Changed</div>
+            <div class="card-value${changed > 0 ? ' warning' : ''}">${changed}</div>
+          </div>
+          <div class="card">
+            <div class="card-label">New in current</div>
+            <div class="card-value${newModels > 0 ? ' info' : ''}">${newModels}</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Unchanged</div>
+            <div class="card-value${unchanged > 0 ? ' success' : ''}">${unchanged}</div>
+          </div>
+        </div>
         ${warningHtml}
-        <table>
-          <thead>
-            <tr>
-              <th>Model</th><th>Base</th><th>Current</th><th>Diff</th><th>Status</th>
-            </tr>
-          </thead>
-          <tbody>${rows.join("")}</tbody>
-        </table>`;
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th style="text-align:right">Base rows</th>
+                <th style="text-align:right">Current rows</th>
+                <th style="text-align:right">Delta</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>${rows.join("")}</tbody>
+          </table>
+        </div>`;
     }
   </script>
 </body>
