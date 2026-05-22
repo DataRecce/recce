@@ -35,8 +35,17 @@
     const app = new App({ name: "Recce Schema Diff", version: "1.0.0" });
     await app.connect();
 
-    app.ontoolresult = ({ structuredContent }) => {
-      render(structuredContent ?? {});
+    app.ontoolresult = (result) => {
+      let data = result?.structuredContent;
+      if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
+        // FastMCP may not auto-populate structuredContent for Dict[str, Any] returns;
+        // fall back to parsing the text-serialized content payload.
+        const textPart = result?.content?.find?.(c => c.type === 'text')?.text;
+        if (textPart) {
+          try { data = JSON.parse(textPart); } catch (e) { /* leave data as-is */ }
+        }
+      }
+      render(data ?? {});
     };
 
     function escapeHtml(s) {
@@ -94,7 +103,8 @@
 
     function render(data) {
       const models = data.models ?? {};
-      const entries = Object.entries(models);
+      // Skip keys starting with "_" for defensive uniformity (e.g. potential future _warning keys)
+      const entries = Object.entries(models).filter(([k]) => !k.startsWith('_'));
       if (entries.length === 0) {
         document.getElementById("root").innerHTML =
           `<h2>Schema Diff</h2><p class="empty">No models found.</p>`;
