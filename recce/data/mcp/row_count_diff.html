@@ -44,7 +44,14 @@
           try { data = JSON.parse(textPart); } catch (e) { /* leave data as-is */ }
         }
       }
-      render(data ?? {});
+      data = data ?? {};
+      // FastMCP wraps Dict[str, Any] returns under a `result` key when there's no
+      // explicit Pydantic return-type. Unwrap if present so the renderer sees the
+      // same shape regardless of how the server emits structuredContent.
+      if (data && typeof data === 'object' && data.result && typeof data.result === 'object' && !data.models) {
+        data = data.result;
+      }
+      render(data);
     };
 
     function escapeHtml(s) {
