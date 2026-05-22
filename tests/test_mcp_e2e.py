@@ -1163,6 +1163,7 @@ class TestMCPProtocolE2E:
                 "impact_analysis",
                 "get_model",
                 "get_cll",
+                "analyze_model",
                 "get_server_info",
                 "set_backend",
                 "select_nodes",
