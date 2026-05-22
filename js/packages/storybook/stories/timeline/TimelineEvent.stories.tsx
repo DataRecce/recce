@@ -1,7 +1,12 @@
 import { TimelineEvent } from "@datarecce/ui/primitives";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, screen, userEvent, within } from "storybook/test";
-import { createCommentEvent, createEvent, sampleActor } from "./fixtures";
+import {
+  createCommentEvent,
+  createEvent,
+  otherActor,
+  sampleActor,
+} from "./fixtures";
 
 const meta: Meta<typeof TimelineEvent> = {
   title: "Checks/TimelineEvent",
@@ -68,6 +73,35 @@ export const Unapproved: Story = {
   },
 };
 
+// Other state-change events (consumed by TimelineEvent.test.tsx)
+
+export const DescriptionChanged: Story = {
+  args: {
+    event: createEvent({
+      event_type: "description_change",
+      actor: sampleActor,
+    }),
+  },
+};
+
+export const NameChanged: Story = {
+  args: {
+    event: createEvent({
+      event_type: "name_change",
+      actor: sampleActor,
+    }),
+  },
+};
+
+export const PresetApplied: Story = {
+  args: {
+    event: createEvent({
+      event_type: "preset_applied",
+      actor: sampleActor,
+    }),
+  },
+};
+
 // Comment events covered by visual.ts
 
 export const Comment: Story = {
@@ -95,6 +129,36 @@ export const CommentDeleted: Story = {
     event: createCommentEvent({
       is_deleted: true,
       actor: sampleActor,
+    }),
+  },
+};
+
+export const CommentFromOtherUser: Story = {
+  args: {
+    event: createCommentEvent({
+      content: "A comment from another team member.",
+      actor: otherActor,
+    }),
+    currentUserId: "user-1",
+    onEdit: fn(),
+    onDelete: fn(),
+  },
+};
+
+// Actor fallbacks (consumed by TimelineEvent.test.tsx)
+
+export const ActorWithoutFullname: Story = {
+  args: {
+    event: createEvent({
+      actor: { user_id: "user-1", login: "johndoe" },
+    }),
+  },
+};
+
+export const ActorWithoutName: Story = {
+  args: {
+    event: createEvent({
+      actor: { user_id: "user-1" },
     }),
   },
 };
