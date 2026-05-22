@@ -12,9 +12,8 @@ import {
 } from "./fixtures";
 
 const meta: Meta<typeof QueryResultView> = {
-  title: "Visualizations/Query/QueryResultView",
+  title: "Diffs/Results/Query/QueryResultView",
   component: QueryResultView,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {

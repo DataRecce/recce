@@ -3,16 +3,9 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import React from "react";
 
 const meta: Meta<typeof DataTypeIcon> = {
-  title: "UI/DataTypeIcon",
+  title: "Primitives/DataTypeIcon",
   component: DataTypeIcon,
-  tags: ["autodocs"],
   parameters: {
-    docs: {
-      description: {
-        component:
-          "Displays a semantic icon for a database column type. Classifies raw type strings (e.g. VARCHAR(256), TIMESTAMP_NTZ) into categories and renders the appropriate icon with a tooltip showing the original type.",
-      },
-    },
     layout: "centered",
   },
   argTypes: {
@@ -31,9 +24,9 @@ const meta: Meta<typeof DataTypeIcon> = {
 export default meta;
 type Story = StoryObj<typeof DataTypeIcon>;
 
-// ============================================
-// All Categories Overview
-// ============================================
+export const Default: Story = {
+  args: { type: "INTEGER" },
+};
 
 const allCategories: Array<{ label: string; type: string }> = [
   { label: "Integer", type: "INTEGER" },
@@ -51,14 +44,6 @@ const allCategories: Array<{ label: string; type: string }> = [
 ];
 
 export const AllCategories: Story = {
-  name: "All Categories",
-  parameters: {
-    docs: {
-      description: {
-        story: "Overview of all 12 type categories with example type strings.",
-      },
-    },
-  },
   render: () => (
     <div
       style={{
@@ -79,176 +64,6 @@ export const AllCategories: Story = {
           <span>{label}</span>
           <code style={{ color: "var(--schema-color-muted)" }}>{type}</code>
         </React.Fragment>
-      ))}
-    </div>
-  ),
-};
-
-// ============================================
-// Individual Type Stories
-// ============================================
-
-export const Integer: Story = {
-  args: { type: "INTEGER" },
-};
-
-export const NumberType: Story = {
-  name: "Number",
-  args: { type: "NUMERIC(10,2)" },
-};
-
-export const Text: Story = {
-  args: { type: "VARCHAR(256)" },
-};
-
-export const BooleanType: Story = {
-  name: "Boolean",
-  args: { type: "BOOLEAN" },
-};
-
-export const DateType: Story = {
-  name: "Date",
-  args: { type: "DATE" },
-};
-
-export const Datetime: Story = {
-  args: { type: "TIMESTAMP_NTZ" },
-};
-
-export const Time: Story = {
-  args: { type: "TIME" },
-};
-
-export const Geography: Story = {
-  args: { type: "GEOGRAPHY" },
-};
-
-export const Unknown: Story = {
-  args: { type: "XYZTYPE" },
-};
-
-// ============================================
-// Size Variants
-// ============================================
-
-export const FontSizeScaling: Story = {
-  name: "Font-Size Scaling",
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Icons scale with CSS font-size. Wrap in a container with the desired font-size to control icon dimensions.",
-      },
-    },
-  },
-  render: () => (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "1rem",
-        fontFamily: "system-ui, sans-serif",
-      }}
-    >
-      {[
-        { label: "0.75rem", fontSize: "0.75rem" },
-        { label: "1rem (default)", fontSize: "1rem" },
-        { label: "1.25rem (profile grid)", fontSize: "1.25rem" },
-        { label: "1.5rem", fontSize: "1.5rem" },
-        { label: "2rem", fontSize: "2rem" },
-      ].map(({ label, fontSize }) => (
-        <div
-          key={label}
-          style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-        >
-          <code style={{ width: "12rem", flexShrink: 0 }}>{label}</code>
-          <span style={{ fontSize }}>
-            <DataTypeIcon type="INTEGER" />
-          </span>
-          <span style={{ fontSize }}>
-            <DataTypeIcon type="VARCHAR(256)" />
-          </span>
-          <span style={{ fontSize }}>
-            <DataTypeIcon type="TIMESTAMP_NTZ" />
-          </span>
-          <span style={{ fontSize }}>
-            <DataTypeIcon type="GEOGRAPHY" />
-          </span>
-        </div>
-      ))}
-    </div>
-  ),
-};
-
-// ============================================
-// Real-World Database Types
-// ============================================
-
-interface TypeRow {
-  platform: string;
-  types: string[];
-}
-
-const realWorldTypes: TypeRow[] = [
-  {
-    platform: "Snowflake",
-    types: ["NUMBER(38,0)", "VARIANT", "TIMESTAMP_NTZ", "VARCHAR(16777216)"],
-  },
-  {
-    platform: "PostgreSQL",
-    types: ["BIGINT", "JSONB", "TIMESTAMPTZ", "CHARACTER VARYING", "BYTEA"],
-  },
-  {
-    platform: "BigQuery",
-    types: ["INT64", "FLOAT64", "STRING", "BOOL", "STRUCT", "ARRAY"],
-  },
-  {
-    platform: "DuckDB",
-    types: ["INTEGER", "DOUBLE", "VARCHAR", "BOOLEAN", "LIST"],
-  },
-];
-
-export const RealWorldTypes: Story = {
-  name: "Real-World Types",
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Verifies classification across Snowflake, PostgreSQL, BigQuery, and DuckDB type strings.",
-      },
-    },
-  },
-  render: () => (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 20,
-        fontFamily: "system-ui, sans-serif",
-        fontSize: "0.875rem",
-      }}
-    >
-      {realWorldTypes.map(({ platform, types }) => (
-        <div key={platform}>
-          <strong style={{ marginBottom: 8, display: "block" }}>
-            {platform}
-          </strong>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "auto auto",
-              gap: "8px 16px",
-              alignItems: "center",
-            }}
-          >
-            {types.map((t) => (
-              <React.Fragment key={t}>
-                <DataTypeIcon type={t} />
-                <code style={{ color: "var(--schema-color-muted)" }}>{t}</code>
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
       ))}
     </div>
   ),

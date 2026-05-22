@@ -4,9 +4,8 @@ import { useState } from "react";
 import { expect, fn, userEvent, within } from "storybook/test";
 
 const meta: Meta<typeof ToggleSwitch> = {
-  title: "UI/ToggleSwitch",
+  title: "Primitives/ToggleSwitch",
   component: ToggleSwitch,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {

@@ -19,9 +19,8 @@ const GRID_STYLE = {
 } as const;
 
 const meta: Meta<typeof ScreenshotDataGrid> = {
-  title: "Schema/SchemaView",
+  title: "Diffs/Results/Schema",
   component: ScreenshotDataGrid,
-  tags: ["autodocs"],
   parameters: {
     layout: "fullscreen",
   },

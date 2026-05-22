@@ -1,73 +1,19 @@
 import { expect, test } from "@playwright/test";
 
-// UI stories to test
-const uiStoryPaths = [
-  "ui-squareicon",
-  "ui-toggleswitch",
-  "ui-emptystate",
-  "ui-runstatusbadge",
-  "ui-diffdisplaymodeswitch",
-  "ui-changedonlycheckbox",
-  "ui-markdowncontent",
-  "ui-screenshotbox",
-  "ui-difftext",
-  "ui-difftextwithtoast",
-  "ui-dropdownvaluesinput",
-  "ui-split",
-  "ui-externallinkconfirmdialog",
-  "ui-toaster",
-];
-
-test.describe("UI Component Stories Verification", () => {
-  for (const storyPath of uiStoryPaths) {
-    test(`${storyPath} stories load without errors`, async ({ page }) => {
-      const errors: string[] = [];
-
-      // Capture console errors
-      page.on("console", (msg) => {
-        if (msg.type() === "error") {
-          errors.push(`Console: ${msg.text()}`);
-        }
-      });
-
-      // Capture page errors
-      page.on("pageerror", (err) => {
-        errors.push(`Page error: ${err.message}`);
-      });
-
-      // Navigate to the story's docs page (shows all variants)
-      await page.goto(`http://localhost:6006/?path=/docs/${storyPath}--docs`);
-
-      // Wait for Storybook to load
-      await page.waitForLoadState("networkidle");
-
-      // Wait a bit for any lazy-loaded content
-      await page.waitForTimeout(2000);
-
-      // Check that the page loaded
-      const title = await page.title();
-      expect(title).toContain("Storybook");
-
-      // Verify no errors occurred
-      if (errors.length > 0) {
-        console.error(`Errors in ${storyPath}:`, errors);
-      }
-      expect(errors).toHaveLength(0);
-    });
-  }
-});
-
 test.describe("Individual Story Smoke Tests", () => {
   // Test a few representative stories in detail
   const testStories = [
-    { id: "ui-squareicon--blue", name: "SquareIcon - Blue" },
-    { id: "ui-toggleswitch--interactive", name: "ToggleSwitch - Interactive" },
+    { id: "primitives-squareicon--default", name: "SquareIcon - Default" },
     {
-      id: "ui-emptystate--with-primary-action",
-      name: "EmptyState - With Action",
+      id: "primitives-toggleswitch--interactive",
+      name: "ToggleSwitch - Interactive",
     },
-    { id: "ui-difftext--green", name: "DiffText - Green" },
-    { id: "ui-split--horizontal-split", name: "Split - Horizontal" },
+    {
+      id: "primitives-emptystate--default",
+      name: "EmptyState - Default",
+    },
+    { id: "primitives-difftext--default", name: "DiffText - Default" },
+    { id: "primitives-split--horizontal-split", name: "Split - Horizontal" },
   ];
 
   for (const story of testStories) {

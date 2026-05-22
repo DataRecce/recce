@@ -85,7 +85,7 @@ function lineageGraphToCanvas(
 // =============================================================================
 
 const meta: Meta<typeof LineageCanvas> = {
-  title: "Lineage/ZoomLegibility",
+  title: "Lineage/LineageCanvas/ScaleTests/ZoomLegibility",
   component: LineageCanvas,
   parameters: {
     docs: {

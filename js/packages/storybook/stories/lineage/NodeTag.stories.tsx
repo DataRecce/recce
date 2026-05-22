@@ -2,9 +2,8 @@ import { NodeTag } from "@datarecce/ui/primitives";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 const meta: Meta<typeof NodeTag> = {
-  title: "Lineage/NodeTag",
+  title: "Primitives/NodeTag",
   component: NodeTag,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {
