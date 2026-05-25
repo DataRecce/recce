@@ -321,14 +321,19 @@
           <div class="kv-value">${prLink}</div>`);
       }
 
-      // support_tasks (only if present and non-empty)
-      if (Array.isArray(data.support_tasks) && data.support_tasks.length > 0) {
-        const taskBadges = data.support_tasks
-          .map(t => `<span class="badge badge-secondary">${escapeHtml(t)}</span>`)
-          .join(" ");
-        rows.push(`
-          <div class="kv-label">Supported tasks</div>
-          <div class="kv-value" style="display:flex;flex-wrap:wrap;gap:4px">${taskBadges}</div>`);
+      // support_tasks — dict of {taskSlug: bool}; show only enabled tasks
+      if (data.support_tasks && typeof data.support_tasks === "object" && !Array.isArray(data.support_tasks)) {
+        const enabledTasks = Object.entries(data.support_tasks)
+          .filter(([, enabled]) => enabled)
+          .map(([name]) => name);
+        if (enabledTasks.length > 0) {
+          const taskBadges = enabledTasks
+            .map(t => `<span class="badge badge-info">${escapeHtml(t)}</span>`)
+            .join(" ");
+          rows.push(`
+            <div class="kv-label">Supported tasks</div>
+            <div class="kv-value" style="display:flex;flex-wrap:wrap;gap:4px">${taskBadges}</div>`);
+        }
       }
 
       document.getElementById("root").innerHTML = `

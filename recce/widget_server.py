@@ -87,7 +87,7 @@ class ServerInfoOutput(BaseModel):
     mode: str = "local"  # "local" | "cloud" | "none"
     adapter_type: Optional[str] = None
     review_mode: Optional[bool] = None
-    support_tasks: Optional[List[str]] = None
+    support_tasks: Optional[Dict[str, bool]] = None
     single_env: bool = False
     base_status: Optional[str] = None  # "fresh"|"stale_time"|"stale_sha"|"missing"|"single_env"|"unknown"
     git: Optional[GitInfo] = None

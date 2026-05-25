@@ -327,7 +327,16 @@ async def test_get_server_info_returns_calltoolresult_with_pydantic_shape():
             "mode": "local",
             "adapter_type": "dbt",
             "review_mode": False,
-            "support_tasks": ["row_count_diff", "schema_diff"],
+            "support_tasks": {
+                "query": True,
+                "query_base": True,
+                "value_diff": True,
+                "profile_diff": True,
+                "row_count_diff": True,
+                "top_k_diff": True,
+                "histogram_diff": True,
+                "change_analysis": True,
+            },
             "single_env": False,
             "base_status": "fresh",
         }
