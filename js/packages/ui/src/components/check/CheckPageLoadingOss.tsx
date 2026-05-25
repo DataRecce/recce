@@ -2,16 +2,17 @@
 
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
-import { useTheme } from "@mui/material/styles";
 import React, { ReactNode } from "react";
+import { useThemeColors } from "../../hooks";
 import { HSplit } from "../ui";
 
 /**
  * Loading fallback - shows minimal UI while search params are being read
  */
 export const CheckPageLoadingOss = (): ReactNode => {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  // useTheme().palette.mode === "dark" does NOT work with this codebase's
+  // MUI colorSchemes setup — useThemeColors() is the correct accessor.
+  const { isDark } = useThemeColors();
   const borderColor = isDark ? "grey.700" : "grey.300";
 
   return (

@@ -77,9 +77,11 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
   if (base === null || current === null) {
     return (
       <Stack
+        component="span"
         direction="row"
         spacing={0.5}
         sx={{
+          display: "inline-flex",
           alignItems: "center",
         }}
       >
@@ -96,9 +98,11 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
   if (base === current) {
     return (
       <Stack
+        component="span"
         direction="row"
         spacing={0.5}
         sx={{
+          display: "inline-flex",
           alignItems: "center",
         }}
       >
@@ -117,9 +121,11 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
   if (base < current) {
     return (
       <Stack
+        component="span"
         direction="row"
         spacing={0.5}
         sx={{
+          display: "inline-flex",
           alignItems: "center",
         }}
       >
@@ -141,9 +147,11 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
   }
   return (
     <Stack
+      component="span"
       direction="row"
       spacing={0.5}
       sx={{
+        display: "inline-flex",
         alignItems: "center",
       }}
     >

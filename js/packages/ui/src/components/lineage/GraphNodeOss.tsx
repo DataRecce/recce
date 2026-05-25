@@ -39,6 +39,7 @@ import {
   type SelectMode,
 } from "./nodes";
 import { getIconForChangeStatus } from "./styles";
+import { pickWholeModelFlags } from "./wholeModelTreatment";
 
 // =============================================================================
 // TYPES
@@ -282,6 +283,7 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
   const { isDark } = useThemeColors();
 
   // Get context values
+  const lineageViewCtx = useLineageViewContextSafe();
   const {
     interactive,
     selectNode,
@@ -297,8 +299,13 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
     cll,
     impactedNodeIds,
     newCllExperience,
-  } = useLineageViewContextSafe();
+    wholeModelImpact,
+  } = lineageViewCtx;
   const isImpacted = newCllExperience ? impactedNodeIds.has(id) : false;
+  const { isWholeModelChanged, isWholeModelImpacted } = pickWholeModelFlags(
+    id,
+    lineageViewCtx,
+  );
 
   // Computed state
   const changeCategory = cll?.current.nodes[id]
@@ -356,6 +363,9 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
       // New CLL experience props
       newCllExperience={newCllExperience}
       isImpacted={isImpacted}
+      isWholeModelChanged={isWholeModelChanged}
+      isWholeModelImpacted={isWholeModelImpacted}
+      wholeModelImpact={wholeModelImpact}
       // Interactive props
       interactive={interactive}
       selectMode={nodeSelectMode}

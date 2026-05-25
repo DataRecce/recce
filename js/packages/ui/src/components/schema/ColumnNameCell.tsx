@@ -206,12 +206,22 @@ export function ColumnNameCell({
     !isActionAvailable("change_analysis") ||
     (baseIndex !== undefined && currentIndex === undefined);
 
+  // Mirror the `!` badge render rule below — only annotate the tooltip as
+  // "impacted" when no other status badge already carries that signal.
+  const showImpactedTag =
+    !!isImpacted &&
+    !isAdded &&
+    !isRemoved &&
+    !hasStructuralChange &&
+    !definitionChanged;
+
   const tooltipTitle = buildColumnTooltip({
     name,
     status: columnStatus,
     baseType,
     currentType,
     cllAvailable: !isCllDisabled,
+    impacted: showImpactedTag,
   });
 
   return (
