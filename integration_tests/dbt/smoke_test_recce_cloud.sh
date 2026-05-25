@@ -28,6 +28,9 @@ fi
 
 SESSION_NAME="smoke-rc-${ENV_NAME}-py${PY:-unknown}-dbt${DBT:-unknown}-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}"
 SESSION_ID=""
+INFO_BODY=""
+DETAIL_BODY=""
+REFRESH_BODY=""
 
 NEW_WORKSPACE=$(dirname "${GITHUB_WORKSPACE:-$PWD}")
 cd "$NEW_WORKSPACE"
@@ -43,6 +46,15 @@ cleanup() {
     if [[ -n "$SESSION_ID" ]]; then
         echo "Teardown: deleting session $SESSION_ID"
         recce-cloud delete --session-id "$SESSION_ID" --force || true
+    fi
+    if [[ -n "$INFO_BODY" ]]; then
+        rm -f "$INFO_BODY"
+    fi
+    if [[ -n "$DETAIL_BODY" ]]; then
+        rm -f "$DETAIL_BODY"
+    fi
+    if [[ -n "$REFRESH_BODY" ]]; then
+        rm -f "$REFRESH_BODY"
     fi
     exit $exit_code
 }
@@ -123,6 +135,82 @@ echo "Created session: $SESSION_ID ($SESSION_NAME)"
 recce-cloud list --json | jq -e --arg i "$SESSION_ID" \
     '.[] | select(.id == $i) | .has_isolated_base == true' > /dev/null
 echo "Auto-snapshot post-condition passed (has_isolated_base == true)"
+
+# --------------------------------------------------------------------
+# 7a. Auto-snapshot session-lifecycle staleness + refresh (DRC-3311 / DRC-3548)
+#
+# Cover the drift→refresh contract the frontend StalenessBanner depends on:
+#   GET /sessions/{id}/info must surface session_staleness (the field the
+#     frontend's useServerInfo selector reads),
+#   GET /sessions/{id} must surface the four staleness fields populated on
+#     the session-detail handler (CLI / API-token consumers), and
+#   POST /sessions/{id}/refresh-base must accept the refresh and return a
+#     task_id (202). The in_progress=true branch is reserved for concurrent
+#     refresh races and cannot fire on a session's first call.
+#
+# All three endpoints are auth'd by the same RECCE_API_TOKEN used by the
+# CLI. The staging API token must have MANAGER+ role on the org —
+# refresh-base requires MANAGER+ for user-actor tokens (sessions_api.py
+# refresh_session_base_endpoint). Called via curl until a dedicated
+# `recce-cloud refresh-base` subcommand exists (tracked under DRC-3548).
+# --------------------------------------------------------------------
+API_HOST="${RECCE_CLOUD_API_HOST:-https://cloud.reccehq.com}"
+AUTH_HEADER="Authorization: Bearer $RECCE_API_TOKEN"
+
+# 7a-i. GET /sessions/{id}/info — the frontend StalenessBanner reads
+# session_staleness from /info via useServerInfo (StalenessBanner.tsx).
+# /info is a separate code path from /sessions/{id}; the two can regress
+# independently, so cover the frontend's actual consumer endpoint here.
+INFO_BODY=$(mktemp)
+INFO_STATUS=$(curl -s -o "$INFO_BODY" -w "%{http_code}" \
+    -H "$AUTH_HEADER" "$API_HOST/api/v2/sessions/$SESSION_ID/info")
+if [[ "$INFO_STATUS" != "200" ]]; then
+    echo "ERROR: GET /sessions/{id}/info expected 200, got $INFO_STATUS"
+    cat "$INFO_BODY"
+    exit 1
+fi
+jq -e '.session_staleness | has("source_session_id")' "$INFO_BODY" > /dev/null
+jq -e '.session_staleness | has("source_session_updated_at")' "$INFO_BODY" > /dev/null
+jq -e '.session_staleness | has("current_base_session_id")' "$INFO_BODY" > /dev/null
+jq -e '.session_staleness | has("current_base_updated_at")' "$INFO_BODY" > /dev/null
+echo "GET /sessions/{id}/info surfaces session_staleness with four keys"
+
+# 7a-ii. GET /sessions/{id} — session-detail handler populates the four
+# staleness fields inline (sessions_api.py get_session_by_id_only). All
+# four RecceSessionResponse fields default to None at the model level
+# (Pydantic emits the keys regardless of whether the handler wrote them),
+# so a key-presence check is tautological and a typo in the handler
+# would pass. Assert non-null on the two fields guaranteed populated by
+# the preceding auto-snapshot (source_session_id from the session row,
+# current_base_session_id from the project's base session).
+DETAIL_BODY=$(mktemp)
+DETAIL_STATUS=$(curl -s -o "$DETAIL_BODY" -w "%{http_code}" \
+    -H "$AUTH_HEADER" "$API_HOST/api/v2/sessions/$SESSION_ID")
+if [[ "$DETAIL_STATUS" != "200" ]]; then
+    echo "ERROR: GET /sessions/{id} expected 200, got $DETAIL_STATUS"
+    cat "$DETAIL_BODY"
+    exit 1
+fi
+jq -e '.session.source_session_id != null' "$DETAIL_BODY" > /dev/null
+jq -e '.session.current_base_session_id != null' "$DETAIL_BODY" > /dev/null
+echo "GET /sessions/{id} populated source_session_id + current_base_session_id"
+
+# 7a-iii. POST /sessions/{id}/refresh-base must return 202 with task_id
+# non-null. The in_progress=true branch is reserved for concurrent
+# refresh races (sessions_func.py refresh_session_base) and cannot fire
+# on a session's first call — asserting task_id != null directly catches
+# stuck-lock regressions.
+REFRESH_BODY=$(mktemp)
+REFRESH_STATUS=$(curl -s -o "$REFRESH_BODY" -w "%{http_code}" \
+    -X POST -H "$AUTH_HEADER" \
+    "$API_HOST/api/v2/sessions/$SESSION_ID/refresh-base")
+if [[ "$REFRESH_STATUS" != "202" ]]; then
+    echo "ERROR: refresh-base expected 202, got $REFRESH_STATUS"
+    cat "$REFRESH_BODY"
+    exit 1
+fi
+jq -e '.task_id != null' "$REFRESH_BODY" > /dev/null
+echo "POST /sessions/{id}/refresh-base returned 202 with task_id"
 
 # --------------------------------------------------------------------
 # 8. Upload SESSION BASE artifacts explicitly (idempotent overwrite of
