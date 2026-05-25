@@ -72,18 +72,19 @@ async def test_mcp_server_filters_widget_tools_when_widgets_enabled(monkeypatch)
     assert "schema_diff" not in names
     assert "get_server_info" not in names
     assert "list_checks" not in names
+    assert "get_model" not in names
     # Other tools must still be present
     assert "lineage_diff" in names
 
 
 # ---------------------------------------------------------------------------
-# Test 3: Widget server registers exactly 4 tools + 4 resources
+# Test 3: Widget server registers exactly 5 tools + 5 resources
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_widget_server_registers_four_tools_and_four_resources():
-    """Widget FastMCP instance has exactly row_count_diff + schema_diff + get_server_info + list_checks tools/resources.
+async def test_widget_server_registers_five_tools_and_five_resources():
+    """Widget FastMCP instance has exactly 5 tools/resources (Phase A complete).
 
     Uses FastMCP public API: mcp.list_tools() and mcp.list_resources().
     """
@@ -95,12 +96,13 @@ async def test_widget_server_registers_four_tools_and_four_resources():
     tool_names = {t.name for t in tools}
     resource_uris = {str(r.uri) for r in resources}
 
-    assert tool_names == {"row_count_diff", "schema_diff", "get_server_info", "list_checks"}
+    assert tool_names == {"row_count_diff", "schema_diff", "get_server_info", "list_checks", "get_model"}
     assert resource_uris == {
         "ui://recce/row_count_diff.html",
         "ui://recce/schema_diff.html",
         "ui://recce/get_server_info.html",
         "ui://recce/list_checks.html",
+        "ui://recce/get_model.html",
     }
 
 
@@ -263,7 +265,7 @@ async def test_widget_tool_annotations_present():
     tools = await mcp.list_tools()
     tool_map = {t.name: t for t in tools}
 
-    for tool_name in ("row_count_diff", "schema_diff", "get_server_info", "list_checks"):
+    for tool_name in ("row_count_diff", "schema_diff", "get_server_info", "list_checks", "get_model"):
         assert tool_name in tool_map, f"{tool_name} not found in widget mcp tools"
         t = tool_map[tool_name]
         a = t.annotations
@@ -453,3 +455,104 @@ async def test_list_checks_returns_calltoolresult_with_pydantic_shape():
     assert validated.checks[0].is_checked is True
     assert validated.checks[1].is_preset is True
     assert validated.checks[1].is_checked is False
+
+
+# ---------------------------------------------------------------------------
+# Test 13: get_model widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_model_widget_registered():
+    """get_model appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'get_model' is in widget mcp tool list
+    - resource URI 'ui://recce/get_model.html' is in widget mcp resource list
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "get_model" in tool_names
+    assert "ui://recce/get_model.html" in resource_uris
+
+
+# ---------------------------------------------------------------------------
+# Test 14: get_model returns CallToolResult with correct Pydantic shape
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_model_returns_calltoolresult_with_pydantic_shape():
+    """get_model handler returns CallToolResult with structuredContent matching GetModelOutput.
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent passes GetModelOutput.model_validate()
+    - columns are normalised from dict → list
+    - primary_key is preserved
+    - not_found is False when at least one env has data
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import GetModelInput, GetModelOutput
+
+    mock_server = MagicMock()
+    mock_server._tool_get_model = AsyncMock(
+        return_value={
+            "model": {
+                "base": {
+                    "columns": {
+                        "id": {"name": "id", "type": "bigint", "unique": True},
+                        "name": {"name": "name", "type": "varchar", "not_null": True},
+                        "created_at": {"name": "created_at", "type": "timestamp"},
+                    },
+                    "primary_key": "id",
+                },
+                "current": {
+                    "columns": {
+                        "id": {"name": "id", "type": "bigint", "unique": True},
+                        "name": {"name": "name", "type": "varchar", "not_null": True},
+                        "created_at": {"name": "created_at", "type": "timestamp"},
+                        "updated_at": {"name": "updated_at", "type": "timestamp"},
+                    },
+                    "primary_key": "id",
+                },
+            }
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = GetModelInput(model_id="model.jaffle_shop.customers")
+        result = await ws.get_model(args)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 120, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    assert result.structuredContent is not None
+    validated = GetModelOutput.model_validate(result.structuredContent)
+    assert validated.model_id == "model.jaffle_shop.customers"
+    assert validated.not_found is False
+    # base: 3 columns, primary_key=id
+    assert validated.base is not None
+    assert len(validated.base.columns) == 3
+    assert validated.base.primary_key == "id"
+    pk_col = next(c for c in validated.base.columns if c.name == "id")
+    assert pk_col.unique is True
+    # current: 4 columns (added updated_at)
+    assert validated.current is not None
+    assert len(validated.current.columns) == 4

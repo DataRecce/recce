@@ -467,6 +467,163 @@ def list_checks_resource() -> str:
 
 
 # ---------------------------------------------------------------------------
+# get_model widget tool + resource
+# ---------------------------------------------------------------------------
+
+
+class ColumnInfo(BaseModel):
+    """Shape of one column entry in a get_model response."""
+
+    name: str
+    type: Optional[str] = None
+    not_null: bool = False
+    unique: bool = False
+
+
+class ModelEnvironment(BaseModel):
+    """Column details for one environment (base or current).
+
+    ``columns`` is stored as a dict keyed by column name in the raw handler
+    response.  The widget server normalises it to a list so the HTML can
+    iterate without Object.values() gymnastics.
+    """
+
+    columns: List[ColumnInfo] = []
+    primary_key: Optional[str] = None
+    # raw_code intentionally omitted — widget shows schema, not SQL source
+
+
+class GetModelOutput(BaseModel):
+    """Output model for the get_model widget tool.
+
+    ``model_id`` echoes back the requested identifier for the widget header.
+    ``base`` / ``current`` hold per-environment column details.  Either may be
+    None when the model exists in only one environment or is not found at all.
+    ``not_found`` is True only when neither environment has the model.
+    """
+
+    model_id: str
+    base: Optional[ModelEnvironment] = None
+    current: Optional[ModelEnvironment] = None
+    not_found: bool = False
+
+
+class GetModelInput(BaseModel):
+    model_id: str = Field(
+        description=(
+            "The dbt unique node ID of the model "
+            "(e.g. 'model.jaffle_shop.customers').  "
+            "Use the full unique ID, not just the model name."
+        )
+    )
+
+
+def _parse_model_env(raw: Optional[dict]) -> Optional[ModelEnvironment]:
+    """Convert raw get_model environment dict → ModelEnvironment Pydantic model.
+
+    The raw dict has ``columns`` as a nested dict keyed by column name.
+    Each value is ``{name, type, not_null?, unique?}``.  We normalise to a list
+    so the widget HTML can iterate in order.
+    """
+    if not raw:
+        return None
+    raw_cols: dict = raw.get("columns") or {}
+    columns = []
+    for col_name, col_data in raw_cols.items():
+        columns.append(
+            ColumnInfo(
+                name=col_data.get("name", col_name),
+                type=col_data.get("type"),
+                not_null=col_data.get("not_null", False),
+                unique=col_data.get("unique", False),
+            )
+        )
+    return ModelEnvironment(
+        columns=columns,
+        primary_key=raw.get("primary_key"),
+    )
+
+
+@mcp.tool(
+    name="get_model",
+    annotations={
+        "title": "Model Detail (Widget)",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,
+    },
+    meta={
+        "ui": {"resourceUri": "ui://recce/get_model.html"},
+        "ui/resourceUri": "ui://recce/get_model.html",
+    },
+)
+async def get_model(args: GetModelInput) -> CallToolResult:
+    """Get column details for a single dbt model from base and current environments.
+
+    Returns schema information (column names, types, constraints) rendered
+    as a model-detail card widget. The agent should not reproduce the column
+    table as plain text — the widget handles rendering.
+
+    Args:
+        model_id: Full dbt unique node ID (e.g. 'model.jaffle_shop.customers').
+                  Use the full ID, not just the short model name.
+
+    Returns:
+        CallToolResult with structuredContent: GetModelOutput shape
+        {model_id, base: {columns, primary_key}?, current: {columns, primary_key}?,
+         not_found: bool}
+
+    Use when:
+        - User asks "what columns does {model} have" / "schema of {model}"
+        - Need to verify column types or constraints before running a diff
+        - Comparing base vs current column layout for a single model
+    Don't use when:
+        - User wants column CHANGES across models — use schema_diff instead
+        - User wants ALL models — use lineage_diff for DAG scope
+        - Modifying anything — get_model is read-only
+    """
+    raw = await _recce_server._tool_get_model({"model_id": args.model_id})
+    # _tool_get_model returns {"model": {"base": {...}, "current": {...}}}
+    # It raises ValueError if neither env has the model, so raw is always a dict here.
+    model_data = raw.get("model", {}) if isinstance(raw, dict) else {}
+    base_raw = model_data.get("base")
+    curr_raw = model_data.get("current")
+    base_env = _parse_model_env(base_raw if isinstance(base_raw, dict) else None)
+    curr_env = _parse_model_env(curr_raw if isinstance(curr_raw, dict) else None)
+    not_found = base_env is None and curr_env is None
+    output = GetModelOutput(
+        model_id=args.model_id,
+        base=base_env,
+        current=curr_env,
+        not_found=not_found,
+    )
+    short = (
+        f"Model '{args.model_id}' detail rendered in widget."
+        if not not_found
+        else f"Model '{args.model_id}' not found."
+    )
+    return CallToolResult(
+        content=[TextContent(type="text", text=short)],
+        structuredContent=output.model_dump(),
+    )
+
+
+@mcp.resource(
+    uri="ui://recce/get_model.html",
+    mime_type="text/html;profile=mcp-app",
+    meta={
+        "ui": {
+            "csp": {"resourceDomains": ["https://unpkg.com"]},
+            "prefersBorder": False,
+        },
+    },
+)
+def get_model_resource() -> str:
+    return _read_widget_html("get_model")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

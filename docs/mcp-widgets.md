@@ -12,9 +12,9 @@ through the `RECCE_MCP_WIDGETS=1` environment variable: when that flag is set,
 that Claude Desktop routes those calls exclusively to `mcp-widget-server`, which
 annotates each tool with `_meta.ui.resourceUri` pointing at an HTML resource.
 
-Iter 1 ships four widgets: `row_count_diff`, `schema_diff`, `get_server_info`,
-and `list_checks`. All run in **local mode only** — cloud/session mode is not
-supported until iter 2.
+Phase A ships five widgets: `row_count_diff`, `schema_diff`, `get_server_info`,
+`list_checks`, and `get_model`. All run in **local mode only** — cloud/session
+mode is not supported until iter 2.
 
 ---
 
@@ -24,7 +24,7 @@ supported until iter 2.
 recce/
   mcp_server.py              # Existing primary server.
                              # WIDGET_TOOLS set + _widgets_enabled() filter live here.
-  widget_server.py           # FastMCP widget server (iter 1).
+  widget_server.py           # FastMCP widget server (Phase A).
                              # @mcp.tool delegates + @mcp.resource handlers.
   cli.py                     # mcp-widget-server CLI subcommand added here.
   data/
@@ -33,8 +33,9 @@ recce/
       schema_diff.html
       get_server_info.html
       list_checks.html
+      get_model.html
 tests/
-  test_widget_server.py      # 12 tests covering WIDGET_TOOLS coordination + widget server.
+  test_widget_server.py      # 14 tests covering WIDGET_TOOLS coordination + widget server.
 docs/
   mcp-widgets.md             # This file.
 ```
@@ -84,7 +85,7 @@ The worked reference throughout is `row_count_diff`. Add a new widget called
 File: `recce/mcp_server.py`, near line 56.
 
 ```python
-WIDGET_TOOLS = {"row_count_diff", "schema_diff", "get_server_info", "list_checks", "<tool>"}
+WIDGET_TOOLS = {"row_count_diff", "schema_diff", "get_server_info", "list_checks", "get_model", "<tool>"}
 ```
 
 This single change makes `mcp-server` omit `<tool>` from `tools/list` when
@@ -372,6 +373,15 @@ directly. Always use Pydantic models for widget tool outputs.
   `args: None` or empty-model arg — it generates a confusing schema that
   Claude Desktop may mis-render.
 
+- **Watch out for Pydantic reserved field names.** `schema` and any field
+  starting with `model_` are reserved in Pydantic v2. If the raw handler
+  response uses one of these keys (e.g. a `schema` field for the DB schema
+  name), either rename the Pydantic field and use `Field(alias="schema")` with
+  `model_config = {"populate_by_name": True}`, or normalise the key in the
+  widget delegate before passing to the Pydantic model.  `get_model`'s
+  `_parse_model_env` helper is a worked example: the raw `columns` dict is
+  normalised to a typed list before constructing `ModelEnvironment`.
+
 - **CSS token naming: use `danger`, not `error`.** The MCP Apps spec enum
   `McpUiStyleVariableKey` uses `--color-text-danger` and
   `--color-background-danger`. There is no `--color-text-error` token — using
@@ -408,7 +418,7 @@ documented and supported. Reconsider if ext-apps publishes a Python SDK.
 
 ## Reference Widgets
 
-Four working examples (in order of implementation):
+Five working examples (in order of implementation):
 
 | File | Tier | What it demonstrates |
 |------|------|----------------------|
@@ -416,6 +426,7 @@ Four working examples (in order of implementation):
 | `recce/data/mcp/schema_diff.html` | HTML table | Added/removed/type_changed column grouping, `_compute_schema_changes` rich shape, per-model section headers |
 | `recce/data/mcp/get_server_info.html` | Status badge + key/value grid | **Canonical post-refactor example.** Born idiomatic: no `models` wrapper (tool has no per-model loop), optional `git`/`pull_request` nested objects, 2-column CSS grid layout, empty-state card when `mode="none"` |
 | `recce/data/mcp/list_checks.html` | List / simple table | 3-up summary cards (Total / Approved / Pending), 4-column status table, empty-state with hint, `is_preset` badge, `_tool_list_checks` returns a flat list + pre-computed `total`/`approved` — `pending` derived in the widget delegate |
+| `recce/data/mcp/get_model.html` | Single-item detail card | Per-environment column tables (base/current), adaptive 2-col/3-col layout when constraints present, PK + not-null + unique badges, not-found empty state, `columns` dict → list normalisation in delegate |
 
 `get_server_info` is the **recommended canonical example** for new widgets
 because it was written after the idiomatic pattern was established (Day 3

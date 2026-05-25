@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Model Detail</title>
+  <style>
+    /* ── Base reset + design tokens ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+      font-size: 13px;
+      margin: 0;
+      padding: 12px 16px 20px;
+      color: var(--color-text-primary, #1a1a1a);
+      background: var(--color-background-primary, #ffffff);
+      line-height: 1.4;
+    }
+    /* Dark-mode fallback — exhaustive: every class that uses color/background */
+    @media (prefers-color-scheme: dark) {
+      /* ── Base ── */
+      body {
+        color: var(--color-text-primary, #e5e7eb);
+        background: var(--color-background-primary, #1a1a1a);
+      }
+      /* ── Header ── */
+      .header-icon  { color: var(--color-text-secondary, #9ca3af) !important; }
+      .header-title { color: var(--color-text-primary, #e5e7eb) !important;
+                      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace) !important; }
+      /* ── Meta row badges ── */
+      .badge-mat    { background: var(--color-background-secondary, #3f3f46) !important;
+                      color: var(--color-text-secondary, #9ca3af) !important; }
+      .badge-schema { background: var(--color-background-secondary, #3f3f46) !important;
+                      color: var(--color-text-secondary, #9ca3af) !important; }
+      .badge-tag    { background: var(--color-background-info, #1e3a8a) !important;
+                      color: var(--color-text-info, #93c5fd) !important; }
+      .badge-type   { background: var(--color-background-info, #1e3a8a) !important;
+                      color: var(--color-text-info, #93c5fd) !important; }
+      .badge-pk     { background: var(--color-background-warning, #78350f) !important;
+                      color: var(--color-text-warning, #fde68a) !important; }
+      .badge-notnull { background: var(--color-background-secondary, #3f3f46) !important;
+                       color: var(--color-text-secondary, #9ca3af) !important; }
+      /* ── Description ── */
+      .desc-block   { color: var(--color-text-secondary, #9ca3af) !important; }
+      /* ── Env label ── */
+      .env-label    { color: var(--color-text-secondary, #9ca3af) !important;
+                      border-bottom-color: var(--color-border-primary, #3f3f46) !important; }
+      /* ── Columns table ── */
+      .cols-table            { background: var(--color-background-secondary, #27272a) !important; }
+      .col-header            { color: var(--color-text-secondary, #9ca3af) !important;
+                               border-bottom-color: var(--color-border-primary, #3f3f46) !important; }
+      .col-row               { border-bottom-color: var(--color-border-secondary, #3f3f46) !important; }
+      .col-row:last-child    { border-bottom: none !important; }
+      .cell-colname          { color: var(--color-text-primary, #e5e7eb) !important; }
+      .cell-coltype          { color: var(--color-text-secondary, #9ca3af) !important; }
+      /* ── Empty / not-found ── */
+      .empty-card  { background: var(--color-background-secondary, #27272a) !important; }
+      .empty-title { color: var(--color-text-primary, #e5e7eb) !important; }
+      .empty-hint  { color: var(--color-text-secondary, #9ca3af) !important; }
+      /* ── Env missing notice ── */
+      .env-missing { color: var(--color-text-secondary, #9ca3af) !important; }
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0 10px;
+    }
+    .header-icon {
+      font-size: 18px;
+      line-height: 1;
+      color: var(--color-text-secondary, #6b7280);
+    }
+    .header-title {
+      font-size: 15px;
+      font-weight: 700;
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+      color: var(--color-text-primary, #1a1a1a);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ── Meta row ────────────────────────────────────────────────────── */
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 10px;
+    }
+
+    /* ── Badges ───────────────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      border-radius: var(--border-radius-sm, 4px);
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .badge-mat {
+      background: var(--color-background-secondary, #f3f4f6);
+      color: var(--color-text-secondary, #6b7280);
+    }
+    .badge-schema {
+      background: var(--color-background-secondary, #f3f4f6);
+      color: var(--color-text-secondary, #6b7280);
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+      font-size: 10px;
+    }
+    .badge-tag {
+      background: var(--color-background-info, #dbeafe);
+      color: var(--color-text-info, #1e40af);
+      font-size: 10px;
+    }
+    .badge-type {
+      background: var(--color-background-info, #dbeafe);
+      color: var(--color-text-info, #1e40af);
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+      font-size: 10px;
+    }
+    .badge-pk {
+      background: var(--color-background-warning, #fef3c7);
+      color: var(--color-text-warning, #92400e);
+      font-size: 10px;
+    }
+    .badge-notnull {
+      background: var(--color-background-secondary, #f3f4f6);
+      color: var(--color-text-secondary, #6b7280);
+      font-size: 10px;
+    }
+
+    /* ── Env section label ─────────────────────────────────────────── */
+    .env-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-text-secondary, #6b7280);
+      border-bottom: 1px solid var(--color-border-primary, #e5e7eb);
+      padding-bottom: 4px;
+      margin: 10px 0 6px;
+    }
+
+    /* ── Columns table ───────────────────────────────────────────────── */
+    .cols-table {
+      background: var(--color-background-secondary, #f9fafb);
+      border-radius: var(--border-radius-md, 8px);
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .col-header {
+      display: grid;
+      gap: 8px;
+      padding: 7px 12px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-secondary, #6b7280);
+      border-bottom: 1px solid var(--color-border-primary, #e5e7eb);
+    }
+    .col-row {
+      display: grid;
+      gap: 8px;
+      padding: 6px 12px;
+      align-items: center;
+      border-bottom: 1px solid var(--color-border-secondary, #f3f4f6);
+    }
+    .col-row:last-child { border-bottom: none; }
+
+    /* 3-col layout (name / type / constraints) — default */
+    .cols-3 .col-header,
+    .cols-3 .col-row {
+      grid-template-columns: minmax(120px, 2fr) minmax(90px, 1.4fr) auto;
+    }
+    /* 2-col layout (name / type) when no constraints in the env */
+    .cols-2 .col-header,
+    .cols-2 .col-row {
+      grid-template-columns: minmax(120px, 2fr) minmax(90px, 1.4fr);
+    }
+
+    .cell-colname {
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--color-text-primary, #1a1a1a);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .cell-coltype {
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+      font-size: 11px;
+      color: var(--color-text-secondary, #6b7280);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .cell-constraints {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    /* ── Env missing notice ──────────────────────────────────────────── */
+    .env-missing {
+      font-size: 11px;
+      color: var(--color-text-secondary, #6b7280);
+      font-style: italic;
+      padding: 4px 2px;
+    }
+
+    /* ── Empty / not-found state ────────────────────────────────────── */
+    .empty-card {
+      background: var(--color-background-secondary, #f9fafb);
+      border-radius: var(--border-radius-md, 8px);
+      padding: 32px 24px;
+      text-align: center;
+    }
+    .empty-icon  { font-size: 28px; margin-bottom: 8px; }
+    .empty-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-text-primary, #1a1a1a);
+      margin-bottom: 6px;
+    }
+    .empty-hint {
+      font-size: 12px;
+      color: var(--color-text-secondary, #6b7280);
+    }
+
+    #root { min-height: 40px; }
+  </style>
+</head>
+<body>
+  <div id="root">Loading…</div>
+  <script type="module">
+    import {
+      App,
+      applyDocumentTheme,
+      applyHostStyleVariables,
+      applyHostFonts,
+    } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+
+    const app = new App({ name: "Recce Model Detail", version: "1.0.0" });
+
+    app.onhostcontextchanged = (ctx) => {
+      if (ctx.theme) applyDocumentTheme(ctx.theme);
+      if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+      if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
+    };
+
+    app.ontoolresult = ({ structuredContent }) => {
+      render(structuredContent ?? {});
+    };
+
+    app.onteardown = async () => {
+      return {};
+    };
+
+    await app.connect();
+
+    const initialCtx = app.getHostContext?.();
+    if (initialCtx) {
+      if (initialCtx.theme) applyDocumentTheme(initialCtx.theme);
+      if (initialCtx.styles?.variables) applyHostStyleVariables(initialCtx.styles.variables);
+      if (initialCtx.styles?.css?.fonts) applyHostFonts(initialCtx.styles.css.fonts);
+    }
+
+    function escapeHtml(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    // Shorten a node ID like "model.jaffle_shop.customers" → "customers"
+    // while keeping the full ID available via the header title attribute.
+    function shortModelId(id) {
+      if (!id) return "";
+      const parts = String(id).split(".");
+      return parts[parts.length - 1] || id;
+    }
+
+    function renderEnvTable(env, label) {
+      if (!env) {
+        return `
+          <div class="env-label">${escapeHtml(label)}</div>
+          <div class="env-missing">Not available in this environment</div>`;
+      }
+      const cols = env.columns ?? [];
+      if (cols.length === 0) {
+        return `
+          <div class="env-label">${escapeHtml(label)}</div>
+          <div class="env-missing">No columns returned (adapter may not support schema introspection)</div>`;
+      }
+
+      // Determine whether any column has constraints (not_null or unique)
+      const hasConstraints = cols.some(c => c.not_null || c.unique);
+      const layoutClass = hasConstraints ? "cols-3" : "cols-2";
+      const pk = env.primary_key;
+
+      const headerCells = hasConstraints
+        ? `<div>Column</div><div>Type</div><div>Constraints</div>`
+        : `<div>Column</div><div>Type</div>`;
+
+      const rows = cols.map(c => {
+        const isPk = pk && c.name === pk;
+        const nameCell = `<div class="cell-colname" title="${escapeHtml(c.name)}">${escapeHtml(c.name)}</div>`;
+        const typeCell = `<div class="cell-coltype" title="${escapeHtml(c.type ?? '')}">${escapeHtml(c.type ?? '—')}</div>`;
+        let constraintCell = "";
+        if (hasConstraints) {
+          const badges = [];
+          if (isPk) badges.push(`<span class="badge badge-pk">PK</span>`);
+          else if (c.unique) badges.push(`<span class="badge badge-pk">unique</span>`);
+          if (c.not_null) badges.push(`<span class="badge badge-notnull">not null</span>`);
+          constraintCell = `<div class="cell-constraints">${badges.join("")}</div>`;
+        }
+        return `<div class="col-row">${nameCell}${typeCell}${constraintCell}</div>`;
+      }).join("");
+
+      return `
+        <div class="env-label">${escapeHtml(label)}</div>
+        <div class="cols-table ${escapeHtml(layoutClass)}">
+          <div class="col-header">${headerCells}</div>
+          ${rows}
+        </div>`;
+    }
+
+    function render(data) {
+      const modelId = data.model_id ?? "";
+      const shortName = shortModelId(modelId);
+      const notFound = data.not_found === true;
+
+      const header = `
+        <div class="header">
+          <span class="header-icon">&#9646;</span>
+          <span class="header-title" title="${escapeHtml(modelId)}">${escapeHtml(shortName)}</span>
+        </div>`;
+
+      if (notFound) {
+        document.getElementById("root").innerHTML = header + `
+          <div class="empty-card">
+            <div class="empty-icon">&#10067;</div>
+            <div class="empty-title">Model not found</div>
+            <div class="empty-hint">
+              <code>${escapeHtml(modelId)}</code> was not found in either environment.<br>
+              Use the full unique ID (e.g. <code>model.project.model_name</code>).
+            </div>
+          </div>`;
+        return;
+      }
+
+      // Render base then current, each with their own table
+      const baseSection = renderEnvTable(data.base ?? null, "Base");
+      const currentSection = renderEnvTable(data.current ?? null, "Current");
+
+      document.getElementById("root").innerHTML = header + baseSection + currentSection;
+    }
+  </script>
+</body>
+</html>
