@@ -1,6 +1,9 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from recce.tasks import ValueDiffDetailTask, ValueDiffTask
+from recce.tasks.valuediff import ValueDiffMixin
 
 # =============================================================================
 # ValueDiffTask Tests (_query_value_diff for summary statistics)
@@ -261,14 +264,22 @@ def test_value_diff_selected_columns(dbt_test_helper):
     dbt_test_helper.create_model("customers_cols", csv_data_base, csv_data_curr)
 
     # Only compare 'name' column (should show 100% match)
-    params = {"model": "customers_cols", "primary_key": ["customer_id"], "columns": ["name"]}
+    params = {
+        "model": "customers_cols",
+        "primary_key": ["customer_id"],
+        "columns": ["name"],
+    }
     task = ValueDiffTask(params)
     run_result = task.execute()
     # Only customer_id and name columns in result
     assert len(run_result.data.data) == 2  # customer_id + name
 
     # Compare 'age' column (should show mismatch for id=1)
-    params = {"model": "customers_cols", "primary_key": ["customer_id"], "columns": ["age"]}
+    params = {
+        "model": "customers_cols",
+        "primary_key": ["customer_id"],
+        "columns": ["age"],
+    }
     task = ValueDiffTask(params)
     run_result = task.execute()
     # Find the age row and check it's not 100% matched
@@ -468,3 +479,311 @@ def test_validator():
                 "columns": "name",
             }
         )
+
+
+# =============================================================================
+# Snowflake column-case regression tests (DRC-3464)
+#
+# Root cause: ValueDiffTask / ValueDiffDetailTask passed user-supplied lowercase
+# column names (e.g. "customer_id") directly to adapter.quote(), producing the
+# case-sensitive quoted identifier '"customer_id"'.  On Snowflake with default
+# quoting config, physical columns are stored uppercase (CUSTOMER_ID), so the
+# quoted lowercase identifier fails with:
+#   "SQL compilation error: invalid identifier '"customer_id"'"
+#
+# Fix: _build_column_case_lookup() maps each user-supplied identifier through a
+# {lower(physical_name): physical_name} lookup built from get_columns() before
+# any adapter.quote() call is made.
+# =============================================================================
+
+
+def _make_uppercase_column(name: str):
+    """Return a mock Column object with .column = name (simulates Snowflake get_columns output)."""
+    col = MagicMock()
+    col.column = name
+    col.name = name
+    return col
+
+
+class TestBuildColumnCaseLookup:
+    """Unit tests for ValueDiffMixin._build_column_case_lookup."""
+
+    def test_returns_uppercase_to_physical_mapping(self):
+        """get_columns() returning uppercase names builds a lower→physical lookup."""
+        dbt_adapter = MagicMock()
+        dbt_adapter.get_columns.return_value = [
+            _make_uppercase_column("CUSTOMER_ID"),
+            _make_uppercase_column("CUSTOMER_LIFETIME_VALUE"),
+        ]
+
+        lookup = ValueDiffMixin._build_column_case_lookup(dbt_adapter, "customers")
+
+        assert lookup["customer_id"] == "CUSTOMER_ID"
+        assert lookup["customer_lifetime_value"] == "CUSTOMER_LIFETIME_VALUE"
+
+    def test_gracefully_handles_get_columns_failure(self):
+        """A failing get_columns() call returns an empty lookup (pass-through behaviour)."""
+        dbt_adapter = MagicMock()
+        dbt_adapter.get_columns.side_effect = Exception("relation not found")
+
+        lookup = ValueDiffMixin._build_column_case_lookup(dbt_adapter, "missing_model")
+
+        assert lookup == {}
+
+    def test_normalise_identifier_maps_lowercase_to_physical(self):
+        mixin = ValueDiffTask.__new__(ValueDiffTask)
+        lookup = {"customer_id": "CUSTOMER_ID", "name": "NAME"}
+
+        assert mixin._normalise_identifier("customer_id", lookup) == "CUSTOMER_ID"
+        assert mixin._normalise_identifier("CUSTOMER_ID", lookup) == "CUSTOMER_ID"
+
+    def test_normalise_identifier_passthrough_for_unknown(self):
+        """Identifiers not in the catalog are returned unchanged."""
+        mixin = ValueDiffTask.__new__(ValueDiffTask)
+        lookup = {"customer_id": "CUSTOMER_ID"}
+
+        assert mixin._normalise_identifier("unknown_col", lookup) == "unknown_col"
+
+
+def test_value_diff_snowflake_uppercase_columns(dbt_test_helper):
+    """Regression test for DRC-3464: value_diff with Snowflake uppercase physical columns.
+
+    When get_columns() returns uppercase names (as Snowflake does with default quoting),
+    user-supplied lowercase primary_key/columns must be normalised to uppercase before
+    adapter.quote() is called — producing '"CUSTOMER_ID"' not '"customer_id"'.
+
+    This test patches get_columns() to return uppercase names and captures the SQL
+    rendered by _query_value_diff to assert the quoted identifiers are uppercase.
+
+    Pre-fix assertion (would fail WITHOUT the _build_column_case_lookup normalisation):
+      '"customer_id"' in sql  → True  (broken — Snowflake rejects this)
+
+    Post-fix assertion (MUST pass WITH the fix):
+      '"CUSTOMER_ID"' in sql  → True
+      '"customer_id"' not in sql  → True
+    """
+    csv_data = """
+        customer_id,customer_lifetime_value
+        1,100
+        2,200
+        """
+    dbt_test_helper.create_model("snowflake_customers", csv_data, csv_data)
+
+    # Patch get_columns to return uppercase column names (simulating Snowflake INFORMATION_SCHEMA)
+    uppercase_cols = [
+        _make_uppercase_column("CUSTOMER_ID"),
+        _make_uppercase_column("CUSTOMER_LIFETIME_VALUE"),
+    ]
+
+    captured_sqls = []
+    real_execute = dbt_test_helper.adapter.execute
+
+    def capture_execute(sql, *args, **kwargs):
+        captured_sqls.append(sql)
+        return real_execute(sql, *args, **kwargs)
+
+    with (
+        patch.object(dbt_test_helper.adapter, "get_columns", return_value=uppercase_cols),
+        patch.object(dbt_test_helper.adapter, "execute", side_effect=capture_execute),
+    ):
+        params = {
+            "model": "snowflake_customers",
+            "primary_key": "customer_id",
+            "columns": ["customer_id", "customer_lifetime_value"],
+        }
+        task = ValueDiffTask(params)
+        task.execute()
+
+    # The surrogate-key SQL and column comparison SQL must use uppercase quoted identifiers
+    all_sql = "\n".join(captured_sqls)
+    assert '"CUSTOMER_ID"' in all_sql, (
+        "Fix regression: adapter.quote() must receive uppercase 'CUSTOMER_ID' not lowercase 'customer_id'. "
+        "DRC-3464: _build_column_case_lookup must normalise before quoting."
+    )
+    assert '"customer_id"' not in all_sql, (
+        "Fix regression: quoted lowercase '\"customer_id\"' found in SQL — "
+        "this would cause 'invalid identifier' on Snowflake with default quoting config."
+    )
+
+
+def test_value_diff_detail_snowflake_uppercase_columns(dbt_test_helper):
+    """Regression test for DRC-3464: ValueDiffDetailTask with Snowflake uppercase columns.
+
+    Same root cause as test_value_diff_snowflake_uppercase_columns but exercises
+    the ValueDiffDetailTask._query_value_diff path (lines 387, 391 in original).
+    """
+    csv_data = """
+        customer_id,customer_lifetime_value
+        1,100
+        2,200
+        """
+    dbt_test_helper.create_model("snowflake_customers_detail", csv_data, csv_data)
+
+    uppercase_cols = [
+        _make_uppercase_column("CUSTOMER_ID"),
+        _make_uppercase_column("CUSTOMER_LIFETIME_VALUE"),
+    ]
+
+    captured_sqls = []
+    real_execute = dbt_test_helper.adapter.execute
+
+    def capture_execute(sql, *args, **kwargs):
+        captured_sqls.append(sql)
+        return real_execute(sql, *args, **kwargs)
+
+    with (
+        patch.object(dbt_test_helper.adapter, "get_columns", return_value=uppercase_cols),
+        patch.object(dbt_test_helper.adapter, "execute", side_effect=capture_execute),
+    ):
+        params = {
+            "model": "snowflake_customers_detail",
+            "primary_key": ["customer_id"],
+            "columns": ["customer_id", "customer_lifetime_value"],
+        }
+        task = ValueDiffDetailTask(params)
+        task.execute()
+
+    all_sql = "\n".join(captured_sqls)
+    assert (
+        '"CUSTOMER_ID"' in all_sql
+    ), "Fix regression: ValueDiffDetailTask must use uppercase quoted identifier. DRC-3464."
+    assert (
+        '"customer_id"' not in all_sql
+    ), "Fix regression: quoted lowercase '\"customer_id\"' found — breaks Snowflake default quoting. DRC-3464."
+
+
+def test_value_diff_snowflake_composite_primary_key(dbt_test_helper):
+    """Regression test for DRC-3464 cycle 1: composite primary_key on Snowflake.
+
+    When primary_key is a list (composite key) and get_columns() returns uppercase
+    names (Snowflake default), _verify_primary_key must receive normalised
+    (uppercase) identifiers so its inline Jinja SQL uses '"CUSTOMER_ID"' not
+    '"customer_id"'.
+
+    PRE-FIX (commit 0da517ad): _verify_primary_key received the original lowercase
+    list and called adapter.quote(col) directly → SQL contained '"customer_id"',
+    '"order_id"' → Snowflake invalid identifier error.
+
+    POST-FIX: execute() builds case_lookup and normalises primary_key BEFORE
+    calling _verify_primary_key → SQL contains '"CUSTOMER_ID"', '"ORDER_ID"'.
+
+    Note: _verify_primary_key calls dbt_adapter.adapter.execute (the low-level dbt
+    adapter), not dbt_adapter.execute (the DbtAdapter wrapper). We must patch the
+    low-level adapter to capture the SQL it generates.
+    """
+    csv_data = """
+        customer_id,order_id,amount
+        1,101,500
+        2,102,300
+        """
+    dbt_test_helper.create_model("snowflake_composite", csv_data, csv_data)
+
+    uppercase_cols = [
+        _make_uppercase_column("CUSTOMER_ID"),
+        _make_uppercase_column("ORDER_ID"),
+        _make_uppercase_column("AMOUNT"),
+    ]
+
+    captured_sqls = []
+    # _verify_primary_key calls dbt_adapter.adapter.execute (the low-level adapter).
+    # patch that to capture the composite-key verification SQL.
+    real_low_level_execute = dbt_test_helper.adapter.adapter.execute
+
+    def capture_low_level_execute(sql, *args, **kwargs):
+        captured_sqls.append(sql)
+        return real_low_level_execute(sql, *args, **kwargs)
+
+    with (
+        patch.object(dbt_test_helper.adapter, "get_columns", return_value=uppercase_cols),
+        patch.object(dbt_test_helper.adapter.adapter, "execute", side_effect=capture_low_level_execute),
+    ):
+        params = {
+            "model": "snowflake_composite",
+            "primary_key": ["customer_id", "order_id"],
+        }
+        task = ValueDiffTask(params)
+        task.execute()
+
+    # The _verify_primary_key SQL must quote the composite PK columns in uppercase.
+    # We look specifically for the validation_errors CTE that _verify_primary_key generates.
+    verify_sqls = [s for s in captured_sqls if "validation_errors" in s]
+    assert verify_sqls, (
+        "DRC-3464 cycle 1: no validation_errors SQL captured — _verify_primary_key "
+        "did not execute for composite primary_key."
+    )
+    all_verify_sql = "\n".join(verify_sqls)
+    assert '"CUSTOMER_ID"' in all_verify_sql, (
+        "DRC-3464 cycle 1: composite PK _verify_primary_key must use uppercase "
+        "'CUSTOMER_ID' not lowercase 'customer_id' on Snowflake."
+    )
+    assert '"ORDER_ID"' in all_verify_sql, (
+        "DRC-3464 cycle 1: composite PK _verify_primary_key must use uppercase "
+        "'ORDER_ID' not lowercase 'order_id' on Snowflake."
+    )
+    assert '"customer_id"' not in all_verify_sql, (
+        "DRC-3464 cycle 1: quoted lowercase '\"customer_id\"' found in _verify_primary_key SQL — "
+        "execute() must normalise composite PK before passing to _verify_primary_key."
+    )
+    assert '"order_id"' not in all_verify_sql, (
+        "DRC-3464 cycle 1: quoted lowercase '\"order_id\"' found in _verify_primary_key SQL — "
+        "execute() must normalise composite PK before passing to _verify_primary_key."
+    )
+
+
+def test_value_diff_detail_snowflake_composite_primary_key(dbt_test_helper):
+    """Regression test for DRC-3464 cycle 1: ValueDiffDetailTask with composite PK.
+
+    Same root cause as test_value_diff_snowflake_composite_primary_key but exercises
+    ValueDiffDetailTask.execute() → _verify_primary_key → _query_value_diff.
+    """
+    csv_data = """
+        customer_id,order_id,amount
+        1,101,500
+        2,102,300
+        """
+    dbt_test_helper.create_model("snowflake_composite_detail", csv_data, csv_data)
+
+    uppercase_cols = [
+        _make_uppercase_column("CUSTOMER_ID"),
+        _make_uppercase_column("ORDER_ID"),
+        _make_uppercase_column("AMOUNT"),
+    ]
+
+    captured_sqls = []
+    real_low_level_execute = dbt_test_helper.adapter.adapter.execute
+
+    def capture_low_level_execute(sql, *args, **kwargs):
+        captured_sqls.append(sql)
+        return real_low_level_execute(sql, *args, **kwargs)
+
+    with (
+        patch.object(dbt_test_helper.adapter, "get_columns", return_value=uppercase_cols),
+        patch.object(dbt_test_helper.adapter.adapter, "execute", side_effect=capture_low_level_execute),
+    ):
+        params = {
+            "model": "snowflake_composite_detail",
+            "primary_key": ["customer_id", "order_id"],
+        }
+        task = ValueDiffDetailTask(params)
+        task.execute()
+
+    verify_sqls = [s for s in captured_sqls if "validation_errors" in s]
+    assert verify_sqls, (
+        "DRC-3464 cycle 1: no validation_errors SQL captured — _verify_primary_key "
+        "did not execute for composite primary_key."
+    )
+    all_verify_sql = "\n".join(verify_sqls)
+    assert '"CUSTOMER_ID"' in all_verify_sql, (
+        "DRC-3464 cycle 1: ValueDiffDetailTask composite PK must use uppercase " "'CUSTOMER_ID' on Snowflake."
+    )
+    assert '"ORDER_ID"' in all_verify_sql, (
+        "DRC-3464 cycle 1: ValueDiffDetailTask composite PK must use uppercase " "'ORDER_ID' on Snowflake."
+    )
+    assert '"customer_id"' not in all_verify_sql, (
+        "DRC-3464 cycle 1: quoted lowercase '\"customer_id\"' found in _verify_primary_key SQL — "
+        "ValueDiffDetailTask execute() must normalise composite PK before _verify_primary_key."
+    )
+    assert '"order_id"' not in all_verify_sql, (
+        "DRC-3464 cycle 1: quoted lowercase '\"order_id\"' found in _verify_primary_key SQL — "
+        "ValueDiffDetailTask execute() must normalise composite PK before _verify_primary_key."
+    )
