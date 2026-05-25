@@ -6,6 +6,7 @@ import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { memo, type ReactNode } from "react";
+import { useCanceledRuns } from "../../hooks/useCanceledRuns";
 import { useIsDark } from "../../hooks/useIsDark";
 import {
   formatRunDate,
@@ -89,6 +90,10 @@ function RunListItemComponent({
   className,
 }: RunListItemProps) {
   const isDark = useIsDark();
+  const canceledRuns = useCanceledRuns();
+  const displayStatus: RunStatus = canceledRuns.has(run.id)
+    ? "Cancelled"
+    : run.status;
   const hasCheckLink = run.checkId != null;
   const showAddToChecklist =
     !hideAddToChecklist &&
@@ -196,7 +201,7 @@ function RunListItemComponent({
       </Box>
 
       {/* Status and date row */}
-      <RunStatusWithDate status={run.status} runAt={run.runAt} />
+      <RunStatusWithDate status={displayStatus} runAt={run.runAt} />
     </Box>
   );
 }

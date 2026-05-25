@@ -51,7 +51,7 @@ import {
   markAsPresetCheck,
   updateCheck,
 } from "../../api/checks";
-import { cancelRun, submitRunFromCheck } from "../../api/runs";
+import { submitRunFromCheck } from "../../api/runs";
 import type { Run, RunParamTypes } from "../../api/types";
 import {
   useLineageGraphContext,
@@ -121,7 +121,6 @@ export function CheckDetailOss({
   const { successToast, failToast } = useClipBoardToast();
   const [submittedRunId, setSubmittedRunId] = useState<string>();
   const [progress] = useState<Run["progress"]>();
-  const [isAborting, setAborting] = useState(false);
   const [isPresetCheckTemplateOpen, setIsPresetCheckTemplateOpen] =
     useState(false);
   const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
@@ -138,7 +137,11 @@ export function CheckDetailOss({
   });
 
   const trackedRunId = submittedRunId ?? check?.last_run?.run_id;
-  const { run, error: rerunError } = useRun(trackedRunId);
+  const {
+    run,
+    error: rerunError,
+    onCancel: handleCancel,
+  } = useRun(trackedRunId);
   const isRunning = submittedRunId
     ? !run || run.status === "Running"
     : run?.status === "Running";
@@ -211,15 +214,6 @@ export function CheckDetailOss({
     await queryClient.invalidateQueries({ queryKey: cacheKeys.check(checkId) });
     if (refreshCheckList) refreshCheckList(); // refresh the checklist to fetch correct last run status
   }, [check, checkId, queryClient, refreshCheckList, apiClient]);
-
-  const handleCancel = useCallback(async () => {
-    setAborting(true);
-    if (!trackedRunId) {
-      return;
-    }
-
-    return await cancelRun(trackedRunId, apiClient);
-  }, [trackedRunId, apiClient]);
 
   const handleCopy = async () => {
     if (!check) {
@@ -730,8 +724,12 @@ export function CheckDetailOss({
                       (check.last_run || trackedRunId ? (
                         <RunViewOss
                           ref={ref as unknown as Ref<RefTypes>}
+                          // Pass runId so the sticky cancel set can gate the
+                          // Cancelled state even before the React Query cache
+                          // has populated `run` (the "cancel before first
+                          // poll" race, DRC-3411).
+                          runId={trackedRunId}
                           isRunning={isRunning}
-                          isAborting={isAborting}
                           run={
                             trackedRunId
                               ? run
