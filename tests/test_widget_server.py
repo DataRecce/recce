@@ -85,7 +85,7 @@ async def test_mcp_server_filters_widget_tools_when_widgets_enabled(monkeypatch)
 
 @pytest.mark.asyncio
 async def test_widget_server_registers_six_tools_and_six_resources():
-    """Widget FastMCP instance has exactly 6 tools/resources (Phase A + query widget).
+    """Widget FastMCP instance has exactly 7 tools/resources (Phase A + query + query_diff widgets).
 
     Uses FastMCP public API: mcp.list_tools() and mcp.list_resources().
     """
@@ -97,7 +97,15 @@ async def test_widget_server_registers_six_tools_and_six_resources():
     tool_names = {t.name for t in tools}
     resource_uris = {str(r.uri) for r in resources}
 
-    assert tool_names == {"row_count_diff", "schema_diff", "get_server_info", "list_checks", "get_model", "query"}
+    assert tool_names == {
+        "row_count_diff",
+        "schema_diff",
+        "get_server_info",
+        "list_checks",
+        "get_model",
+        "query",
+        "query_diff",
+    }
     assert resource_uris == {
         "ui://recce/row_count_diff.html",
         "ui://recce/schema_diff.html",
@@ -105,6 +113,7 @@ async def test_widget_server_registers_six_tools_and_six_resources():
         "ui://recce/list_checks.html",
         "ui://recce/get_model.html",
         "ui://recce/query.html",
+        "ui://recce/query_diff.html",
     }
 
 
@@ -267,7 +276,15 @@ async def test_widget_tool_annotations_present():
     tools = await mcp.list_tools()
     tool_map = {t.name: t for t in tools}
 
-    for tool_name in ("row_count_diff", "schema_diff", "get_server_info", "list_checks", "get_model", "query"):
+    for tool_name in (
+        "row_count_diff",
+        "schema_diff",
+        "get_server_info",
+        "list_checks",
+        "get_model",
+        "query",
+        "query_diff",
+    ):
         assert tool_name in tool_map, f"{tool_name} not found in widget mcp tools"
         t = tool_map[tool_name]
         a = t.annotations
@@ -283,8 +300,9 @@ async def test_widget_tool_annotations_present():
         t = tool_map[tool_name]
         assert t.annotations.openWorldHint is False, f"{tool_name}: expected openWorldHint=False"
 
-    # query hits the warehouse — openWorldHint must be True
+    # query and query_diff hit the warehouse — openWorldHint must be True
     assert tool_map["query"].annotations.openWorldHint is True, "query: expected openWorldHint=True"
+    assert tool_map["query_diff"].annotations.openWorldHint is True, "query_diff: expected openWorldHint=True"
 
 
 # ---------------------------------------------------------------------------
@@ -708,3 +726,172 @@ async def test_query_returns_calltoolresult_with_pydantic_shape():
     # sql_template echoed back
     assert validated.sql_template is not None
     assert "customers" in validated.sql_template
+
+
+# ---------------------------------------------------------------------------
+# Test 17: query_diff widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_query_diff_widget_registered():
+    """query_diff appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'query_diff' is in widget mcp tool list
+    - resource URI 'ui://recce/query_diff.html' is in widget mcp resource list
+    - sql_template is required; base_sql_template and primary_keys are optional
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "query_diff" in tool_names
+    assert "ui://recce/query_diff.html" in resource_uris
+
+    # Check inputSchema: sql_template required, others optional.
+    # FastMCP wraps the Pydantic model in an 'args' outer envelope.
+    qd_tool = next(t for t in tools if t.name == "query_diff")
+    schema = qd_tool.inputSchema
+    assert schema is not None
+
+    defs = schema.get("$defs", {})
+    inner_schema = next(iter(defs.values()), schema)
+    inner_required = inner_schema.get("required", [])
+    inner_props = inner_schema.get("properties", {})
+    assert "sql_template" in inner_required, "sql_template must be required"
+    assert "base_sql_template" not in inner_required, "base_sql_template must be optional"
+    assert "primary_keys" not in inner_required, "primary_keys must be optional"
+    assert "sql_template" in inner_props
+    assert "base_sql_template" in inner_props
+    assert "primary_keys" in inner_props
+
+
+# ---------------------------------------------------------------------------
+# Test 18: query_diff returns CallToolResult with correct Pydantic shape
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_query_diff_returns_calltoolresult_with_pydantic_shape():
+    """query_diff handler returns CallToolResult with structuredContent matching QueryDiffOutput.
+
+    Tests both QueryDiffResult shapes:
+    A — side-by-side (no primary_keys → base+current DataFrames)
+    B — join diff (primary_keys provided → diff DataFrame with in_a/in_b)
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent passes QueryDiffOutput.model_validate() for both shapes
+    - sql_template is echoed back
+    - _warning is extracted to output.warning named field
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import QueryDiffInput, QueryDiffOutput
+
+    # ── Shape A: side-by-side (no primary_keys) ──────────────────────────
+    mock_server = MagicMock()
+    base_df = {
+        "columns": [
+            {"key": "id", "name": "id", "type": "integer"},
+            {"key": "amount", "name": "amount", "type": "number"},
+        ],
+        "data": [[1, 100.0], [2, 200.0]],
+        "limit": 2000,
+        "more": False,
+        "total_row_count": 2,
+    }
+    curr_df = {
+        "columns": [
+            {"key": "id", "name": "id", "type": "integer"},
+            {"key": "amount", "name": "amount", "type": "number"},
+        ],
+        "data": [[1, 110.0], [2, 200.0], [3, 300.0]],
+        "limit": 2000,
+        "more": False,
+        "total_row_count": 3,
+    }
+    mock_server._tool_query_diff = AsyncMock(
+        return_value={
+            "base": base_df,
+            "current": curr_df,
+            "diff": None,
+            "_warning": "Base environment not configured",
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = QueryDiffInput(sql_template="SELECT id, amount FROM {{ ref('orders') }}")
+        result = await ws.query_diff(args)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 140, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    assert result.structuredContent is not None
+    validated_a = QueryDiffOutput.model_validate(result.structuredContent)
+    # Shape A: base + current present, diff absent
+    assert validated_a.base is not None
+    assert validated_a.current is not None
+    assert validated_a.diff is None
+    assert len(validated_a.base.columns) == 2
+    assert len(validated_a.base.data) == 2
+    assert len(validated_a.current.data) == 3
+    # warning extracted from _warning key
+    assert validated_a.warning == "Base environment not configured"
+    # sql_template echoed back
+    assert validated_a.sql_template is not None
+    assert "orders" in validated_a.sql_template
+
+    # ── Shape B: join diff (primary_keys → diff DataFrame with in_a/in_b) ──
+    diff_df = {
+        "columns": [
+            {"key": "id", "name": "id", "type": "integer"},
+            {"key": "amount", "name": "amount", "type": "number"},
+            {"key": "in_a", "name": "in_a", "type": "boolean"},
+            {"key": "in_b", "name": "in_b", "type": "boolean"},
+        ],
+        "data": [
+            [1, 100.0, True, False],  # removed (only in base)
+            [3, 300.0, False, True],  # added   (only in current)
+        ],
+        "limit": 2000,
+        "more": False,
+        "total_row_count": None,
+    }
+    mock_server2 = MagicMock()
+    mock_server2._tool_query_diff = AsyncMock(return_value={"base": None, "current": None, "diff": diff_df})
+
+    ws._recce_server = mock_server2
+    try:
+        args_b = QueryDiffInput(
+            sql_template="SELECT id, amount FROM {{ ref('orders') }}",
+            primary_keys=["id"],
+        )
+        result_b = await ws.query_diff(args_b)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result_b, CallToolResult)
+    validated_b = QueryDiffOutput.model_validate(result_b.structuredContent)
+    # Shape B: diff present, base/current absent
+    assert validated_b.diff is not None
+    assert validated_b.base is None
+    assert validated_b.current is None
+    # diff DataFrame has 4 columns (including in_a/in_b) and 2 rows
+    assert len(validated_b.diff.columns) == 4
+    assert len(validated_b.diff.data) == 2
+    assert validated_b.warning is None

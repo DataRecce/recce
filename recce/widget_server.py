@@ -738,6 +738,175 @@ def query_resource() -> str:
 
 
 # ---------------------------------------------------------------------------
+# query_diff widget tool + resource
+# ---------------------------------------------------------------------------
+
+
+class QueryDiffInput(BaseModel):
+    sql_template: str = Field(
+        ...,
+        description=(
+            "SQL query with optional Jinja templating. "
+            "Use {{ ref('model_name') }} for dbt model references. "
+            "Runs against BOTH base and current environments (or produces a join diff when primary_keys supplied)."
+        ),
+    )
+    base_sql_template: Optional[str] = Field(
+        default=None,
+        description="Alternative SQL template to run on the base environment (defaults to sql_template).",
+    )
+    primary_keys: Optional[List[str]] = Field(
+        default=None,
+        description=(
+            "List of primary key column names for row-level join diff. "
+            "When provided, the tool runs a set-based diff (INTERSECT / EXCEPT) and returns rows "
+            "that differ between base and current, each tagged with in_a / in_b flags. "
+            "When omitted, both base and current result sets are returned side-by-side."
+        ),
+    )
+
+
+class QueryDiffDataFrame(BaseModel):
+    """Serialised DataFrame — mirrors DataFrame.model_dump(mode='json')."""
+
+    columns: List[QueryColumnInfo]
+    data: List[List[Any]]
+    limit: Optional[int] = None
+    more: Optional[bool] = None
+    total_row_count: Optional[int] = None
+
+
+class QueryDiffOutput(BaseModel):
+    """Output model for the query_diff widget tool.
+
+    QueryDiffTask.execute() returns a QueryDiffResult with two possible shapes:
+
+    Shape A — side-by-side (no primary_keys):
+        base: DataFrame, current: DataFrame, diff: None
+
+    Shape B — join diff (primary_keys provided):
+        base: None, current: None, diff: DataFrame
+        The diff DataFrame includes all data columns plus 'in_a' and 'in_b'
+        boolean columns. Only rows that differ are included.
+
+    The widget renders both shapes; JS logic checks which fields are present.
+    sql_template is echoed from input for use in the widget header / empty-state.
+    """
+
+    base: Optional[QueryDiffDataFrame] = None
+    current: Optional[QueryDiffDataFrame] = None
+    diff: Optional[QueryDiffDataFrame] = None
+    sql_template: Optional[str] = None  # echoed from input
+    warning: Optional[str] = None  # from _maybe_add_single_env_warning
+
+
+def _parse_dataframe(raw: Optional[dict]) -> Optional[QueryDiffDataFrame]:
+    """Convert a DataFrame.model_dump(mode='json') dict → QueryDiffDataFrame.
+
+    Returns None when raw is None/empty so callers can check presence.
+    """
+    if not raw:
+        return None
+    columns = [QueryColumnInfo(**c) for c in raw.get("columns", [])]
+    return QueryDiffDataFrame(
+        columns=columns,
+        data=raw.get("data", []),
+        limit=raw.get("limit"),
+        more=raw.get("more"),
+        total_row_count=raw.get("total_row_count"),
+    )
+
+
+@mcp.tool(
+    name="query_diff",
+    annotations={
+        "title": "Query Diff (Widget)",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,  # queries hit the warehouse (external I/O)
+    },
+    meta={
+        "ui": {"resourceUri": "ui://recce/query_diff.html"},
+        "ui/resourceUri": "ui://recce/query_diff.html",
+    },
+)
+async def query_diff(args: QueryDiffInput) -> CallToolResult:
+    """Run a SQL query against BOTH base and current environments and compare results.
+
+    Returns a comparison widget. The agent should not reproduce the comparison as
+    plain text — the widget handles rendering.
+
+    Two comparison modes depending on whether primary_keys is supplied:
+
+    Side-by-side mode (no primary_keys):
+        Executes sql_template against base and current independently.
+        Returns two parallel result tables (base / current) displayed side-by-side.
+
+    Join diff mode (primary_keys provided):
+        Runs a set-based SQL diff (INTERSECT / EXCEPT) to find rows that differ.
+        Returns a single table of differing rows tagged with in_a (in base) and
+        in_b (in current) boolean flags.  Only changed rows are included.
+
+    Args:
+        sql_template: SQL with Jinja (e.g. "SELECT * FROM {{ ref('customers') }}")
+        base_sql_template: Optional alternative SQL for the base env; defaults to sql_template.
+        primary_keys: Column names to use as join keys for row-level diff (optional).
+
+    Returns:
+        CallToolResult with structuredContent: QueryDiffOutput shape
+        Side-by-side: {base: {columns, data, ...}, current: {columns, data, ...}, diff: null, sql_template, warning?}
+        Join diff: {base: null, current: null, diff: {columns, data, ...}, sql_template, warning?}
+
+    Use when:
+        - User asks "compare base vs current for this SQL"
+        - Investigating whether a dbt model change altered output values
+        - Row-level comparison with known primary key columns
+    Don't use when:
+        - Single environment only — use query instead
+        - Schema (column) changes — use schema_diff
+        - Row count only — use row_count_diff
+    """
+    raw = await _recce_server._tool_query_diff(args.model_dump(exclude_none=True))
+    warning = raw.pop("_warning", None) if isinstance(raw, dict) else None
+    output = QueryDiffOutput(
+        base=_parse_dataframe(raw.get("base") if isinstance(raw, dict) else None),
+        current=_parse_dataframe(raw.get("current") if isinstance(raw, dict) else None),
+        diff=_parse_dataframe(raw.get("diff") if isinstance(raw, dict) else None),
+        sql_template=args.sql_template,
+        warning=warning,
+    )
+    # Build a short descriptive text based on which shape was returned
+    if output.diff is not None:
+        n = len(output.diff.data)
+        text = f"Query diff ({n} differing row{'s' if n != 1 else ''}) rendered in widget."
+    elif output.base is not None or output.current is not None:
+        base_n = len(output.base.data) if output.base else 0
+        curr_n = len(output.current.data) if output.current else 0
+        text = f"Query diff (base: {base_n} row{'s' if base_n != 1 else ''}, current: {curr_n} row{'s' if curr_n != 1 else ''}) rendered in widget."
+    else:
+        text = "Query diff rendered in widget."
+    return CallToolResult(
+        content=[TextContent(type="text", text=text)],
+        structuredContent=output.model_dump(),
+    )
+
+
+@mcp.resource(
+    uri="ui://recce/query_diff.html",
+    mime_type="text/html;profile=mcp-app",
+    meta={
+        "ui": {
+            "csp": {"resourceDomains": ["https://unpkg.com"]},
+            "prefersBorder": False,
+        },
+    },
+)
+def query_diff_resource() -> str:
+    return _read_widget_html("query_diff")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

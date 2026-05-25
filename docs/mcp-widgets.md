@@ -13,9 +13,9 @@ that Claude Desktop routes those calls exclusively to `mcp-widget-server`, which
 annotates each tool with `_meta.ui.resourceUri` pointing at an HTML resource.
 
 Phase A ships five widgets: `row_count_diff`, `schema_diff`, `get_server_info`,
-`list_checks`, and `get_model`. Phase B iter 1 adds `query` (first tier-3
-data-table widget). All run in **local mode only** — cloud/session mode is
-not supported until iter 2.
+`list_checks`, and `get_model`. Phase B iter 1 adds `query` and `query_diff`
+(tier-3 data-table widgets). All run in **local mode only** — cloud/session mode
+is not supported until iter 2.
 
 ---
 
@@ -36,8 +36,9 @@ recce/
       list_checks.html
       get_model.html
       query.html             # Phase B tier-3: scrollable SQL result table
+      query_diff.html        # Phase B tier-3: two-env comparison with status pills + filters
 tests/
-  test_widget_server.py      # 16 tests covering WIDGET_TOOLS coordination + widget server.
+  test_widget_server.py      # 18 tests covering WIDGET_TOOLS coordination + widget server.
 docs/
   mcp-widgets.md             # This file.
 ```
@@ -420,7 +421,7 @@ documented and supported. Reconsider if ext-apps publishes a Python SDK.
 
 ## Reference Widgets
 
-Six working examples (in order of implementation):
+Seven working examples (in order of implementation):
 
 | File | Tier | What it demonstrates |
 |------|------|----------------------|
@@ -430,6 +431,7 @@ Six working examples (in order of implementation):
 | `recce/data/mcp/list_checks.html` | List / simple table | 3-up summary cards (Total / Approved / Pending), 4-column status table, empty-state with hint, `is_preset` badge, `_tool_list_checks` returns a flat list + pre-computed `total`/`approved` — `pending` derived in the widget delegate |
 | `recce/data/mcp/get_model.html` | Single-item detail card | Per-environment column tables (base/current), adaptive 2-col/3-col layout when constraints present, PK + not-null + unique badges, not-found empty state, `columns` dict → list normalisation in delegate |
 | `recce/data/mcp/query.html` | **Tier-3 data table** | **Template for Phase B.** Sticky-header scrollable table (400px cap), type-aware cell rendering, truncation badge, empty/error states. Use this as the base pattern for `query_diff`, `value_diff`, `value_diff_detail`, `top_k_diff` |
+| `recce/data/mcp/query_diff.html` | **Tier-3 two-env comparison** | Two render modes: side-by-side (no primary_keys → base/current tables) and join-diff (primary_keys → single table with status pills + Added/Removed filter buttons). Row tinting (red=removed, green=added), `in_a`/`in_b` columns stripped from display. |
 
 `get_server_info` is the **recommended canonical example** for new widgets
 because it was written after the idiomatic pattern was established (Day 3
