@@ -125,6 +125,48 @@ recce-cloud list --json | jq -e --arg i "$SESSION_ID" \
 echo "Auto-snapshot post-condition passed (has_isolated_base == true)"
 
 # --------------------------------------------------------------------
+# 7a. Auto-snapshot session-lifecycle staleness + refresh (DRC-3311 / DRC-3548)
+#
+# Cover the drift→refresh contract the frontend StalenessBanner depends on:
+#   GET /sessions/{id} must surface the four staleness fields, and
+#   POST /sessions/{id}/refresh-base must accept the refresh and either
+#   return a task_id (202, fresh refresh) or in_progress=true (202, in-flight).
+#
+# Both endpoints are auth'd by the same RECCE_API_TOKEN used by the CLI.
+# Called via curl until a dedicated `recce-cloud refresh-base` subcommand
+# exists (tracked separately under DRC-3548).
+# --------------------------------------------------------------------
+API_HOST="${RECCE_CLOUD_API_HOST:-https://cloud.reccehq.com}"
+AUTH_HEADER="Authorization: Bearer $RECCE_API_TOKEN"
+
+# 7a-i. GET /sessions/{id} returns the four staleness fields (all four
+# present in the response, but each may be null for a brand-new session
+# that has not seen a shared-base change yet).
+SESSION_DETAIL=$(curl -sf -H "$AUTH_HEADER" "$API_HOST/api/v2/sessions/$SESSION_ID")
+echo "$SESSION_DETAIL" | jq -e '.session | has("source_session_id")' > /dev/null
+echo "$SESSION_DETAIL" | jq -e '.session | has("source_session_updated_at")' > /dev/null
+echo "$SESSION_DETAIL" | jq -e '.session | has("current_base_session_id")' > /dev/null
+echo "$SESSION_DETAIL" | jq -e '.session | has("current_base_updated_at")' > /dev/null
+echo "GET /sessions/{id} returns all four staleness fields"
+
+# 7a-ii. POST /sessions/{id}/refresh-base must return 202 with either a
+# task_id or in_progress=true. We just verify the contract; the actual
+# drift→banner→clear UI loop is covered by the DRC-3293 acid-test E2E.
+REFRESH_BODY=$(mktemp)
+REFRESH_STATUS=$(curl -s -o "$REFRESH_BODY" -w "%{http_code}" \
+    -X POST -H "$AUTH_HEADER" \
+    "$API_HOST/api/v2/sessions/$SESSION_ID/refresh-base")
+if [[ "$REFRESH_STATUS" != "202" ]]; then
+    echo "ERROR: refresh-base expected 202, got $REFRESH_STATUS"
+    cat "$REFRESH_BODY"
+    rm -f "$REFRESH_BODY"
+    exit 1
+fi
+jq -e '(.task_id != null) or (.in_progress == true)' "$REFRESH_BODY" > /dev/null
+rm -f "$REFRESH_BODY"
+echo "POST /sessions/{id}/refresh-base returned 202 with valid body"
+
+# --------------------------------------------------------------------
 # 8. Upload SESSION BASE artifacts explicitly (idempotent overwrite of
 # the auto-snapshot from step 7).
 # --------------------------------------------------------------------
