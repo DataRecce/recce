@@ -15,23 +15,46 @@
       background: var(--color-background-primary, #ffffff);
       line-height: 1.4;
     }
-    /* Dark-mode fallback for non-Claude hosts (OS preference respected): */
+    /* Dark-mode fallback for non-Claude hosts (OS preference respected):
+       This block must be exhaustive — covers all classes using color:/background:
+       so the widget renders correctly when SDK helpers don't fire. */
     @media (prefers-color-scheme: dark) {
+      /* ── Base ── */
       body {
         color: var(--color-text-primary, #e5e7eb);
         background: var(--color-background-primary, #1a1a1a);
       }
+      /* ── Header ── */
+      .header-icon  { color: var(--color-text-secondary, #9ca3af) !important; }
+      .header-title { color: var(--color-text-primary, #e5e7eb) !important; }
+      .header-count { color: var(--color-text-secondary, #9ca3af) !important; }
+      /* ── Model block header ── */
       .model-header {
         color: var(--color-text-primary, #e5e7eb) !important;
         border-color: var(--color-border-secondary, #3f3f46) !important;
       }
-      th { background: var(--color-background-secondary, #27272a) !important; }
-      td, th { border-color: var(--color-border-tertiary, #3f3f46) !important; }
+      /* ── Table ── */
+      th      { background: var(--color-background-secondary, #27272a) !important;
+                color: var(--color-text-secondary, #9ca3af) !important; }
+      td, th  { border-color: var(--color-border-tertiary, #3f3f46) !important; }
+      /* Monospace cells — explicit color so they don't inherit dark-bg-only styles */
+      td.col-name, td.col-type { color: var(--color-text-primary, #e5e7eb) !important; }
+      /* ── Arrow between types ── */
+      .arrow { color: var(--color-text-tertiary, #6b7280) !important; }
+      /* ── Diff row backgrounds — use low-opacity tints on dark ── */
+      tr.added   td { background: var(--color-background-success, rgba(5,150,105,0.15)) !important; }
+      tr.removed td { background: var(--color-background-danger, rgba(220,38,38,0.12)) !important; }
+      tr.changed td { background: var(--color-background-info, rgba(37,99,235,0.12)) !important; }
+      /* ── Section pills — light pastels too bright on dark; flip to dark bg + light text ── */
+      .pill-added   { background: var(--color-background-success, #064e3b) !important;
+                      color: var(--color-text-success, #6ee7b7) !important; }
+      .pill-removed { background: var(--color-background-danger, #7f1d1d) !important;
+                      color: var(--color-text-danger, #fca5a5) !important; }
+      .pill-changed { background: var(--color-background-info, #1e3a8a) !important;
+                      color: var(--color-text-info, #93c5fd) !important; }
+      /* ── Misc ── */
       .unchanged-msg { color: var(--color-text-secondary, #9ca3af) !important; }
-      .empty { color: var(--color-text-secondary, #9ca3af) !important; }
-      tr.added td   { background: var(--color-background-success, rgba(5,150,105,0.12)) !important; }
-      tr.removed td { background: var(--color-background-danger, rgba(220,38,38,0.10)) !important; }
-      tr.changed td { background: var(--color-background-info, rgba(37,99,235,0.10)) !important; }
+      .empty         { color: var(--color-text-secondary, #9ca3af) !important; }
     }
 
     /* ── Header ─────────────────────────────────────────────────────── */

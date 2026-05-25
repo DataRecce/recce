@@ -16,17 +16,53 @@
       line-height: 1.4;
     }
     /* Light-mode hardcoded fallbacks are inline above.
-       Dark-mode fallback for non-Claude hosts (OS preference respected): */
+       Dark-mode fallback for non-Claude hosts (OS preference respected):
+       This block must be exhaustive — covers all classes using color:/background:
+       so the widget renders correctly when SDK helpers don't fire. */
     @media (prefers-color-scheme: dark) {
+      /* ── Base ── */
       body {
         color: var(--color-text-primary, #e5e7eb);
         background: var(--color-background-primary, #1a1a1a);
       }
-      .card    { background: var(--color-background-secondary, #27272a) !important; }
-      th       { background: var(--color-background-secondary, #27272a) !important; color: var(--color-text-secondary, #9ca3af) !important; }
-      td, th   { border-color: var(--color-border-tertiary, #3f3f46) !important; }
-      .na      { color: var(--color-text-tertiary, #6b7280) !important; }
-      .empty, .warning { color: var(--color-text-secondary, #9ca3af) !important; }
+      /* ── Header ── */
+      .header-icon  { color: var(--color-text-secondary, #9ca3af) !important; }
+      .header-title { color: var(--color-text-primary, #e5e7eb) !important; }
+      .header-count { color: var(--color-text-secondary, #9ca3af) !important; }
+      /* ── Summary cards ── */
+      .card         { background: var(--color-background-secondary, #27272a) !important; }
+      .card-label   { color: var(--color-text-secondary, #9ca3af) !important; }
+      .card-value   { color: var(--color-text-primary, #e5e7eb) !important; }
+      /* Semantic card-value states: keep vivid enough on dark */
+      .card-value.warning { color: var(--color-text-warning, #fbbf24) !important; }
+      .card-value.info    { color: var(--color-text-info, #60a5fa) !important; }
+      .card-value.success { color: var(--color-text-success, #34d399) !important; }
+      /* ── Table ── */
+      th      { background: var(--color-background-secondary, #27272a) !important;
+                color: var(--color-text-secondary, #9ca3af) !important; }
+      td, th  { border-color: var(--color-border-tertiary, #3f3f46) !important; }
+      /* ── Model name cell — explicit color prevents any inherited orange tint ── */
+      td.model-name { color: var(--color-text-primary, #e5e7eb) !important;
+                      background: transparent !important; }
+      /* ── Diff deltas ── */
+      .diff-pos { color: var(--color-text-warning, #fbbf24) !important; }
+      .diff-neg { color: var(--color-text-danger, #f87171) !important; }
+      .diff-pct { color: var(--color-text-tertiary, #6b7280) !important; }
+      /* ── N/A / misc ── */
+      .na          { color: var(--color-text-tertiary, #6b7280) !important; }
+      .empty       { color: var(--color-text-secondary, #9ca3af) !important; }
+      .warning-msg { color: var(--color-text-secondary, #9ca3af) !important; }
+      /* ── Status badges — light pastels are too bright on dark; flip to dark bg + light text ── */
+      .badge-warning   { background: var(--color-background-warning, #78350f) !important;
+                         color: var(--color-text-warning, #fde68a) !important; }
+      .badge-success   { background: var(--color-background-success, #064e3b) !important;
+                         color: var(--color-text-success, #6ee7b7) !important; }
+      .badge-info      { background: var(--color-background-info, #1e3a8a) !important;
+                         color: var(--color-text-info, #93c5fd) !important; }
+      .badge-secondary { background: var(--color-background-secondary, #3f3f46) !important;
+                         color: var(--color-text-secondary, #9ca3af) !important; }
+      .badge-danger    { background: var(--color-background-danger, #7f1d1d) !important;
+                         color: var(--color-text-danger, #fca5a5) !important; }
     }
 
     /* ── Header ─────────────────────────────────────────────────────── */
