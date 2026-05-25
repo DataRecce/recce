@@ -108,7 +108,10 @@ export interface RunViewOssProps<VO = ViewOptionTypes> {
  *
  * States:
  * 1. **Error state**: Shows error message from API response or run.error
- * 2. **Cancelled state**: Shows terminal "Cancelled" indicator when run.status === "Cancelled"
+ * 2. **Cancelled state**: Shows terminal "Cancelled" indicator when
+ *    `run.status === "Cancelled"` OR when the run id is in the
+ *    `useCanceledRuns` sticky set (the latter overrides any late-arriving
+ *    `Running` status from an in-flight `waitRun` poll — see PR #1376).
  * 3. **Running state**: Shows loading spinner with progress and cancel button
  * 4. **Loading state**: Shows spinner when run is undefined
  * 5. **Result state**: Renders RunResultView or children with run results,
