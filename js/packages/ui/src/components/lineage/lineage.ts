@@ -11,7 +11,10 @@ import {
   type NodeColumnSetMap,
 } from "../..";
 import type { ColumnLineageData } from "../../api";
-import type { ColumnAnnotation } from "./computeColumnLineage";
+import {
+  type ColumnAnnotation,
+  coerceCllChangeStatus,
+} from "./computeColumnLineage";
 import { cllChangeStatusColors } from "./styles";
 
 /**
@@ -144,7 +147,7 @@ export function toReactFlow(
             column: column.name,
             type: column.type,
             transformationType: column.transformation_type,
-            changeStatus: column.change_status,
+            changeStatus: coerceCllChangeStatus(column.change_status),
           },
           style: {
             zIndex: 9999,

@@ -1,5 +1,6 @@
 import type { Position } from "@xyflow/react";
 import type { MergedLineageResponse } from "../../api/info";
+import { coerceCllChangeStatus } from "../../components/lineage/computeColumnLineage";
 import type {
   LineageGraph,
   LineageGraphColumnNode,
@@ -121,7 +122,7 @@ export function buildLineageGraph(
         packageName: merged.package_name,
         schema: merged.schema,
         materialized: merged.materialized,
-        changeStatus: merged.change_status,
+        changeStatus: coerceCllChangeStatus(merged.change_status),
         change: merged.change ?? undefined,
         parents: {},
         children: {},
