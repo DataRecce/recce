@@ -2979,6 +2979,223 @@ def mcp_widget_server(state_file, sse, host, port, **kwargs):
         exit(1)
 
 
+@cli.command(cls=TrackCommand)
+@click.option(
+    "--project-dir",
+    required=True,
+    help="Absolute path to your dbt project (must contain dbt_project.yml).",
+    type=click.Path(),
+)
+@click.option(
+    "--config",
+    "claude_config",
+    default=None,
+    help=(
+        "Path to claude_desktop_config.json. "
+        "Default: ~/Library/Application Support/Claude/claude_desktop_config.json (macOS only)."
+    ),
+    type=click.Path(),
+)
+@click.option(
+    "--yes",
+    "-y",
+    is_flag=True,
+    default=False,
+    help="Skip interactive confirmation prompt (for scripting).",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help="Print the proposed config diff to stderr without writing.",
+)
+def mcp_config_install(project_dir, claude_config, yes, dry_run):
+    """
+    Install recce and recce-widgets MCP server entries into Claude Desktop config.
+
+    Writes both `recce` and `recce-widgets` entries into
+    ~/Library/Application Support/Claude/claude_desktop_config.json
+    (macOS only — iter 1 scope), setting RECCE_MCP_WIDGETS=1 on both.
+
+    Existing entries are overwritten (idempotent). Other MCP servers in the
+    config are preserved. A backup is created as claude_desktop_config.json.recce.bak
+    before any write.
+
+    \b
+    Examples:
+
+    \b
+    # Install with interactive confirmation
+    recce mcp-config-install --project-dir /path/to/my_dbt_project
+
+    \b
+    # Install without confirmation (for scripting)
+    recce mcp-config-install --project-dir /path/to/my_dbt_project --yes
+
+    \b
+    # Preview the changes without writing
+    recce mcp-config-install --project-dir /path/to/my_dbt_project --dry-run
+    """
+    import json
+    import shutil
+    import sys
+
+    from rich.console import Console
+
+    console = Console(stderr=True)
+
+    # ------------------------------------------------------------------
+    # Cloud / session flags guard (not supported in iter 1)
+    # These flags are not in the decorator, but keep a guard in case
+    # someone passes them via env or future changes.
+    # ------------------------------------------------------------------
+
+    # ------------------------------------------------------------------
+    # OS guard: macOS only in iter 1
+    # ------------------------------------------------------------------
+    if sys.platform != "darwin":
+        console.print(
+            "[[red]Error[/red]] mcp-config-install currently supports macOS only (iter 1 scope).\n"
+            "Manual config: edit your MCP client config to add both `recce` and `recce-widgets`\n"
+            "entries with RECCE_MCP_WIDGETS=1. See docs/mcp-widgets.md for the JSON snippet."
+        )
+        exit(1)
+
+    # ------------------------------------------------------------------
+    # Validate project dir
+    # ------------------------------------------------------------------
+    project_dir_path = Path(project_dir).resolve()
+    if not project_dir_path.exists():
+        console.print(
+            f"[[red]Error[/red]] Project directory not found: {project_dir_path}\n"
+            "Fix: create the directory or pass an existing dbt project path.\n"
+            "Example: recce mcp-config-install --project-dir /path/to/my_dbt_project"
+        )
+        exit(1)
+    if not (project_dir_path / "dbt_project.yml").exists():
+        console.print(
+            f"[[red]Error[/red]] No dbt_project.yml found in: {project_dir_path}\n"
+            "Fix: pass the root directory of a dbt project that contains dbt_project.yml.\n"
+            "Example: recce mcp-config-install --project-dir /path/to/my_dbt_project"
+        )
+        exit(1)
+
+    # ------------------------------------------------------------------
+    # Resolve Claude Desktop config path
+    # ------------------------------------------------------------------
+    if claude_config:
+        config_path = Path(claude_config).resolve()
+    else:
+        config_path = Path.home() / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json"
+
+    # Create config file with minimal skeleton if it does not exist
+    if not config_path.exists():
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text(json.dumps({"mcpServers": {}}, indent=2))
+        console.print(f"[yellow]Created new config file:[/yellow] {config_path}")
+
+    # Validate existing config is parseable JSON
+    try:
+        existing_text = config_path.read_text(encoding="utf-8")
+        existing_config = json.loads(existing_text)
+    except json.JSONDecodeError as e:
+        console.print(
+            f"[[red]Error[/red]] Config file is not valid JSON: {config_path}\n"
+            f"JSON parse error: {e}\n"
+            "Fix: restore the file from a backup or fix the JSON manually before re-running."
+        )
+        exit(1)
+
+    # Ensure mcpServers key exists
+    if "mcpServers" not in existing_config:
+        existing_config["mcpServers"] = {}
+
+    # ------------------------------------------------------------------
+    # Find the recce binary (absolute path)
+    # ------------------------------------------------------------------
+    recce_bin = shutil.which("recce")
+    if not recce_bin:
+        # Fallback: use the current Python executable with -m recce
+        recce_bin = sys.executable
+        recce_base_args_prefix = ["-m", "recce"]
+    else:
+        recce_base_args_prefix = []
+
+    def _make_args(subcommand):
+        return recce_base_args_prefix + [subcommand, "--project-dir", str(project_dir_path)]
+
+    new_entries = {
+        "recce": {
+            "command": recce_bin,
+            "args": _make_args("mcp-server"),
+            "env": {"RECCE_MCP_WIDGETS": "1"},
+        },
+        "recce-widgets": {
+            "command": recce_bin,
+            "args": _make_args("mcp-widget-server"),
+            "env": {"RECCE_MCP_WIDGETS": "1"},
+        },
+    }
+
+    # ------------------------------------------------------------------
+    # Compute diff summary
+    # ------------------------------------------------------------------
+    existing_servers = existing_config["mcpServers"]
+    added = [k for k in new_entries if k not in existing_servers]
+    modified = [k for k in new_entries if k in existing_servers]
+    preserved = [k for k in existing_servers if k not in new_entries]
+
+    # Print diff summary to stderr
+    console.print("\n[bold]Proposed changes to Claude Desktop MCP config:[/bold]")
+    console.print(f"  Config file: {config_path}")
+    for key in added:
+        console.print(f"  [green]+ {key}[/green] (new entry)")
+    for key in modified:
+        console.print(f"  [yellow]~ {key}[/yellow] (update existing entry)")
+    for key in preserved:
+        console.print(f"  [dim]  {key}[/dim] (unchanged — preserved)")
+
+    if dry_run:
+        console.print("\n[yellow]Dry run — no changes written.[/yellow]")
+        return
+
+    # ------------------------------------------------------------------
+    # Interactive confirmation (unless --yes)
+    # ------------------------------------------------------------------
+    if not yes:
+        apply = click.confirm("\nApply?", default=False)
+        if not apply:
+            console.print("[yellow]Aborted — no changes made.[/yellow]")
+            return
+
+    # ------------------------------------------------------------------
+    # Backup existing config
+    # ------------------------------------------------------------------
+    backup_path = config_path.with_suffix(config_path.suffix + ".recce.bak")
+    shutil.copy2(str(config_path), str(backup_path))
+
+    # ------------------------------------------------------------------
+    # Merge entries and write
+    # ------------------------------------------------------------------
+    existing_config["mcpServers"].update(new_entries)
+    config_path.write_text(json.dumps(existing_config, indent=2), encoding="utf-8")
+
+    # ------------------------------------------------------------------
+    # Success message
+    # ------------------------------------------------------------------
+    keys_written = ", ".join(new_entries.keys())
+    console.print(f"\n[green]✓[/green] Wrote {len(new_entries)} MCP server entries ({keys_written}) to {config_path}")
+    console.print(f"[green]✓[/green] Backup saved to {backup_path}")
+    console.print(
+        "\nNext steps:\n"
+        "  1. Cmd+Q to fully quit Claude Desktop "
+        "(config only loads on launch — reload window doesn't work)\n"
+        "  2. Reopen Claude Desktop\n"
+        '  3. In a new chat, try: "Use the row_count_diff tool to compare row counts."\n'
+        "\nTo undo: replace claude_desktop_config.json with the .recce.bak file."
+    )
+
+
 @cli.group("cache", short_help="Manage column-level lineage cache.")
 def cache():
     """Manage column-level lineage cache."""
