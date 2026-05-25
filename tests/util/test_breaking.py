@@ -1505,7 +1505,7 @@ class UnresolvableCteChangeTest(unittest.TestCase):
         assert result.columns.get("w") == "unknown", f"expected w=unknown, got {result.columns}"
 
     def test_cte_internal_change_unknown_with_empty_schema(self):
-        """Mimics 205DataLab's degraded Paradime catalog: schema dict has
+        """Mimics a degraded catalog from an upstream CI race condition: schema dict has
         source keys but the inner column dicts are empty."""
         empty_schema = {"Orders": {}}
         assert is_unknown_change(
