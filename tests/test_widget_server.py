@@ -49,6 +49,7 @@ async def test_mcp_server_lists_all_tools_when_widgets_disabled(monkeypatch):
 
     assert "row_count_diff" in names
     assert "schema_diff" in names
+    assert "get_server_info" in names
     # Sanity: lineage_diff is always present
     assert "lineage_diff" in names
 
@@ -69,18 +70,19 @@ async def test_mcp_server_filters_widget_tools_when_widgets_enabled(monkeypatch)
 
     assert "row_count_diff" not in names
     assert "schema_diff" not in names
+    assert "get_server_info" not in names
     # Other tools must still be present
     assert "lineage_diff" in names
 
 
 # ---------------------------------------------------------------------------
-# Test 3: Widget server registers exactly 2 tools + 2 resources
+# Test 3: Widget server registers exactly 3 tools + 3 resources
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_widget_server_registers_two_tools_and_two_resources():
-    """Widget FastMCP instance has exactly row_count_diff + schema_diff tools and resources.
+async def test_widget_server_registers_three_tools_and_three_resources():
+    """Widget FastMCP instance has exactly row_count_diff + schema_diff + get_server_info tools/resources.
 
     Uses FastMCP public API: mcp.list_tools() and mcp.list_resources().
     """
@@ -92,10 +94,11 @@ async def test_widget_server_registers_two_tools_and_two_resources():
     tool_names = {t.name for t in tools}
     resource_uris = {str(r.uri) for r in resources}
 
-    assert tool_names == {"row_count_diff", "schema_diff"}
+    assert tool_names == {"row_count_diff", "schema_diff", "get_server_info"}
     assert resource_uris == {
         "ui://recce/row_count_diff.html",
         "ui://recce/schema_diff.html",
+        "ui://recce/get_server_info.html",
     }
 
 
@@ -258,7 +261,7 @@ async def test_widget_tool_annotations_present():
     tools = await mcp.list_tools()
     tool_map = {t.name: t for t in tools}
 
-    for tool_name in ("row_count_diff", "schema_diff"):
+    for tool_name in ("row_count_diff", "schema_diff", "get_server_info"):
         assert tool_name in tool_map, f"{tool_name} not found in widget mcp tools"
         t = tool_map[tool_name]
         a = t.annotations
@@ -268,3 +271,84 @@ async def test_widget_tool_annotations_present():
         assert a.idempotentHint is True, f"{tool_name}: expected idempotentHint=True"
         assert a.openWorldHint is False, f"{tool_name}: expected openWorldHint=False"
         assert a.title is not None and len(a.title) > 0, f"{tool_name}: title must be set"
+
+
+# ---------------------------------------------------------------------------
+# Test 9: get_server_info widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_server_info_widget_registered():
+    """get_server_info appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'get_server_info' is in widget mcp tool list
+    - resource URI 'ui://recce/get_server_info.html' is in widget mcp resource list
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "get_server_info" in tool_names
+    assert "ui://recce/get_server_info.html" in resource_uris
+
+
+# ---------------------------------------------------------------------------
+# Test 10: get_server_info returns CallToolResult with ServerInfoOutput shape
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_server_info_returns_calltoolresult_with_pydantic_shape():
+    """get_server_info handler returns CallToolResult with structuredContent matching ServerInfoOutput.
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent is populated and passes ServerInfoOutput.model_validate()
+    - structuredContent has expected fields: mode, single_env, base_status
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import ServerInfoOutput
+
+    mock_server = MagicMock()
+    mock_server._tool_get_server_info = AsyncMock(
+        return_value={
+            "mode": "local",
+            "adapter_type": "dbt",
+            "review_mode": False,
+            "support_tasks": ["row_count_diff", "schema_diff"],
+            "single_env": False,
+            "base_status": "fresh",
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        result = await ws.get_server_info()
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 100, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    assert result.structuredContent is not None
+    # Must round-trip through Pydantic validation without error
+    validated = ServerInfoOutput.model_validate(result.structuredContent)
+    assert validated.mode == "local"
+    assert validated.adapter_type == "dbt"
+    assert validated.single_env is False
+    assert validated.base_status == "fresh"
+    assert validated.git is None
+    assert validated.pull_request is None

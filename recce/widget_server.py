@@ -59,6 +59,41 @@ class SchemaDiffOutput(BaseModel):
     models: Dict[str, SchemaChange]
 
 
+class GitInfo(BaseModel):
+    """Git branch / SHA snapshot embedded in server info."""
+
+    branch: Optional[str] = None
+    base_branch: Optional[str] = None
+    base_sha: Optional[str] = None
+    current_sha: Optional[str] = None
+
+
+class PullRequestInfo(BaseModel):
+    """Pull-request metadata embedded in server info."""
+
+    id: Optional[str] = None
+    title: Optional[str] = None
+    url: Optional[str] = None
+
+
+class ServerInfoOutput(BaseModel):
+    """Output model for the get_server_info widget tool.
+
+    Fields mirror the dict returned by RecceMCPServer._tool_get_server_info.
+    All fields are optional / have defaults because the handler may omit them
+    in cloud mode or when the state_loader is absent.
+    """
+
+    mode: str = "local"  # "local" | "cloud" | "none"
+    adapter_type: Optional[str] = None
+    review_mode: Optional[bool] = None
+    support_tasks: Optional[List[str]] = None
+    single_env: bool = False
+    base_status: Optional[str] = None  # "fresh"|"stale_time"|"stale_sha"|"missing"|"single_env"|"unknown"
+    git: Optional[GitInfo] = None
+    pull_request: Optional[PullRequestInfo] = None
+
+
 # ---------------------------------------------------------------------------
 # Pydantic input models
 # ---------------------------------------------------------------------------
@@ -263,6 +298,69 @@ async def schema_diff(args: SchemaDiffInput) -> CallToolResult:
 )
 def schema_diff_resource() -> str:
     return _read_widget_html("schema_diff")
+
+
+# ---------------------------------------------------------------------------
+# get_server_info widget tool + resource
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(
+    name="get_server_info",
+    annotations={
+        "title": "Server Info (Widget)",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,
+    },
+    meta={
+        "ui": {"resourceUri": "ui://recce/get_server_info.html"},
+        "ui/resourceUri": "ui://recce/get_server_info.html",
+    },
+)
+async def get_server_info() -> CallToolResult:
+    """Get Recce server runtime info and configuration state.
+
+    Returns server mode, adapter type, single-env flag, base artifacts
+    freshness status, and optional git/PR context. Rendered as a status
+    widget; the agent should not summarize the data as text.
+
+    Args: none
+
+    Returns:
+        CallToolResult with structuredContent: ServerInfoOutput shape
+        {mode, adapter_type, review_mode, support_tasks, single_env,
+         base_status, git?, pull_request?}
+
+    Use when:
+        - User asks "is recce configured / what's the server state?"
+        - Debugging "why isn't this tool working" — base_status reveals
+          stale or missing artifacts; mode shows which backend is active.
+    Don't use when:
+        - User wants to CHANGE backend — use set_backend instead
+        - User wants tool list — use the MCP host's tool enumeration
+    """
+    result = await _recce_server._tool_get_server_info({})
+    output = ServerInfoOutput(**result)
+    return CallToolResult(
+        content=[TextContent(type="text", text="Server info rendered in widget.")],
+        structuredContent=output.model_dump(),
+    )
+
+
+@mcp.resource(
+    uri="ui://recce/get_server_info.html",
+    mime_type="text/html;profile=mcp-app",
+    meta={
+        "ui": {
+            "csp": {"resourceDomains": ["https://unpkg.com"]},
+            "prefersBorder": False,
+        },
+    },
+)
+def get_server_info_resource() -> str:
+    return _read_widget_html("get_server_info")
 
 
 # ---------------------------------------------------------------------------

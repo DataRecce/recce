@@ -12,8 +12,9 @@ through the `RECCE_MCP_WIDGETS=1` environment variable: when that flag is set,
 that Claude Desktop routes those calls exclusively to `mcp-widget-server`, which
 annotates each tool with `_meta.ui.resourceUri` pointing at an HTML resource.
 
-Iter 1 ships two widgets: `row_count_diff` and `schema_diff`. Both run in
-**local mode only** — cloud/session mode is not supported until iter 2.
+Iter 1 ships three widgets: `row_count_diff`, `schema_diff`, and
+`get_server_info`. All run in **local mode only** — cloud/session mode is not
+supported until iter 2.
 
 ---
 
@@ -30,8 +31,9 @@ recce/
     mcp/                     # Widget HTML asset directory (gitignored via per-extension
       row_count_diff.html    # allowlist — see .gitignore). Self-contained HTML files.
       schema_diff.html
+      get_server_info.html
 tests/
-  test_widget_server.py      # 5 tests covering WIDGET_TOOLS coordination + widget server.
+  test_widget_server.py      # 10 tests covering WIDGET_TOOLS coordination + widget server.
 docs/
   mcp-widgets.md             # This file.
 ```
@@ -81,7 +83,7 @@ The worked reference throughout is `row_count_diff`. Add a new widget called
 File: `recce/mcp_server.py`, near line 56.
 
 ```python
-WIDGET_TOOLS = {"row_count_diff", "schema_diff", "<tool>"}
+WIDGET_TOOLS = {"row_count_diff", "schema_diff", "get_server_info", "<tool>"}
 ```
 
 This single change makes `mcp-server` omit `<tool>` from `tools/list` when
@@ -362,6 +364,13 @@ directly. Always use Pydantic models for widget tool outputs.
   Configure logging to write to `stderr` only (see `logging.basicConfig(stream=sys.stderr)`
   in `run_widget_server()`). Never add bare `print()` calls in `widget_server.py`.
 
+- **No-arg tools: omit the `args` parameter entirely.** If the underlying MCP
+  tool takes no arguments (e.g. `get_server_info`), define the widget delegate
+  as `async def get_server_info() -> CallToolResult:` with no `args` parameter.
+  FastMCP generates an empty `inputSchema` automatically. Do NOT add a dummy
+  `args: None` or empty-model arg — it generates a confusing schema that
+  Claude Desktop may mis-render.
+
 - **CSS token naming: use `danger`, not `error`.** The MCP Apps spec enum
   `McpUiStyleVariableKey` uses `--color-text-danger` and
   `--color-background-danger`. There is no `--color-text-error` token — using
@@ -398,16 +407,27 @@ documented and supported. Reconsider if ext-apps publishes a Python SDK.
 
 ## Reference Widgets
 
-Two working examples to read when building widget #3:
+Three working examples (in order of implementation):
 
 | File | Tier | What it demonstrates |
 |------|------|----------------------|
 | `recce/data/mcp/row_count_diff.html` | Status pills + diff numbers | Per-model status badges (`ok`, `table_not_found`, etc.), signed diff display, `base_meta`/`curr_meta` shape |
 | `recce/data/mcp/schema_diff.html` | HTML table | Added/removed/type_changed column grouping, `_compute_schema_changes` rich shape, per-model section headers |
+| `recce/data/mcp/get_server_info.html` | Status badge + key/value grid | **Canonical post-refactor example.** Born idiomatic: no `models` wrapper (tool has no per-model loop), optional `git`/`pull_request` nested objects, 2-column CSS grid layout, empty-state card when `mode="none"` |
 
-Both files are self-contained HTML — no build step, no npm dependency. They
-import the SDK at runtime from unpkg. Open either file in a browser to verify
-rendering without running a full MCP server.
+`get_server_info` is the **recommended canonical example** for new widgets
+because it was written after the idiomatic pattern was established (Day 3
+refactor). It uses all idioms correctly from the start:
+- Pydantic `ServerInfoOutput` with `Optional` nested sub-models (`GitInfo`,
+  `PullRequestInfo`) rather than bare `Dict[str, Any]`
+- `CallToolResult` with one-sentence `content` + `structuredContent`
+- No-arg tool (no input model needed — omit the `args` param entirely)
+- `@mcp.resource` + `mime_type="text/html;profile=mcp-app"` with CSP
+- Exhaustive `@media (prefers-color-scheme: dark)` covering every CSS class
+
+All three files are self-contained HTML — no build step, no npm dependency.
+They import the SDK at runtime from unpkg. Open any file in a browser to
+verify rendering without running a full MCP server.
 
 ---
 
