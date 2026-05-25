@@ -620,6 +620,124 @@ def get_model_resource() -> str:
 
 
 # ---------------------------------------------------------------------------
+# query widget tool + resource
+# ---------------------------------------------------------------------------
+
+
+class QueryColumnInfo(BaseModel):
+    """Shape of one column in a DataFrame result (from DataFrameColumn.model_dump)."""
+
+    key: Optional[str] = None
+    name: str
+    type: str  # DataFrameColumnType enum value: "integer", "text", "number", "boolean",
+    #            "date", "datetime", "timedelta", "unknown"
+
+
+class QueryOutput(BaseModel):
+    """Output model for the query widget tool.
+
+    Fields mirror DataFrame.model_dump(mode='json') output, with sql_template
+    echoed back for context in the empty-state and debug display.
+    """
+
+    columns: List[QueryColumnInfo]
+    data: List[List[Any]]
+    limit: Optional[int] = None
+    more: Optional[bool] = None
+    total_row_count: Optional[int] = None
+    sql_template: Optional[str] = None  # echoed from input for widget header/empty-state
+
+
+class QueryInput(BaseModel):
+    sql_template: str = Field(
+        ...,
+        description=(
+            "SQL query with optional Jinja templating. "
+            "Use {{ ref('model_name') }} for dbt model references and other dbt macros."
+        ),
+    )
+    base: bool = Field(
+        default=False,
+        description="If true, query the base environment (target-base); else current (target). Default false.",
+    )
+
+
+@mcp.tool(
+    name="query",
+    annotations={
+        "title": "Query Result (Widget)",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,  # queries hit the warehouse (external I/O)
+    },
+    meta={
+        "ui": {"resourceUri": "ui://recce/query.html"},
+        "ui/resourceUri": "ui://recce/query.html",
+    },
+)
+async def query(args: QueryInput) -> CallToolResult:
+    """Execute an ad-hoc SQL query against the dbt environment.
+
+    Returns a scrollable result-table widget with type-aware cell rendering.
+    The agent should not reproduce the table data as plain text — the widget
+    handles rendering.
+
+    Args:
+        sql_template: SQL with Jinja (e.g. "SELECT count(*) FROM {{ ref('customers') }}")
+        base: If true, target base environment (target-base manifest); else current. Default false.
+
+    Returns:
+        CallToolResult with structuredContent: QueryOutput shape
+        {columns: [{key, name, type}], data: [[...]], limit?, more?,
+         total_row_count?, sql_template}
+
+    Use when:
+        - User asks "run SQL: ..." or "query the warehouse for ..."
+        - Need ad-hoc data extraction (no pre-built check type covers it)
+        - Validating a hypothesis about specific values in the database
+    Don't use when:
+        - User wants row counts → use row_count_diff
+        - User wants column-level diff → use value_diff
+        - User wants the schema (columns/types) → use get_model or schema_diff
+        - User wants to compare base vs current → use query_diff
+    """
+    raw = await _recce_server._tool_query(args.model_dump())
+    # raw is DataFrame.model_dump(mode='json') — shape confirmed from source:
+    # {columns: [{key, name, type}], data: [[...]], limit?, more?, total_row_count?}
+    columns = [QueryColumnInfo(**c) for c in raw.get("columns", [])]
+    output = QueryOutput(
+        columns=columns,
+        data=raw.get("data", []),
+        limit=raw.get("limit"),
+        more=raw.get("more"),
+        total_row_count=raw.get("total_row_count"),
+        sql_template=args.sql_template,
+    )
+    n_rows = len(output.data)
+    n_cols = len(output.columns)
+    text = f"Query result ({n_rows} row{'s' if n_rows != 1 else ''} × {n_cols} col{'s' if n_cols != 1 else ''}) rendered in widget."
+    return CallToolResult(
+        content=[TextContent(type="text", text=text)],
+        structuredContent=output.model_dump(),
+    )
+
+
+@mcp.resource(
+    uri="ui://recce/query.html",
+    mime_type="text/html;profile=mcp-app",
+    meta={
+        "ui": {
+            "csp": {"resourceDomains": ["https://unpkg.com"]},
+            "prefersBorder": False,
+        },
+    },
+)
+def query_resource() -> str:
+    return _read_widget_html("query")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

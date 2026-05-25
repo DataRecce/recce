@@ -73,6 +73,7 @@ async def test_mcp_server_filters_widget_tools_when_widgets_enabled(monkeypatch)
     assert "get_server_info" not in names
     assert "list_checks" not in names
     assert "get_model" not in names
+    assert "query" not in names
     # Other tools must still be present
     assert "lineage_diff" in names
 
@@ -83,8 +84,8 @@ async def test_mcp_server_filters_widget_tools_when_widgets_enabled(monkeypatch)
 
 
 @pytest.mark.asyncio
-async def test_widget_server_registers_five_tools_and_five_resources():
-    """Widget FastMCP instance has exactly 5 tools/resources (Phase A complete).
+async def test_widget_server_registers_six_tools_and_six_resources():
+    """Widget FastMCP instance has exactly 6 tools/resources (Phase A + query widget).
 
     Uses FastMCP public API: mcp.list_tools() and mcp.list_resources().
     """
@@ -96,13 +97,14 @@ async def test_widget_server_registers_five_tools_and_five_resources():
     tool_names = {t.name for t in tools}
     resource_uris = {str(r.uri) for r in resources}
 
-    assert tool_names == {"row_count_diff", "schema_diff", "get_server_info", "list_checks", "get_model"}
+    assert tool_names == {"row_count_diff", "schema_diff", "get_server_info", "list_checks", "get_model", "query"}
     assert resource_uris == {
         "ui://recce/row_count_diff.html",
         "ui://recce/schema_diff.html",
         "ui://recce/get_server_info.html",
         "ui://recce/list_checks.html",
         "ui://recce/get_model.html",
+        "ui://recce/query.html",
     }
 
 
@@ -255,17 +257,17 @@ async def test_structured_content_matches_pydantic_model():
 
 @pytest.mark.asyncio
 async def test_widget_tool_annotations_present():
-    """Both widget tools have required annotations per SDK idiom checklist.
+    """All widget tools have required annotations per SDK idiom checklist.
 
-    Asserts readOnlyHint=True, destructiveHint=False, idempotentHint=True,
-    openWorldHint=False, and title is set.
+    All tools: readOnlyHint=True, destructiveHint=False, idempotentHint=True, title set.
+    openWorldHint=False for all except 'query' (which hits the warehouse, openWorldHint=True).
     """
     from recce.widget_server import mcp
 
     tools = await mcp.list_tools()
     tool_map = {t.name: t for t in tools}
 
-    for tool_name in ("row_count_diff", "schema_diff", "get_server_info", "list_checks", "get_model"):
+    for tool_name in ("row_count_diff", "schema_diff", "get_server_info", "list_checks", "get_model", "query"):
         assert tool_name in tool_map, f"{tool_name} not found in widget mcp tools"
         t = tool_map[tool_name]
         a = t.annotations
@@ -273,8 +275,16 @@ async def test_widget_tool_annotations_present():
         assert a.readOnlyHint is True, f"{tool_name}: expected readOnlyHint=True"
         assert a.destructiveHint is False, f"{tool_name}: expected destructiveHint=False"
         assert a.idempotentHint is True, f"{tool_name}: expected idempotentHint=True"
-        assert a.openWorldHint is False, f"{tool_name}: expected openWorldHint=False"
         assert a.title is not None and len(a.title) > 0, f"{tool_name}: title must be set"
+
+    # Closed-world tools (no external warehouse I/O)
+    closed_world_tools = ("row_count_diff", "schema_diff", "get_server_info", "list_checks", "get_model")
+    for tool_name in closed_world_tools:
+        t = tool_map[tool_name]
+        assert t.annotations.openWorldHint is False, f"{tool_name}: expected openWorldHint=False"
+
+    # query hits the warehouse — openWorldHint must be True
+    assert tool_map["query"].annotations.openWorldHint is True, "query: expected openWorldHint=True"
 
 
 # ---------------------------------------------------------------------------
@@ -564,3 +574,137 @@ async def test_get_model_returns_calltoolresult_with_pydantic_shape():
     # current: 4 columns (added updated_at)
     assert validated.current is not None
     assert len(validated.current.columns) == 4
+
+
+# ---------------------------------------------------------------------------
+# Test 15: query widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_query_widget_registered():
+    """query appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'query' is in widget mcp tool list
+    - resource URI 'ui://recce/query.html' is in widget mcp resource list
+    - sql_template is required in inputSchema
+    - base is optional (has default)
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "query" in tool_names
+    assert "ui://recce/query.html" in resource_uris
+
+    # Check inputSchema: sql_template required, base optional.
+    # FastMCP wraps the Pydantic model in an 'args' outer envelope
+    # (schema is {properties: {args: {$ref: ...}}, required: ["args"]}).
+    # The actual field requirements live inside the $defs/QueryInput sub-schema.
+    query_tool = next(t for t in tools if t.name == "query")
+    schema = query_tool.inputSchema
+    assert schema is not None
+
+    # Navigate into the nested QueryInput definition
+    defs = schema.get("$defs", {})
+    inner_schema = next(iter(defs.values()), schema)  # first $def or top-level
+    inner_required = inner_schema.get("required", [])
+    inner_props = inner_schema.get("properties", {})
+    assert "sql_template" in inner_required, "sql_template must be required"
+    assert "base" not in inner_required, "base must be optional (has default)"
+    assert "sql_template" in inner_props, "sql_template must be a property"
+    assert "base" in inner_props, "base must be a property"
+
+
+# ---------------------------------------------------------------------------
+# Test 16: query returns CallToolResult with correct Pydantic shape
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_query_returns_calltoolresult_with_pydantic_shape():
+    """query handler returns CallToolResult with structuredContent matching QueryOutput.
+
+    Uses a realistic DataFrame.model_dump shape (confirmed from source reading):
+    {columns: [{key, name, type}], data: [[...]], limit, more, total_row_count}
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent passes QueryOutput.model_validate()
+    - columns are hydrated correctly into QueryColumnInfo list
+    - sql_template is echoed back in structuredContent
+    - more/limit/total_row_count are preserved
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import QueryInput, QueryOutput
+
+    mock_server = MagicMock()
+    # Realistic DataFrame.model_dump shape (shape verified from recce/tasks/dataframe.py)
+    mock_server._tool_query = AsyncMock(
+        return_value={
+            "columns": [
+                {"key": "id", "name": "id", "type": "integer"},
+                {"key": "name", "name": "name", "type": "text"},
+                {"key": "amount", "name": "amount", "type": "number"},
+                {"key": "active", "name": "active", "type": "boolean"},
+                {"key": "created_at", "name": "created_at", "type": "date"},
+            ],
+            "data": [
+                [1, "Alice", 99.9, True, "2024-01-01"],
+                [2, None, None, False, "2024-02-15"],
+            ],
+            "limit": 2000,
+            "more": False,
+            "total_row_count": 2,
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = QueryInput(
+            sql_template="SELECT id, name, amount, active, created_at FROM {{ ref('customers') }}", base=False
+        )
+        result = await ws.query(args)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 120, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    assert result.structuredContent is not None
+    validated = QueryOutput.model_validate(result.structuredContent)
+
+    # Columns
+    assert len(validated.columns) == 5
+    assert validated.columns[0].name == "id"
+    assert validated.columns[0].type == "integer"
+    assert validated.columns[1].name == "name"
+    assert validated.columns[1].type == "text"
+    assert validated.columns[3].type == "boolean"
+
+    # Data — 2 rows, nulls preserved
+    assert len(validated.data) == 2
+    assert validated.data[0][0] == 1
+    assert validated.data[1][1] is None  # null name
+    assert validated.data[1][2] is None  # null amount
+
+    # Metadata
+    assert validated.limit == 2000
+    assert validated.more is False
+    assert validated.total_row_count == 2
+
+    # sql_template echoed back
+    assert validated.sql_template is not None
+    assert "customers" in validated.sql_template

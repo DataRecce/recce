@@ -13,8 +13,9 @@ that Claude Desktop routes those calls exclusively to `mcp-widget-server`, which
 annotates each tool with `_meta.ui.resourceUri` pointing at an HTML resource.
 
 Phase A ships five widgets: `row_count_diff`, `schema_diff`, `get_server_info`,
-`list_checks`, and `get_model`. All run in **local mode only** — cloud/session
-mode is not supported until iter 2.
+`list_checks`, and `get_model`. Phase B iter 1 adds `query` (first tier-3
+data-table widget). All run in **local mode only** — cloud/session mode is
+not supported until iter 2.
 
 ---
 
@@ -34,8 +35,9 @@ recce/
       get_server_info.html
       list_checks.html
       get_model.html
+      query.html             # Phase B tier-3: scrollable SQL result table
 tests/
-  test_widget_server.py      # 14 tests covering WIDGET_TOOLS coordination + widget server.
+  test_widget_server.py      # 16 tests covering WIDGET_TOOLS coordination + widget server.
 docs/
   mcp-widgets.md             # This file.
 ```
@@ -85,7 +87,7 @@ The worked reference throughout is `row_count_diff`. Add a new widget called
 File: `recce/mcp_server.py`, near line 56.
 
 ```python
-WIDGET_TOOLS = {"row_count_diff", "schema_diff", "get_server_info", "list_checks", "get_model", "<tool>"}
+WIDGET_TOOLS = {"row_count_diff", "schema_diff", "get_server_info", "list_checks", "get_model", "query", "<tool>"}
 ```
 
 This single change makes `mcp-server` omit `<tool>` from `tools/list` when
@@ -418,7 +420,7 @@ documented and supported. Reconsider if ext-apps publishes a Python SDK.
 
 ## Reference Widgets
 
-Five working examples (in order of implementation):
+Six working examples (in order of implementation):
 
 | File | Tier | What it demonstrates |
 |------|------|----------------------|
@@ -427,6 +429,7 @@ Five working examples (in order of implementation):
 | `recce/data/mcp/get_server_info.html` | Status badge + key/value grid | **Canonical post-refactor example.** Born idiomatic: no `models` wrapper (tool has no per-model loop), optional `git`/`pull_request` nested objects, 2-column CSS grid layout, empty-state card when `mode="none"` |
 | `recce/data/mcp/list_checks.html` | List / simple table | 3-up summary cards (Total / Approved / Pending), 4-column status table, empty-state with hint, `is_preset` badge, `_tool_list_checks` returns a flat list + pre-computed `total`/`approved` — `pending` derived in the widget delegate |
 | `recce/data/mcp/get_model.html` | Single-item detail card | Per-environment column tables (base/current), adaptive 2-col/3-col layout when constraints present, PK + not-null + unique badges, not-found empty state, `columns` dict → list normalisation in delegate |
+| `recce/data/mcp/query.html` | **Tier-3 data table** | **Template for Phase B.** Sticky-header scrollable table (400px cap), type-aware cell rendering, truncation badge, empty/error states. Use this as the base pattern for `query_diff`, `value_diff`, `value_diff_detail`, `top_k_diff` |
 
 `get_server_info` is the **recommended canonical example** for new widgets
 because it was written after the idiomatic pattern was established (Day 3
@@ -441,6 +444,130 @@ refactor). It uses all idioms correctly from the start:
 All three files are self-contained HTML — no build step, no npm dependency.
 They import the SDK at runtime from unpkg. Open any file in a browser to
 verify rendering without running a full MCP server.
+
+---
+
+## Adding a Tier-3 (Data Table) Widget
+
+Phase B widgets (`query`, `query_diff`, `value_diff`, `value_diff_detail`, `top_k_diff`)
+render arbitrary columnar data. `recce/data/mcp/query.html` is the canonical example.
+
+### Data shape
+
+The underlying `DataFrame.model_dump(mode='json')` has this exact shape (confirmed from
+`recce/tasks/dataframe.py`):
+
+```json
+{
+  "columns": [
+    {"key": "id", "name": "id", "type": "integer"},
+    {"key": "amount", "name": "amount", "type": "number"},
+    {"key": "label", "name": "label", "type": "text"}
+  ],
+  "data": [[1, 99.9, "Alice"], [2, null, null]],
+  "limit": 2000,
+  "more": false,
+  "total_row_count": 2
+}
+```
+
+`DataFrameColumnType` enum values: `"integer"`, `"number"`, `"text"`, `"boolean"`,
+`"date"`, `"datetime"`, `"timedelta"`, `"unknown"`.
+
+### Pydantic models
+
+```python
+class QueryColumnInfo(BaseModel):
+    key: Optional[str] = None
+    name: str
+    type: str  # DataFrameColumnType enum value
+
+class QueryOutput(BaseModel):
+    columns: List[QueryColumnInfo]
+    data: List[List[Any]]
+    limit: Optional[int] = None
+    more: Optional[bool] = None
+    total_row_count: Optional[int] = None
+    sql_template: Optional[str] = None  # echo input for context
+```
+
+### CSS mechanics for sticky-header scrollable table
+
+```css
+/* Container caps height and scrolls in both axes */
+.table-wrap {
+  max-height: 400px;
+  overflow: auto;
+  border: 1px solid var(--color-border-primary, #e5e7eb);
+  border-radius: var(--border-radius-md, 8px);
+}
+/* Table sticky header works inside overflow:auto parent */
+.result-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+```
+
+This combination — `overflow: auto` on the container, `position: sticky; top: 0`
+on `thead th` — is the pattern to use for all tier-3 table widgets. Do NOT use
+`overflow: hidden` on the container (breaks scroll) or `position: fixed` on the
+header (breaks column alignment).
+
+### `renderCell(value, type)` helper — canonical implementation
+
+```js
+function renderCell(value, type) {
+  if (value === null || value === undefined)
+    return `<span class="cell-null">—</span>`;
+  if (type === "boolean" || typeof value === "boolean")
+    return value ? `<span class="cell-bool-true">✓</span>` : `<span class="cell-bool-false">—</span>`;
+  if (type === "integer" || type === "number") {
+    const formatted = typeof value === "number"
+      ? value.toLocaleString(undefined, { maximumFractionDigits: 6 })
+      : escapeHtml(String(value));
+    return `<span class="cell-num">${formatted}</span>`;
+  }
+  if (type === "date" || type === "datetime" || type === "timedelta")
+    return `<span title="${escapeHtml(String(value))}">${escapeHtml(String(value))}</span>`;
+  // Text / unknown — truncate at 80 chars
+  const str = String(value);
+  if (str.length > 80)
+    return `<span title="${escapeHtml(str)}">${escapeHtml(str.slice(0, 80))}…</span>`;
+  return escapeHtml(str);
+}
+```
+
+CSS classes used: `.cell-null` (italic, secondary color), `.cell-num` (tabular-nums,
+mono, right-aligned), `.cell-bool-true` (green), `.cell-bool-false` (gray).
+All four classes need exhaustive `@media (prefers-color-scheme: dark)` overrides.
+
+### Truncation badge
+
+When `more === true`, show a warning badge above the table:
+
+```js
+const truncatedBadge = more
+  ? `<span class="badge-truncated">Truncated to ${limit ?? nRows} rows</span>`
+  : "";
+```
+
+### `openWorldHint` for warehouse-hitting tools
+
+Tools that execute SQL against the warehouse (all tier-3 tools) must set
+`openWorldHint: True` in annotations — they perform real external I/O.
+This contrasts with Phase A tools that only read dbt manifest/state:
+
+```python
+@mcp.tool(
+    name="query",
+    annotations={
+        ...
+        "openWorldHint": True,   # hits the warehouse
+    },
+    ...
+)
+```
 
 ---
 
