@@ -28,6 +28,8 @@ fi
 
 SESSION_NAME="smoke-rc-${ENV_NAME}-py${PY:-unknown}-dbt${DBT:-unknown}-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}"
 SESSION_ID=""
+DETAIL_BODY=""
+REFRESH_BODY=""
 
 NEW_WORKSPACE=$(dirname "${GITHUB_WORKSPACE:-$PWD}")
 cd "$NEW_WORKSPACE"
@@ -43,6 +45,12 @@ cleanup() {
     if [[ -n "$SESSION_ID" ]]; then
         echo "Teardown: deleting session $SESSION_ID"
         recce-cloud delete --session-id "$SESSION_ID" --force || true
+    fi
+    if [[ -n "$DETAIL_BODY" ]]; then
+        rm -f "$DETAIL_BODY"
+    fi
+    if [[ -n "$REFRESH_BODY" ]]; then
+        rm -f "$REFRESH_BODY"
     fi
     exit $exit_code
 }
@@ -142,11 +150,18 @@ AUTH_HEADER="Authorization: Bearer $RECCE_API_TOKEN"
 # 7a-i. GET /sessions/{id} returns the four staleness fields (all four
 # present in the response, but each may be null for a brand-new session
 # that has not seen a shared-base change yet).
-SESSION_DETAIL=$(curl -sf -H "$AUTH_HEADER" "$API_HOST/api/v2/sessions/$SESSION_ID")
-echo "$SESSION_DETAIL" | jq -e '.session | has("source_session_id")' > /dev/null
-echo "$SESSION_DETAIL" | jq -e '.session | has("source_session_updated_at")' > /dev/null
-echo "$SESSION_DETAIL" | jq -e '.session | has("current_base_session_id")' > /dev/null
-echo "$SESSION_DETAIL" | jq -e '.session | has("current_base_updated_at")' > /dev/null
+DETAIL_BODY=$(mktemp)
+DETAIL_STATUS=$(curl -s -o "$DETAIL_BODY" -w "%{http_code}" \
+    -H "$AUTH_HEADER" "$API_HOST/api/v2/sessions/$SESSION_ID")
+if [[ "$DETAIL_STATUS" != "200" ]]; then
+    echo "ERROR: GET /sessions/{id} expected 200, got $DETAIL_STATUS"
+    cat "$DETAIL_BODY"
+    exit 1
+fi
+jq -e '.session | has("source_session_id")' "$DETAIL_BODY" > /dev/null
+jq -e '.session | has("source_session_updated_at")' "$DETAIL_BODY" > /dev/null
+jq -e '.session | has("current_base_session_id")' "$DETAIL_BODY" > /dev/null
+jq -e '.session | has("current_base_updated_at")' "$DETAIL_BODY" > /dev/null
 echo "GET /sessions/{id} returns all four staleness fields"
 
 # 7a-ii. POST /sessions/{id}/refresh-base must return 202 with either a
@@ -159,11 +174,9 @@ REFRESH_STATUS=$(curl -s -o "$REFRESH_BODY" -w "%{http_code}" \
 if [[ "$REFRESH_STATUS" != "202" ]]; then
     echo "ERROR: refresh-base expected 202, got $REFRESH_STATUS"
     cat "$REFRESH_BODY"
-    rm -f "$REFRESH_BODY"
     exit 1
 fi
 jq -e '(.task_id != null) or (.in_progress == true)' "$REFRESH_BODY" > /dev/null
-rm -f "$REFRESH_BODY"
 echo "POST /sessions/{id}/refresh-base returned 202 with valid body"
 
 # --------------------------------------------------------------------
