@@ -724,6 +724,11 @@ export function CheckDetailOss({
                       (check.last_run || trackedRunId ? (
                         <RunViewOss
                           ref={ref as unknown as Ref<RefTypes>}
+                          // Pass runId so the sticky cancel set can gate the
+                          // Cancelled state even before the React Query cache
+                          // has populated `run` (the "cancel before first
+                          // poll" race, DRC-3411).
+                          runId={trackedRunId}
                           isRunning={isRunning}
                           run={
                             trackedRunId

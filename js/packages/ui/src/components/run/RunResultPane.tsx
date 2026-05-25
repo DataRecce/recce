@@ -838,6 +838,10 @@ function RunResultPaneComponent<VO = unknown, RefType = unknown>({
       {tabValue === "result" && (RunResultView || children) && (
         <RunView
           ref={resultViewRef}
+          // Pass runId so the sticky cancel set can gate the Cancelled state
+          // even before the React Query cache has populated `run` (the
+          // "cancel before first poll" race, DRC-3411).
+          runId={runId}
           isRunning={isRunning}
           error={error}
           run={run}

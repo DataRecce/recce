@@ -56,6 +56,13 @@ export interface RunViewOssProps<VO = ViewOptionTypes> {
   /** Whether a run is currently executing */
   isRunning?: boolean;
 
+  /**
+   * The id of the tracked run. Forwarded to the base `RunView` so the
+   * sticky cancel set can engage before the React Query cache is populated
+   * (DRC-3411). Pass the same id used with `useRun(runId)`.
+   */
+  runId?: string;
+
   /** The run object containing execution state and results */
   run?: Run;
 
@@ -109,9 +116,12 @@ export interface RunViewOssProps<VO = ViewOptionTypes> {
  * States:
  * 1. **Error state**: Shows error message from API response or run.error
  * 2. **Cancelled state**: Shows terminal "Cancelled" indicator when
- *    `run.status === "Cancelled"` OR when the run id is in the
- *    `useCanceledRuns` sticky set (the latter overrides any late-arriving
- *    `Running` status from an in-flight `waitRun` poll — see PR #1376).
+ *    `run.status === "Cancelled"` OR when the run id (`run.run_id` when
+ *    available, falling back to the `runId` prop for the pre-poll path)
+ *    is in the `useCanceledRuns` sticky set. The sticky-set branch
+ *    overrides both a late-arriving `Running` status from an in-flight
+ *    `waitRun` poll and the no-cache-yet window before the first poll
+ *    resolves — see PR #1376 / DRC-3411.
  * 3. **Running state**: Shows loading spinner with progress and cancel button
  * 4. **Loading state**: Shows spinner when run is undefined
  * 5. **Result state**: Renders RunResultView or children with run results,

@@ -107,6 +107,17 @@ export interface RunViewProps {
   /** Whether a run is currently executing */
   isRunning?: boolean;
 
+  /**
+   * The id of the tracked run. Required for the sticky cancel set to gate
+   * the "cancel before first poll" race (DRC-3411): when the user clicks
+   * Cancel before `waitRun` has populated the React Query cache, `run` is
+   * still undefined and `run.run_id` is unavailable, so `useCanceledRuns.has`
+   * cannot engage on `run.run_id` alone. Pass the same id the caller uses
+   * with `useRun(runId)` so the gate works both before and after the cache
+   * is populated.
+   */
+  runId?: string;
+
   /** The run object containing execution state and results */
   run?: Run;
 
@@ -193,8 +204,9 @@ export interface RunViewProps {
  * 1. **Error state**: Shows error message from API response or run.error
  * 2. **Cancelled state**: Shows terminal "Cancelled" indicator when
  *    `run.status === "Cancelled"` OR when the user already clicked Cancel for
- *    this `run_id` (tracked in `useCanceledRuns`). The second case guards
- *    against late `Running` writes from in-flight `waitRun` polls (DRC-3411).
+ *    this run (tracked in `useCanceledRuns`, keyed by `run.run_id` when the
+ *    cache is populated and by the `runId` prop otherwise — see DRC-3411 for
+ *    why both keys are needed).
  * 3. **Running state**: Shows loading spinner with progress and cancel button
  * 4. **Loading state**: Shows spinner when run is undefined
  * 5. **Result state**: Renders RunResultView or children with run results
@@ -219,6 +231,7 @@ export interface RunViewProps {
 export const RunView = forwardRef<unknown, RunViewProps>(function RunView(
   {
     isRunning,
+    runId,
     progress,
     error,
     run,
@@ -238,14 +251,22 @@ export const RunView = forwardRef<unknown, RunViewProps>(function RunView(
     (error as ApiError | undefined)?.response?.data?.detail ?? run?.error;
   // A run is treated as cancelled when:
   //   1. The backend has acknowledged the cancel (run.status === "Cancelled"), OR
-  //   2. The user has clicked Cancel locally (run_id present in useCanceledRuns).
+  //   2. The user has clicked Cancel locally (id present in useCanceledRuns).
   //
-  // The second branch guards against the race surfaced on PR #1376 / DRC-3411:
-  // an in-flight `waitRun` poll can resolve after the user clicks Cancel and
-  // write `Running` back into the React Query cache, briefly flipping the UI
-  // back to Running. By gating the Running render on userCanceled below we
-  // ignore those late "Running" writes for runs the user already cancelled.
-  const isUserCanceled = run?.run_id != null && canceledRuns.has(run.run_id);
+  // The second branch guards against TWO races surfaced on PR #1376 / DRC-3411:
+  //   a. An in-flight `waitRun` poll resolves AFTER the user clicks Cancel and
+  //      writes `Running` back into the cache — briefly flipping a populated
+  //      `run.status` from Cancelled → Running. Gating on `run.run_id` covers
+  //      this.
+  //   b. The user clicks Cancel BEFORE the first poll has populated the cache.
+  //      `run` is undefined, so `run.run_id` is unavailable. We fall back to
+  //      the `runId` prop the caller passes — the same id used in `useRun(runId)`
+  //      — so the gate engages on the pre-poll path too. Without this, the
+  //      Running branch (with Cancel button + spinner) renders for up to ~2 s
+  //      until the late poll arrives, which is exactly the "Cancel gives no UI
+  //      feedback" symptom this PR is fixing.
+  const trackedId = run?.run_id ?? runId;
+  const isUserCanceled = trackedId != null && canceledRuns.has(trackedId);
   const isCancelled = run?.status === "Cancelled" || isUserCanceled;
 
   // ============================================================================

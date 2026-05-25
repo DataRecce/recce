@@ -115,6 +115,50 @@ describe("RunView cancel UX", () => {
   });
 
   /**
+   * Regression test for the "cancel before first poll" race surfaced on the
+   * PR #1376 re-review (commit `395b3edd` review).
+   *
+   * Scenario:
+   * 1. User submits a run, then clicks Cancel before the first `waitRun`
+   *    poll has populated the React Query cache. `useRun.onCancel` calls
+   *    `useCanceledRuns.add(runId)` and `setQueryData((prev) => prev ? ... : prev)`
+   *    — leaving the cache empty.
+   * 2. RunView receives `run === undefined` (cache miss) but
+   *    `isRunning === true` (the parent's `submittedRunId ? !run : ...`
+   *    branch).
+   * 3. Without the `runId` prop, `isUserCanceled` was computed from
+   *    `run?.run_id` alone — undefined when the cache is empty — so the
+   *    sticky-set gate could not engage, and the Running branch rendered
+   *    a "Loading..." spinner with a Cancel button for up to ~2 s until
+   *    the late poll arrived. That is the original DRC-3411 "Cancel gives
+   *    no UI feedback" symptom, narrowed to the pre-poll window.
+   *
+   * Invariant: when the caller passes `runId` and that id is in the sticky
+   * cancel set, RunView MUST render Cancelled even if `run` is undefined
+   * and `isRunning` is `true`.
+   */
+  test("renders Cancelled when runId prop is in sticky set and run is undefined (DRC-3411 pre-poll race)", () => {
+    localStorage.setItem("recce:canceledRuns", JSON.stringify(["run-prepoll"]));
+
+    renderWithProviders(
+      <RunView
+        runId="run-prepoll"
+        run={undefined}
+        // Mirrors `CheckDetailOss.tsx:145-147` after submit but before the
+        // first poll: `!run` makes isRunning true.
+        isRunning
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/cancelled/i)).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /cancel/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
    * Regression for the exact production race: RunView is already mounted in
    * Running state, THEN a sibling consumer of useCanceledRuns (useRun.onCancel)
    * calls `add()`. RunView's hook instance must see the broadcast and flip to
