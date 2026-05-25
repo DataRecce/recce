@@ -97,6 +97,12 @@ def _diff_select_scope(old_scope: Scope, new_scope: Scope, scope_changes_map: di
         if old_select.args.get(arg_key) != new_select.args.get(arg_key):
             change_category = "breaking"
 
+    # Track per-CTE-source which changed columns we successfully traced through
+    # a projection. Anything in the source's changed-columns set that is *not*
+    # observed here represents an unresolvable change (typically because qualify
+    # was skipped and column refs lack a table qualifier).
+    traced_source_columns: dict[Scope, set[str]] = {}
+
     def source_column_change_status(ref_column: exp.Column) -> Optional[ChangeStatus]:
         table_name = ref_column.table
         column_name = ref_column.name
@@ -108,7 +114,37 @@ def _diff_select_scope(old_scope: Scope, new_scope: Scope, scope_changes_map: di
         if ref_change_category is None:
             return None
 
-        return ref_change_category.columns.get(column_name)
+        status = ref_change_category.columns.get(column_name)
+        if status is not None:
+            traced_source_columns.setdefault(source, set()).add(column_name)
+        return status
+
+    def _unresolvable_cte_change() -> bool:
+        # When qualify is skipped (no parent schema), column refs through CTEs
+        # don't carry a table qualifier, so source_column_change_status can't
+        # trace inner-scope changes back to outer projections. Detect that
+        # state by checking whether any CTE-source *modification* was never
+        # observed by the per-projection analysis — added/removed source
+        # columns surface through the outer projection list directly, but
+        # modifications require traceability via qualified column refs. Only
+        # consider sources actually selected by this scope — unused CTEs in
+        # the WITH clause are inert.
+        for _, src in new_scope.selected_sources.values():
+            if not isinstance(src, Scope):
+                continue
+            src_change = scope_changes_map.get(src)
+            if src_change is None:
+                continue
+            # Category-level signal (e.g. breaking CTE) with no traceable
+            # column attribution is also unresolvable.
+            if src_change.category == "breaking" and not src_change.columns:
+                return True
+            if src_change.columns:
+                traced = traced_source_columns.get(src, set())
+                for col, status in src_change.columns.items():
+                    if status == "modified" and col not in traced:
+                        return True
+        return False
 
     # selects
     old_column_map = {projection.alias_or_name: projection for projection in old_select.selects}
@@ -229,6 +265,21 @@ def _diff_select_scope(old_scope: Scope, new_scope: Scope, scope_changes_map: di
                     change_category = "breaking"
                 elif selected_column_change_status(ref_column) is not None:
                     change_category = "breaking"
+
+    # Loud-fail: a CTE/subquery source has a real change that we never tied
+    # to any outer projection. Without that link we cannot tell which outer
+    # columns are affected, so any outer column we haven't already classified
+    # must surface as "unknown" rather than silently reporting "no-change".
+    # This fires even in mixed-edit cases (some outer projections resolve to
+    # added/removed/modified while an unresolvable inner change coexists);
+    # we tag the unresolved ones per-column rather than all-or-nothing.
+    # See DRC-3409.
+    if change_category != "breaking" and _unresolvable_cte_change():
+        for column_name in new_column_map.keys():
+            if column_name not in changed_columns:
+                changed_columns[column_name] = "unknown"
+        if change_category == "non_breaking":
+            change_category = "unknown"
 
     return NodeChange(category=change_category, columns=changed_columns)
 
