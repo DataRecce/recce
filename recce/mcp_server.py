@@ -63,6 +63,7 @@ WIDGET_TOOLS = {
     "query_diff",
     "value_diff",
     "value_diff_detail",
+    "top_k_diff",
 }
 
 

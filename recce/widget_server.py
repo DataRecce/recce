@@ -1222,6 +1222,159 @@ def query_diff_resource() -> str:
 
 
 # ---------------------------------------------------------------------------
+# top_k_diff widget tool + resource
+# ---------------------------------------------------------------------------
+
+
+class TopKDiffInput(BaseModel):
+    model: str = Field(..., description="dbt model name to analyze (e.g. 'customers')")
+    column_name: str = Field(..., description="Column name to get top-K most frequent values for")
+    k: Optional[int] = Field(
+        default=None,
+        description="Number of top values to return (default: 10)",
+    )
+
+
+class TopKEnvStats(BaseModel):
+    """Per-environment aggregate stats for the top-K diff.
+
+    TopKDiffTask.execute() returns parallel lists:
+      values: List[str|None]  — category labels (same order for base + current)
+      counts: List[int]       — occurrence count for THIS environment
+      valids: int             — count of non-null rows in THIS environment
+      total:  int             — total rows in THIS environment
+    """
+
+    values: List[Optional[str]] = []  # category labels (None means original null)
+    counts: List[int] = []  # count per category in this env
+    valids: int = 0  # non-null row count
+    total: int = 0  # total row count (including nulls)
+
+
+class TopKDiffOutput(BaseModel):
+    """Output model for the top_k_diff widget tool.
+
+    Mirrors TopKDiffTask.execute() return shape after _warning extraction:
+      base:    {values, counts, valids, total}
+      current: {values, counts, valids, total}
+
+    Note: values[] is the same list in both envs (union of top-K by curr_count desc,
+    base_count desc). counts[] are specific to each environment.
+
+    model, column_name, k are echoed from input for the widget header.
+    warning is extracted from _warning key (single-env mode notice).
+    """
+
+    model: str
+    column_name: str
+    k: int = 10
+    base: TopKEnvStats
+    current: TopKEnvStats
+    warning: Optional[str] = None
+
+
+@mcp.tool(
+    name="top_k_diff",
+    annotations={
+        "title": "Top-K Diff (Widget)",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,  # executes queries against the warehouse
+    },
+    meta={
+        "ui": {"resourceUri": "ui://recce/top_k_diff.html"},
+        "ui/resourceUri": "ui://recce/top_k_diff.html",
+    },
+)
+async def top_k_diff(args: TopKDiffInput) -> CallToolResult:
+    """Compare the top-K most frequent values of a column across base and current environments.
+
+    Surfaces shifts in value distribution: new dominant values, retired values,
+    and count changes. Rendered as a side-by-side ranked list with inline bars.
+    The agent should not reproduce the ranked list as plain text — the widget
+    handles rendering.
+
+    Top-K is computed as a SQL FULL OUTER JOIN of the top-K by current count
+    (desc) then base count (desc), so the same category list is shown for both
+    environments. Categories absent from one env show a count of 0.
+
+    Args:
+        model: dbt model name (e.g. 'customers')
+        column_name: categorical column to analyze (e.g. 'status')
+        k: number of top values to return (default: 10)
+
+    Returns:
+        CallToolResult with structuredContent: TopKDiffOutput shape
+        {model, column_name, k,
+         base:    {values, counts, valids, total},
+         current: {values, counts, valids, total},
+         warning?}
+
+    Use when:
+        - User asks "what are the most common X" or "did the distribution of Y shift"
+        - Categorical column investigation during PR review
+        - Cardinality or value-shape change detection (new statuses, retired categories)
+    Don't use when:
+        - Need numeric distribution → histogram_diff
+        - Need row-level diff → value_diff_detail
+        - Need full value comparison across all columns → value_diff
+        - Continuous data without natural top-K semantics → profile_diff
+    """
+    raw = await _recce_server._tool_top_k_diff(args.model_dump(exclude_none=True))
+    warning = raw.pop("_warning", None) if isinstance(raw, dict) else None
+
+    raw_base = raw.get("base", {}) if isinstance(raw, dict) else {}
+    raw_curr = raw.get("current", {}) if isinstance(raw, dict) else {}
+
+    base_stats = TopKEnvStats(
+        values=raw_base.get("values") or [],
+        counts=raw_base.get("counts") or [],
+        valids=raw_base.get("valids") or 0,
+        total=raw_base.get("total") or 0,
+    )
+    curr_stats = TopKEnvStats(
+        values=raw_curr.get("values") or [],
+        counts=raw_curr.get("counts") or [],
+        valids=raw_curr.get("valids") or 0,
+        total=raw_curr.get("total") or 0,
+    )
+
+    output = TopKDiffOutput(
+        model=args.model,
+        column_name=args.column_name,
+        k=args.k if args.k is not None else 10,
+        base=base_stats,
+        current=curr_stats,
+        warning=warning,
+    )
+
+    n = len(base_stats.values)
+    text = (
+        f"Top-K diff for '{args.model}.{args.column_name}': "
+        f"{n} categor{'ies' if n != 1 else 'y'} compared. Rendered in widget."
+    )
+    return CallToolResult(
+        content=[TextContent(type="text", text=text)],
+        structuredContent=output.model_dump(),
+    )
+
+
+@mcp.resource(
+    uri="ui://recce/top_k_diff.html",
+    mime_type="text/html;profile=mcp-app",
+    meta={
+        "ui": {
+            "csp": {"resourceDomains": ["https://unpkg.com"]},
+            "prefersBorder": False,
+        },
+    },
+)
+def top_k_diff_resource() -> str:
+    return _read_widget_html("top_k_diff")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

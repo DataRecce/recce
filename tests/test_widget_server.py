@@ -85,7 +85,7 @@ async def test_mcp_server_filters_widget_tools_when_widgets_enabled(monkeypatch)
 
 @pytest.mark.asyncio
 async def test_widget_server_registers_six_tools_and_six_resources():
-    """Widget FastMCP instance has exactly 9 tools/resources (Phase A + query + query_diff + value_diff + value_diff_detail widgets).
+    """Widget FastMCP instance has exactly 10 tools/resources (Phase A + Phase B widgets).
 
     Uses FastMCP public API: mcp.list_tools() and mcp.list_resources().
     """
@@ -107,6 +107,7 @@ async def test_widget_server_registers_six_tools_and_six_resources():
         "query_diff",
         "value_diff",
         "value_diff_detail",
+        "top_k_diff",
     }
     assert resource_uris == {
         "ui://recce/row_count_diff.html",
@@ -118,6 +119,7 @@ async def test_widget_server_registers_six_tools_and_six_resources():
         "ui://recce/query_diff.html",
         "ui://recce/value_diff.html",
         "ui://recce/value_diff_detail.html",
+        "ui://recce/top_k_diff.html",
     }
 
 
@@ -290,6 +292,7 @@ async def test_widget_tool_annotations_present():
         "query_diff",
         "value_diff",
         "value_diff_detail",
+        "top_k_diff",
     ):
         assert tool_name in tool_map, f"{tool_name} not found in widget mcp tools"
         t = tool_map[tool_name]
@@ -306,13 +309,14 @@ async def test_widget_tool_annotations_present():
         t = tool_map[tool_name]
         assert t.annotations.openWorldHint is False, f"{tool_name}: expected openWorldHint=False"
 
-    # query, query_diff, value_diff, and value_diff_detail hit the warehouse — openWorldHint must be True
+    # query, query_diff, value_diff, value_diff_detail, and top_k_diff hit the warehouse — openWorldHint must be True
     assert tool_map["query"].annotations.openWorldHint is True, "query: expected openWorldHint=True"
     assert tool_map["query_diff"].annotations.openWorldHint is True, "query_diff: expected openWorldHint=True"
     assert tool_map["value_diff"].annotations.openWorldHint is True, "value_diff: expected openWorldHint=True"
     assert (
         tool_map["value_diff_detail"].annotations.openWorldHint is True
     ), "value_diff_detail: expected openWorldHint=True"
+    assert tool_map["top_k_diff"].annotations.openWorldHint is True, "top_k_diff: expected openWorldHint=True"
 
 
 # ---------------------------------------------------------------------------
@@ -1199,6 +1203,146 @@ async def test_value_diff_detail_returns_calltoolresult_with_pydantic_shape():
     # metadata
     assert validated.limit == 1000
     assert validated.more is False
+
+    # _warning extracted
+    assert validated.warning == "Base environment not configured — comparing current against itself."
+
+
+# ---------------------------------------------------------------------------
+# Test 23: top_k_diff widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_top_k_diff_widget_registered():
+    """top_k_diff appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'top_k_diff' is in widget mcp tool list
+    - resource URI 'ui://recce/top_k_diff.html' is in widget mcp resource list
+    - model and column_name are required in inputSchema; k is optional
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "top_k_diff" in tool_names
+    assert "ui://recce/top_k_diff.html" in resource_uris
+
+    # Check inputSchema: model + column_name required, k optional.
+    # FastMCP wraps the Pydantic model in an 'args' outer envelope.
+    tk_tool = next(t for t in tools if t.name == "top_k_diff")
+    schema = tk_tool.inputSchema
+    assert schema is not None
+
+    defs = schema.get("$defs", {})
+    inner_schema = next(iter(defs.values()), schema)
+    inner_required = inner_schema.get("required", [])
+    inner_props = inner_schema.get("properties", {})
+    assert "model" in inner_required, "model must be required"
+    assert "column_name" in inner_required, "column_name must be required"
+    assert "k" not in inner_required, "k must be optional"
+    assert "model" in inner_props
+    assert "column_name" in inner_props
+    assert "k" in inner_props
+
+
+# ---------------------------------------------------------------------------
+# Test 24: top_k_diff returns CallToolResult with correct Pydantic shape
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_top_k_diff_returns_calltoolresult_with_pydantic_shape():
+    """top_k_diff handler returns CallToolResult with structuredContent matching TopKDiffOutput.
+
+    Uses the actual TopKDiffTask.execute() return shape (verified from source):
+    {
+      "base":    {"values": [...], "counts": [...], "valids": N, "total": N},
+      "current": {"values": [...], "counts": [...], "valids": N, "total": N},
+    }
+
+    Note: values[] is the SAME list in both envs (union ordered by curr_count desc,
+    base_count desc). counts[] differ per env. Categories absent from an env have
+    count=0 in that env's counts list.
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent passes TopKDiffOutput.model_validate()
+    - model, column_name, k are echoed back
+    - base and current env stats are hydrated correctly
+    - _warning is extracted to output.warning named field
+    - categories with count=0 in an env represent absent entries (New/Gone in widget)
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import TopKDiffInput, TopKDiffOutput
+
+    mock_server = MagicMock()
+    # Realistic TopKDiffTask.execute() return shape (verified from recce/tasks/top_k.py).
+    # values[] is the union ordered by curr_count desc, base_count desc.
+    # Entries with base_count=0 are "new" (only in current); entries with curr_count=0 are "gone".
+    mock_server._tool_top_k_diff = AsyncMock(
+        return_value={
+            "base": {
+                "values": ["active", "pending", "closed", "cancelled", None],
+                "counts": [500, 300, 200, 0, 10],  # 'cancelled' absent in base
+                "valids": 1010,
+                "total": 1020,
+            },
+            "current": {
+                "values": ["active", "pending", "closed", "cancelled", None],
+                "counts": [480, 320, 180, 50, 8],  # 'cancelled' appeared in current
+                "valids": 1030,
+                "total": 1038,
+            },
+            "_warning": "Base environment not configured — comparing current against itself.",
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = TopKDiffInput(model="orders", column_name="status", k=5)
+        result = await ws.top_k_diff(args)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 200, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    assert result.structuredContent is not None
+    validated = TopKDiffOutput.model_validate(result.structuredContent)
+
+    # model, column_name, k echoed back
+    assert validated.model == "orders"
+    assert validated.column_name == "status"
+    assert validated.k == 5
+
+    # base env stats
+    assert len(validated.base.values) == 5
+    assert validated.base.values[0] == "active"
+    assert validated.base.values[4] is None  # null category
+    assert validated.base.counts[0] == 500
+    assert validated.base.counts[3] == 0  # cancelled absent in base
+    assert validated.base.valids == 1010
+    assert validated.base.total == 1020
+
+    # current env stats (same values list, different counts)
+    assert len(validated.current.values) == 5
+    assert validated.current.counts[0] == 480
+    assert validated.current.counts[3] == 50  # cancelled appeared in current
+    assert validated.current.valids == 1030
+    assert validated.current.total == 1038
 
     # _warning extracted
     assert validated.warning == "Base environment not configured — comparing current against itself."

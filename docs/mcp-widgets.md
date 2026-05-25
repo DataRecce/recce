@@ -14,7 +14,8 @@ annotates each tool with `_meta.ui.resourceUri` pointing at an HTML resource.
 
 Phase A ships five widgets: `row_count_diff`, `schema_diff`, `get_server_info`,
 `list_checks`, and `get_model`. Phase B iter 1 adds `query`, `query_diff`,
-`value_diff`, and `value_diff_detail` (tier-3 data-table widgets). All run in
+`value_diff`, `value_diff_detail`, and `top_k_diff` (five tier-3 data-table/list
+widgets). Total: **10 of 20 planned widgets** (50% coverage). All run in
 **local mode only** — cloud/session mode is not supported until iter 2.
 
 ---
@@ -25,7 +26,7 @@ Phase A ships five widgets: `row_count_diff`, `schema_diff`, `get_server_info`,
 recce/
   mcp_server.py              # Existing primary server.
                              # WIDGET_TOOLS set + _widgets_enabled() filter live here.
-  widget_server.py           # FastMCP widget server (Phase A).
+  widget_server.py           # FastMCP widget server (Phase A + Phase B).
                              # @mcp.tool delegates + @mcp.resource handlers.
   cli.py                     # mcp-widget-server CLI subcommand added here.
   data/
@@ -39,8 +40,9 @@ recce/
       query_diff.html        # Phase B tier-3: two-env comparison with status pills + filters
       value_diff.html        # Phase B tier-3: column-level match stats
       value_diff_detail.html # Phase B tier-3: row-level diff table with filter pills
+      top_k_diff.html        # Phase B tier-3: side-by-side ranked lists with inline bars
 tests/
-  test_widget_server.py      # 22 tests covering WIDGET_TOOLS coordination + widget server.
+  test_widget_server.py      # 24 tests covering WIDGET_TOOLS coordination + widget server.
 docs/
   mcp-widgets.md             # This file.
 ```
@@ -434,6 +436,7 @@ Seven working examples (in order of implementation):
 | `recce/data/mcp/get_model.html` | Single-item detail card | Per-environment column tables (base/current), adaptive 2-col/3-col layout when constraints present, PK + not-null + unique badges, not-found empty state, `columns` dict → list normalisation in delegate |
 | `recce/data/mcp/query.html` | **Tier-3 data table** | **Template for Phase B.** Sticky-header scrollable table (400px cap), type-aware cell rendering, truncation badge, empty/error states. Use this as the base pattern for `query_diff`, `value_diff`, `value_diff_detail`, `top_k_diff` |
 | `recce/data/mcp/query_diff.html` | **Tier-3 two-env comparison** | Two render modes: side-by-side (no primary_keys → base/current tables) and join-diff (primary_keys → single table with status pills + Added/Removed filter buttons). Row tinting (red=removed, green=added), `in_a`/`in_b` columns stripped from display. |
+| `recce/data/mcp/top_k_diff.html` | **Tier-3 side-by-side ranked lists** | Two-column grid (Base / Current) with ranked entries, inline bars, rank-change arrows (↑↓), and New/Gone badges for env-exclusive categories. Union of categories shown for both sides; count=0 entries denote absent categories. |
 
 `get_server_info` is the **recommended canonical example** for new widgets
 because it was written after the idiomatic pattern was established (Day 3
@@ -455,6 +458,18 @@ verify rendering without running a full MCP server.
 
 Phase B widgets (`query`, `query_diff`, `value_diff`, `value_diff_detail`, `top_k_diff`)
 render arbitrary columnar data. `recce/data/mcp/query.html` is the canonical example.
+
+**Phase B table layout retrospective (iter 1):** All five Phase B widgets hand-rolled
+their own table/list layout because the data shapes diverged enough that a shared
+`<recce-table>` component would have needed extreme flexibility: `query` is a plain
+scrollable table; `query_diff` is two tables OR one flagged table; `value_diff` is a
+stat-card grid + match-bar table; `value_diff_detail` is a sticky-left filtered row
+table; `top_k_diff` is a side-by-side ranked-list grid with badges and inline bars.
+A shared component would have handled all five only by accepting almost all rendering
+decisions as parameters — essentially the same work. In iter 2, evaluate whether
+extracting a `renderRankedList()` JS helper function (shared between `top_k_diff` and
+any future histogram-bar widget) is worth the coordination cost. A full `<recce-table>`
+abstraction is not recommended until at least 3 widgets converge on the same layout.
 
 ### Data shape
 
