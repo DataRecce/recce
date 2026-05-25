@@ -76,24 +76,33 @@ export function useCanceledRuns(): UseCanceledRunsResult {
   const has = useCallback((runId: string) => ids.includes(runId), [ids]);
 
   const add = useCallback((runId: string) => {
-    setIds((prev) => {
-      if (prev.includes(runId)) return prev;
-      const next = [...prev, runId];
-      const trimmed =
-        next.length > MAX_ENTRIES
-          ? next.slice(next.length - MAX_ENTRIES)
-          : next;
-      writeToStorage(trimmed);
-      // Broadcast to other hook instances in the same tab.
-      if (typeof window !== "undefined") {
-        try {
-          window.dispatchEvent(new Event(SAME_TAB_EVENT));
-        } catch {
-          // Silently ignore — older browsers / restricted contexts.
-        }
+    // Read-compute-write OUTSIDE the state updater so the updater stays pure
+    // (React requires this — under StrictMode dev builds, updaters are invoked
+    // twice to surface impurity, which would double the localStorage write and
+    // the same-tab broadcast). Reading from storage rather than `ids` ensures
+    // any cross-instance writes that happened since this render are honored.
+    const prev = readFromStorage();
+    if (prev.includes(runId)) {
+      // No-op: keep instance state in sync with storage but skip the broadcast.
+      setIds(prev);
+      return;
+    }
+    const next = [...prev, runId];
+    const trimmed =
+      next.length > MAX_ENTRIES ? next.slice(next.length - MAX_ENTRIES) : next;
+    writeToStorage(trimmed);
+    setIds(trimmed);
+    // Broadcast to other hook instances in the same tab AFTER state + storage
+    // are settled. dispatchEvent is synchronous, so sibling listeners will run
+    // before this callback returns — they read fresh storage, which now has
+    // the new entry.
+    if (typeof window !== "undefined") {
+      try {
+        window.dispatchEvent(new Event(SAME_TAB_EVENT));
+      } catch {
+        // Silently ignore — older browsers / restricted contexts.
       }
-      return trimmed;
-    });
+    }
   }, []);
 
   return { has, add };
