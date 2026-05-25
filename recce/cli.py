@@ -1212,6 +1212,12 @@ def diff(
     help="Enable the new column-level lineage visual experience.",
     envvar="RECCE_NEW_CLL_EXPERIENCE",
 )
+@click.option(
+    "--whole-model-impact",
+    is_flag=True,
+    help="Highlight models downstream of a whole-model change. Implies --new-cll-experience.",
+    envvar="RECCE_WHOLE_MODEL_IMPACT",
+)
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -1281,6 +1287,7 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
         "disable_cll_cache": True,
         "impact_at_startup": False,
         "new_cll_experience": False,
+        "whole_model_impact": False,
     }
     console = Console()
 
@@ -1332,6 +1339,10 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
         flag["impact_at_startup"] = True
 
     if kwargs.get("new_cll_experience", False):
+        flag["new_cll_experience"] = True
+
+    if kwargs.get("whole_model_impact", False):
+        flag["whole_model_impact"] = True
         flag["new_cll_experience"] = True
 
     # Create state loader using shared function
@@ -2716,6 +2727,14 @@ def mcp_server(state_file, sse, host, port, **kwargs):
     \b
     # Start in HTTP/SSE mode with custom host and port
     recce mcp-server --sse --host 0.0.0.0 --port 9000
+
+    \b
+    # Cloud mode: connect to a Recce Cloud session
+    recce mcp-server --cloud --session <SID> --api-token <token>
+
+    \b
+    # Cloud mode using profile.yml token (after login)
+    recce mcp-server --cloud --session <SID>
 
     SSE Connection URL (when using --sse): http://<host>:<port>/sse
     """

@@ -54,18 +54,41 @@ function createModelDetail(columns?: Record<string, NodeColumnData>) {
 }
 
 /**
- * Mock SchemaView that renders column names as testable elements.
+ * Mock SchemaView that renders column names AND the optional `headerAction`
+ * slot, so tests can assert the diff-mode "Add schema diff" button is wired.
  */
 function MockSchemaView({
   base,
   current,
+  headerAction,
 }: {
   base?: { columns?: Record<string, NodeColumnData | undefined> };
   current?: { columns?: Record<string, NodeColumnData | undefined> };
+  headerAction?: React.ReactNode;
 }) {
   const cols = current?.columns ?? base?.columns ?? {};
   return (
     <div data-testid="schema-view">
+      {headerAction != null && (
+        <div data-testid="schema-header-action">{headerAction}</div>
+      )}
+      {Object.keys(cols).map((name) => (
+        <span key={name} data-testid={`column-${name}`}>
+          {name}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function MockSingleEnvSchemaView({
+  current,
+}: {
+  current?: { columns?: Record<string, NodeColumnData | undefined> };
+}) {
+  const cols = current?.columns ?? {};
+  return (
+    <div data-testid="single-env-schema-view">
       {Object.keys(cols).map((name) => (
         <span key={name} data-testid={`column-${name}`}>
           {name}
@@ -78,6 +101,7 @@ function MockSchemaView({
 function renderNodeView(
   node: NodeViewNodeData,
   columns?: Record<string, NodeColumnData>,
+  overrides: Partial<React.ComponentProps<typeof NodeView>> = {},
 ) {
   return render(
     <NodeView
@@ -86,6 +110,8 @@ function renderNodeView(
       onCloseNode={vi.fn()}
       isSingleEnv={false}
       SchemaView={MockSchemaView}
+      SingleEnvSchemaView={MockSingleEnvSchemaView}
+      {...overrides}
     />,
   );
 }
@@ -132,6 +158,129 @@ describe("NodeView", () => {
     });
   });
 
+  describe("whole-model treatment", () => {
+    // NodeView signals whole-model kinds via a title chip + left stripe and
+    // never renders a graph badge of any kind. The structural badge check
+    // (`[data-testid$="-badge"]` returns 0) catches a regression that
+    // re-introduces a badge surface under any naming.
+    test("renders the changed title chip (no inline badge) when isWholeModelChanged is true and wholeModelImpact is on", () => {
+      const { container } = render(
+        <NodeView
+          node={createNode("model")}
+          onCloseNode={vi.fn()}
+          isSingleEnv={false}
+          isWholeModelChanged
+          wholeModelImpact
+        />,
+      );
+      expect(
+        screen.getByTestId("whole-model-changed-title-chip"),
+      ).toBeInTheDocument();
+      expect(
+        container.querySelectorAll('[data-testid$="-badge"]'),
+      ).toHaveLength(0);
+    });
+
+    test("renders the impacted title chip (no inline badge) when isWholeModelImpacted is true and wholeModelImpact is on", () => {
+      const { container } = render(
+        <NodeView
+          node={createNode("model")}
+          onCloseNode={vi.fn()}
+          isSingleEnv={false}
+          isWholeModelImpacted
+          wholeModelImpact
+        />,
+      );
+      expect(
+        screen.getByTestId("whole-model-impacted-title-chip"),
+      ).toBeInTheDocument();
+      expect(
+        container.querySelectorAll('[data-testid$="-badge"]'),
+      ).toHaveLength(0);
+    });
+
+    test("changed-wins: renders the changed title chip (no badge) when both flags are true (Q11)", () => {
+      const { container } = render(
+        <NodeView
+          node={createNode("model")}
+          onCloseNode={vi.fn()}
+          isSingleEnv={false}
+          isWholeModelChanged
+          isWholeModelImpacted
+          wholeModelImpact
+        />,
+      );
+      expect(
+        screen.getByTestId("whole-model-changed-title-chip"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-impacted-title-chip"),
+      ).not.toBeInTheDocument();
+      expect(
+        container.querySelectorAll('[data-testid$="-badge"]'),
+      ).toHaveLength(0);
+    });
+
+    test("renders no whole-model surfaces when neither flag is set", () => {
+      const { container } = render(
+        <NodeView
+          node={createNode("model")}
+          onCloseNode={vi.fn()}
+          isSingleEnv={false}
+          wholeModelImpact
+        />,
+      );
+      expect(
+        container.querySelectorAll('[data-testid$="-title-chip"]'),
+      ).toHaveLength(0);
+      expect(
+        container.querySelectorAll('[data-testid$="-badge"]'),
+      ).toHaveLength(0);
+    });
+
+    test("renders no NodeView treatment for additive (non_breaking) — additive is per-column, not whole-table", () => {
+      const { container } = render(
+        <NodeView
+          node={{
+            id: "model.test.additive",
+            data: {
+              name: "additive_model",
+              resourceType: "model",
+              change: { category: "non_breaking" },
+            },
+          }}
+          onCloseNode={vi.fn()}
+          isSingleEnv={false}
+          wholeModelImpact
+        />,
+      );
+      expect(
+        container.querySelectorAll('[data-testid$="-title-chip"]'),
+      ).toHaveLength(0);
+      expect(
+        container.querySelectorAll('[data-testid$="-badge"]'),
+      ).toHaveLength(0);
+    });
+
+    test("renders no whole-model surfaces when wholeModelImpact is off, even if flags are set", () => {
+      const { container } = render(
+        <NodeView
+          node={createNode("model")}
+          onCloseNode={vi.fn()}
+          isSingleEnv={false}
+          isWholeModelChanged
+          isWholeModelImpacted
+        />,
+      );
+      expect(
+        container.querySelectorAll('[data-testid$="-title-chip"]'),
+      ).toHaveLength(0);
+      expect(
+        container.querySelectorAll('[data-testid$="-badge"]'),
+      ).toHaveLength(0);
+    });
+  });
+
   describe("default landing tab", () => {
     // DRC-3468: Columns must be the default tab even when lineageTabContent
     // is provided. Without this assertion, a regression that re-inverts the
@@ -150,6 +299,44 @@ describe("NodeView", () => {
 
       expect(screen.getByTestId("schema-view")).toBeInTheDocument();
       expect(screen.queryByTestId("lineage-content")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Sandbox removal regression guard", () => {
+    test("does not render a Sandbox button anywhere in the node view", () => {
+      renderNodeView(createNode("model", testColumns), testColumns);
+
+      expect(
+        screen.queryByRole("button", { name: /sandbox/i }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/sandbox/i)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("'Add schema diff to checklist' placement", () => {
+    test("renders headerAction in diff mode when onAddSchemaDiffClick is provided", () => {
+      renderNodeView(createNode("model", testColumns), testColumns, {
+        actionCallbacks: { onAddSchemaDiffClick: vi.fn() },
+      });
+
+      expect(screen.getByTestId("schema-header-action")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /add schema diff to checklist/i }),
+      ).toBeInTheDocument();
+    });
+
+    test("does not render headerAction in single-env mode", () => {
+      renderNodeView(createNode("model", testColumns), testColumns, {
+        isSingleEnv: true,
+        actionCallbacks: { onAddSchemaDiffClick: vi.fn() },
+      });
+
+      expect(
+        screen.queryByTestId("schema-header-action"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /add schema diff to checklist/i }),
+      ).not.toBeInTheDocument();
     });
   });
 });

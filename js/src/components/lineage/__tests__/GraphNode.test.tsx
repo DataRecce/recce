@@ -250,6 +250,10 @@ const createMockContext = (
   viewOptions: {},
   cll: undefined,
   showColumnLevelLineage: vi.fn(),
+  impactedNodeIds: new Set<string>(),
+  wholeModelImpactedNodeIds: new Set<string>(),
+  wholeModelChangedNodeIds: new Set<string>(),
+  wholeModelImpact: false,
   ...overrides,
 });
 
@@ -512,54 +516,16 @@ describe("GraphNode", () => {
       // For modified nodes, FaRegDotCircle (impact radius) should be shown
     });
 
-    it("does not show impact radius icon for non-modified nodes", () => {
-      const props = createMockNodeProps({ changeStatus: "added" });
-
-      const { container } = render(<GraphNode {...props} />);
-
-      // Trigger hover
-      fireEvent.mouseEnter(container.firstChild as Element);
-
-      // Impact radius icon should NOT be shown for added/removed nodes
-    });
-
-    it("passes onShowImpactRadius when modified and change analysis available", () => {
-      mockUseLineageGraphContext.mockReturnValue(
-        createMockLineageGraphContext({ isActionAvailable: () => true }),
-      );
-      const props = createMockNodeProps({ changeStatus: "modified" });
-
-      render(<GraphNode {...props} />);
-
-      const callProps = mockedLineageNode.mock.calls[0][0];
-      expect(callProps.onShowImpactRadius).toBeDefined();
-    });
-
-    it("does not pass onShowImpactRadius when change analysis is unavailable", () => {
-      mockUseLineageGraphContext.mockReturnValue(
-        createMockLineageGraphContext({ isActionAvailable: () => false }),
-      );
-      const props = createMockNodeProps({ changeStatus: "modified" });
-
-      render(<GraphNode {...props} />);
-
-      const callProps = mockedLineageNode.mock.calls[0][0];
-      expect(callProps.onShowImpactRadius).toBeUndefined();
-    });
-
-    it("hides resource type icon on hover", () => {
+    it("keeps resource type icon visible on hover", () => {
       const props = createMockNodeProps();
 
       const { container } = render(<GraphNode {...props} />);
 
-      // Before hover, resource type icon should be visible
       expect(screen.getByTestId("resource-type-icon")).toBeInTheDocument();
 
-      // Trigger hover
       fireEvent.mouseEnter(container.firstChild as Element);
 
-      // After hover, resource type icon should be replaced with menu icons
-      // This is verified by the component rendering different content based on isHovered state
+      expect(screen.getByTestId("resource-type-icon")).toBeInTheDocument();
     });
   });
 

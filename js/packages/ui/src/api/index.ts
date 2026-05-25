@@ -202,7 +202,6 @@ export {
   isQueryRun,
   isRowCountDiffRun,
   isRowCountRun,
-  isSandboxRun,
   isSchemaDiffRun,
   isSimpleRun,
   isTopKDiffRun,

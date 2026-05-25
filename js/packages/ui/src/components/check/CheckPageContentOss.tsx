@@ -3,7 +3,6 @@
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
-import { useTheme } from "@mui/material/styles";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, {
@@ -15,7 +14,11 @@ import React, {
 } from "react";
 import { cacheKeys, listChecks, reorderChecks } from "../../api";
 import { useRouteConfig } from "../../contexts";
-import { useApiConfig, useRecceCheckContext } from "../../hooks";
+import {
+  useApiConfig,
+  useRecceCheckContext,
+  useThemeColors,
+} from "../../hooks";
 import { StateImporter } from "../app";
 import { HSplit } from "../ui";
 import { CheckDetailOss as CheckDetail } from "./CheckDetailOss";
@@ -23,8 +26,9 @@ import { CheckEmptyStateOss as CheckEmptyState } from "./CheckEmptyStateOss";
 import { CheckListOss as CheckList } from "./CheckListOss";
 
 export const CheckPageContentOss = (): ReactNode => {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  // useTheme().palette.mode === "dark" does NOT work with this codebase's
+  // MUI colorSchemes setup — useThemeColors() is the correct accessor.
+  const { isDark } = useThemeColors();
   const borderColor = isDark ? "grey.700" : "grey.300";
   const router = useRouter();
   const searchParams = useSearchParams();

@@ -24,8 +24,16 @@ import Checkbox from "@mui/material/Checkbox";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { Handle, Position } from "@xyflow/react";
-import { type MouseEvent, memo, type ReactNode, useState } from "react";
+import { Handle, NodeToolbar, Position } from "@xyflow/react";
+import {
+  type MouseEvent,
+  memo,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { DIM_FILTER } from "../config/zoomConstants";
 import {
   getIconForChangeStatus,
@@ -33,6 +41,8 @@ import {
   getIconForResourceType,
   getStyleForImpacted,
 } from "../styles";
+import { TreatmentChip } from "../TreatmentChip";
+import { getTitleRowTooltip, pickGraphBadge } from "../wholeModelTreatment";
 
 // =============================================================================
 // TYPES
@@ -143,6 +153,12 @@ export interface LineageNodeProps {
   newCllExperience?: boolean;
   /** Whether this node is impacted by CLL analysis */
   isImpacted?: boolean;
+  /** This model itself has a whole-model change. Suppresses the graph badge (the signal lives on NodeView's title chip + stripe) and the change-category text label. */
+  isWholeModelChanged?: boolean;
+  /** This model is downstream of (impacted by) a whole-model change. Suppresses the graph badge (the signal lives on NodeView's title chip + stripe) and the change-category text label. Precedence is enforced internally: `isWholeModelChanged` outranks this flag. */
+  isWholeModelImpacted?: boolean;
+  /** Whether the `--whole-model-impact` server flag is on. When false, no per-column badges render and the original "Breaking / Non Breaking / Partial Breaking" text labels are restored. */
+  wholeModelImpact?: boolean;
 
   // === Callbacks ===
   /** Callback when node is clicked */
@@ -153,8 +169,6 @@ export interface LineageNodeProps {
   onSelect?: (nodeId: string) => void;
   /** Callback when context menu is requested */
   onContextMenu?: (event: MouseEvent, nodeId: string) => void;
-  /** Callback when impact radius button is clicked */
-  onShowImpactRadius?: (nodeId: string) => void;
 }
 
 // =============================================================================
@@ -191,42 +205,14 @@ const KebabIcon = () => (
   </svg>
 );
 
-/**
- * Impact radius icon (dot circle)
- */
-const ImpactRadiusIcon = () => (
-  <svg
-    stroke="currentColor"
-    fill="currentColor"
-    strokeWidth="0"
-    viewBox="0 0 512 512"
-    height="1em"
-    width="1em"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path d="M256 56c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m0-48C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 168c-44.183 0-80 35.817-80 80s35.817 80 80 80 80-35.817 80-80-35.817-80-80-80z" />
-  </svg>
-);
-
 // =============================================================================
 // HELPER COMPONENTS
 // =============================================================================
 
 /**
- * Node title with tooltip
+ * Node title (name) — tooltip lives on the parent title row, not here.
  */
-function NodeTitle({
-  name,
-  color,
-  resourceType,
-}: {
-  name: string;
-  color: string;
-  resourceType?: string;
-}) {
-  const tooltipTitle =
-    resourceType === "model" ? name : `${name} (${resourceType || "unknown"})`;
-
+function NodeTitle({ name, color }: { name: string; color: string }) {
   return (
     <Box
       sx={{
@@ -237,9 +223,7 @@ function NodeTitle({
         whiteSpace: "nowrap",
       }}
     >
-      <Tooltip title={tooltipTitle} placement="top">
-        <span>{name}</span>
-      </Tooltip>
+      <span>{name}</span>
     </Box>
   );
 }
@@ -317,14 +301,37 @@ function LineageNodeComponent({
   // New CLL experience props (fall back to data for ReactFlow passthrough)
   newCllExperience: newCllExperienceProp,
   isImpacted: isImpactedProp,
+  isWholeModelChanged = false,
+  isWholeModelImpacted = false,
+  wholeModelImpact = false,
   // Callbacks
   onNodeClick,
   onNodeDoubleClick,
   onSelect,
   onContextMenu,
-  onShowImpactRadius,
 }: LineageNodeProps) {
   const [isHovered, setIsHovered] = useState(false);
+
+  // Bridge the hover gap between the card and the floating toolbar:
+  // the toolbar is portaled outside the card, so moving from card -> toolbar
+  // fires mouseleave on the card. A short grace period lets the cursor land
+  // on the toolbar (which clears the timer) before the toolbar hides.
+  const hoverHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelHoverHide = useCallback(() => {
+    if (hoverHideTimer.current) {
+      clearTimeout(hoverHideTimer.current);
+      hoverHideTimer.current = null;
+    }
+  }, []);
+  const beginHover = useCallback(() => {
+    cancelHoverHide();
+    setIsHovered(true);
+  }, [cancelHoverHide]);
+  const scheduleHoverHide = useCallback(() => {
+    cancelHoverHide();
+    hoverHideTimer.current = setTimeout(() => setIsHovered(false), 500);
+  }, [cancelHoverHide]);
+  useEffect(() => () => cancelHoverHide(), [cancelHoverHide]);
 
   const {
     label,
@@ -454,18 +461,38 @@ function LineageNodeComponent({
     onContextMenu?.(e, id);
   };
 
-  const handleImpactRadiusClick = (e: MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onShowImpactRadius?.(id);
+  const treatmentInputs = {
+    wholeModelImpact,
+    isWholeModelChanged,
+    isWholeModelImpacted,
+    isImpacted,
+    changeCategory,
   };
+  const wholeModelBadge = pickGraphBadge(treatmentInputs, isDark);
+
+  // Shared with NodeView via getTitleRowTooltip — keep the hover text in
+  // sync across the canvas card and the sidebar.
+  const titleRowTooltip = getTitleRowTooltip(
+    { name: label, resourceType, materialized },
+    treatmentInputs,
+  );
+
+  // When --whole-model-impact is on, the COLUMN / ADD graph badge and the
+  // NodeView title chip + stripe carry the signal — suppress the text
+  // label except for "unknown", which has no badge equivalent.
+  const changeCategoryLabel =
+    showChangeAnalysis &&
+    changeCategory &&
+    (!wholeModelImpact || changeCategory === "unknown")
+      ? CHANGE_CATEGORY_LABELS[changeCategory]
+      : null;
 
   return (
     <Box
       onClick={() => onNodeClick?.(id)}
       onDoubleClick={() => onNodeDoubleClick?.(id)}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={beginHover}
+      onMouseLeave={scheduleHoverHide}
       sx={{
         display: "flex",
         flexDirection: "column",
@@ -476,6 +503,62 @@ function LineageNodeComponent({
         filter: nodeFilter,
       }}
     >
+      {/* Floating hover toolbar — actions appear above the card without
+          displacing the descriptor + status icons inside it. */}
+      <NodeToolbar
+        isVisible={isHovered}
+        position={Position.Right}
+        offset={6}
+        align="center"
+      >
+        <Box
+          onMouseEnter={beginHover}
+          onMouseLeave={scheduleHoverHide}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.75,
+            // Invisible bridge to the left of the toolbar so the cursor can
+            // land anywhere between the card edge and the toolbar without
+            // losing hover. Intentionally wider than the NodeToolbar `offset`
+            // (12px bridge vs 6px gap) — the extra buffer gives the user a
+            // generous target to actually hit on the way from the card to
+            // the kebab.
+            "&::before": {
+              content: '""',
+              position: "absolute",
+              top: 0,
+              bottom: 0,
+              right: "100%",
+              width: "12px",
+            },
+            position: "relative",
+            px: 0.75,
+            py: 0.5,
+            borderRadius: 1,
+            backgroundColor: "background.paper",
+            border: "1px solid",
+            borderColor: "divider",
+            boxShadow:
+              "0 2px 6px rgb(0 0 0 / 0.15), 0 1px 2px rgb(0 0 0 / 0.1)",
+          }}
+        >
+          {onContextMenu && (
+            <Box
+              data-testid="lineage-node-kebab"
+              onClick={handleContextMenuClick}
+              sx={{
+                cursor: "pointer",
+                color: "text.secondary",
+                "&:hover": { color: "text.primary" },
+              }}
+            >
+              <KebabIcon />
+            </Box>
+          )}
+        </Box>
+      </NodeToolbar>
+
       {/* Main node container */}
       <Box
         sx={{
@@ -532,74 +615,46 @@ function LineageNodeComponent({
             flexDirection: "column",
           }}
         >
-          {/* Title row */}
-          <Box
-            sx={{
-              display: "flex",
-              width: "100%",
-              textAlign: "left",
-              fontWeight: 600,
-              flex: 1,
-              p: 0.5,
-              gap: "5px",
-              alignItems: "center",
-              visibility: showContent ? "inherit" : "hidden",
-            }}
-          >
-            <NodeTitle
-              name={label}
-              color={titleColor}
-              resourceType={resourceType}
-            />
+          {/* Title row — single tooltip covers name + badge + status icons */}
+          <Tooltip title={titleRowTooltip} placement="top">
+            <Box
+              sx={{
+                display: "flex",
+                width: "100%",
+                textAlign: "left",
+                fontWeight: 600,
+                flex: 1,
+                p: 0.5,
+                gap: "5px",
+                alignItems: "center",
+                visibility: showContent ? "inherit" : "hidden",
+              }}
+            >
+              <NodeTitle name={label} color={titleColor} />
 
-            {/* Hover actions vs icons */}
-            {isHovered ? (
-              <>
-                {changeStatus === "modified" && onShowImpactRadius && (
-                  <Tooltip title="Show Impact Radius" placement="top">
-                    <Box
-                      onClick={handleImpactRadiusClick}
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                        color: "text.secondary",
-                        "&:hover": { color: "text.primary" },
-                      }}
-                    >
-                      <ImpactRadiusIcon />
-                    </Box>
-                  </Tooltip>
-                )}
-                {onContextMenu && (
-                  <Box
-                    onClick={handleContextMenuClick}
-                    sx={{
-                      cursor: "pointer",
-                      color: "text.secondary",
-                      "&:hover": { color: "text.primary" },
-                    }}
-                  >
-                    <KebabIcon />
-                  </Box>
-                )}
-              </>
-            ) : (
-              <>
-                {ResourceIcon && (
-                  <Box sx={{ fontSize: 16, color: iconColor }}>
-                    <ResourceIcon aria-hidden="true" />
-                  </Box>
-                )}
-                {changeStatus && IconChangeStatus && (
-                  <Box sx={{ color: changeStatusIconColor }}>
-                    <IconChangeStatus aria-hidden="true" />
-                  </Box>
-                )}
-              </>
-            )}
-          </Box>
+              {wholeModelBadge && (
+                <TreatmentChip
+                  tokens={wholeModelBadge.tokens}
+                  testId={wholeModelBadge.testId}
+                  ariaLabel={wholeModelBadge.ariaLabel}
+                >
+                  {wholeModelBadge.text}
+                </TreatmentChip>
+              )}
+
+              {/* Descriptor + status — always visible */}
+              {ResourceIcon && (
+                <Box sx={{ fontSize: 16, color: iconColor }}>
+                  <ResourceIcon aria-hidden="true" />
+                </Box>
+              )}
+              {changeStatus && IconChangeStatus && (
+                <Box sx={{ color: changeStatusIconColor }}>
+                  <IconChangeStatus aria-hidden="true" />
+                </Box>
+              )}
+            </Box>
+          </Tooltip>
 
           {/* Bottom row - action tags, change analysis, or runs aggregated */}
           <Box
@@ -618,7 +673,7 @@ function LineageNodeComponent({
                   <Box sx={{ flexGrow: 1 }} />
                   {actionTag}
                 </>
-              ) : showChangeAnalysis && changeCategory ? (
+              ) : changeCategoryLabel ? (
                 <Typography
                   sx={{
                     height: 20,
@@ -628,7 +683,7 @@ function LineageNodeComponent({
                     fontWeight: 600,
                   }}
                 >
-                  {CHANGE_CATEGORY_LABELS[changeCategory]}
+                  {changeCategoryLabel}
                 </Typography>
               ) : selectMode !== "action_result" && runsAggregatedTag ? (
                 runsAggregatedTag

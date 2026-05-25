@@ -9,10 +9,12 @@ export interface ColumnTooltipInput {
   baseType?: string;
   currentType?: string;
   cllAvailable?: boolean;
+  /** Column is downstream-impacted (mirrors the `!` badge render rule). */
+  impacted?: boolean;
 }
 
 export function buildColumnTooltip(input: ColumnTooltipInput): string {
-  const { name, status, baseType, currentType, cllAvailable } = input;
+  const { name, status, baseType, currentType, cllAvailable, impacted } = input;
 
   let text: string;
 
@@ -50,6 +52,10 @@ export function buildColumnTooltip(input: ColumnTooltipInput): string {
       }
       break;
     }
+  }
+
+  if (impacted) {
+    text += " \u00b7 impacted";
   }
 
   if (cllAvailable) {
