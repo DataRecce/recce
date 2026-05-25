@@ -410,7 +410,7 @@ async def test_list_checks_returns_calltoolresult_with_pydantic_shape():
     from mcp.types import CallToolResult
 
     import recce.widget_server as ws
-    from recce.widget_server import ListChecksInput, ListChecksOutput
+    from recce.widget_server import ListChecksOutput
 
     mock_server = MagicMock()
     mock_server._tool_list_checks = AsyncMock(
@@ -443,8 +443,7 @@ async def test_list_checks_returns_calltoolresult_with_pydantic_shape():
     original = ws._recce_server
     ws._recce_server = mock_server
     try:
-        args = ListChecksInput()
-        result = await ws.list_checks(args)
+        result = await ws.list_checks()
     finally:
         ws._recce_server = original
 

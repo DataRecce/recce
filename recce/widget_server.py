@@ -393,10 +393,6 @@ class ListChecksOutput(BaseModel):
     pending: int
 
 
-class ListChecksInput(BaseModel):
-    pass  # _tool_list_checks takes no arguments — list everything in the session
-
-
 @mcp.tool(
     name="list_checks",
     annotations={
@@ -411,7 +407,7 @@ class ListChecksInput(BaseModel):
         "ui/resourceUri": "ui://recce/list_checks.html",
     },
 )
-async def list_checks(args: ListChecksInput) -> CallToolResult:
+async def list_checks() -> CallToolResult:
     """List all saved Recce checks for this session.
 
     Returns a summary card (total / approved / pending) plus a status table
