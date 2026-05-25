@@ -44,6 +44,7 @@ import {
 import { useRecceActionContext } from "../contexts/action";
 import type { ActionState, LineageGraphNode } from "../contexts/lineage/types";
 import { useApiClient } from "../providers";
+import { useCanceledRuns } from "./useCanceledRuns";
 
 /**
  * Action types that can be tracked.
@@ -196,6 +197,12 @@ export const useMultiNodesAction = (
   const actionState = useRef<ActionState>({
     ...initValue,
   }).current;
+  // Sticky cancel set: mirrors the optimistic flow used by `useRun.onCancel`.
+  // Adding the run id here makes the same gates that protect single-run
+  // surfaces (`RunView`, `RunResultPane`, `RunStatusAndDateDisplay`) also
+  // engage when the multi-node action bar's Cancel is clicked, so any
+  // in-flight `waitRun` poll for the multi-node run cannot revert the UI.
+  const canceledRuns = useCanceledRuns();
 
   const { showRunId } = useRecceActionContext();
 
@@ -513,13 +520,22 @@ export const useMultiNodesAction = (
 
   /**
    * Cancel the current running action.
-   * Sets status to "canceling" and calls cancelRun API if a run is in progress.
+   * Sets status to "canceling", marks the run cancelled in the sticky set
+   * (so any in-flight `waitRun` poll cannot revert the UI), and fires the
+   * cancel POST. `cancelRun` swallows its own network errors, so we run it
+   * fire-and-forget — the UI has already detached.
+   *
+   * Returns a resolved promise to preserve the existing `() => Promise<void>`
+   * signature for callers that may `await` it.
    */
-  const cancel = async () => {
+  const cancel = (): Promise<void> => {
     actionState.status = "canceling";
-    if (actionState.currentRun?.run_id) {
-      await cancelRun(actionState.currentRun.run_id, apiClient);
+    const runId = actionState.currentRun?.run_id;
+    if (runId) {
+      canceledRuns.add(runId);
+      void cancelRun(runId, apiClient);
     }
+    return Promise.resolve();
   };
 
   /**

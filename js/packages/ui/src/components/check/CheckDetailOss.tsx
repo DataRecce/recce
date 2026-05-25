@@ -51,7 +51,7 @@ import {
   markAsPresetCheck,
   updateCheck,
 } from "../../api/checks";
-import { cancelRun, submitRunFromCheck } from "../../api/runs";
+import { submitRunFromCheck } from "../../api/runs";
 import type { Run, RunParamTypes } from "../../api/types";
 import {
   useLineageGraphContext,
@@ -137,7 +137,11 @@ export function CheckDetailOss({
   });
 
   const trackedRunId = submittedRunId ?? check?.last_run?.run_id;
-  const { run, error: rerunError } = useRun(trackedRunId);
+  const {
+    run,
+    error: rerunError,
+    onCancel: handleCancel,
+  } = useRun(trackedRunId);
   const isRunning = submittedRunId
     ? !run || run.status === "Running"
     : run?.status === "Running";
@@ -210,14 +214,6 @@ export function CheckDetailOss({
     await queryClient.invalidateQueries({ queryKey: cacheKeys.check(checkId) });
     if (refreshCheckList) refreshCheckList(); // refresh the checklist to fetch correct last run status
   }, [check, checkId, queryClient, refreshCheckList, apiClient]);
-
-  const handleCancel = useCallback(async () => {
-    if (!trackedRunId) {
-      return;
-    }
-
-    return await cancelRun(trackedRunId, apiClient);
-  }, [trackedRunId, apiClient]);
 
   const handleCopy = async () => {
     if (!check) {
