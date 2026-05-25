@@ -49,7 +49,6 @@ const hoistedMocks = vi.hoisted(() => {
       },
       onCancel: mockOnCancel,
       isRunning: false,
-      aborting: false,
     })),
     // biome-ignore lint/suspicious/noExplicitAny: test mock needs flexible typing for various test scenarios
     useRecceInstanceContext: vi.fn((): any => ({
@@ -897,7 +896,6 @@ describe("RunResultPane", () => {
         },
         onCancel: hoistedMocks.mockOnCancel,
         isRunning: false,
-        aborting: false,
       });
 
       renderWithQueryClient(<RunResultPane />);

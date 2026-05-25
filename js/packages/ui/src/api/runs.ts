@@ -111,7 +111,12 @@ export async function cancelRun(
   runId: string,
   client: ApiClient,
 ): Promise<void> {
-  await client.post(`/api/runs/${runId}/cancel`);
+  try {
+    await client.post(`/api/runs/${runId}/cancel`);
+  } catch {
+    // Fire-and-forget: the UI has already detached. Network failures
+    // here do not affect the user's ability to continue working.
+  }
 }
 
 /**

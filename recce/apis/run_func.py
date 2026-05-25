@@ -1,11 +1,12 @@
 import asyncio
 import logging
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from recce.core import default_context
 from recce.exceptions import RecceException
 from recce.models import Run, RunDAO, RunType
 from recce.models.types import RunStatus
+from recce.tasks.core import Task
 
 running_tasks = {}
 logger = logging.getLogger("uvicorn")
@@ -257,7 +258,24 @@ def submit_run(type, params, check_id=None, triggered_by=None):
     return run, future
 
 
-def cancel_run(run_id):
+def _mark_run_cancelled(run_id: str) -> Tuple[Run, Task]:
+    """Synchronously flip run status to CANCELLED. Cannot hang.
+
+    Returns ``(run, task)``. Raises ``RecceException`` if either the
+    ``Run`` record or the in-memory task is missing.
+
+    Status is flipped BEFORE invoking the task's adapter cancel so the
+    in-memory state reflects the cancel immediately. This matters because
+    the adapter cancel (``dbt_adapter.cancel``) may hang on some
+    warehouses (e.g., Snowflake), and the UI polls ``run.status`` to
+    render the Cancelled state. Callers can now bound the cancel
+    duration via :func:`_invoke_task_cancel` without leaving the run in
+    RUNNING while the warehouse round-trip is in flight.
+
+    See :func:`submit_run`'s ``update_run_result`` (the
+    "Cross-thread store ordering" note) for the sub-µs GIL window race
+    that the status guard at run_func.py:203-209 covers.
+    """
     run = RunDAO().find_run_by_id(run_id)
     if run is None:
         raise RecceException(f"Run ID '{run_id}' not found")
@@ -266,8 +284,30 @@ def cancel_run(run_id):
     if task is None:
         raise RecceException(f"Run task for Run ID '{run_id}' not found")
 
-    task.cancel()
     run.status = RunStatus.CANCELLED
+    return run, task
+
+
+def _invoke_task_cancel(task: Task) -> None:
+    """Invoke the task's cancel hook. May hang on adapter cancel.
+
+    Callers that run on an async event loop should wrap this with
+    ``asyncio.wait_for(asyncio.to_thread(...), timeout=...)`` so a hung
+    warehouse cancel cannot block the event loop.
+    """
+    task.cancel()
+
+
+def cancel_run(run_id: str) -> None:
+    """Backwards-compatible shim.
+
+    Marks the run cancelled, then invokes the task's cancel hook
+    synchronously. Prefer the split helpers (:func:`_mark_run_cancelled`
+    + :func:`_invoke_task_cancel`) when the caller needs to bound the
+    cancel duration (e.g., async FastAPI handlers).
+    """
+    _, task = _mark_run_cancelled(run_id)
+    _invoke_task_cancel(task)
 
 
 def materialize_run_results(runs: List[Run], nodes: List[str] = None):
@@ -298,6 +338,8 @@ def materialize_run_results(runs: List[Run], nodes: List[str] = None):
     result = {}
     for run in runs:
         if not run.result:
+            continue
+        if run.status == RunStatus.CANCELLED:
             continue
 
         if run.type == RunType.ROW_COUNT_DIFF:

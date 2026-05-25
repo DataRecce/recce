@@ -114,6 +114,10 @@ describe("useRun", () => {
     mockWaitRun.mockReset();
     mockCancelRun.mockReset();
     mockRefetchRunsAggregated.mockReset();
+    // useRun now reads canceled run IDs from localStorage via useCanceledRuns.
+    // Without clearing, a runId marked canceled in one test disables the
+    // query in the next test that reuses the same id.
+    localStorage.clear();
   });
 
   // ==========================================================================
@@ -137,16 +141,6 @@ describe("useRun", () => {
       });
 
       expect(result.current.isRunning).toBe(false);
-    });
-
-    it("initializes aborting to false", () => {
-      mockWaitRun.mockResolvedValue(createMockRun());
-
-      const { result } = renderHook(() => useRun("test-run-id"), {
-        wrapper: createWrapper(),
-      });
-
-      expect(result.current.aborting).toBe(false);
     });
 
     it("initializes error to null", () => {
@@ -500,21 +494,6 @@ describe("useRun", () => {
   // ==========================================================================
 
   describe("cancel functionality", () => {
-    it("sets aborting to true when onCancel is called", async () => {
-      mockWaitRun.mockResolvedValue(createMockRun({ status: "Running" }));
-      mockCancelRun.mockResolvedValue({});
-
-      const { result } = renderHook(() => useRun("test-run-id"), {
-        wrapper: createWrapper(),
-      });
-
-      await act(async () => {
-        await result.current.onCancel();
-      });
-
-      expect(result.current.aborting).toBe(true);
-    });
-
     it("calls cancelRun API with correct runId", async () => {
       mockWaitRun.mockResolvedValue(createMockRun({ status: "Running" }));
       mockCancelRun.mockResolvedValue({});
