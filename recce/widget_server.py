@@ -12,7 +12,7 @@ widget server serves them with `_meta.ui.resourceUri` widget metadata.
 import importlib.resources
 import logging
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from mcp.server.fastmcp import FastMCP
 from mcp.types import CallToolResult, TextContent
@@ -735,6 +735,171 @@ async def query(args: QueryInput) -> CallToolResult:
 )
 def query_resource() -> str:
     return _read_widget_html("query")
+
+
+# ---------------------------------------------------------------------------
+# value_diff widget tool + resource
+# ---------------------------------------------------------------------------
+
+
+class ValueDiffColumnRow(BaseModel):
+    """Per-column match statistics as returned from ValueDiffResult.data rows.
+
+    ValueDiffTask returns a DataFrame with columns ["column", "matched", "matched_p"].
+    Each row encodes one model column's match stats:
+        column:    str   — the column name
+        matched:   int   — count of matched (identical) rows across common rows
+        matched_p: float — fraction 0.0–1.0 of common rows that matched (None if common==0)
+    """
+
+    column: str
+    matched: int = 0
+    matched_p: Optional[float] = None  # 0.0–1.0; None when total common rows == 0
+
+
+class ValueDiffSummary(BaseModel):
+    """Aggregate row statistics from ValueDiffResult.summary."""
+
+    total: int = 0  # total rows seen (union of base + current via PK join)
+    added: int = 0  # rows in current only (PK absent in base)
+    removed: int = 0  # rows in base only (PK absent in current)
+
+
+class ValueDiffOutput(BaseModel):
+    """Output model for the value_diff widget tool.
+
+    Mirrors ValueDiffResult.model_dump(mode='json') after normalisation:
+      - summary: {total, added, removed}
+      - columns: per-column match stats extracted from data.data rows
+      - model: echoed from input for widget header
+      - primary_key: echoed from input (str or list)
+      - warning: extracted from _warning key (single-env mode notice)
+    """
+
+    model: str
+    primary_key: Optional[Union[str, List[str]]] = None
+    summary: ValueDiffSummary
+    columns: List[ValueDiffColumnRow]
+    warning: Optional[str] = None
+
+
+class ValueDiffInput(BaseModel):
+    model: str = Field(..., description="dbt model name to compare (e.g. 'customers')")
+    primary_key: Union[str, List[str]] = Field(
+        ...,
+        description=(
+            "Primary key column(s) for row matching. "
+            "Use a string for a single column (e.g. 'id'), "
+            "or a list for a composite key (e.g. ['order_id', 'line_id'])."
+        ),
+    )
+    columns: Optional[List[str]] = Field(
+        default=None,
+        description="Columns to compare (default: all common columns between base and current)",
+    )
+
+
+@mcp.tool(
+    name="value_diff",
+    annotations={
+        "title": "Value Diff (Widget)",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,  # executes queries against the warehouse
+    },
+    meta={
+        "ui": {"resourceUri": "ui://recce/value_diff.html"},
+        "ui/resourceUri": "ui://recce/value_diff.html",
+    },
+)
+async def value_diff(args: ValueDiffInput) -> CallToolResult:
+    """Compare row-level values between base and current environments using primary key matching.
+
+    Returns aggregate summary (total / added / removed rows) and per-column match
+    statistics rendered as a widget. The agent should not reproduce the column
+    breakdown as plain text — the widget handles rendering.
+
+    Args:
+        model: dbt model name (e.g. 'customers')
+        primary_key: column(s) to match rows on; str for single col, list for composite key
+        columns: optional subset of columns to compare (default: all common columns)
+
+    Returns:
+        CallToolResult with structuredContent: ValueDiffOutput shape
+        {model, primary_key, summary: {total, added, removed},
+         columns: [{column, matched, matched_p}], warning?}
+
+    Use when:
+        - User asks "are values consistent" / "did values shift" for a known model
+        - PR review needs row-level value validation after a schema_diff shows no changes
+        - Verifying data quality impact after a model refactor
+    Don't use when:
+        - Need row-level detail (which exact rows mismatched) → value_diff_detail
+        - Schema changed → schema_diff first to see column additions/removals
+        - No primary key available → query_diff with primary_keys param instead
+        - Single-environment only — tool warns but returns no useful comparison
+    """
+    raw = await _recce_server._tool_value_diff(args.model_dump(exclude_none=True))
+    warning = raw.pop("_warning", None) if isinstance(raw, dict) else None
+
+    # Extract summary from raw dict
+    raw_summary = raw.get("summary", {}) if isinstance(raw, dict) else {}
+    summary = ValueDiffSummary(
+        total=raw_summary.get("total", 0),
+        added=raw_summary.get("added", 0),
+        removed=raw_summary.get("removed", 0),
+    )
+
+    # Extract per-column rows from data.data (list of [col_name, matched_count, matched_p])
+    raw_data = raw.get("data", {}) if isinstance(raw, dict) else {}
+    data_rows = raw_data.get("data", []) if isinstance(raw_data, dict) else []
+    columns_out: List[ValueDiffColumnRow] = []
+    for row in data_rows:
+        if not isinstance(row, (list, tuple)) or len(row) < 3:
+            continue
+        col_name, matched_count, matched_p = row[0], row[1], row[2]
+        columns_out.append(
+            ValueDiffColumnRow(
+                column=str(col_name),
+                matched=int(matched_count) if matched_count is not None else 0,
+                matched_p=float(matched_p) if matched_p is not None else None,
+            )
+        )
+
+    output = ValueDiffOutput(
+        model=args.model,
+        primary_key=args.primary_key,
+        summary=summary,
+        columns=columns_out,
+        warning=warning,
+    )
+
+    n_cols = len(columns_out)
+    mismatched = [c for c in columns_out if c.matched_p is not None and c.matched_p < 1.0]
+    text = (
+        f"Value diff for '{args.model}': {summary.total} rows compared, "
+        f"{len(mismatched)} of {n_cols} column{'s' if n_cols != 1 else ''} have mismatches. "
+        "Rendered in widget."
+    )
+    return CallToolResult(
+        content=[TextContent(type="text", text=text)],
+        structuredContent=output.model_dump(),
+    )
+
+
+@mcp.resource(
+    uri="ui://recce/value_diff.html",
+    mime_type="text/html;profile=mcp-app",
+    meta={
+        "ui": {
+            "csp": {"resourceDomains": ["https://unpkg.com"]},
+            "prefersBorder": False,
+        },
+    },
+)
+def value_diff_resource() -> str:
+    return _read_widget_html("value_diff")
 
 
 # ---------------------------------------------------------------------------

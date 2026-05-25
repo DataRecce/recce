@@ -85,7 +85,7 @@ async def test_mcp_server_filters_widget_tools_when_widgets_enabled(monkeypatch)
 
 @pytest.mark.asyncio
 async def test_widget_server_registers_six_tools_and_six_resources():
-    """Widget FastMCP instance has exactly 7 tools/resources (Phase A + query + query_diff widgets).
+    """Widget FastMCP instance has exactly 8 tools/resources (Phase A + query + query_diff + value_diff widgets).
 
     Uses FastMCP public API: mcp.list_tools() and mcp.list_resources().
     """
@@ -105,6 +105,7 @@ async def test_widget_server_registers_six_tools_and_six_resources():
         "get_model",
         "query",
         "query_diff",
+        "value_diff",
     }
     assert resource_uris == {
         "ui://recce/row_count_diff.html",
@@ -114,6 +115,7 @@ async def test_widget_server_registers_six_tools_and_six_resources():
         "ui://recce/get_model.html",
         "ui://recce/query.html",
         "ui://recce/query_diff.html",
+        "ui://recce/value_diff.html",
     }
 
 
@@ -284,6 +286,7 @@ async def test_widget_tool_annotations_present():
         "get_model",
         "query",
         "query_diff",
+        "value_diff",
     ):
         assert tool_name in tool_map, f"{tool_name} not found in widget mcp tools"
         t = tool_map[tool_name]
@@ -300,9 +303,10 @@ async def test_widget_tool_annotations_present():
         t = tool_map[tool_name]
         assert t.annotations.openWorldHint is False, f"{tool_name}: expected openWorldHint=False"
 
-    # query and query_diff hit the warehouse — openWorldHint must be True
+    # query, query_diff, and value_diff hit the warehouse — openWorldHint must be True
     assert tool_map["query"].annotations.openWorldHint is True, "query: expected openWorldHint=True"
     assert tool_map["query_diff"].annotations.openWorldHint is True, "query_diff: expected openWorldHint=True"
+    assert tool_map["value_diff"].annotations.openWorldHint is True, "value_diff: expected openWorldHint=True"
 
 
 # ---------------------------------------------------------------------------
@@ -895,3 +899,153 @@ async def test_query_diff_returns_calltoolresult_with_pydantic_shape():
     assert len(validated_b.diff.columns) == 4
     assert len(validated_b.diff.data) == 2
     assert validated_b.warning is None
+
+
+# ---------------------------------------------------------------------------
+# Test 19: value_diff widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_value_diff_widget_registered():
+    """value_diff appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'value_diff' is in widget mcp tool list
+    - resource URI 'ui://recce/value_diff.html' is in widget mcp resource list
+    - model and primary_key are required in inputSchema; columns is optional
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "value_diff" in tool_names
+    assert "ui://recce/value_diff.html" in resource_uris
+
+    # Check inputSchema: model + primary_key required, columns optional.
+    # FastMCP wraps the Pydantic model in an 'args' outer envelope.
+    vd_tool = next(t for t in tools if t.name == "value_diff")
+    schema = vd_tool.inputSchema
+    assert schema is not None
+
+    defs = schema.get("$defs", {})
+    inner_schema = next(iter(defs.values()), schema)
+    inner_required = inner_schema.get("required", [])
+    inner_props = inner_schema.get("properties", {})
+    assert "model" in inner_required, "model must be required"
+    assert "primary_key" in inner_required, "primary_key must be required"
+    assert "columns" not in inner_required, "columns must be optional"
+    assert "model" in inner_props
+    assert "primary_key" in inner_props
+    assert "columns" in inner_props
+
+
+# ---------------------------------------------------------------------------
+# Test 20: value_diff returns CallToolResult with correct Pydantic shape
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_value_diff_returns_calltoolresult_with_pydantic_shape():
+    """value_diff handler returns CallToolResult with structuredContent matching ValueDiffOutput.
+
+    Uses the actual ValueDiffResult.model_dump(mode='json') shape verified from source:
+    {
+      "summary": {"total": N, "added": N, "removed": N},
+      "data": {
+        "columns": [{"key": "column", "name": "column", "type": "text"},
+                    {"key": "matched", "name": "matched", "type": "number"},
+                    {"key": "matched_p", "name": "matched_p", "type": "number"}],
+        "data": [["col_name", matched_count, matched_percent_0_to_1], ...],
+        "limit": null, "more": null, "total_row_count": null
+      }
+    }
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent passes ValueDiffOutput.model_validate()
+    - per-column rows are extracted correctly from data.data (list-of-lists)
+    - _warning is extracted to output.warning named field
+    - model and primary_key are echoed back
+    - matched_p is preserved as 0.0–1.0 fraction
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import ValueDiffInput, ValueDiffOutput
+
+    mock_server = MagicMock()
+    # Realistic ValueDiffResult.model_dump(mode='json') shape (verified from source)
+    mock_server._tool_value_diff = AsyncMock(
+        return_value={
+            "summary": {
+                "total": 1000,
+                "added": 5,
+                "removed": 3,
+            },
+            "data": {
+                "columns": [
+                    {"key": "column", "name": "column", "type": "text"},
+                    {"key": "matched", "name": "matched", "type": "number"},
+                    {"key": "matched_p", "name": "matched_p", "type": "number"},
+                ],
+                "data": [
+                    ["customer_id", 992, 1.0],
+                    ["name", 990, 0.9980],
+                    ["amount", 750, 0.7560],
+                    ["status", 992, 1.0],
+                ],
+                "limit": None,
+                "more": None,
+                "total_row_count": None,
+            },
+            "_warning": "Base environment not configured — comparing current against itself.",
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = ValueDiffInput(model="customers", primary_key="customer_id")
+        result = await ws.value_diff(args)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 200, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    assert result.structuredContent is not None
+    validated = ValueDiffOutput.model_validate(result.structuredContent)
+
+    # model + primary_key echoed back
+    assert validated.model == "customers"
+    assert validated.primary_key == "customer_id"
+
+    # summary
+    assert validated.summary.total == 1000
+    assert validated.summary.added == 5
+    assert validated.summary.removed == 3
+
+    # per-column rows: 4 columns extracted from data.data list-of-lists
+    assert len(validated.columns) == 4
+    # First column: customer_id — 100% match
+    col0 = validated.columns[0]
+    assert col0.column == "customer_id"
+    assert col0.matched == 992
+    assert col0.matched_p == 1.0
+    # Third column: amount — partial match
+    col2 = validated.columns[2]
+    assert col2.column == "amount"
+    assert col2.matched == 750
+    assert abs(col2.matched_p - 0.7560) < 1e-6
+
+    # _warning extracted
+    assert validated.warning == "Base environment not configured — comparing current against itself."

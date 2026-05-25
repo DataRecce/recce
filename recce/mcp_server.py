@@ -53,7 +53,16 @@ SINGLE_ENV_WARNING = (
 # When RECCE_MCP_WIDGETS=1 is set, these tools are served by `recce mcp-widget-server`
 # instead of the main `recce mcp-server`. The main server omits them from list_tools
 # and raises in call_tool if the agent calls them anyway. See recce/widget_server.py.
-WIDGET_TOOLS = {"row_count_diff", "schema_diff", "get_server_info", "list_checks", "get_model", "query", "query_diff"}
+WIDGET_TOOLS = {
+    "row_count_diff",
+    "schema_diff",
+    "get_server_info",
+    "list_checks",
+    "get_model",
+    "query",
+    "query_diff",
+    "value_diff",
+}
 
 
 def _widgets_enabled() -> bool:
