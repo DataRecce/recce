@@ -364,6 +364,109 @@ def get_server_info_resource() -> str:
 
 
 # ---------------------------------------------------------------------------
+# list_checks widget tool + resource
+# ---------------------------------------------------------------------------
+
+
+class CheckSummary(BaseModel):
+    """Minimal shape of one saved Recce check as returned by _tool_list_checks."""
+
+    check_id: str
+    name: str
+    type: str  # check type slug, e.g. "row_count_diff", "schema_diff"
+    description: str = ""
+    is_checked: bool = False
+    is_preset: bool = False
+    # params intentionally omitted — widget shows name/type/status/description only
+
+
+class ListChecksOutput(BaseModel):
+    """Output model for the list_checks widget tool.
+
+    Fields mirror the dict returned by RecceMCPServer._tool_list_checks plus
+    derived counts computed in the widget delegate.
+    """
+
+    checks: List[CheckSummary]
+    total: int
+    approved: int
+    pending: int
+
+
+class ListChecksInput(BaseModel):
+    pass  # _tool_list_checks takes no arguments — list everything in the session
+
+
+@mcp.tool(
+    name="list_checks",
+    annotations={
+        "title": "Checks (Widget)",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,
+    },
+    meta={
+        "ui": {"resourceUri": "ui://recce/list_checks.html"},
+        "ui/resourceUri": "ui://recce/list_checks.html",
+    },
+)
+async def list_checks(args: ListChecksInput) -> CallToolResult:
+    """List all saved Recce checks for this session.
+
+    Returns a summary card (total / approved / pending) plus a status table
+    of every check. Rendered as an interactive widget; the agent should not
+    reproduce the table as plain text.
+
+    Args: none (lists every check saved in the current session)
+
+    Returns:
+        CallToolResult with structuredContent: ListChecksOutput shape
+        {checks: [{check_id, name, type, description, is_checked, is_preset}],
+         total: int, approved: int, pending: int}
+
+    Use when:
+        - User asks "what checks are saved" / "what's been validated"
+        - Reviewing sign-off status before merging a PR
+        - Checking whether the current session has any pending validations
+    Don't use when:
+        - User wants to RUN a check — use run_check instead
+        - User wants to CREATE a check — use create_check instead
+        - Server not configured — call get_server_info first
+    """
+    raw = await _recce_server._tool_list_checks({})
+    checks = [CheckSummary(**c) for c in raw.get("checks", [])]
+    total = raw.get("total", len(checks))
+    approved = raw.get("approved", sum(1 for c in checks if c.is_checked))
+    pending = total - approved
+    output = ListChecksOutput(
+        checks=checks,
+        total=total,
+        approved=approved,
+        pending=pending,
+    )
+    n = len(checks)
+    return CallToolResult(
+        content=[TextContent(type="text", text=f"List of {n} check{'s' if n != 1 else ''} rendered in widget.")],
+        structuredContent=output.model_dump(),
+    )
+
+
+@mcp.resource(
+    uri="ui://recce/list_checks.html",
+    mime_type="text/html;profile=mcp-app",
+    meta={
+        "ui": {
+            "csp": {"resourceDomains": ["https://unpkg.com"]},
+            "prefersBorder": False,
+        },
+    },
+)
+def list_checks_resource() -> str:
+    return _read_widget_html("list_checks")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

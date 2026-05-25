@@ -71,18 +71,19 @@ async def test_mcp_server_filters_widget_tools_when_widgets_enabled(monkeypatch)
     assert "row_count_diff" not in names
     assert "schema_diff" not in names
     assert "get_server_info" not in names
+    assert "list_checks" not in names
     # Other tools must still be present
     assert "lineage_diff" in names
 
 
 # ---------------------------------------------------------------------------
-# Test 3: Widget server registers exactly 3 tools + 3 resources
+# Test 3: Widget server registers exactly 4 tools + 4 resources
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_widget_server_registers_three_tools_and_three_resources():
-    """Widget FastMCP instance has exactly row_count_diff + schema_diff + get_server_info tools/resources.
+async def test_widget_server_registers_four_tools_and_four_resources():
+    """Widget FastMCP instance has exactly row_count_diff + schema_diff + get_server_info + list_checks tools/resources.
 
     Uses FastMCP public API: mcp.list_tools() and mcp.list_resources().
     """
@@ -94,11 +95,12 @@ async def test_widget_server_registers_three_tools_and_three_resources():
     tool_names = {t.name for t in tools}
     resource_uris = {str(r.uri) for r in resources}
 
-    assert tool_names == {"row_count_diff", "schema_diff", "get_server_info"}
+    assert tool_names == {"row_count_diff", "schema_diff", "get_server_info", "list_checks"}
     assert resource_uris == {
         "ui://recce/row_count_diff.html",
         "ui://recce/schema_diff.html",
         "ui://recce/get_server_info.html",
+        "ui://recce/list_checks.html",
     }
 
 
@@ -261,7 +263,7 @@ async def test_widget_tool_annotations_present():
     tools = await mcp.list_tools()
     tool_map = {t.name: t for t in tools}
 
-    for tool_name in ("row_count_diff", "schema_diff", "get_server_info"):
+    for tool_name in ("row_count_diff", "schema_diff", "get_server_info", "list_checks"):
         assert tool_name in tool_map, f"{tool_name} not found in widget mcp tools"
         t = tool_map[tool_name]
         a = t.annotations
@@ -352,3 +354,102 @@ async def test_get_server_info_returns_calltoolresult_with_pydantic_shape():
     assert validated.base_status == "fresh"
     assert validated.git is None
     assert validated.pull_request is None
+
+
+# ---------------------------------------------------------------------------
+# Test 11: list_checks widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_list_checks_widget_registered():
+    """list_checks appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'list_checks' is in widget mcp tool list
+    - resource URI 'ui://recce/list_checks.html' is in widget mcp resource list
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "list_checks" in tool_names
+    assert "ui://recce/list_checks.html" in resource_uris
+
+
+# ---------------------------------------------------------------------------
+# Test 12: list_checks returns CallToolResult with correct Pydantic shape + counts
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_list_checks_returns_calltoolresult_with_pydantic_shape():
+    """list_checks handler returns CallToolResult with structuredContent matching ListChecksOutput.
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent passes ListChecksOutput.model_validate()
+    - approved/pending counts are derived correctly from the check list
+    - empty is_preset field is tolerated (default False)
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import ListChecksInput, ListChecksOutput
+
+    mock_server = MagicMock()
+    mock_server._tool_list_checks = AsyncMock(
+        return_value={
+            "checks": [
+                {
+                    "check_id": "aaaaaaaa-0000-0000-0000-000000000001",
+                    "name": "Row count check",
+                    "type": "row_count_diff",
+                    "description": "Checks that row counts match",
+                    "params": {"select": "customers"},
+                    "is_checked": True,
+                    "is_preset": False,
+                },
+                {
+                    "check_id": "aaaaaaaa-0000-0000-0000-000000000002",
+                    "name": "Schema check",
+                    "type": "schema_diff",
+                    "description": "",
+                    "params": {},
+                    "is_checked": False,
+                    "is_preset": True,
+                },
+            ],
+            "total": 2,
+            "approved": 1,
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = ListChecksInput()
+        result = await ws.list_checks(args)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 100, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    assert result.structuredContent is not None
+    validated = ListChecksOutput.model_validate(result.structuredContent)
+    assert validated.total == 2
+    assert validated.approved == 1
+    assert validated.pending == 1
+    assert len(validated.checks) == 2
+    assert validated.checks[0].is_checked is True
+    assert validated.checks[1].is_preset is True
+    assert validated.checks[1].is_checked is False

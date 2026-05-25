@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Checks</title>
+  <style>
+    /* ── Base reset + design tokens ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+      font-size: 13px;
+      margin: 0;
+      padding: 12px 16px 20px;
+      color: var(--color-text-primary, #1a1a1a);
+      background: var(--color-background-primary, #ffffff);
+      line-height: 1.4;
+    }
+    /* Light-mode hardcoded fallbacks are inline above.
+       Dark-mode fallback for non-Claude hosts (OS preference respected):
+       This block must be exhaustive — covers every class using color:/background:
+       so the widget renders correctly when SDK helpers don't fire. */
+    @media (prefers-color-scheme: dark) {
+      /* ── Base ── */
+      body {
+        color: var(--color-text-primary, #e5e7eb);
+        background: var(--color-background-primary, #1a1a1a);
+      }
+      /* ── Header ── */
+      .header-icon  { color: var(--color-text-secondary, #9ca3af) !important; }
+      .header-title { color: var(--color-text-primary, #e5e7eb) !important; }
+      .header-count { color: var(--color-text-secondary, #9ca3af) !important; }
+      /* ── Summary cards ── */
+      .summary-card          { background: var(--color-background-secondary, #27272a) !important; }
+      .summary-label         { color: var(--color-text-secondary, #9ca3af) !important; }
+      .summary-value-total   { color: var(--color-text-primary, #e5e7eb) !important; }
+      .summary-value-success { color: var(--color-text-success, #6ee7b7) !important; }
+      .summary-value-warning { color: var(--color-text-warning, #fde68a) !important; }
+      /* ── Table ── */
+      .checks-table          { background: var(--color-background-secondary, #27272a) !important; }
+      .table-header          { color: var(--color-text-secondary, #9ca3af) !important;
+                               border-bottom-color: var(--color-border-primary, #3f3f46) !important; }
+      .table-row             { border-bottom-color: var(--color-border-secondary, #3f3f46) !important; }
+      .table-row:last-child  { border-bottom: none !important; }
+      .cell-name             { color: var(--color-text-primary, #e5e7eb) !important; }
+      .cell-desc             { color: var(--color-text-secondary, #9ca3af) !important; }
+      /* ── Badges ── */
+      .badge-type    { background: var(--color-background-info, #1e3a8a) !important;
+                       color: var(--color-text-info, #93c5fd) !important; }
+      .badge-approved { background: var(--color-background-success, #064e3b) !important;
+                        color: var(--color-text-success, #6ee7b7) !important; }
+      .badge-pending  { background: var(--color-background-secondary, #3f3f46) !important;
+                        color: var(--color-text-secondary, #9ca3af) !important; }
+      .badge-preset   { background: var(--color-background-warning, #78350f) !important;
+                        color: var(--color-text-warning, #fde68a) !important; }
+      /* ── Empty state ── */
+      .empty-card  { background: var(--color-background-secondary, #27272a) !important; }
+      .empty-title { color: var(--color-text-primary, #e5e7eb) !important; }
+      .empty-hint  { color: var(--color-text-secondary, #9ca3af) !important; }
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0 12px;
+    }
+    .header-icon {
+      font-size: 18px;
+      line-height: 1;
+      color: var(--color-text-secondary, #6b7280);
+    }
+    .header-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-text-primary, #1a1a1a);
+      flex: 1;
+    }
+    .header-count {
+      font-size: 12px;
+      color: var(--color-text-secondary, #6b7280);
+    }
+
+    /* ── Summary cards (3-up) ────────────────────────────────────────── */
+    .summary-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .summary-card {
+      background: var(--color-background-secondary, #f9fafb);
+      border-radius: var(--border-radius-md, 8px);
+      padding: 10px 12px;
+      text-align: center;
+    }
+    .summary-label {
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-secondary, #6b7280);
+      margin-bottom: 4px;
+    }
+    .summary-value-total {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-text-primary, #1a1a1a);
+    }
+    .summary-value-success {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-text-success, #065f46);
+    }
+    .summary-value-warning {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-text-warning, #92400e);
+    }
+
+    /* ── Table ───────────────────────────────────────────────────────── */
+    .checks-table {
+      background: var(--color-background-secondary, #f9fafb);
+      border-radius: var(--border-radius-md, 8px);
+      overflow: hidden;
+    }
+    .table-header {
+      display: grid;
+      grid-template-columns: minmax(120px, 2fr) minmax(110px, 1.2fr) 120px minmax(100px, 2fr);
+      gap: 8px;
+      padding: 8px 12px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-secondary, #6b7280);
+      border-bottom: 1px solid var(--color-border-primary, #e5e7eb);
+    }
+    .table-row {
+      display: grid;
+      grid-template-columns: minmax(120px, 2fr) minmax(110px, 1.2fr) 120px minmax(100px, 2fr);
+      gap: 8px;
+      padding: 8px 12px;
+      align-items: center;
+      border-bottom: 1px solid var(--color-border-secondary, #f3f4f6);
+    }
+    .table-row:last-child { border-bottom: none; }
+
+    /* ── Cell styles ─────────────────────────────────────────────────── */
+    .cell-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--color-text-primary, #1a1a1a);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .cell-desc {
+      font-size: 11px;
+      color: var(--color-text-secondary, #6b7280);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ── Badges ───────────────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 2px 7px;
+      border-radius: var(--border-radius-sm, 4px);
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .badge-type {
+      background: var(--color-background-info, #dbeafe);
+      color: var(--color-text-info, #1e40af);
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+      font-size: 10px;
+    }
+    .badge-approved {
+      background: var(--color-background-success, #d1fae5);
+      color: var(--color-text-success, #065f46);
+    }
+    .badge-pending {
+      background: var(--color-background-secondary, #f3f4f6);
+      color: var(--color-text-secondary, #6b7280);
+    }
+    .badge-preset {
+      background: var(--color-background-warning, #fef3c7);
+      color: var(--color-text-warning, #92400e);
+    }
+
+    /* ── Empty state ─────────────────────────────────────────────────── */
+    .empty-card {
+      background: var(--color-background-secondary, #f9fafb);
+      border-radius: var(--border-radius-md, 8px);
+      padding: 32px 24px;
+      text-align: center;
+    }
+    .empty-icon  { font-size: 28px; margin-bottom: 8px; }
+    .empty-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-text-primary, #1a1a1a);
+      margin-bottom: 6px;
+    }
+    .empty-hint {
+      font-size: 12px;
+      color: var(--color-text-secondary, #6b7280);
+    }
+
+    #root { min-height: 40px; }
+  </style>
+</head>
+<body>
+  <div id="root">Loading…</div>
+  <script type="module">
+    import {
+      App,
+      applyDocumentTheme,
+      applyHostStyleVariables,
+      applyHostFonts,
+    } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+
+    const app = new App({ name: "Recce Checks", version: "1.0.0" });
+
+    // Apply host theme on every context change (theme switch, font change, etc.)
+    app.onhostcontextchanged = (ctx) => {
+      if (ctx.theme) applyDocumentTheme(ctx.theme);
+      if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+      if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
+    };
+
+    app.ontoolresult = ({ structuredContent }) => {
+      render(structuredContent ?? {});
+    };
+
+    app.onteardown = async () => {
+      return {};
+    };
+
+    await app.connect();
+
+    // Apply theme from initial host context if available before first change event
+    const initialCtx = app.getHostContext?.();
+    if (initialCtx) {
+      if (initialCtx.theme) applyDocumentTheme(initialCtx.theme);
+      if (initialCtx.styles?.variables) applyHostStyleVariables(initialCtx.styles.variables);
+      if (initialCtx.styles?.css?.fonts) applyHostFonts(initialCtx.styles.css.fonts);
+    }
+
+    function escapeHtml(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function truncate(s, max) {
+      const str = String(s ?? "");
+      return str.length > max ? str.slice(0, max) + "…" : str;
+    }
+
+    function typeBadge(type) {
+      return `<span class="badge badge-type" title="${escapeHtml(type)}">${escapeHtml(type)}</span>`;
+    }
+
+    function statusBadge(isChecked) {
+      return isChecked
+        ? `<span class="badge badge-approved">&#10003; Approved</span>`
+        : `<span class="badge badge-pending">&#9675; Pending</span>`;
+    }
+
+    function render(data) {
+      const checks = data.checks ?? [];
+      const total = data.total ?? checks.length;
+      const approved = data.approved ?? checks.filter(c => c.is_checked).length;
+      const pending = data.pending ?? (total - approved);
+      const n = total;
+
+      const header = `
+        <div class="header">
+          <span class="header-icon">&#10003;</span>
+          <span class="header-title">Checks</span>
+          <span class="header-count">${n} check${n !== 1 ? "s" : ""}</span>
+        </div>`;
+
+      // Empty state
+      if (checks.length === 0) {
+        document.getElementById("root").innerHTML = header + `
+          <div class="empty-card">
+            <div class="empty-icon">&#128203;</div>
+            <div class="empty-title">No checks saved yet</div>
+            <div class="empty-hint">Create checks via the <code>create_check</code> tool to track validation findings.</div>
+          </div>`;
+        return;
+      }
+
+      // Summary cards
+      const summary = `
+        <div class="summary-row">
+          <div class="summary-card">
+            <div class="summary-label">Total</div>
+            <div class="summary-value-total">${escapeHtml(total)}</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">Approved</div>
+            <div class="summary-value-success">${escapeHtml(approved)}</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">Pending</div>
+            <div class="summary-value-warning">${escapeHtml(pending)}</div>
+          </div>
+        </div>`;
+
+      // Table rows
+      const rows = checks.map(c => {
+        const name = escapeHtml(truncate(c.name, 32));
+        const fullName = escapeHtml(c.name ?? "");
+        const desc = escapeHtml(truncate(c.description, 60));
+        const fullDesc = escapeHtml(c.description ?? "");
+        const presetTag = c.is_preset
+          ? ` <span class="badge badge-preset">preset</span>`
+          : "";
+        return `
+          <div class="table-row">
+            <div class="cell-name" title="${fullName}">${name}${presetTag}</div>
+            <div>${typeBadge(c.type)}</div>
+            <div>${statusBadge(c.is_checked)}</div>
+            <div class="cell-desc" title="${fullDesc}">${desc}</div>
+          </div>`;
+      }).join("");
+
+      const table = `
+        <div class="checks-table">
+          <div class="table-header">
+            <div>Name</div>
+            <div>Type</div>
+            <div>Status</div>
+            <div>Description</div>
+          </div>
+          ${rows}
+        </div>`;
+
+      document.getElementById("root").innerHTML = header + summary + table;
+    }
+  </script>
+</body>
+</html>

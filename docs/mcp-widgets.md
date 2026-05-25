@@ -12,8 +12,8 @@ through the `RECCE_MCP_WIDGETS=1` environment variable: when that flag is set,
 that Claude Desktop routes those calls exclusively to `mcp-widget-server`, which
 annotates each tool with `_meta.ui.resourceUri` pointing at an HTML resource.
 
-Iter 1 ships three widgets: `row_count_diff`, `schema_diff`, and
-`get_server_info`. All run in **local mode only** — cloud/session mode is not
+Iter 1 ships four widgets: `row_count_diff`, `schema_diff`, `get_server_info`,
+and `list_checks`. All run in **local mode only** — cloud/session mode is not
 supported until iter 2.
 
 ---
@@ -32,8 +32,9 @@ recce/
       row_count_diff.html    # allowlist — see .gitignore). Self-contained HTML files.
       schema_diff.html
       get_server_info.html
+      list_checks.html
 tests/
-  test_widget_server.py      # 10 tests covering WIDGET_TOOLS coordination + widget server.
+  test_widget_server.py      # 12 tests covering WIDGET_TOOLS coordination + widget server.
 docs/
   mcp-widgets.md             # This file.
 ```
@@ -83,7 +84,7 @@ The worked reference throughout is `row_count_diff`. Add a new widget called
 File: `recce/mcp_server.py`, near line 56.
 
 ```python
-WIDGET_TOOLS = {"row_count_diff", "schema_diff", "get_server_info", "<tool>"}
+WIDGET_TOOLS = {"row_count_diff", "schema_diff", "get_server_info", "list_checks", "<tool>"}
 ```
 
 This single change makes `mcp-server` omit `<tool>` from `tools/list` when
@@ -407,13 +408,14 @@ documented and supported. Reconsider if ext-apps publishes a Python SDK.
 
 ## Reference Widgets
 
-Three working examples (in order of implementation):
+Four working examples (in order of implementation):
 
 | File | Tier | What it demonstrates |
 |------|------|----------------------|
 | `recce/data/mcp/row_count_diff.html` | Status pills + diff numbers | Per-model status badges (`ok`, `table_not_found`, etc.), signed diff display, `base_meta`/`curr_meta` shape |
 | `recce/data/mcp/schema_diff.html` | HTML table | Added/removed/type_changed column grouping, `_compute_schema_changes` rich shape, per-model section headers |
 | `recce/data/mcp/get_server_info.html` | Status badge + key/value grid | **Canonical post-refactor example.** Born idiomatic: no `models` wrapper (tool has no per-model loop), optional `git`/`pull_request` nested objects, 2-column CSS grid layout, empty-state card when `mode="none"` |
+| `recce/data/mcp/list_checks.html` | List / simple table | 3-up summary cards (Total / Approved / Pending), 4-column status table, empty-state with hint, `is_preset` badge, `_tool_list_checks` returns a flat list + pre-computed `total`/`approved` — `pending` derived in the widget delegate |
 
 `get_server_info` is the **recommended canonical example** for new widgets
 because it was written after the idiomatic pattern was established (Day 3
