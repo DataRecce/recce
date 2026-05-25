@@ -85,7 +85,7 @@ async def test_mcp_server_filters_widget_tools_when_widgets_enabled(monkeypatch)
 
 @pytest.mark.asyncio
 async def test_widget_server_registers_six_tools_and_six_resources():
-    """Widget FastMCP instance has exactly 8 tools/resources (Phase A + query + query_diff + value_diff widgets).
+    """Widget FastMCP instance has exactly 9 tools/resources (Phase A + query + query_diff + value_diff + value_diff_detail widgets).
 
     Uses FastMCP public API: mcp.list_tools() and mcp.list_resources().
     """
@@ -106,6 +106,7 @@ async def test_widget_server_registers_six_tools_and_six_resources():
         "query",
         "query_diff",
         "value_diff",
+        "value_diff_detail",
     }
     assert resource_uris == {
         "ui://recce/row_count_diff.html",
@@ -116,6 +117,7 @@ async def test_widget_server_registers_six_tools_and_six_resources():
         "ui://recce/query.html",
         "ui://recce/query_diff.html",
         "ui://recce/value_diff.html",
+        "ui://recce/value_diff_detail.html",
     }
 
 
@@ -287,6 +289,7 @@ async def test_widget_tool_annotations_present():
         "query",
         "query_diff",
         "value_diff",
+        "value_diff_detail",
     ):
         assert tool_name in tool_map, f"{tool_name} not found in widget mcp tools"
         t = tool_map[tool_name]
@@ -303,10 +306,13 @@ async def test_widget_tool_annotations_present():
         t = tool_map[tool_name]
         assert t.annotations.openWorldHint is False, f"{tool_name}: expected openWorldHint=False"
 
-    # query, query_diff, and value_diff hit the warehouse — openWorldHint must be True
+    # query, query_diff, value_diff, and value_diff_detail hit the warehouse — openWorldHint must be True
     assert tool_map["query"].annotations.openWorldHint is True, "query: expected openWorldHint=True"
     assert tool_map["query_diff"].annotations.openWorldHint is True, "query_diff: expected openWorldHint=True"
     assert tool_map["value_diff"].annotations.openWorldHint is True, "value_diff: expected openWorldHint=True"
+    assert (
+        tool_map["value_diff_detail"].annotations.openWorldHint is True
+    ), "value_diff_detail: expected openWorldHint=True"
 
 
 # ---------------------------------------------------------------------------
@@ -1046,6 +1052,153 @@ async def test_value_diff_returns_calltoolresult_with_pydantic_shape():
     assert col2.column == "amount"
     assert col2.matched == 750
     assert abs(col2.matched_p - 0.7560) < 1e-6
+
+    # _warning extracted
+    assert validated.warning == "Base environment not configured — comparing current against itself."
+
+
+# ---------------------------------------------------------------------------
+# Test 21: value_diff_detail widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_value_diff_detail_widget_registered():
+    """value_diff_detail appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'value_diff_detail' is in widget mcp tool list
+    - resource URI 'ui://recce/value_diff_detail.html' is in widget mcp resource list
+    - model and primary_key are required in inputSchema; columns is optional
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "value_diff_detail" in tool_names
+    assert "ui://recce/value_diff_detail.html" in resource_uris
+
+    # Check inputSchema: model + primary_key required, columns optional.
+    # FastMCP wraps the Pydantic model in an 'args' outer envelope.
+    vdd_tool = next(t for t in tools if t.name == "value_diff_detail")
+    schema = vdd_tool.inputSchema
+    assert schema is not None
+
+    defs = schema.get("$defs", {})
+    inner_schema = next(iter(defs.values()), schema)
+    inner_required = inner_schema.get("required", [])
+    inner_props = inner_schema.get("properties", {})
+    assert "model" in inner_required, "model must be required"
+    assert "primary_key" in inner_required, "primary_key must be required"
+    assert "columns" not in inner_required, "columns must be optional"
+    assert "model" in inner_props
+    assert "primary_key" in inner_props
+    assert "columns" in inner_props
+
+
+# ---------------------------------------------------------------------------
+# Test 22: value_diff_detail returns CallToolResult with correct Pydantic shape
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_value_diff_detail_returns_calltoolresult_with_pydantic_shape():
+    """value_diff_detail handler returns CallToolResult with structuredContent matching ValueDiffDetailOutput.
+
+    Uses the actual ValueDiffDetailTask return shape — a plain DataFrame (confirmed from source):
+    ValueDiffDetailResult(DataFrame) → model_dump(mode='json') →
+    {columns: [{key, name, type}], data: [[...]], limit, more, total_row_count}
+
+    Columns include all data columns PLUS in_a / in_b booleans.
+    Rows where in_a=True, in_b=False are "removed" (only in base).
+    Rows where in_a=False, in_b=True are "added" (only in current).
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent passes ValueDiffDetailOutput.model_validate()
+    - model and primary_key are echoed back
+    - columns include in_a / in_b (raw DataFrame shape preserved)
+    - data rows are preserved verbatim
+    - _warning is extracted to output.warning named field
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import ValueDiffDetailInput, ValueDiffDetailOutput
+
+    mock_server = MagicMock()
+    # Realistic ValueDiffDetailResult.model_dump(mode='json') shape (verified from source).
+    # Returns a DataFrame with all original data columns + in_a + in_b booleans.
+    mock_server._tool_value_diff_detail = AsyncMock(
+        return_value={
+            "columns": [
+                {"key": "customer_id", "name": "customer_id", "type": "integer"},
+                {"key": "name", "name": "name", "type": "text"},
+                {"key": "amount", "name": "amount", "type": "number"},
+                {"key": "in_a", "name": "in_a", "type": "boolean"},
+                {"key": "in_b", "name": "in_b", "type": "boolean"},
+            ],
+            "data": [
+                [1, "Alice", 100.0, True, False],  # removed (only in base)
+                [2, "Bob", 250.0, True, False],  # removed (only in base)
+                [5, "Carol", 310.0, False, True],  # added   (only in current)
+            ],
+            "limit": 1000,
+            "more": False,
+            "total_row_count": None,
+            "_warning": "Base environment not configured — comparing current against itself.",
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = ValueDiffDetailInput(model="customers", primary_key="customer_id")
+        result = await ws.value_diff_detail(args)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 200, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    assert result.structuredContent is not None
+    validated = ValueDiffDetailOutput.model_validate(result.structuredContent)
+
+    # model + primary_key echoed back
+    assert validated.model == "customers"
+    assert validated.primary_key == "customer_id"
+
+    # columns: 5 total (3 data cols + in_a + in_b)
+    assert len(validated.columns) == 5
+    col_names = [c.name for c in validated.columns]
+    assert "customer_id" in col_names
+    assert "name" in col_names
+    assert "amount" in col_names
+    assert "in_a" in col_names
+    assert "in_b" in col_names
+
+    # data: 3 rows preserved verbatim
+    assert len(validated.data) == 3
+    # First row: customer_id=1, in_a=True, in_b=False (removed)
+    assert validated.data[0][0] == 1
+    assert validated.data[0][3] is True  # in_a
+    assert validated.data[0][4] is False  # in_b
+    # Third row: customer_id=5, added
+    assert validated.data[2][0] == 5
+    assert validated.data[2][3] is False  # in_a
+    assert validated.data[2][4] is True  # in_b
+
+    # metadata
+    assert validated.limit == 1000
+    assert validated.more is False
 
     # _warning extracted
     assert validated.warning == "Base environment not configured — comparing current against itself."

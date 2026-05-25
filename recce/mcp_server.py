@@ -62,6 +62,7 @@ WIDGET_TOOLS = {
     "query",
     "query_diff",
     "value_diff",
+    "value_diff_detail",
 }
 
 

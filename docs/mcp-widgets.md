@@ -13,9 +13,9 @@ that Claude Desktop routes those calls exclusively to `mcp-widget-server`, which
 annotates each tool with `_meta.ui.resourceUri` pointing at an HTML resource.
 
 Phase A ships five widgets: `row_count_diff`, `schema_diff`, `get_server_info`,
-`list_checks`, and `get_model`. Phase B iter 1 adds `query` and `query_diff`
-(tier-3 data-table widgets). All run in **local mode only** — cloud/session mode
-is not supported until iter 2.
+`list_checks`, and `get_model`. Phase B iter 1 adds `query`, `query_diff`,
+`value_diff`, and `value_diff_detail` (tier-3 data-table widgets). All run in
+**local mode only** — cloud/session mode is not supported until iter 2.
 
 ---
 
@@ -37,8 +37,10 @@ recce/
       get_model.html
       query.html             # Phase B tier-3: scrollable SQL result table
       query_diff.html        # Phase B tier-3: two-env comparison with status pills + filters
+      value_diff.html        # Phase B tier-3: column-level match stats
+      value_diff_detail.html # Phase B tier-3: row-level diff table with filter pills
 tests/
-  test_widget_server.py      # 18 tests covering WIDGET_TOOLS coordination + widget server.
+  test_widget_server.py      # 22 tests covering WIDGET_TOOLS coordination + widget server.
 docs/
   mcp-widgets.md             # This file.
 ```

@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Value Diff Detail</title>
+  <style>
+    /* ── Base reset + design tokens ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+      font-size: 13px;
+      margin: 0;
+      padding: 12px 16px 20px;
+      color: var(--color-text-primary, #1a1a1a);
+      background: var(--color-background-primary, #ffffff);
+      line-height: 1.4;
+    }
+
+    /* ── Dark-mode fallback ────────────────────────────────────────── */
+    @media (prefers-color-scheme: dark) {
+      body {
+        color: var(--color-text-primary, #e5e7eb);
+        background: var(--color-background-primary, #1a1a1a);
+      }
+      .header-icon    { color: var(--color-text-secondary, #9ca3af) !important; }
+      .header-title   { color: var(--color-text-primary, #e5e7eb) !important; }
+      .header-model   { color: var(--color-text-secondary, #9ca3af) !important; }
+      .warning-bar    { background: var(--color-background-warning, #78350f) !important;
+                        color: var(--color-text-warning, #fde68a) !important;
+                        border-color: #92400e !important; }
+      .summary-bar    { color: var(--color-text-secondary, #9ca3af) !important;
+                        border-bottom-color: var(--color-border-primary, #3f3f46) !important; }
+      .filter-btn     { background: var(--color-background-secondary, #3f3f46) !important;
+                        color: var(--color-text-secondary, #9ca3af) !important;
+                        border-color: var(--color-border-primary, #52525b) !important; }
+      .filter-btn.active { background: var(--color-background-info, #1e3a8a) !important;
+                        color: #93c5fd !important;
+                        border-color: #3b82f6 !important; }
+      .badge-truncated { background: var(--color-background-warning, #78350f) !important;
+                         color: var(--color-text-warning, #fde68a) !important; }
+      .table-wrap     { border-color: var(--color-border-primary, #3f3f46) !important; }
+      .result-table   { background: var(--color-background-secondary, #27272a) !important; }
+      .th-cell        { background: var(--color-background-secondary, #27272a) !important;
+                        color: var(--color-text-secondary, #9ca3af) !important;
+                        border-bottom-color: var(--color-border-primary, #3f3f46) !important;
+                        border-right-color: var(--color-border-primary, #3f3f46) !important; }
+      .th-pk          { background: var(--color-background-primary, #1a1a1a) !important; }
+      .tr-row:nth-child(even) { background: var(--color-background-primary, #1a1a1a) !important; }
+      .tr-row:nth-child(odd)  { background: var(--color-background-secondary, #27272a) !important; }
+      .tr-row:hover           { background: var(--color-background-info, #1e3a8a) !important; }
+      .tr-removed     { background: rgba(239,68,68,0.12) !important; }
+      .tr-added       { background: rgba(34,197,94,0.12) !important; }
+      .tr-removed:hover { background: rgba(239,68,68,0.22) !important; }
+      .tr-added:hover   { background: rgba(34,197,94,0.22) !important; }
+      .td-cell        { color: var(--color-text-primary, #e5e7eb) !important;
+                        border-bottom-color: var(--color-border-secondary, #3f3f46) !important;
+                        border-right-color: var(--color-border-secondary, #3f3f46) !important; }
+      .td-pk          { background: var(--color-background-primary, #1a1a1a) !important;
+                        color: var(--color-text-primary, #e5e7eb) !important; }
+      .cell-null      { color: var(--color-text-secondary, #6b7280) !important; }
+      .cell-num       { color: var(--color-text-primary, #e5e7eb) !important; }
+      .cell-bool-true { color: var(--color-text-success, #4ade80) !important; }
+      .cell-bool-false { color: var(--color-text-secondary, #6b7280) !important; }
+      .status-pill-removed { background: rgba(239,68,68,0.2) !important; color: #f87171 !important; }
+      .status-pill-added   { background: rgba(34,197,94,0.2) !important;  color: #4ade80 !important; }
+      .empty-card     { background: var(--color-background-secondary, #27272a) !important; }
+      .empty-title    { color: var(--color-text-primary, #e5e7eb) !important; }
+      .empty-hint     { color: var(--color-text-secondary, #9ca3af) !important; }
+      .error-card     { background: var(--color-background-secondary, #27272a) !important; }
+      .error-title    { color: var(--color-text-danger, #f87171) !important; }
+      .error-hint     { color: var(--color-text-secondary, #9ca3af) !important; }
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0 8px;
+    }
+    .header-icon  { font-size: 16px; line-height: 1; color: var(--color-text-secondary, #6b7280); }
+    .header-title { font-size: 14px; font-weight: 700; color: var(--color-text-primary, #1a1a1a); flex: 1; }
+    .header-model {
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+      font-size: 11px;
+      color: var(--color-text-secondary, #6b7280);
+      white-space: nowrap;
+      max-width: 240px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Warning bar ─────────────────────────────────────────────────── */
+    .warning-bar {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 8px 10px;
+      margin-bottom: 10px;
+      border-radius: var(--border-radius-sm, 4px);
+      font-size: 12px;
+      font-style: italic;
+      background: var(--color-background-warning, #fffbeb);
+      color: var(--color-text-warning, #92400e);
+      border: 1px solid var(--color-border-warning, #fcd34d);
+    }
+
+    /* ── Summary bar + filter buttons ───────────────────────────────── */
+    .summary-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--color-text-secondary, #6b7280);
+      padding: 0 0 8px;
+      border-bottom: 1px solid var(--color-border-primary, #e5e7eb);
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .badge-truncated {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 6px;
+      border-radius: var(--border-radius-sm, 4px);
+      font-size: 10px;
+      font-weight: 600;
+      background: var(--color-background-warning, #fef3c7);
+      color: var(--color-text-warning, #92400e);
+      white-space: nowrap;
+    }
+
+    /* ── Filter button row ───────────────────────────────────────────── */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 0 10px;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: var(--border-radius-sm, 4px);
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--color-border-primary, #d1d5db);
+      background: var(--color-background-secondary, #f9fafb);
+      color: var(--color-text-secondary, #4b5563);
+      transition: all 0.1s ease;
+    }
+    .filter-btn:hover { border-color: #9ca3af; }
+    .filter-btn.active {
+      background: var(--color-background-info, #eff6ff);
+      color: #1d4ed8;
+      border-color: #93c5fd;
+      font-weight: 600;
+    }
+
+    /* ── Table container — capped height with internal scroll ────────── */
+    .table-wrap {
+      max-height: 380px;
+      overflow: auto;
+      border: 1px solid var(--color-border-primary, #e5e7eb);
+      border-radius: var(--border-radius-md, 8px);
+    }
+    .result-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      background: var(--color-background-secondary, #f9fafb);
+    }
+
+    /* ── Sticky table header ─────────────────────────────────────────── */
+    .result-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    .th-cell {
+      padding: 7px 10px;
+      text-align: left;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: var(--color-background-secondary, #f3f4f6);
+      color: var(--color-text-secondary, #6b7280);
+      border-bottom: 1px solid var(--color-border-primary, #e5e7eb);
+      border-right: 1px solid var(--color-border-primary, #e5e7eb);
+      white-space: nowrap;
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+    }
+    .th-cell:last-child { border-right: none; }
+    /* Primary key header: slightly different background to distinguish */
+    .th-pk {
+      background: var(--color-background-primary, #e8f0fe) !important;
+      color: #1d4ed8 !important;
+      position: sticky;
+      left: 0;
+      z-index: 3;
+    }
+    .th-status { min-width: 80px; }
+
+    /* ── Table rows ──────────────────────────────────────────────────── */
+    .tr-row:nth-child(even) { background: var(--color-background-primary, #ffffff); }
+    .tr-row:nth-child(odd)  { background: var(--color-background-secondary, #f9fafb); }
+    .tr-row:hover           { background: var(--color-background-info, #eff6ff); }
+    .tr-row:last-child .td-cell { border-bottom: none; }
+    .tr-removed { background: rgba(239,68,68,0.07) !important; }
+    .tr-added   { background: rgba(34,197,94,0.07) !important; }
+    .tr-removed:hover { background: rgba(239,68,68,0.14) !important; }
+    .tr-added:hover   { background: rgba(34,197,94,0.14) !important; }
+
+    /* ── Data cells ──────────────────────────────────────────────────── */
+    .td-cell {
+      padding: 5px 10px;
+      color: var(--color-text-primary, #1a1a1a);
+      border-bottom: 1px solid var(--color-border-secondary, #f3f4f6);
+      border-right: 1px solid var(--color-border-secondary, #f3f4f6);
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+    .td-cell:last-child { border-right: none; }
+    /* Sticky primary key column */
+    .td-pk {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      background: var(--color-background-primary, #f0f4ff) !important;
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+      font-weight: 600;
+      color: #1d4ed8;
+    }
+    .tr-removed .td-pk { background: rgba(239,68,68,0.1) !important; }
+    .tr-added   .td-pk { background: rgba(34,197,94,0.1) !important; }
+
+    /* ── Cell type variants ──────────────────────────────────────────── */
+    .cell-null  { font-style: italic; color: var(--color-text-secondary, #9ca3af); }
+    .cell-num   { font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+                  font-variant-numeric: tabular-nums; text-align: right; }
+    .cell-bool-true  { color: var(--color-text-success, #16a34a); font-weight: 600; }
+    .cell-bool-false { color: var(--color-text-secondary, #9ca3af); }
+
+    /* ── Status pills ────────────────────────────────────────────────── */
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 7px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .status-pill-removed { background: #fee2e2; color: #b91c1c; }
+    .status-pill-added   { background: #dcfce7; color: #15803d; }
+
+    /* ── Empty / error states ────────────────────────────────────────── */
+    .empty-card {
+      background: var(--color-background-secondary, #f9fafb);
+      border-radius: var(--border-radius-md, 8px);
+      padding: 32px 24px;
+      text-align: center;
+    }
+    .empty-icon  { font-size: 28px; margin-bottom: 8px; }
+    .empty-title { font-size: 14px; font-weight: 600; color: var(--color-text-primary, #1a1a1a); margin-bottom: 6px; }
+    .empty-hint  { font-size: 12px; color: var(--color-text-secondary, #6b7280); }
+
+    .error-card  { background: var(--color-background-secondary, #f9fafb);
+                   border-radius: var(--border-radius-md, 8px); padding: 24px; text-align: center; }
+    .error-title { font-size: 14px; font-weight: 600; color: var(--color-text-danger, #dc2626); margin-bottom: 6px; }
+    .error-hint  { font-size: 12px; color: var(--color-text-secondary, #6b7280); }
+
+    #root { min-height: 40px; }
+  </style>
+</head>
+<body>
+  <div id="root">Loading…</div>
+  <script type="module">
+    import {
+      App,
+      applyDocumentTheme,
+      applyHostStyleVariables,
+      applyHostFonts,
+    } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+
+    const app = new App({ name: "Recce Value Diff Detail", version: "1.0.0" });
+
+    app.onhostcontextchanged = (ctx) => {
+      if (ctx.theme) applyDocumentTheme(ctx.theme);
+      if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+      if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
+    };
+
+    app.ontoolresult = ({ structuredContent }) => {
+      render(structuredContent ?? {});
+    };
+
+    app.onteardown = async () => { return {}; };
+
+    await app.connect();
+
+    const initialCtx = app.getHostContext?.();
+    if (initialCtx) {
+      if (initialCtx.theme) applyDocumentTheme(initialCtx.theme);
+      if (initialCtx.styles?.variables) applyHostStyleVariables(initialCtx.styles.variables);
+      if (initialCtx.styles?.css?.fonts) applyHostFonts(initialCtx.styles.css.fonts);
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────
+    function escapeHtml(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function pkLabel(pk) {
+      if (!pk) return "";
+      if (Array.isArray(pk)) return pk.join(", ");
+      return String(pk);
+    }
+
+    function renderCell(value, type) {
+      if (value === null || value === undefined) {
+        return `<span class="cell-null">—</span>`;
+      }
+      if (type === "boolean" || typeof value === "boolean") {
+        if (value === true || value === "true" || value === 1) {
+          return `<span class="cell-bool-true">&#10003;</span>`;
+        }
+        return `<span class="cell-bool-false">—</span>`;
+      }
+      if (type === "integer" || type === "number") {
+        const formatted = typeof value === "number"
+          ? value.toLocaleString(undefined, { maximumFractionDigits: 6 })
+          : escapeHtml(String(value));
+        return `<span class="cell-num">${formatted}</span>`;
+      }
+      if (type === "date" || type === "datetime" || type === "timedelta") {
+        return `<span title="${escapeHtml(String(value))}">${escapeHtml(String(value))}</span>`;
+      }
+      const str = String(value);
+      if (str.length > 80) {
+        return `<span title="${escapeHtml(str)}">${escapeHtml(str.slice(0, 80))}…</span>`;
+      }
+      return escapeHtml(str);
+    }
+
+    // ── Filter state ────────────────────────────────────────────────────
+    let _allRows = [];       // [{row: displayRow, status: "removed"|"added", pkVal}]
+    let _displayCols = [];   // columns excluding in_a / in_b
+    let _pkIndices = [];     // indices of PK columns in displayCols
+    let _activeFilter = "all";
+
+    // ── Main render ──────────────────────────────────────────────────────
+    function render(data) {
+      const root = document.getElementById("root");
+
+      if (!data || typeof data !== "object") {
+        root.innerHTML = `
+          <div class="error-card">
+            <div class="error-title">Widget data unavailable</div>
+            <div class="error-hint">No structured content received from the tool.</div>
+          </div>`;
+        return;
+      }
+
+      const modelName  = data.model ?? "";
+      const pk         = data.primary_key ?? null;
+      const allCols    = Array.isArray(data.columns) ? data.columns : [];
+      const rawData    = Array.isArray(data.data) ? data.data : [];
+      const more       = !!data.more;
+      const limit      = data.limit ?? null;
+      const warning    = data.warning ?? null;
+
+      // ── Locate in_a / in_b column indices
+      const inAIdx = allCols.findIndex(c => c.key === "in_a" || c.name === "in_a");
+      const inBIdx = allCols.findIndex(c => c.key === "in_b" || c.name === "in_b");
+      _displayCols = allCols.filter(c => c.name !== "in_a" && c.name !== "in_b");
+      const displayColIndices = allCols.map((_, i) => i).filter(i => i !== inAIdx && i !== inBIdx);
+
+      // ── Determine which displayCols are primary key columns
+      const pkArray = pk ? (Array.isArray(pk) ? pk : [pk]) : [];
+      _pkIndices = _displayCols.map((c, i) => pkArray.includes(c.name) ? i : -1).filter(i => i >= 0);
+
+      // ── Parse rows and classify status
+      _allRows = rawData.map(row => {
+        const inA = inAIdx >= 0 ? (row[inAIdx] === true || row[inAIdx] === "true" || row[inAIdx] === 1) : false;
+        const inB = inBIdx >= 0 ? (row[inBIdx] === true || row[inBIdx] === "true" || row[inBIdx] === 1) : false;
+        const status = (!inB) ? "removed" : "added";
+        const displayRow = displayColIndices.map(i => row[i]);
+        return { row: displayRow, status };
+      });
+
+      const removedCount = _allRows.filter(r => r.status === "removed").length;
+      const addedCount   = _allRows.filter(r => r.status === "added").length;
+      const totalDiff    = _allRows.length;
+
+      // ── Header
+      const pkHint = pk ? ` · PK: ${escapeHtml(pkLabel(pk))}` : "";
+      const header = `
+        <div class="header">
+          <span class="header-icon">&#128269;</span>
+          <span class="header-title">Value diff detail</span>
+          <span class="header-model">${escapeHtml(modelName)}${pkHint}</span>
+        </div>`;
+
+      // ── Warning bar
+      const warningHtml = warning
+        ? `<div class="warning-bar">&#9888; ${escapeHtml(warning)}</div>`
+        : "";
+
+      // ── Empty state — no differing rows at all
+      if (totalDiff === 0) {
+        root.innerHTML = header + warningHtml + `
+          <div class="empty-card">
+            <div class="empty-icon">&#10003;</div>
+            <div class="empty-title">No row-level differences found</div>
+            <div class="empty-hint">All rows match between base and current environments. Use <code>value_diff</code> to see aggregate column-level statistics.</div>
+          </div>`;
+        return;
+      }
+
+      // ── Summary bar
+      const truncatedBadge = more ? `<span class="badge-truncated">Truncated to ${limit ?? totalDiff} rows</span>` : "";
+      const summaryBar = `
+        <div class="summary-bar">
+          <span>${totalDiff} differing row${totalDiff !== 1 ? "s" : ""}</span>
+          <span>&#8722;${removedCount} removed</span>
+          <span>&#43;${addedCount} added</span>
+          ${truncatedBadge}
+        </div>`;
+
+      // ── Filter bar
+      const filterBar = `
+        <div class="filter-bar" id="filterBar">
+          <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">All <span style="font-weight:700;margin-left:3px">${totalDiff}</span></button>
+          <button class="filter-btn" data-filter="removed" onclick="setFilter('removed')" style="color:#b91c1c">
+            Removed <span style="font-weight:700;margin-left:3px">${removedCount}</span>
+          </button>
+          <button class="filter-btn" data-filter="added" onclick="setFilter('added')" style="color:#15803d">
+            Added <span style="font-weight:700;margin-left:3px">${addedCount}</span>
+          </button>
+        </div>`;
+
+      // ── Scaffold: header + summary + filter + table placeholder
+      root.innerHTML = header + warningHtml + summaryBar + filterBar + `<div id="diffTable"></div>`;
+
+      // Expose filter function globally for onclick handlers
+      window.setFilter = (f) => {
+        _activeFilter = f;
+        document.querySelectorAll(".filter-btn").forEach(btn => {
+          btn.classList.toggle("active", btn.dataset.filter === f);
+        });
+        renderDiffTable();
+      };
+
+      renderDiffTable();
+    }
+
+    function renderDiffTable() {
+      const container = document.getElementById("diffTable");
+      if (!container) return;
+
+      const filtered = _activeFilter === "all"
+        ? _allRows
+        : _allRows.filter(r => r.status === _activeFilter);
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="empty-card" style="padding:16px 24px">
+            <div class="empty-title">No ${_activeFilter} rows</div>
+          </div>`;
+        return;
+      }
+
+      // Build header cells: Status first, then PK cols (sticky-left-marked), then rest
+      const headerCells = [
+        `<th class="th-cell th-status">Status</th>`,
+        ..._displayCols.map((col, i) => {
+          const isPk = _pkIndices.includes(i);
+          const cls = isPk ? "th-cell th-pk" : "th-cell";
+          return `<th class="${cls}" title="${escapeHtml(col.name)} (${escapeHtml(col.type ?? 'unknown')})">${escapeHtml(col.name)}</th>`;
+        }),
+      ].join("");
+
+      const dataRows = filtered.map(({ row, status }) => {
+        const trClass = status === "removed" ? "tr-row tr-removed" : "tr-row tr-added";
+        const pill = status === "removed"
+          ? `<span class="status-pill status-pill-removed">&#8722; Removed</span>`
+          : `<span class="status-pill status-pill-added">&#43; Added</span>`;
+        const statusCell = `<td class="td-cell">${pill}</td>`;
+        const dataCells = _displayCols.map((col, i) => {
+          const isPk = _pkIndices.includes(i);
+          const tdCls = isPk ? "td-cell td-pk" : "td-cell";
+          return `<td class="${tdCls}">${renderCell(row[i], col.type ?? "unknown")}</td>`;
+        }).join("");
+        return `<tr class="${trClass}">${statusCell}${dataCells}</tr>`;
+      }).join("");
+
+      container.innerHTML = `
+        <div class="table-wrap">
+          <table class="result-table">
+            <thead><tr>${headerCells}</tr></thead>
+            <tbody>${dataRows}</tbody>
+          </table>
+        </div>`;
+    }
+  </script>
+</body>
+</html>

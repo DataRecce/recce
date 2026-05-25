@@ -903,6 +903,156 @@ def value_diff_resource() -> str:
 
 
 # ---------------------------------------------------------------------------
+# value_diff_detail widget tool + resource
+# ---------------------------------------------------------------------------
+
+
+class ValueDiffDetailOutput(BaseModel):
+    """Output model for the value_diff_detail widget tool.
+
+    ValueDiffDetailTask.execute() returns ValueDiffDetailResult(DataFrame).
+    After model_dump(mode='json') it becomes a standard DataFrame dict:
+      {columns: [{key, name, type}], data: [[...]], limit, more, total_row_count}
+
+    Columns include all data columns PLUS 'in_a' and 'in_b' boolean flags.
+    Rows where in_a=True, in_b=False are "removed" (only in base).
+    Rows where in_a=False, in_b=True are "added" (only in current).
+    (Both true cannot occur — only differing rows are returned.)
+
+    primary_key and model are echoed from input for the widget header.
+    """
+
+    model: str
+    primary_key: Optional[Union[str, List[str]]] = None
+    columns: List[QueryColumnInfo]
+    data: List[List[Any]]
+    limit: Optional[int] = None
+    more: Optional[bool] = None
+    total_row_count: Optional[int] = None
+    warning: Optional[str] = None  # from _maybe_add_single_env_warning
+
+
+class ValueDiffDetailInput(BaseModel):
+    model: str = Field(..., description="dbt model name to inspect (e.g. 'customers')")
+    primary_key: Union[str, List[str]] = Field(
+        ...,
+        description=(
+            "Primary key column(s) for row matching. "
+            "Use a string for a single column (e.g. 'id'), "
+            "or a list for a composite key (e.g. ['order_id', 'line_id'])."
+        ),
+    )
+    columns: Optional[List[str]] = Field(
+        default=None,
+        description="Columns to inspect (default: all common columns between base and current)",
+    )
+
+
+@mcp.tool(
+    name="value_diff_detail",
+    annotations={
+        "title": "Value Diff Detail (Widget)",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,  # executes queries against the warehouse
+    },
+    meta={
+        "ui": {"resourceUri": "ui://recce/value_diff_detail.html"},
+        "ui/resourceUri": "ui://recce/value_diff_detail.html",
+    },
+)
+async def value_diff_detail(args: ValueDiffDetailInput) -> CallToolResult:
+    """Show per-row detail of value differences (actual mismatched rows).
+
+    Companion to value_diff (which shows aggregate stats). Returns the actual
+    rows with mismatched values, rendered as a scrollable table with filter
+    pills (All / Removed / Added). The agent should not enumerate the row list
+    as plain text — the widget handles rendering.
+
+    The result DataFrame columns include all data columns plus 'in_a' and
+    'in_b' boolean flags (in_a=True, in_b=False → "removed"; in_a=False,
+    in_b=True → "added"). Rows are capped at 1000 by the underlying task SQL.
+
+    Args:
+        model: dbt model name (e.g. 'customers')
+        primary_key: column(s) to match rows on; str for single col, list for composite key
+        columns: optional subset of columns to compare (default: all common columns)
+
+    Returns:
+        CallToolResult with structuredContent: ValueDiffDetailOutput shape
+        {model, primary_key, columns: [{key, name, type}], data: [[...]], limit?,
+         more?, total_row_count?, warning?}
+
+    Use when:
+        - User asks "which rows changed" / "show me the actual mismatches"
+        - Investigating specific records flagged by value_diff
+        - PR review needs row-level evidence of data changes
+    Don't use when:
+        - User wants aggregate stats → value_diff (faster, no row data)
+        - Need full row comparison without primary key → query_diff instead
+        - Single-environment only — tool warns but returns no useful comparison
+    """
+    raw = await _recce_server._tool_value_diff_detail(args.model_dump(exclude_none=True))
+    warning = raw.pop("_warning", None) if isinstance(raw, dict) else None
+    columns = [QueryColumnInfo(**c) for c in (raw.get("columns") or [])]
+    output = ValueDiffDetailOutput(
+        model=args.model,
+        primary_key=args.primary_key,
+        columns=columns,
+        data=raw.get("data") or [],
+        limit=raw.get("limit"),
+        more=raw.get("more"),
+        total_row_count=raw.get("total_row_count"),
+        warning=warning,
+    )
+    n_rows = len(output.data)
+    # Classify rows by in_a/in_b to build a human-readable summary
+    in_a_idx = next((i for i, c in enumerate(columns) if c.name == "in_a"), None)
+    in_b_idx = next((i for i, c in enumerate(columns) if c.name == "in_b"), None)
+    if in_a_idx is not None and in_b_idx is not None:
+        removed = sum(
+            1
+            for row in output.data
+            if len(row) > max(in_a_idx, in_b_idx)
+            and (row[in_a_idx] is True or row[in_a_idx] == 1)
+            and not (row[in_b_idx] is True or row[in_b_idx] == 1)
+        )
+        added = sum(
+            1
+            for row in output.data
+            if len(row) > max(in_a_idx, in_b_idx)
+            and not (row[in_a_idx] is True or row[in_a_idx] == 1)
+            and (row[in_b_idx] is True or row[in_b_idx] == 1)
+        )
+        text = (
+            f"Value diff detail for '{args.model}': "
+            f"{n_rows} differing row{'s' if n_rows != 1 else ''} "
+            f"(+{added} added, -{removed} removed). Rendered in widget."
+        )
+    else:
+        text = f"Value diff detail for '{args.model}': {n_rows} row{'s' if n_rows != 1 else ''} rendered in widget."
+    return CallToolResult(
+        content=[TextContent(type="text", text=text)],
+        structuredContent=output.model_dump(),
+    )
+
+
+@mcp.resource(
+    uri="ui://recce/value_diff_detail.html",
+    mime_type="text/html;profile=mcp-app",
+    meta={
+        "ui": {
+            "csp": {"resourceDomains": ["https://unpkg.com"]},
+            "prefersBorder": False,
+        },
+    },
+)
+def value_diff_detail_resource() -> str:
+    return _read_widget_html("value_diff_detail")
+
+
+# ---------------------------------------------------------------------------
 # query_diff widget tool + resource
 # ---------------------------------------------------------------------------
 
