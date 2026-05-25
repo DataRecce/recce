@@ -102,6 +102,7 @@ export function ColumnNameCell({
     currentIndex,
     reordered,
     definitionChanged,
+    changeUnknown,
   } = row;
   const columnType =
     currentType ??
@@ -123,7 +124,9 @@ export function ColumnNameCell({
           ? "type_changed"
           : definitionChanged
             ? "definition_changed"
-            : "unchanged";
+            : changeUnknown
+              ? "definition_unknown"
+              : "unchanged";
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
@@ -243,7 +246,8 @@ export function ColumnNameCell({
           !isAdded &&
           !isRemoved &&
           !hasStructuralChange &&
-          !definitionChanged && (
+          !definitionChanged &&
+          !changeUnknown && (
             <span className="schema-change-badge schema-change-badge-impacted">
               !
             </span>
@@ -272,6 +276,21 @@ export function ColumnNameCell({
             )}
           </Tooltip>
         )}
+        {changeUnknown &&
+          !isAdded &&
+          !isRemoved &&
+          !hasStructuralChange &&
+          !definitionChanged && (
+            <Tooltip
+              title="Change status unknown — analyzer couldn't resolve column dependencies"
+              placement="top"
+              onMouseOver={(e) => e.stopPropagation()}
+            >
+              <span className="schema-change-badge schema-change-badge-unknown">
+                ?
+              </span>
+            </Tooltip>
+          )}
         <Box
           sx={{
             overflow: "hidden",

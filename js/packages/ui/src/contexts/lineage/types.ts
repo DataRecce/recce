@@ -42,7 +42,7 @@ export type LineageGraphNode = Node<
     changeStatus?: "added" | "removed" | "modified";
     change?: {
       category: "breaking" | "non_breaking" | "partial_breaking" | "unknown";
-      columns?: Record<string, "added" | "removed" | "modified">;
+      columns?: Record<string, "added" | "removed" | "modified" | "unknown">;
     };
     parents: Record<string, LineageGraphEdge>;
     children: Record<string, LineageGraphEdge>;

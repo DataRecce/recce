@@ -8,6 +8,27 @@ export interface ColumnAnnotation {
 }
 
 /**
+ * Coerce a wire-format `change_status` (which may include `"unknown"` since
+ * DRC-3409's loud-fail fallback) into the CLL renderer's narrower
+ * `ColumnAnnotation["changeStatus"]`. `"unknown"` columns are tagged as
+ * "we know something upstream changed but couldn't attribute it" — surface
+ * those as `"modified"` so the renderer shows the ~ amber indicator rather
+ * than rendering a silent "no change" row (the DRC-3409 symptom, one layer
+ * deeper on the CLL graph view).
+ *
+ * Returns `undefined` for `undefined` / unknown-shape inputs so callers can
+ * pass through optional fields without losing the "no change" case.
+ */
+export function coerceCllChangeStatus(
+  status: "added" | "removed" | "modified" | "unknown" | undefined,
+): ColumnAnnotation["changeStatus"] | undefined {
+  if (status === "unknown") {
+    return "modified";
+  }
+  return status;
+}
+
+/**
  * Walk both parent_map and child_map from a selected column to collect every
  * column in its lineage chain — upstream ancestors and downstream descendants.
  *
@@ -41,7 +62,7 @@ export function computeColumnLineage(
         column: col.name,
         isImpacted: impactedColumns.has(columnId),
         transformationType: col.transformation_type,
-        changeStatus: col.change_status as ColumnAnnotation["changeStatus"],
+        changeStatus: coerceCllChangeStatus(col.change_status),
       });
       result.set(modelId, annotations);
     }
@@ -64,8 +85,7 @@ export function computeColumnLineage(
         column: startCol.name,
         isImpacted: impactedColumns.has(startId),
         transformationType: startCol.transformation_type,
-        changeStatus:
-          startCol.change_status as ColumnAnnotation["changeStatus"],
+        changeStatus: coerceCllChangeStatus(startCol.change_status),
       },
     ]);
   }

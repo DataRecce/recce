@@ -34,7 +34,7 @@ export interface CllNodeData {
   source_name: string;
   resource_type: string;
   raw_code?: string;
-  change_status?: "added" | "removed" | "modified";
+  change_status?: "added" | "removed" | "modified" | "unknown";
   change_category?:
     | "breaking"
     | "non_breaking"

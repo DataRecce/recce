@@ -5,6 +5,7 @@ export interface ColumnTooltipInput {
     | "removed"
     | "type_changed"
     | "definition_changed"
+    | "definition_unknown"
     | "unchanged";
   baseType?: string;
   currentType?: string;
@@ -35,6 +36,12 @@ export function buildColumnTooltip(input: ColumnTooltipInput): string {
       text = currentType
         ? `${name} ${currentType} changed definition`
         : `${name} changed definition`;
+      break;
+
+    case "definition_unknown":
+      text = currentType
+        ? `${name} ${currentType} change status unknown`
+        : `${name} change status unknown`;
       break;
 
     case "unchanged":

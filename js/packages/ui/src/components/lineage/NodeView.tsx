@@ -40,7 +40,7 @@ export interface NodeViewNodeData {
     materialized?: string;
     change?: {
       category: string;
-      columns?: Record<string, "added" | "removed" | "modified">;
+      columns?: Record<string, "added" | "removed" | "modified" | "unknown">;
     };
   };
 }
@@ -68,7 +68,10 @@ export interface RunTypeIconMap {
 export interface SchemaViewProps {
   base?: NodeData;
   current?: NodeData;
-  columnChanges?: Record<string, "added" | "removed" | "modified"> | null;
+  columnChanges?: Record<
+    string,
+    "added" | "removed" | "modified" | "unknown"
+  > | null;
   onViewCode?: () => void;
   /**
    * Optional action element rendered alongside the schema legend (e.g.

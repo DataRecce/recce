@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { computeColumnLineage } from "../computeColumnLineage";
+import {
+  coerceCllChangeStatus,
+  computeColumnLineage,
+} from "../computeColumnLineage";
 
 describe("computeColumnLineage", () => {
   it("walks upstream via parent_map from the selected column", () => {
@@ -158,6 +161,93 @@ describe("computeColumnLineage", () => {
 
     expect(result.get("model.a")?.[0].isImpacted).toBe(false);
     expect(result.get("model.b")?.[0].isImpacted).toBe(true);
+  });
+
+  it('coerces wire change_status "unknown" to renderer "modified"', () => {
+    // DRC-3409: the loud-fail fallback in recce/util/breaking.py tags
+    // unresolvable CTE-affected outer columns as "unknown" rather than
+    // silently reporting "no change". Surface those as "modified" so the
+    // CLL renderer paints the ~ amber indicator instead of indexing into
+    // an empty palette slot and rendering as no-change.
+    const cll = {
+      current: {
+        columns: {
+          "model.a_STATUS": {
+            name: "STATUS",
+            change_status: "unknown",
+          },
+          "model.b_STATUS": {
+            name: "STATUS",
+            change_status: "modified",
+          },
+          "model.c_STATUS": {
+            name: "STATUS",
+          },
+        },
+        parent_map: {
+          "model.c_STATUS": ["model.b_STATUS"],
+          "model.b_STATUS": ["model.a_STATUS"],
+        },
+        child_map: {
+          "model.a_STATUS": ["model.b_STATUS"],
+          "model.b_STATUS": ["model.c_STATUS"],
+        },
+      },
+    };
+
+    const result = computeColumnLineage(
+      cll as any,
+      "model.c",
+      "STATUS",
+      new Set(),
+    );
+
+    // Unknown surfaces as modified; existing modified stays; absent stays absent.
+    expect(result.get("model.a")?.[0].changeStatus).toBe("modified");
+    expect(result.get("model.b")?.[0].changeStatus).toBe("modified");
+    expect(result.get("model.c")?.[0].changeStatus).toBeUndefined();
+  });
+
+  it("coerces wire change_status on the start column as well", () => {
+    // The selected column itself can carry "unknown" when its outer
+    // projection couldn't be linked to a specific CTE source change.
+    const cll = {
+      current: {
+        columns: {
+          "model.a_STATUS": {
+            name: "STATUS",
+            change_status: "unknown",
+          },
+        },
+        parent_map: {},
+        child_map: {},
+      },
+    };
+
+    const result = computeColumnLineage(
+      cll as any,
+      "model.a",
+      "STATUS",
+      new Set(),
+    );
+
+    expect(result.get("model.a")?.[0].changeStatus).toBe("modified");
+  });
+
+  describe("coerceCllChangeStatus", () => {
+    it('maps "unknown" to "modified"', () => {
+      expect(coerceCllChangeStatus("unknown")).toBe("modified");
+    });
+
+    it("passes through added / removed / modified unchanged", () => {
+      expect(coerceCllChangeStatus("added")).toBe("added");
+      expect(coerceCllChangeStatus("removed")).toBe("removed");
+      expect(coerceCllChangeStatus("modified")).toBe("modified");
+    });
+
+    it('preserves undefined to keep the "no change" signal', () => {
+      expect(coerceCllChangeStatus(undefined)).toBeUndefined();
+    });
   });
 
   it("handles cycles without infinite recursion", () => {
