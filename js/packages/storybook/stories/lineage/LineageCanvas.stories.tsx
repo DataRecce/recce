@@ -75,6 +75,10 @@ const meta: Meta<typeof LineageCanvas> = {
       description: "Callback when node is double-clicked",
       action: "nodeDoubleClicked",
     },
+    onNodeContextMenu: {
+      description: "Callback when node kebab/context-menu is clicked",
+      action: "nodeContextMenu",
+    },
     showMiniMap: {
       description: "Whether to show the minimap",
       control: "boolean",

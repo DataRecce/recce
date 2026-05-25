@@ -39,6 +39,7 @@ import {
   type SelectMode,
 } from "./nodes";
 import { getIconForChangeStatus } from "./styles";
+import { pickWholeModelFlags } from "./wholeModelTreatment";
 
 // =============================================================================
 // TYPES
@@ -282,6 +283,7 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
   const { isDark } = useThemeColors();
 
   // Get context values
+  const lineageViewCtx = useLineageViewContextSafe();
   const {
     interactive,
     selectNode,
@@ -297,11 +299,13 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
     cll,
     impactedNodeIds,
     newCllExperience,
-    showColumnLevelLineage,
-    setChangeAnalysisMode,
-  } = useLineageViewContextSafe();
-  const { isActionAvailable } = useLineageGraphContext();
+    wholeModelImpact,
+  } = lineageViewCtx;
   const isImpacted = newCllExperience ? impactedNodeIds.has(id) : false;
+  const { isWholeModelChanged, isWholeModelImpacted } = pickWholeModelFlags(
+    id,
+    lineageViewCtx,
+  );
 
   // Computed state
   const changeCategory = cll?.current.nodes[id]
@@ -347,15 +351,6 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
     showContextMenu(event, nodeProps as unknown as LineageGraphNode);
   };
 
-  const handleShowImpactRadius = (nodeId: string) => {
-    setChangeAnalysisMode(true);
-    void showColumnLevelLineage({
-      node_id: nodeId,
-      change_analysis: true,
-      no_upstream: true,
-    });
-  };
-
   return (
     <LineageNode
       id={id}
@@ -368,6 +363,9 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
       // New CLL experience props
       newCllExperience={newCllExperience}
       isImpacted={isImpacted}
+      isWholeModelChanged={isWholeModelChanged}
+      isWholeModelImpacted={isWholeModelImpacted}
+      wholeModelImpact={wholeModelImpact}
       // Interactive props
       interactive={interactive}
       selectMode={nodeSelectMode}
@@ -390,11 +388,6 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
       // Callbacks
       onSelect={handleSelect}
       onContextMenu={handleContextMenu}
-      onShowImpactRadius={
-        changeStatus === "modified" && isActionAvailable("change_analysis")
-          ? handleShowImpactRadius
-          : undefined
-      }
     />
   );
 }

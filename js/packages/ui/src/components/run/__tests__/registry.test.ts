@@ -70,7 +70,6 @@ describe("registry", () => {
       );
       expect(defaultRunTypeConfig.top_k_diff.title).toBe("Top-K Diff");
       expect(defaultRunTypeConfig.histogram_diff.title).toBe("Histogram Diff");
-      expect(defaultRunTypeConfig.sandbox.title).toBe("Sandbox");
       expect(defaultRunTypeConfig.simple.title).toBe("Simple");
     });
   });

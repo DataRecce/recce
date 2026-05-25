@@ -698,6 +698,47 @@ class RecceMCPServer:
                     },
                 )
             )
+            # analyze_model is local-only: it relies on the local dbt manifest and
+            # the adapter-side _full_cll_map cache. The cloud backend (RecceMCPCloudBackend)
+            # does not implement it, so advertising it in cloud mode would surface a
+            # ValueError("Unknown tool: analyze_model") when an agent tries to call it.
+            if self.backend is None:
+                tools.append(
+                    Tool(
+                        name="analyze_model",
+                        description=(
+                            "Parse a dbt model's compiled SQL into structured evidence (refs, projections, "
+                            "filters, joins, group_by, having, order_by, aggregations, case_expressions, "
+                            "distinct, has_subquery, has_cte, is_set_operation) and return its downstream "
+                            "column impact (which other models and columns depend on it, 1 hop). "
+                            "Single-environment tool — does not require target-base/ or git history. "
+                            "Useful for understanding what a model does structurally and who would be "
+                            "affected by changes to it. Only available with dbt adapter in local mode.\n\n"
+                            "Notes on the structure: refs lists upstream tables/sources only (CTE aliases "
+                            "are excluded). is_set_operation=true means the model is a UNION/INTERSECT/"
+                            "EXCEPT; projections and filters are merged across all legs. downstream covers "
+                            "only direct dependents — for transitive impact, traverse with get_cll.\n\n"
+                            "Performance: the first call per session builds the full column-level lineage "
+                            "map (potentially seconds on large projects); subsequent calls reuse the cached "
+                            "map and are fast.\n\n"
+                            "Returns: {model_id, structure: SqlStructure, downstream: {models, columns}}. "
+                            "If sqlglot cannot parse the compiled SQL, structure.unparseable=true and "
+                            "the agent should fall back to text-level inspection."
+                        ),
+                        inputSchema={
+                            "type": "object",
+                            "properties": {
+                                "model_id": {
+                                    "type": "string",
+                                    "description": (
+                                        "Full unique ID of the model to analyze " "(e.g., 'model.project.model_name')."
+                                    ),
+                                },
+                            },
+                            "required": ["model_id"],
+                        },
+                    )
+                )
             tools.append(
                 Tool(
                     name="get_server_info",
@@ -1313,6 +1354,8 @@ class RecceMCPServer:
                     result = await self._tool_get_model(arguments)
                 elif name == "get_cll":
                     result = await self._tool_get_cll(arguments)
+                elif name == "analyze_model":
+                    result = await self._tool_analyze_model(arguments)
                 elif name == "get_server_info":
                     result = await self._tool_get_server_info(arguments)
                 elif name == "select_nodes":
@@ -2057,6 +2100,44 @@ class RecceMCPServer:
             change_analysis=arguments.get("change_analysis", False),
         )
         return cll.model_dump(mode="json")
+
+    async def _tool_analyze_model(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Return structural analysis of a model's compiled SQL plus downstream column impact."""
+        model_id = arguments.get("model_id")
+        if not model_id:
+            raise ValueError("model_id is required")
+        if self.context.adapter_type != "dbt":
+            raise ValueError("analyze_model is only available with dbt adapter")
+
+        from recce.adapter.dbt_adapter import DbtAdapter
+        from recce.util.ast_analyze import (
+            analyze_sql,
+            collect_downstream,
+            get_compiled_sql_from_manifest,
+        )
+
+        dbt_adapter: DbtAdapter = self.context.adapter
+        compiled_sql = get_compiled_sql_from_manifest(dbt_adapter.manifest, model_id)
+        if compiled_sql is None:
+            raise ValueError(
+                f"Cannot resolve compiled SQL for {model_id}. "
+                "Run `dbt compile` to populate target/ before calling analyze_model."
+            )
+
+        # Mirror the dialect lookup used by build_full_cll_map (see DbtAdapter:1078)
+        # — manifest metadata first, then live adapter.type(). Without this, BigQuery /
+        # Snowflake / etc. fall through to sqlglot's default dialect and return unparseable.
+        dialect = getattr(dbt_adapter.manifest.metadata, "adapter_type", None) or dbt_adapter.adapter.type()
+        structure = analyze_sql(compiled_sql, dialect=dialect)
+
+        cll_data = dbt_adapter.build_full_cll_map()
+        downstream = collect_downstream(cll_data, model_id)
+
+        return {
+            "model_id": model_id,
+            "structure": structure.model_dump(mode="json"),
+            "downstream": downstream,
+        }
 
     async def _tool_get_server_info(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Get server context information"""
