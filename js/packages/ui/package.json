@@ -160,7 +160,7 @@
     "common-tags": "^1.8.0",
     "date-fns": "^4.1.0",
     "file-saver": "^2.0.5",
-    "js-cookie": "^3.0.5",
+    "js-cookie": "^3.0.7",
     "lodash": "^4.17.21",
     "next-themes": "^0.4.0",
     "react-chartjs-2": "^5.3.0",
@@ -176,11 +176,11 @@
   "devDependencies": {
     "@tailwindcss/cli": "^4.2.4",
     "@tailwindcss/postcss": "^4.2.4",
-    "@tsdown/css": "^0.21.10",
-    "postcss": "^8.5.0",
+    "@tsdown/css": "^0.22.0",
+    "postcss": "^8.5.15",
     "read-excel-file": "^9.0.6",
     "tailwindcss": "^4.2.4",
-    "tsdown": "^0.21.10",
+    "tsdown": "^0.22.0",
     "typedoc": "^0.28.19",
     "typedoc-plugin-markdown": "^4.11.0",
     "typescript": "^6.0.3"
