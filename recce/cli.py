@@ -186,17 +186,6 @@ recce_options = [
         default=RECCE_ERROR_LOG_FILE,
         hidden=True,
     ),
-    click.option(
-        "--duckdb-external-access",
-        is_flag=True,
-        default=False,
-        help=(
-            "Allow recce's DuckDB session to access external state "
-            "(local files via read_csv/COPY TO, HTTP via httpfs/ATTACH, "
-            "and INSTALL/LOAD of extensions). Default: blocked. "
-            "Only enable if you trust every user who can reach this server."
-        ),
-    ),
     click.option("--debug", is_flag=True, help="Enable debug mode.", hidden=True),
 ]
 
@@ -1120,6 +1109,8 @@ def query(sql, base: bool = False, **kwargs):
     """
     from .core import RecceContext
 
+    # Sandbox is server-only; local CLI commands stay permissive.
+    kwargs.setdefault("duckdb_external_access", True)
     context = RecceContext.load(**kwargs)
     result = _execute_sql(context, sql, base=base)
     print(result.to_string(na_rep="-", index=False))
@@ -1166,6 +1157,8 @@ def diff(
 
     from .core import RecceContext
 
+    # Sandbox is server-only; local CLI commands stay permissive.
+    kwargs.setdefault("duckdb_external_access", True)
     context = RecceContext.load(**kwargs)
     before = _execute_sql(context, sql, base=True)
     if primary_keys is not None:
@@ -1229,6 +1222,17 @@ def diff(
     help="Highlight models downstream of a whole-model change. Implies --new-cll-experience.",
     envvar="RECCE_WHOLE_MODEL_IMPACT",
 )
+@click.option(
+    "--duckdb-external-access",
+    is_flag=True,
+    default=False,
+    help=(
+        "Allow recce's DuckDB session to access external state "
+        "(local files via read_csv/COPY TO, HTTP via httpfs/ATTACH, "
+        "and INSTALL/LOAD of extensions). Default: blocked. "
+        "Only enable if you trust every user who can reach this server."
+    ),
+)
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -1277,7 +1281,6 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
 
     RecceConfig(config_file=kwargs.get("config"))
 
-    # CLI flag wins over recce.yml; both default False (sandbox on).
     kwargs["duckdb_external_access"] = kwargs.get("duckdb_external_access", False) or bool(
         RecceConfig().get("duckdb_external_access", False)
     )
@@ -1508,6 +1511,9 @@ def run(output, **kwargs):
 
     # Initialize Recce Config
     RecceConfig(config_file=kwargs.get("config"))
+
+    # Sandbox is server-only; local CLI commands stay permissive.
+    kwargs.setdefault("duckdb_external_access", True)
 
     patch_derived_args(kwargs)
     # Remove share_url from kwargs to avoid affecting state loader creation
