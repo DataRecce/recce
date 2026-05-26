@@ -393,6 +393,12 @@ class DbtAdapter(BaseAdapter):
         # Load the artifacts from the state file or dbt target and dbt base directory
         if not no_artifacts and not review:
             dbt_adapter.load_artifacts()
+
+        # Lock down DuckDB external access on this process's connection.
+        # Must run AFTER load_artifacts so dbt-duckdb has finished any
+        # connection setup (including profiles.yml `attach:` blocks).
+        dbt_adapter._apply_duckdb_sandbox()
+
         return dbt_adapter
 
     def print_lineage_info(self):
@@ -2156,6 +2162,35 @@ class DbtAdapter(BaseAdapter):
             raise Exception(
                 "No enough dbt artifacts in the state file. Please use the latest recce to generate the recce state"
             )
+
+    def _apply_duckdb_sandbox(self) -> None:
+        """Lock down DuckDB external access on the recce process's connection.
+
+        Runs `SET enable_external_access = false`, which blocks:
+        - file I/O (read_csv, read_parquet, COPY TO, glob, ...)
+        - HTTP (httpfs, ATTACH 'http://...')
+        - extension loading from URLs (INSTALL, LOAD of community extensions)
+
+        Already-attached databases (via profiles.yml `attach:` block) remain
+        queryable, because the lock is applied AFTER dbt-duckdb processes
+        attaches at connection-open time.
+
+        No-op when:
+        - unsafe_sql=True (explicit opt-out)
+        - target is not DuckDB (other adapters have their own auth model)
+        """
+        if self.unsafe_sql:
+            return
+        target_type = self.runtime_config.credentials.type if self.runtime_config else None
+        if target_type != "duckdb":
+            return
+        # Apply sandbox using should_release_connection=False so the thread's
+        # connection stays OPEN after the SET completes. The connection was
+        # originally set up by adapter.connections.set_connection_name() in
+        # load(), and releasing it would leave callers (e.g. DbtTestHelper)
+        # without a usable connection after load() returns.
+        with self.adapter.connection_named("recce_sandbox_init", should_release_connection=False):
+            self.adapter.execute("SET enable_external_access = false")
 
     @contextmanager
     def connection_named(self, name: str) -> Iterator[None]:
