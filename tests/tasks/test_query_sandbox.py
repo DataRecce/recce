@@ -40,7 +40,7 @@ def _run_subprocess(script: str) -> None:
 def _make_setup_script(project_dir: str) -> str:
     """Return a Python script fragment that initialises adapter + RecceContext.
 
-    The adapter is loaded with unsafe_sql=False (sandbox ON) and the test
+    The adapter is loaded with duckdb_external_access=False (sandbox ON) and the test
     project manifests are installed so generate_sql() works for plain SQL.
     """
     return f"""
@@ -61,7 +61,7 @@ with patch("recce.adapter.dbt_adapter.log_performance"):
         no_artifacts=True,
         project_dir=_project_dir,
         profiles_dir=_project_dir,
-        unsafe_sql=False,  # sandbox ON
+        duckdb_external_access=False,  # sandbox ON
     )
 
 _writable_manifest = load_manifest(_manifest_path)
@@ -97,14 +97,14 @@ set_default_context(context)
 
 
 def test_query_task_blocks_copy_to():
-    """QueryTask with a COPY TO statement must raise UnsafeSqlException."""
+    """QueryTask with a COPY TO statement must raise DuckDBExternalAccessBlocked."""
     setup = _make_setup_script(_ADAPTER_PROJ_DIR)
     script = (
         setup
         + """
 import tempfile
 from recce.tasks import QueryTask
-from recce.exceptions import UnsafeSqlException
+from recce.exceptions import DuckDBExternalAccessBlocked
 
 with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
     out_path = f.name
@@ -114,9 +114,9 @@ try:
     raised = False
     try:
         task.execute()
-    except UnsafeSqlException as e:
+    except DuckDBExternalAccessBlocked as e:
         msg = str(e)
-        assert "--unsafe-sql" in msg, f"Opt-out hint missing: {msg}"
+        assert "--duckdb-external-access" in msg, f"Opt-out hint missing: {msg}"
         raised = True
     except Exception as e:
         raise AssertionError(f"Wrong exception type: {type(e).__name__}: {e}")
@@ -136,21 +136,21 @@ print("OK")
 
 
 def test_query_task_blocks_read_csv():
-    """QueryTask with read_csv('/etc/hosts') must raise UnsafeSqlException."""
+    """QueryTask with read_csv('/etc/hosts') must raise DuckDBExternalAccessBlocked."""
     setup = _make_setup_script(_ADAPTER_PROJ_DIR)
     script = (
         setup
         + """
 from recce.tasks import QueryTask
-from recce.exceptions import UnsafeSqlException
+from recce.exceptions import DuckDBExternalAccessBlocked
 
 task = QueryTask({"sql_template": "SELECT * FROM read_csv('/etc/hosts')"})
 raised = False
 try:
     task.execute()
-except UnsafeSqlException as e:
+except DuckDBExternalAccessBlocked as e:
     msg = str(e)
-    assert "--unsafe-sql" in msg, f"Opt-out hint missing: {msg}"
+    assert "--duckdb-external-access" in msg, f"Opt-out hint missing: {msg}"
     raised = True
 except Exception as e:
     raise AssertionError(f"Wrong exception type: {type(e).__name__}: {e}")
@@ -216,7 +216,7 @@ with TestClient(app) as client:
     )
     body = response.json()
     detail = body.get("detail", "")
-    assert "--unsafe-sql" in detail, f"Opt-out hint missing in detail: {detail}"
+    assert "--duckdb-external-access" in detail, f"Opt-out hint missing in detail: {detail}"
     assert "sandbox" in detail.lower(), f"Sandbox mention missing in detail: {detail}"
 print("OK")
 """

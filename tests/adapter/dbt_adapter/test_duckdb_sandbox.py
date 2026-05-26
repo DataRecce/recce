@@ -29,8 +29,8 @@ def _run_sandbox_script(script: str) -> None:
     )
 
 
-def test_dbt_adapter_unsafe_sql_default_false():
-    """DbtAdapter must default to unsafe_sql=False so sandbox is on by default.
+def test_dbt_adapter_duckdb_external_access_default_false():
+    """DbtAdapter must default to duckdb_external_access=False so sandbox is on by default.
 
     Runs in a subprocess to avoid applying enable_external_access=false to the
     shared dbt-duckdb singleton connection, which would break subsequent tests
@@ -49,7 +49,7 @@ def test_dbt_adapter_unsafe_sql_default_false():
                 project_dir=project_dir,
                 profiles_dir=project_dir,
             )
-        assert adapter.unsafe_sql is False, f"Expected False, got {{adapter.unsafe_sql}}"
+        assert adapter.duckdb_external_access is False, f"Expected False, got {{adapter.duckdb_external_access}}"
         print("OK")
     """
     )
@@ -161,7 +161,7 @@ def test_sandbox_survives_thread_connection_turnover():
     ],
 )
 def test_duckdb_sandbox_blocks_dangerous_sql(sql, label):
-    """With sandbox on (unsafe_sql=False), dangerous SQL must raise."""
+    """With sandbox on (duckdb_external_access=False), dangerous SQL must raise."""
     script = textwrap.dedent(
         f"""
         from unittest.mock import patch
@@ -175,7 +175,7 @@ def test_duckdb_sandbox_blocks_dangerous_sql(sql, label):
                 no_artifacts=True,
                 project_dir=project_dir,
                 profiles_dir=project_dir,
-                unsafe_sql=False,  # sandbox ON
+                duckdb_external_access=False,  # sandbox ON
             )
 
         raised = False
@@ -208,7 +208,7 @@ def test_duckdb_sandbox_allows_ordinary_select():
                 no_artifacts=True,
                 project_dir=project_dir,
                 profiles_dir=project_dir,
-                unsafe_sql=False,  # sandbox ON
+                duckdb_external_access=False,  # sandbox ON
             )
 
         _, table = adapter.execute("SELECT 1 AS x, 'a' AS y", fetch=True)
@@ -219,8 +219,8 @@ def test_duckdb_sandbox_allows_ordinary_select():
     _run_sandbox_script(script)
 
 
-def test_duckdb_sandbox_disabled_when_unsafe_sql_true():
-    """With unsafe_sql=True, dangerous SQL must succeed (opt-out preserves old behavior)."""
+def test_duckdb_sandbox_disabled_when_external_access_true():
+    """With duckdb_external_access=True, dangerous SQL must succeed (opt-out preserves old behavior)."""
     script = textwrap.dedent(
         f"""
         import os, tempfile
@@ -234,7 +234,7 @@ def test_duckdb_sandbox_disabled_when_unsafe_sql_true():
                 no_artifacts=True,
                 project_dir=project_dir,
                 profiles_dir=project_dir,
-                unsafe_sql=True,
+                duckdb_external_access=True,
             )
 
         with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:

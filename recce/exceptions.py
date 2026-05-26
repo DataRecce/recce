@@ -21,17 +21,13 @@ class RecceConfigException(RecceException):
         return super().__str__()
 
 
-class UnsafeSqlException(RecceException):
-    """Raised when the DuckDB sandbox blocks a user-submitted SQL query.
-
-    This is a subclass of RecceException so it is automatically mapped to
-    HTTP 400 by the /api/runs handler.
-    """
+class DuckDBExternalAccessBlocked(RecceException):
+    """Raised when DuckDB's external-access sandbox rejects a user query."""
 
     def __init__(self, original_message: str):
         message = (
-            f"This SQL is blocked by the recce DuckDB sandbox: {original_message}. "
-            "If you trust the source of this query, restart recce with --unsafe-sql "
-            "or set unsafe_sql: true in recce.yml."
+            f"This SQL is blocked by recce's DuckDB external-access sandbox: {original_message}. "
+            "To allow, restart with --duckdb-external-access or set "
+            "duckdb_external_access: true in recce.yml."
         )
         super().__init__(message, is_raise=True)

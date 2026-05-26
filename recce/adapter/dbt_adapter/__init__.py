@@ -310,8 +310,9 @@ class DbtAdapter(BaseAdapter):
     # Review mode
     review_mode: bool = False
 
-    # Sandbox: when False (default), apply DuckDB SET enable_external_access = false
-    unsafe_sql: bool = False
+    # Mirror of DuckDB's enable_external_access. False (default) means recce
+    # blocks file I/O, HTTP, and extension loads from user SQL.
+    duckdb_external_access: bool = False
 
     # Watch the artifact change
     artifacts_observer = Observer()
@@ -385,7 +386,7 @@ class DbtAdapter(BaseAdapter):
                 adapter=adapter,
                 review_mode=review,
                 base_path=target_base_path,
-                unsafe_sql=kwargs.get("unsafe_sql", False),
+                duckdb_external_access=kwargs.get("duckdb_external_access", False),
             )
         except DbtProjectError as e:
             raise e
@@ -394,9 +395,8 @@ class DbtAdapter(BaseAdapter):
         if not no_artifacts and not review:
             dbt_adapter.load_artifacts()
 
-        # Lock down DuckDB external access on this process's connection.
-        # Must run AFTER load_artifacts so dbt-duckdb has finished any
-        # connection setup (including profiles.yml `attach:` blocks).
+        # Must run AFTER load_artifacts so dbt-duckdb has finished its own
+        # connection setup (incl. profiles.yml `attach:` blocks).
         dbt_adapter._apply_duckdb_sandbox()
 
         return dbt_adapter
@@ -2164,34 +2164,14 @@ class DbtAdapter(BaseAdapter):
             )
 
     def _apply_duckdb_sandbox(self) -> None:
-        """Lock down DuckDB external access on every cursor recce opens.
+        """Inject `enable_external_access=false` into credentials.settings.
 
-        Injects `enable_external_access = false` into the dbt-duckdb
-        `credentials.settings` dict. dbt-duckdb's `initialize_cursor`
-        applies all entries in that dict as `SET key = 'value'` on every
-        new cursor it opens. This is required because:
-
-        1. DuckDB resets `enable_external_access` to `true` whenever a
-           connection is closed and a fresh one is opened.
-        2. dbt-duckdb opens a new cursor per thread, and FastAPI's
-           thread-pool workers (which handle `/api/runs`) each get a
-           fresh cursor. A one-time SET on the load-time connection
-           would not survive that thread-pool turnover.
-
-        Once applied, blocks:
-        - file I/O (read_csv, read_parquet, COPY TO, glob, ...)
-        - HTTP (httpfs, ATTACH 'http://...')
-        - extension loading from URLs (INSTALL, LOAD of community extensions)
-
-        Already-attached databases (via profiles.yml `attach:` block)
-        remain queryable, because dbt-duckdb processes the `attach:`
-        block BEFORE applying settings on each cursor.
-
-        No-op when:
-        - unsafe_sql=True (explicit opt-out)
-        - target is not DuckDB (other adapters have their own auth model)
+        Per-cursor injection (not a one-time SET) is required: dbt-duckdb
+        opens a new cursor per thread, and DuckDB resets external_access
+        to True on every fresh connection. A one-time SET would bypass for
+        any /api/runs request that lands on a different worker thread.
         """
-        if self.unsafe_sql:
+        if self.duckdb_external_access:
             return
         target_type = self.runtime_config.credentials.type if self.runtime_config else None
         if target_type != "duckdb":
@@ -2199,9 +2179,6 @@ class DbtAdapter(BaseAdapter):
         creds = self.runtime_config.credentials
         if creds.settings is None:
             creds.settings = {}
-        # dbt-duckdb formats settings as `SET key = '{value}'`, then DuckDB
-        # casts the quoted string to the column type. "false" is the safe
-        # lowercase form across DuckDB versions.
         creds.settings["enable_external_access"] = "false"
 
     @contextmanager

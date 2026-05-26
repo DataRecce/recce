@@ -28,7 +28,7 @@ from recce.apis.run_func import (
     submit_run,
 )
 from recce.event import log_api_event
-from recce.exceptions import RecceException, UnsafeSqlException
+from recce.exceptions import DuckDBExternalAccessBlocked, RecceException
 from recce.models import RunDAO
 
 logger = logging.getLogger("uvicorn")
@@ -78,7 +78,7 @@ async def create_run_handler(input: CreateRunIn):
     else:
         try:
             run.result = await future
-        except UnsafeSqlException as e:
+        except DuckDBExternalAccessBlocked as e:
             raise HTTPException(status_code=400, detail=str(e))
         return run
 

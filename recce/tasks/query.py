@@ -4,7 +4,7 @@ from typing import List, Optional, Tuple
 from pydantic import BaseModel
 
 from ..core import default_context
-from ..exceptions import RecceException, UnsafeSqlException
+from ..exceptions import DuckDBExternalAccessBlocked, RecceException
 from ..models import Check
 from .core import CheckValidator, Task, TaskResultDiffer
 from .dataframe import DataFrame
@@ -16,18 +16,15 @@ QUERY_LIMIT = 2000
 if typing.TYPE_CHECKING:
     import agate
 
-# DuckDB sandbox error signatures (enable_external_access=false).
-# Match exact substrings from DuckDB error messages; avoid broad patterns.
-_DUCKDB_SANDBOX_SIGNATURES = (
+_DUCKDB_EXTERNAL_ACCESS_DENIAL_MESSAGES = (
     "file system operations are disabled by configuration",
     "Loading external extensions is disabled through configuration",
 )
 
 
-def _is_duckdb_sandbox_error(exc: Exception) -> bool:
-    """Return True iff the exception originates from the DuckDB external-access sandbox."""
+def _is_duckdb_external_access_blocked(exc: Exception) -> bool:
     msg = str(exc)
-    return any(sig in msg for sig in _DUCKDB_SANDBOX_SIGNATURES)
+    return any(sig in msg for sig in _DUCKDB_EXTERNAL_ACCESS_DENIAL_MESSAGES)
 
 
 class QueryMixin:
@@ -60,8 +57,8 @@ class QueryMixin:
                         return result.limit(limit), True
                     return result, False
             except Exception as e:
-                if _is_duckdb_sandbox_error(e):
-                    raise UnsafeSqlException(str(e)) from e
+                if _is_duckdb_external_access_blocked(e):
+                    raise DuckDBExternalAccessBlocked(str(e)) from e
                 raise
         except TargetNotFoundError as e:
             raise RecceException(str(e), is_raise=False)
@@ -86,8 +83,8 @@ class QueryMixin:
                 return int(result.rows[0][0])
             return None
         except Exception as e:
-            if _is_duckdb_sandbox_error(e):
-                raise UnsafeSqlException(str(e)) from e
+            if _is_duckdb_external_access_blocked(e):
+                raise DuckDBExternalAccessBlocked(str(e)) from e
             return None
 
     @staticmethod
@@ -330,8 +327,8 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         try:
             _, table = dbt_adapter.execute(sql, fetch=True)
         except Exception as e:
-            if _is_duckdb_sandbox_error(e):
-                raise UnsafeSqlException(str(e)) from e
+            if _is_duckdb_external_access_blocked(e):
+                raise DuckDBExternalAccessBlocked(str(e)) from e
             raise
         self.check_cancel()
 
