@@ -188,7 +188,6 @@ const queryClient = new QueryClient({
 const meta: Meta<typeof NodeView> = {
   title: "Lineage/NodeView",
   component: NodeView,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {
