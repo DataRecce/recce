@@ -310,6 +310,9 @@ class DbtAdapter(BaseAdapter):
     # Review mode
     review_mode: bool = False
 
+    # Sandbox: when False (default), apply DuckDB SET enable_external_access = false
+    unsafe_sql: bool = False
+
     # Watch the artifact change
     artifacts_observer = Observer()
     artifacts_files = []
@@ -382,6 +385,7 @@ class DbtAdapter(BaseAdapter):
                 adapter=adapter,
                 review_mode=review,
                 base_path=target_base_path,
+                unsafe_sql=kwargs.get("unsafe_sql", False),
             )
         except DbtProjectError as e:
             raise e
