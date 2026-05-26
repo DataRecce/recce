@@ -421,9 +421,9 @@ describe("LineageNode", () => {
     });
 
     it.each<[ChangeCategory, string]>([
-      ["breaking", "Breaking"],
-      ["non_breaking", "Non Breaking"],
-      ["partial_breaking", "Partial Breaking"],
+      ["breaking", "Model-Wide Change"],
+      ["non_breaking", "Additive Change"],
+      ["partial_breaking", "Column Change"],
     ])("shows %s category text label when wholeModelImpact is false", (category, label) => {
       const props = createMockNodeProps(
         { showChangeAnalysis: true, changeCategory: category },
@@ -452,7 +452,9 @@ describe("LineageNode", () => {
       render(<LineageNode {...props} />);
 
       expect(
-        screen.queryByText(/^(Breaking|Non Breaking|Partial Breaking)$/),
+        screen.queryByText(
+          /^(Model-Wide Change|Additive Change|Column Change)$/,
+        ),
       ).not.toBeInTheDocument();
     });
 
