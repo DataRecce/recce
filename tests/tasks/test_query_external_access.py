@@ -268,3 +268,58 @@ print("OK")
 """
     )
     _run_subprocess(script)
+
+
+# ---------------------------------------------------------------------------
+# Test 6 — GET /runs/{id}/export returns HTTP 400 for SQL blocked by external-access restriction
+# ---------------------------------------------------------------------------
+
+
+def test_export_run_returns_400_for_blocked_sql():
+    """GET /api/runs/{id}/export with restricted SQL must return HTTP 400 with hint.
+
+    Regression: run_api.py's export handler previously caught
+    DuckDBExternalAccessBlocked under the generic `except Exception` arm,
+    returning HTTP 500 instead of 400. Reachable when a Run was persisted
+    by a permissive `recce run` and later exported through `recce server`
+    (which restricts external access by default).
+    """
+    setup = _make_setup_script(_ADAPTER_PROJ_DIR)
+    script = (
+        setup
+        + """
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from recce.apis.run_api import run_router
+from recce.models import Run, RunDAO, RunType
+from recce.models.types import RunStatus
+
+app = FastAPI()
+app.include_router(run_router)
+
+# Persist a completed Run whose SQL will be rejected on re-execution.
+# Note: the export handler wraps the stored sql_template as
+# `SELECT * FROM ({sql}) LIMIT N`. The wrapped form must be syntactically
+# valid so DuckDB reaches the external-access denial — `read_csv` works,
+# `COPY TO` does not (parser rejects `SELECT * FROM (COPY ...)` first).
+run = Run(
+    type=RunType.QUERY,
+    params={"sql_template": "SELECT * FROM read_csv('/etc/hosts')"},
+    status=RunStatus.FINISHED,
+    result={"total_row_count": 1},
+)
+RunDAO().create(run)
+
+with TestClient(app) as client:
+    response = client.get(f"/runs/{run.run_id}/export", params={"format": "csv"})
+    assert response.status_code == 400, (
+        f"Expected 400, got {response.status_code}. Body: {response.text}"
+    )
+    body = response.json()
+    detail = body.get("detail", "")
+    assert "--duckdb-external-access" in detail, f"Opt-out hint missing in detail: {detail}"
+    assert "external access" in detail.lower(), f"external-access mention missing in detail: {detail}"
+print("OK")
+"""
+    )
+    _run_subprocess(script)

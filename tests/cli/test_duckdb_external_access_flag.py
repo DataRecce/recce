@@ -1,9 +1,11 @@
 """Tests for --duckdb-external-access CLI flag wiring.
 
 The flag is intentionally server-only: `recce server` is the only HTTP-exposed
-surface where unauth callers can submit SQL. Local CLI commands (`recce run`,
-`recce query`, `recce diff`) preserve the pre-DRC-3578 permissive behavior so
-existing check files with read_csv/COPY workflows do not break.
+surface where unauth callers can submit SQL. `recce run` (the public CLI entry
+point) sets duckdb_external_access=True before loading the adapter so existing
+check files with read_csv/COPY workflows do not break. The hidden `recce
+query` and `recce diff` debug commands intentionally follow the safe adapter
+default (external access disabled) and have no opt-out flag.
 """
 
 from click.testing import CliRunner

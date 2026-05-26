@@ -322,6 +322,8 @@ async def export_run_handler(run_id: UUID, format: str = Query("csv", descriptio
     async with sem:
         try:
             columns, rows = await asyncio.to_thread(_execute_export_query, run)
+        except DuckDBExternalAccessBlocked as e:
+            raise HTTPException(status_code=400, detail=str(e))
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
