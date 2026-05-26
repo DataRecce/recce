@@ -85,6 +85,7 @@ import { DualSqlEditor, SqlEditor } from "../query";
 import {
   findByRunType,
   type IconComponent,
+  isRegisteredRunType,
   RefTypes,
   RegistryEntry,
   RunViewOss,
@@ -146,7 +147,10 @@ export function CheckDetailOss({
     ? !run || run.status === "Running"
     : run?.status === "Running";
 
-  const runTypeEntry = check?.type ? findByRunType(check.type) : undefined;
+  const runTypeEntry =
+    check?.type && isRegisteredRunType(check.type)
+      ? findByRunType(check.type)
+      : undefined;
 
   let RunResultView: RegistryEntry["RunResultView"] | undefined;
   if (runTypeEntry) {

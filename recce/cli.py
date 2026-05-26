@@ -1218,6 +1218,12 @@ def diff(
     help="Highlight models downstream of a whole-model change. Implies --new-cll-experience.",
     envvar="RECCE_WHOLE_MODEL_IMPACT",
 )
+@click.option(
+    "--inline-profile",
+    is_flag=True,
+    help="Enable inline paired-distribution profiles in the schema view (DRC-3390).",
+    envvar="RECCE_INLINE_PROFILE",
+)
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -1288,6 +1294,7 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
         "impact_at_startup": False,
         "new_cll_experience": False,
         "whole_model_impact": False,
+        "inline_profile": False,
     }
     console = Console()
 
@@ -1344,6 +1351,9 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
     if kwargs.get("whole_model_impact", False):
         flag["whole_model_impact"] = True
         flag["new_cll_experience"] = True
+
+    if kwargs.get("inline_profile", False):
+        flag["inline_profile"] = True
 
     # Create state loader using shared function
     from recce.util.startup_perf import get_startup_tracker

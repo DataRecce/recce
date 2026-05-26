@@ -38,6 +38,11 @@ import type {
 /**
  * All possible run types in the Recce system.
  * This is the canonical definition - consumers should import from here.
+ *
+ * Note: ``profile_distribution`` is a backend-only run type (DRC-3390). It
+ * feeds into schema-view cells rather than rendering as a checklist run, so
+ * it does *not* appear in {@link RegisteredRunType}. The dispatcher accepts
+ * it; the registry does not.
  */
 export type RunType =
   | "simple"
@@ -53,7 +58,8 @@ export type RunType =
   | "row_count_diff"
   | "lineage_diff"
   | "top_k_diff"
-  | "histogram_diff";
+  | "histogram_diff"
+  | "profile_distribution";
 
 // ============================================================================
 // Run Status Types
@@ -157,7 +163,130 @@ export type RunParamTypes =
   | LineageDiffParams
   | TopKDiffParams
   | HistogramDiffParams
+  | ProfileDistributionParams
   | undefined;
+
+// ============================================================================
+// Profile Distribution (DRC-3390 Stage B)
+//
+// Backend-only run type — Stage C's schema-view cells consume these payloads,
+// they don't render as a checklist run. The shape is the API contract Stage B
+// freezes; the backend serves DuckDB; non-DuckDB adapters return the
+// ``unsupported`` envelope variant.
+// ============================================================================
+
+/**
+ * Params for a profile_distribution run.
+ *
+ * Pass ``model`` (the dbt model unique id) and optionally a ``columns``
+ * subset to scope the run to just those columns. Omit ``columns`` to profile
+ * every non-skipped column in the model.
+ */
+export interface ProfileDistributionParams {
+  model: string;
+  columns?: string[];
+}
+
+/**
+ * Paired-histogram payload for a continuous (numeric or datetime) column.
+ *
+ * Spec contract: 12 ``bin_edges`` and 11 entries each in ``base_density`` /
+ * ``current_density``. The two density arrays share a single x-axis so the
+ * frontend can render base + current as a paired plot.
+ */
+export interface ProfileDistributionHistogramPayload {
+  kind: "histogram";
+  bin_edges: number[];
+  base_density: number[];
+  current_density: number[];
+  base_total: number;
+  current_total: number;
+}
+
+/**
+ * Categorical top-K payload for a single column.
+ *
+ * ``values`` is the union of the two envs' top-K, in current-then-base order.
+ * ``base_counts`` / ``current_counts`` are aligned onto ``values`` (same
+ * length, ``null`` in slots where the env didn't have that value in its
+ * top-K). When the adapter's sketch doesn't expose counts at all (DuckDB
+ * in Stage B), the whole counts array is ``null`` — the frontend renders
+ * rank-only.
+ *
+ * ``trimmed`` is true when either env hit the sketch's ``k`` cap, meaning
+ * there are more distinct values than fit in the slice.
+ */
+export interface ProfileDistributionTopKPayload {
+  kind: "topk";
+  values: unknown[];
+  base_counts: (number | null)[] | null;
+  current_counts: (number | null)[] | null;
+  trimmed: boolean;
+}
+
+/**
+ * Per-column failure marker — the column was attempted but couldn't be
+ * computed (e.g., its percentile fragment errored even after the per-column
+ * retry path). The frontend renders the column's cell as an inline error
+ * without blanking the rest of the row.
+ */
+export interface ProfileDistributionNullPayload {
+  kind: null;
+}
+
+/**
+ * Per-column payload — one of the three variants above. Stage C narrows on
+ * ``kind`` to pick the right cell renderer.
+ */
+export type ProfileDistributionColumnPayload =
+  | ProfileDistributionHistogramPayload
+  | ProfileDistributionTopKPayload
+  | ProfileDistributionNullPayload;
+
+/**
+ * "Ok" envelope — the adapter supports the feature; ``columns`` holds the
+ * per-column payloads keyed by column name.
+ */
+export interface ProfileDistributionOkResult {
+  status: "ok";
+  /** Strategy router picked this branch — Stage B only emits ``approx_all``. */
+  strategy: "approx_all";
+  columns: Record<string, ProfileDistributionColumnPayload>;
+  base_total: number;
+  current_total: number;
+  /** True when this payload came from the in-memory memoization cache. */
+  cache_hit?: boolean;
+}
+
+/**
+ * "Unsupported" envelope — the adapter lacks native approximate-aggregate
+ * support. Stage B's hot path for everything that isn't DuckDB; Stage D
+ * extends adapter coverage so fewer adapters fall here.
+ *
+ * Stage C renders a single banner (not per-column markers) when it sees
+ * this envelope.
+ */
+export interface ProfileDistributionUnsupportedResult {
+  status: "unsupported";
+  reason: string;
+  columns: Record<string, never>;
+}
+
+/**
+ * Discriminated union for the profile_distribution result.
+ *
+ * Narrow on ``status``:
+ * ```ts
+ * if (result.status === "ok") {
+ *   // result.columns is fully typed
+ * } else {
+ *   // result.reason is the unsupported banner message
+ * }
+ * ```
+ */
+export type ProfileDistributionResult =
+  | ProfileDistributionOkResult
+  | ProfileDistributionUnsupportedResult;
 
 // ============================================================================
 // Run - Full Discriminated Union Type
@@ -245,6 +374,11 @@ export type Run =
       type: "histogram_diff";
       params?: HistogramDiffParams;
       result?: HistogramDiffResult;
+    })
+  | (BaseRun & {
+      type: "profile_distribution";
+      params?: ProfileDistributionParams;
+      result?: ProfileDistributionResult;
     });
 
 // ============================================================================
@@ -361,6 +495,15 @@ export function isHistogramDiffRun(
   return run.type === "histogram_diff";
 }
 
+/**
+ * Type guard for profile_distribution runs (DRC-3390).
+ */
+export function isProfileDistributionRun(
+  run: Run,
+): run is Run & { type: "profile_distribution" } {
+  return run.type === "profile_distribution";
+}
+
 // ============================================================================
 // Utility Types
 // ============================================================================
@@ -383,6 +526,7 @@ export const RUN_TYPES: readonly RunType[] = [
   "lineage_diff",
   "top_k_diff",
   "histogram_diff",
+  "profile_distribution",
 ] as const;
 
 /**
@@ -395,8 +539,12 @@ export function isValidRunType(value: string): value is RunType {
 /**
  * Run types that support screenshot/ref functionality.
  * These are run types that render a visual result view with forwardRef support.
+ *
+ * Declared with ``as const satisfies readonly RunType[]`` so the literal-tuple
+ * type survives — that lets {@link runTypeHasRef} act as a true type guard
+ * narrowing to ``RunTypeWithRef`` instead of bare ``boolean``.
  */
-const RUN_TYPES_WITH_REF: readonly RunType[] = [
+const RUN_TYPES_WITH_REF = [
   "query",
   "query_base",
   "query_diff",
@@ -408,12 +556,19 @@ const RUN_TYPES_WITH_REF: readonly RunType[] = [
   "value_diff_detail",
   "top_k_diff",
   "histogram_diff",
-] as const;
+] as const satisfies readonly RunType[];
+
+/**
+ * Subset of {@link RunType} whose result view supports forwardRef. A narrower
+ * type than ``RunType`` so a positive {@link runTypeHasRef} check transitively
+ * narrows to a registered run type (every entry here also has a registry entry).
+ */
+export type RunTypeWithRef = (typeof RUN_TYPES_WITH_REF)[number];
 
 /**
  * Check if a run type supports ref forwarding (for screenshots).
  * Run types with refs can capture screenshots of their result views.
  */
-export function runTypeHasRef(runType: RunType): boolean {
-  return RUN_TYPES_WITH_REF.includes(runType);
+export function runTypeHasRef(runType: RunType): runType is RunTypeWithRef {
+  return (RUN_TYPES_WITH_REF as readonly RunType[]).includes(runType);
 }
