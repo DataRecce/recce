@@ -56,6 +56,102 @@ def test_dbt_adapter_unsafe_sql_default_false():
     _run_sandbox_script(script)
 
 
+def test_sandbox_injects_into_credentials_settings():
+    """Regression: sandbox must inject into credentials.settings, not just
+    SET on a one-time connection.
+
+    Background: DuckDB resets `enable_external_access` to true on every
+    fresh connection. dbt-duckdb opens a new cursor per thread (FastAPI
+    thread pool); a one-time SET on the load-time connection does not
+    survive that turnover. The fix injects into `credentials.settings`,
+    which `initialize_cursor` applies on every new cursor.
+
+    This test pins the contract so the fix isn't accidentally undone.
+    """
+    script = textwrap.dedent(
+        f"""
+        from unittest.mock import patch
+        from recce.adapter.dbt_adapter import DbtAdapter
+
+        project_dir = {_PROJECT_DIR!r}
+
+        with patch("recce.adapter.dbt_adapter.log_performance"):
+            adapter = DbtAdapter.load(
+                no_artifacts=True,
+                project_dir=project_dir,
+                profiles_dir=project_dir,
+            )
+        settings = adapter.runtime_config.credentials.settings or {{}}
+        assert settings.get("enable_external_access") == "false", (
+            f"credentials.settings missing or wrong: {{settings!r}}"
+        )
+        print("OK")
+    """
+    )
+    _run_sandbox_script(script)
+
+
+def test_sandbox_survives_thread_connection_turnover():
+    """Regression: sandbox must apply to NEW thread connections too.
+
+    Background: dbt-duckdb opens a fresh cursor per thread. The original
+    bug was: one-time SET on load-time connection did not apply to cursors
+    opened later (e.g., by FastAPI thread-pool workers). This test
+    simulates that by querying sandbox state from a worker thread.
+
+    Runs in a subprocess so the shared dbt-duckdb singleton is not
+    contaminated for the rest of the pytest session.
+    """
+    script = textwrap.dedent(
+        f"""
+        import threading
+        from unittest.mock import patch
+        from dbt.exceptions import DbtRuntimeError
+        from recce.adapter.dbt_adapter import DbtAdapter
+
+        project_dir = {_PROJECT_DIR!r}
+
+        with patch("recce.adapter.dbt_adapter.log_performance"):
+            adapter = DbtAdapter.load(
+                no_artifacts=True,
+                project_dir=project_dir,
+                profiles_dir=project_dir,
+            )
+
+        results = {{}}
+        def in_worker():
+            try:
+                with adapter.adapter.connection_named("worker_thread"):
+                    _, t = adapter.adapter.execute(
+                        "SELECT current_setting('enable_external_access')", fetch=True
+                    )
+                    results["setting"] = t[0][0]
+                    try:
+                        adapter.adapter.execute(
+                            "SELECT * FROM read_csv('/etc/hosts') LIMIT 1", fetch=True
+                        )
+                        results["read_csv"] = "succeeded"
+                    except DbtRuntimeError as e:
+                        results["read_csv"] = "blocked"
+            except Exception as e:
+                results["error"] = str(e)
+
+        t = threading.Thread(target=in_worker)
+        t.start()
+        t.join()
+
+        assert results.get("setting") is False, (
+            f"Worker thread setting expected False, got {{results.get('setting')!r}}"
+        )
+        assert results.get("read_csv") == "blocked", (
+            f"Worker thread read_csv expected blocked, got {{results.get('read_csv')!r}}"
+        )
+        print("OK")
+    """
+    )
+    _run_sandbox_script(script)
+
+
 @pytest.mark.parametrize(
     "sql,label",
     [

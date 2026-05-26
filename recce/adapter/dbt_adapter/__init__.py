@@ -2164,16 +2164,28 @@ class DbtAdapter(BaseAdapter):
             )
 
     def _apply_duckdb_sandbox(self) -> None:
-        """Lock down DuckDB external access on the recce process's connection.
+        """Lock down DuckDB external access on every cursor recce opens.
 
-        Runs `SET enable_external_access = false`, which blocks:
+        Injects `enable_external_access = false` into the dbt-duckdb
+        `credentials.settings` dict. dbt-duckdb's `initialize_cursor`
+        applies all entries in that dict as `SET key = 'value'` on every
+        new cursor it opens. This is required because:
+
+        1. DuckDB resets `enable_external_access` to `true` whenever a
+           connection is closed and a fresh one is opened.
+        2. dbt-duckdb opens a new cursor per thread, and FastAPI's
+           thread-pool workers (which handle `/api/runs`) each get a
+           fresh cursor. A one-time SET on the load-time connection
+           would not survive that thread-pool turnover.
+
+        Once applied, blocks:
         - file I/O (read_csv, read_parquet, COPY TO, glob, ...)
         - HTTP (httpfs, ATTACH 'http://...')
         - extension loading from URLs (INSTALL, LOAD of community extensions)
 
-        Already-attached databases (via profiles.yml `attach:` block) remain
-        queryable, because the lock is applied AFTER dbt-duckdb processes
-        attaches at connection-open time.
+        Already-attached databases (via profiles.yml `attach:` block)
+        remain queryable, because dbt-duckdb processes the `attach:`
+        block BEFORE applying settings on each cursor.
 
         No-op when:
         - unsafe_sql=True (explicit opt-out)
@@ -2184,13 +2196,13 @@ class DbtAdapter(BaseAdapter):
         target_type = self.runtime_config.credentials.type if self.runtime_config else None
         if target_type != "duckdb":
             return
-        # Apply sandbox using should_release_connection=False so the thread's
-        # connection stays OPEN after the SET completes. The connection was
-        # originally set up by adapter.connections.set_connection_name() in
-        # load(), and releasing it would leave callers (e.g. DbtTestHelper)
-        # without a usable connection after load() returns.
-        with self.adapter.connection_named("recce_sandbox_init", should_release_connection=False):
-            self.adapter.execute("SET enable_external_access = false")
+        creds = self.runtime_config.credentials
+        if creds.settings is None:
+            creds.settings = {}
+        # dbt-duckdb formats settings as `SET key = '{value}'`, then DuckDB
+        # casts the quoted string to the column type. "false" is the safe
+        # lowercase form across DuckDB versions.
+        creds.settings["enable_external_access"] = "false"
 
     @contextmanager
     def connection_named(self, name: str) -> Iterator[None]:
