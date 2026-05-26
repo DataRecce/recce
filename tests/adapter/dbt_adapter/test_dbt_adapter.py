@@ -33,6 +33,24 @@ def test_dbt_adapter_unsafe_sql_can_be_set_true():
     assert adapter.unsafe_sql is True
 
 
+def test_recce_context_propagates_unsafe_sql():
+    """RecceContext.load(unsafe_sql=True, ...) must reach DbtAdapter.unsafe_sql via **kwargs."""
+    from recce.core import RecceContext
+
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_dir = os.path.join(current_dir, "test_proj")
+
+    with patch("recce.adapter.dbt_adapter.log_performance"):
+        ctx = RecceContext.load(
+            no_artifacts=True,
+            project_dir=project_dir,
+            profiles_dir=project_dir,
+            unsafe_sql=True,
+        )
+
+    assert ctx.adapter.unsafe_sql is True
+
+
 def test_dbt_adapter_support_tasks_without_required_dbt_package(dbt_test_helper):
     adapter: DbtAdapter = dbt_test_helper.context.adapter
     # Mock the macros in manifest to simulate no required dbt package installed
