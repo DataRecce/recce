@@ -186,6 +186,16 @@ recce_options = [
         default=RECCE_ERROR_LOG_FILE,
         hidden=True,
     ),
+    click.option(
+        "--unsafe-sql",
+        is_flag=True,
+        default=False,
+        help=(
+            "Disable the DuckDB SQL sandbox. Allows queries to use COPY, "
+            "read_csv, ATTACH, INSTALL/LOAD, and other host-touching SQL. "
+            "Only enable if you trust every user who can reach this server."
+        ),
+    ),
     click.option("--debug", is_flag=True, help="Enable debug mode.", hidden=True),
 ]
 
@@ -1265,6 +1275,11 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
     from .server import AppState, app
 
     RecceConfig(config_file=kwargs.get("config"))
+
+    # Resolve effective unsafe_sql: CLI flag wins, else recce.yml, else default False.
+    cli_unsafe_sql = kwargs.get("unsafe_sql", False)
+    cfg_unsafe_sql = bool(RecceConfig().get("unsafe_sql", False))
+    kwargs["unsafe_sql"] = cli_unsafe_sql or cfg_unsafe_sql
 
     # Initialize startup performance tracking
     from recce.util.startup_perf import StartupPerfTracker, set_startup_tracker
