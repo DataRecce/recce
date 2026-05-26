@@ -31,3 +31,16 @@ class DuckDBExternalAccessBlocked(RecceException):
             "duckdb_external_access: true in recce.yml."
         )
         super().__init__(message, is_raise=True)
+
+
+# String-match against DuckDB internals. Pinned by test_duckdb_sandbox.py.
+_DUCKDB_EXTERNAL_ACCESS_DENIAL_MESSAGES = (
+    "file system operations are disabled by configuration",
+    "Loading external extensions is disabled through configuration",
+    "Cannot change enable_external_access setting while database is running",
+)
+
+
+def is_duckdb_external_access_blocked(exc: BaseException) -> bool:
+    msg = str(exc)
+    return any(sig in msg for sig in _DUCKDB_EXTERNAL_ACCESS_DENIAL_MESSAGES)

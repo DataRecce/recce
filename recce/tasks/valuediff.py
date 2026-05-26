@@ -94,7 +94,7 @@ class ValueDiffMixin:
             sql = dbt_adapter.generate_sql(sql_template, context=context)
             sql_test = f"""SELECT COUNT(*) AS INVALIDS FROM ({sql}) AS T"""
 
-            response, table = dbt_adapter.adapter.execute(sql_test, fetch=True)
+            response, table = dbt_adapter.execute(sql_test, fetch=True)
             for row in table.rows:
                 invalids = row[0]
                 if invalids > 0:

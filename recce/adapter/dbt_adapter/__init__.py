@@ -25,7 +25,7 @@ from typing import (
 )
 
 from recce.event import log_performance
-from recce.exceptions import RecceException
+from recce.exceptions import DuckDBExternalAccessBlocked, RecceException, is_duckdb_external_access_blocked
 from recce.util.cll import CLLPerformanceTracking, cll, get_cll_cache
 from recce.util.lineage import (
     build_column_key,
@@ -310,8 +310,6 @@ class DbtAdapter(BaseAdapter):
     # Review mode
     review_mode: bool = False
 
-    # Mirror of DuckDB's enable_external_access. False (default) means recce
-    # blocks file I/O, HTTP, and extension loads from user SQL.
     duckdb_external_access: bool = False
 
     # Watch the artifact change
@@ -395,8 +393,8 @@ class DbtAdapter(BaseAdapter):
         if not no_artifacts and not review:
             dbt_adapter.load_artifacts()
 
-        # Must run AFTER load_artifacts so dbt-duckdb has finished its own
-        # connection setup (incl. profiles.yml `attach:` blocks).
+        # Must run after load_artifacts so dbt-duckdb finishes its own
+        # connection setup (incl. profiles.yml `attach:` blocks) first.
         dbt_adapter._apply_duckdb_sandbox()
 
         return dbt_adapter
@@ -673,10 +671,15 @@ class DbtAdapter(BaseAdapter):
         fetch: bool = False,
         limit: Optional[int] = None,
     ) -> Tuple[any, agate.Table]:
-        if dbt_version < dbt_version.parse("v1.6"):
-            return self.adapter.execute(sql, auto_begin=auto_begin, fetch=fetch)
+        try:
+            if dbt_version < dbt_version.parse("v1.6"):
+                return self.adapter.execute(sql, auto_begin=auto_begin, fetch=fetch)
 
-        return self.adapter.execute(sql, auto_begin=auto_begin, fetch=fetch, limit=limit)
+            return self.adapter.execute(sql, auto_begin=auto_begin, fetch=fetch, limit=limit)
+        except Exception as e:
+            if is_duckdb_external_access_blocked(e):
+                raise DuckDBExternalAccessBlocked(str(e)) from e
+            raise
 
     def build_parent_map(self, nodes: Dict, base: Optional[bool] = False) -> Dict[str, List[str]]:
         manifest = self.curr_manifest if base is False else self.base_manifest
@@ -2164,13 +2167,9 @@ class DbtAdapter(BaseAdapter):
             )
 
     def _apply_duckdb_sandbox(self) -> None:
-        """Inject `enable_external_access=false` into credentials.settings.
-
-        Per-cursor injection (not a one-time SET) is required: dbt-duckdb
-        opens a new cursor per thread, and DuckDB resets external_access
-        to True on every fresh connection. A one-time SET would bypass for
-        any /api/runs request that lands on a different worker thread.
-        """
+        # Inject into credentials.settings (not a one-time SET): dbt-duckdb
+        # applies settings on every new cursor, so per-thread connections in
+        # the FastAPI worker pool stay sandboxed.
         if self.duckdb_external_access:
             return
         target_type = self.runtime_config.credentials.type if self.runtime_config else None

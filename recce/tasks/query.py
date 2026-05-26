@@ -16,16 +16,6 @@ QUERY_LIMIT = 2000
 if typing.TYPE_CHECKING:
     import agate
 
-_DUCKDB_EXTERNAL_ACCESS_DENIAL_MESSAGES = (
-    "file system operations are disabled by configuration",
-    "Loading external extensions is disabled through configuration",
-)
-
-
-def _is_duckdb_external_access_blocked(exc: Exception) -> bool:
-    msg = str(exc)
-    return any(sig in msg for sig in _DUCKDB_EXTERNAL_ACCESS_DENIAL_MESSAGES)
-
 
 class QueryMixin:
     @classmethod
@@ -46,20 +36,14 @@ class QueryMixin:
 
         try:
             sql = dbt_adapter.generate_sql(sql_template, base)
-
-            try:
-                if limit is None:
-                    _, result = dbt_adapter.execute(sql, fetch=True, auto_begin=True)
-                    return result, False
-                else:
-                    _, result = dbt_adapter.execute(sql, fetch=True, auto_begin=True, limit=limit + 1)
-                    if len(result.rows) > limit:
-                        return result.limit(limit), True
-                    return result, False
-            except Exception as e:
-                if _is_duckdb_external_access_blocked(e):
-                    raise DuckDBExternalAccessBlocked(str(e)) from e
-                raise
+            if limit is None:
+                _, result = dbt_adapter.execute(sql, fetch=True, auto_begin=True)
+                return result, False
+            else:
+                _, result = dbt_adapter.execute(sql, fetch=True, auto_begin=True, limit=limit + 1)
+                if len(result.rows) > limit:
+                    return result.limit(limit), True
+                return result, False
         except TargetNotFoundError as e:
             raise RecceException(str(e), is_raise=False)
         except TemplateSyntaxError as e:
@@ -82,9 +66,10 @@ class QueryMixin:
             if result.rows:
                 return int(result.rows[0][0])
             return None
-        except Exception as e:
-            if _is_duckdb_external_access_blocked(e):
-                raise DuckDBExternalAccessBlocked(str(e)) from e
+        except DuckDBExternalAccessBlocked:
+            # Surface to HTTP 400; other errors keep the swallow-as-None contract.
+            raise
+        except Exception:
             return None
 
     @staticmethod
@@ -324,12 +309,7 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
             ),
         )
 
-        try:
-            _, table = dbt_adapter.execute(sql, fetch=True)
-        except Exception as e:
-            if _is_duckdb_external_access_blocked(e):
-                raise DuckDBExternalAccessBlocked(str(e)) from e
-            raise
+        _, table = dbt_adapter.execute(sql, fetch=True)
         self.check_cancel()
 
         diff_df = DataFrame.from_agate(table)

@@ -158,15 +158,27 @@ def test_sandbox_survives_thread_connection_turnover():
         ("COPY (SELECT 1 AS x) TO '/tmp/recce_sandbox_test.csv'", "COPY TO"),
         ("SELECT * FROM read_csv('/etc/hosts')", "read_csv"),
         ("ATTACH '/tmp/should_not_attach.duckdb' AS evil", "ATTACH"),
+        # Bypass attempt: re-enabling external_access via SET. DuckDB
+        # rejects this on its own once the database is running, so the
+        # sandbox does not depend on lock_configuration. The wrapper must
+        # still surface this as DuckDBExternalAccessBlocked so the HTTP
+        # path returns 400 with the opt-out hint instead of a generic 500.
+        ("SET enable_external_access = true", "SET bypass"),
     ],
 )
 def test_duckdb_sandbox_blocks_dangerous_sql(sql, label):
-    """With sandbox on (duckdb_external_access=False), dangerous SQL must raise."""
+    """With sandbox on, DbtAdapter.execute must wrap DuckDB denials as
+    DuckDBExternalAccessBlocked (carries the --duckdb-external-access hint).
+
+    If DuckDB ever rewords its denial messages,
+    is_duckdb_external_access_blocked() will stop matching and this test
+    fails with a wrong-exception-type — which is the signal we want.
+    """
     script = textwrap.dedent(
         f"""
         from unittest.mock import patch
-        from dbt.exceptions import DbtRuntimeError
         from recce.adapter.dbt_adapter import DbtAdapter
+        from recce.exceptions import DuckDBExternalAccessBlocked
 
         project_dir = {_PROJECT_DIR!r}
 
@@ -181,9 +193,9 @@ def test_duckdb_sandbox_blocks_dangerous_sql(sql, label):
         raised = False
         try:
             adapter.execute({sql!r})
-        except DbtRuntimeError as e:
-            msg = str(e).lower()
-            assert "external" in msg or "disabled" in msg, f"Unexpected error: {{e}}"
+        except DuckDBExternalAccessBlocked as e:
+            msg = str(e)
+            assert "--duckdb-external-access" in msg, f"Opt-out hint missing: {{e}}"
             raised = True
         except Exception as e:
             raise AssertionError(f"Wrong exception type: {{type(e).__name__}}: {{e}}")
