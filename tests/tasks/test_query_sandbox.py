@@ -222,3 +222,50 @@ print("OK")
 """
     )
     _run_subprocess(script)
+
+
+# ---------------------------------------------------------------------------
+# Test 5 — POST /checks/{id}/run returns HTTP 400 for sandbox-blocked SQL
+# ---------------------------------------------------------------------------
+
+
+def test_rerun_check_returns_400_for_blocked_sql():
+    """POST /api/checks/{id}/run with sandbox-blocked SQL must return HTTP 400 with hint.
+
+    Regression: check_api.py:182 previously awaited the future with no
+    DuckDBExternalAccessBlocked guard, returning HTTP 500 instead of 400.
+    """
+    setup = _make_setup_script(_ADAPTER_PROJ_DIR)
+    script = (
+        setup
+        + """
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from recce.apis.check_api import check_router
+from recce.models import Check, CheckDAO, RunType
+
+app = FastAPI()
+app.include_router(check_router)
+
+# Persist a query check whose SQL the sandbox will reject.
+check = Check(
+    name="sandbox-rerun-regression",
+    description="",
+    type=RunType.QUERY,
+    params={"sql_template": "COPY (SELECT 1 AS x) TO '/tmp/recce_sandbox_check_test.csv'"},
+)
+CheckDAO().create(check)
+
+with TestClient(app) as client:
+    response = client.post(f"/checks/{check.check_id}/run", json={})
+    assert response.status_code == 400, (
+        f"Expected 400, got {response.status_code}. Body: {response.text}"
+    )
+    body = response.json()
+    detail = body.get("detail", "")
+    assert "--duckdb-external-access" in detail, f"Opt-out hint missing in detail: {detail}"
+    assert "sandbox" in detail.lower(), f"Sandbox mention missing in detail: {detail}"
+print("OK")
+"""
+    )
+    _run_subprocess(script)

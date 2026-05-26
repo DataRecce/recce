@@ -667,9 +667,10 @@ def test_value_diff_snowflake_composite_primary_key(dbt_test_helper):
     POST-FIX: execute() builds case_lookup and normalises primary_key BEFORE
     calling _verify_primary_key → SQL contains '"CUSTOMER_ID"', '"ORDER_ID"'.
 
-    Note: _verify_primary_key calls dbt_adapter.adapter.execute (the low-level dbt
-    adapter), not dbt_adapter.execute (the DbtAdapter wrapper). We must patch the
-    low-level adapter to capture the SQL it generates.
+    Note: _verify_primary_key now calls dbt_adapter.execute (the DbtAdapter wrapper),
+    which forwards to dbt_adapter.adapter.execute (the low-level dbt adapter).
+    Patching the low-level adapter still intercepts the call because the wrapper
+    delegates straight through.
     """
     csv_data = """
         customer_id,order_id,amount
@@ -685,8 +686,9 @@ def test_value_diff_snowflake_composite_primary_key(dbt_test_helper):
     ]
 
     captured_sqls = []
-    # _verify_primary_key calls dbt_adapter.adapter.execute (the low-level adapter).
-    # patch that to capture the composite-key verification SQL.
+    # _verify_primary_key calls dbt_adapter.execute (the wrapper) which forwards to
+    # dbt_adapter.adapter.execute (the low-level adapter). Patch the low-level so we
+    # capture the composite-key verification SQL regardless of the wrapper layer.
     real_low_level_execute = dbt_test_helper.adapter.adapter.execute
 
     def capture_low_level_execute(sql, *args, **kwargs):

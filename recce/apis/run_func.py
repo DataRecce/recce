@@ -245,8 +245,7 @@ def submit_run(type, params, check_id=None, triggered_by=None):
         except BaseException as e:
             update_run_result(run, None, e, None)
             if isinstance(e, DuckDBExternalAccessBlocked):
-                # Propagate to /api/runs handler for HTTP 400; default path
-                # below swallows RecceException with is_raise=False.
+                # Propagate so the handler can map it to HTTP 400.
                 raise
             if isinstance(e, RecceException) and e.is_raise is False:
                 return None
