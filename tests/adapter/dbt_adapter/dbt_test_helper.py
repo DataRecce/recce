@@ -34,10 +34,15 @@ class DbtTestHelper:
         profiles_dir = project_dir
         manifest_path = os.path.join(project_dir, "manifest.json")
 
+        # Use unsafe_sql=True so the DuckDB sandbox does not block the Python
+        # DataFrame replacement scans used by create_model() / create_source().
+        # This is safe for unit tests: the sandbox is verified separately in
+        # test_dbt_adapter.py::test_duckdb_sandbox_* tests.
         dbt_adapter = DbtAdapter.load(
             no_artifacts=True,
             project_dir=project_dir,
             profiles_dir=profiles_dir,
+            unsafe_sql=True,
         )
 
         context = RecceContext()
