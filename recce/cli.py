@@ -187,12 +187,13 @@ recce_options = [
         hidden=True,
     ),
     click.option(
-        "--unsafe-sql",
+        "--duckdb-external-access",
         is_flag=True,
         default=False,
         help=(
-            "Disable the DuckDB SQL sandbox. Allows queries to use COPY, "
-            "read_csv, ATTACH, INSTALL/LOAD, and other host-touching SQL. "
+            "Allow recce's DuckDB session to access external state "
+            "(local files via read_csv/COPY TO, HTTP via httpfs/ATTACH, "
+            "and INSTALL/LOAD of extensions). Default: blocked. "
             "Only enable if you trust every user who can reach this server."
         ),
     ),
@@ -1276,10 +1277,10 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
 
     RecceConfig(config_file=kwargs.get("config"))
 
-    # Resolve effective unsafe_sql: CLI flag wins, else recce.yml, else default False.
-    cli_unsafe_sql = kwargs.get("unsafe_sql", False)
-    cfg_unsafe_sql = bool(RecceConfig().get("unsafe_sql", False))
-    kwargs["unsafe_sql"] = cli_unsafe_sql or cfg_unsafe_sql
+    # CLI flag wins over recce.yml; both default False (sandbox on).
+    kwargs["duckdb_external_access"] = kwargs.get("duckdb_external_access", False) or bool(
+        RecceConfig().get("duckdb_external_access", False)
+    )
 
     # Initialize startup performance tracking
     from recce.util.startup_perf import StartupPerfTracker, set_startup_tracker

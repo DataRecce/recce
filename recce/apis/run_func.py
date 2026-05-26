@@ -3,7 +3,7 @@ import logging
 from typing import List, Optional, Tuple
 
 from recce.core import default_context
-from recce.exceptions import RecceException, UnsafeSqlException
+from recce.exceptions import DuckDBExternalAccessBlocked, RecceException
 from recce.models import Run, RunDAO, RunType
 from recce.models.types import RunStatus
 from recce.tasks.core import Task
@@ -244,8 +244,9 @@ def submit_run(type, params, check_id=None, triggered_by=None):
             return result
         except BaseException as e:
             update_run_result(run, None, e, None)
-            if isinstance(e, UnsafeSqlException):
-                # Re-raise so the async handler can return HTTP 400.
+            if isinstance(e, DuckDBExternalAccessBlocked):
+                # Propagate to /api/runs handler for HTTP 400; default path
+                # below swallows RecceException with is_raise=False.
                 raise
             if isinstance(e, RecceException) and e.is_raise is False:
                 return None

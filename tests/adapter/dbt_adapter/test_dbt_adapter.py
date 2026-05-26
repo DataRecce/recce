@@ -19,8 +19,8 @@ def test_dbt_adapter_support_tasks(dbt_test_helper):
     assert support_tasks["change_analysis"] is True
 
 
-def test_dbt_adapter_unsafe_sql_can_be_set_true():
-    """DbtAdapter.load() must propagate unsafe_sql=True from kwargs."""
+def test_dbt_adapter_duckdb_external_access_can_be_set_true():
+    """DbtAdapter.load() must propagate duckdb_external_access=True from kwargs."""
     current_dir = os.path.dirname(os.path.abspath(__file__))
     project_dir = os.path.join(current_dir, "test_proj")
     with patch("recce.adapter.dbt_adapter.log_performance"):
@@ -28,13 +28,13 @@ def test_dbt_adapter_unsafe_sql_can_be_set_true():
             no_artifacts=True,
             project_dir=project_dir,
             profiles_dir=project_dir,
-            unsafe_sql=True,
+            duckdb_external_access=True,
         )
-    assert adapter.unsafe_sql is True
+    assert adapter.duckdb_external_access is True
 
 
-def test_recce_context_propagates_unsafe_sql():
-    """RecceContext.load(unsafe_sql=True, ...) must reach DbtAdapter.unsafe_sql via **kwargs."""
+def test_recce_context_propagates_duckdb_external_access():
+    """RecceContext.load(duckdb_external_access=True, ...) must reach the adapter via **kwargs."""
     from recce.core import RecceContext
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -45,10 +45,10 @@ def test_recce_context_propagates_unsafe_sql():
             no_artifacts=True,
             project_dir=project_dir,
             profiles_dir=project_dir,
-            unsafe_sql=True,
+            duckdb_external_access=True,
         )
 
-    assert ctx.adapter.unsafe_sql is True
+    assert ctx.adapter.duckdb_external_access is True
 
 
 def test_dbt_adapter_support_tasks_without_required_dbt_package(dbt_test_helper):
