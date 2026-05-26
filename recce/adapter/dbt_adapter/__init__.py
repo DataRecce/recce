@@ -395,7 +395,7 @@ class DbtAdapter(BaseAdapter):
 
         # Must run after load_artifacts so dbt-duckdb finishes its own
         # connection setup (incl. profiles.yml `attach:` blocks) first.
-        dbt_adapter._apply_duckdb_sandbox()
+        dbt_adapter._disable_duckdb_external_access()
 
         return dbt_adapter
 
@@ -2166,10 +2166,10 @@ class DbtAdapter(BaseAdapter):
                 "No enough dbt artifacts in the state file. Please use the latest recce to generate the recce state"
             )
 
-    def _apply_duckdb_sandbox(self) -> None:
+    def _disable_duckdb_external_access(self) -> None:
         # Inject into credentials.settings (not a one-time SET): dbt-duckdb
         # applies settings on every new cursor, so per-thread connections in
-        # the FastAPI worker pool stay sandboxed.
+        # the FastAPI worker pool stay restricted.
         if self.duckdb_external_access:
             return
         target_type = self.runtime_config.credentials.type if self.runtime_config else None

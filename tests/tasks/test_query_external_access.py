@@ -1,12 +1,11 @@
-"""Integration tests for the QueryTask DuckDB sandbox path.
+"""Integration tests for the QueryTask + HTTP path with DuckDB external access disabled.
 
-All tests that exercise the real sandbox (enable_external_access=false) run
-in isolated subprocesses.  The DuckDB `enable_external_access` setting is
-irreversible once applied in a process, and dbt-duckdb uses a class-level
-singleton connection, so running sandbox-on tests in the same pytest session
-would permanently disable external access for all subsequent tests.
+Every test runs in an isolated subprocess. The DuckDB `enable_external_access`
+setting is irreversible once applied in a process, and dbt-duckdb uses a
+class-level singleton connection, so running these tests in the same pytest
+session would permanently disable external access for all subsequent tests.
 
-Pattern mirrors tests/adapter/dbt_adapter/test_duckdb_sandbox.py.
+Pattern mirrors tests/adapter/dbt_adapter/test_duckdb_external_access.py.
 """
 
 import os
@@ -40,8 +39,8 @@ def _run_subprocess(script: str) -> None:
 def _make_setup_script(project_dir: str) -> str:
     """Return a Python script fragment that initialises adapter + RecceContext.
 
-    The adapter is loaded with duckdb_external_access=False (sandbox ON) and the test
-    project manifests are installed so generate_sql() works for plain SQL.
+    Adapter is loaded with duckdb_external_access=False (external access disabled)
+    and the test project manifests are installed so generate_sql() works for plain SQL.
     """
     return f"""
 import os
@@ -61,7 +60,7 @@ with patch("recce.adapter.dbt_adapter.log_performance"):
         no_artifacts=True,
         project_dir=_project_dir,
         profiles_dir=_project_dir,
-        duckdb_external_access=False,  # sandbox ON
+        duckdb_external_access=False,
     )
 
 _writable_manifest = load_manifest(_manifest_path)
@@ -120,7 +119,7 @@ try:
         raised = True
     except Exception as e:
         raise AssertionError(f"Wrong exception type: {type(e).__name__}: {e}")
-    assert raised, "COPY TO should have been blocked by QueryTask sandbox"
+    assert raised, "COPY TO should have been blocked when external access is disabled"
 finally:
     if os.path.exists(out_path):
         os.unlink(out_path)
@@ -154,7 +153,7 @@ except DuckDBExternalAccessBlocked as e:
     raised = True
 except Exception as e:
     raise AssertionError(f"Wrong exception type: {type(e).__name__}: {e}")
-assert raised, "read_csv should have been blocked by QueryTask sandbox"
+assert raised, "read_csv should have been blocked when external access is disabled"
 print("OK")
 """
     )
@@ -167,7 +166,7 @@ print("OK")
 
 
 def test_query_task_allows_legit_select():
-    """Sandbox must not block a plain SELECT 1 AS x query."""
+    """External-access restriction must not block a plain SELECT."""
     setup = _make_setup_script(_ADAPTER_PROJ_DIR)
     script = (
         setup
@@ -185,12 +184,12 @@ print("OK")
 
 
 # ---------------------------------------------------------------------------
-# Test 4 — HTTP /api/runs returns 400 for sandbox-blocked SQL
+# Test 4 — HTTP /api/runs returns 400 for SQL blocked by external-access restriction
 # ---------------------------------------------------------------------------
 
 
 def test_create_run_returns_400_for_blocked_sql():
-    """POST /api/runs with sandbox-blocked SQL must return HTTP 400 with hint."""
+    """POST /api/runs with restricted SQL must return HTTP 400 with hint."""
     setup = _make_setup_script(_ADAPTER_PROJ_DIR)
     script = (
         setup
@@ -208,7 +207,7 @@ with TestClient(app) as client:
         "/runs",
         json={
             "type": "query",
-            "params": {"sql_template": "COPY (SELECT 1 AS x) TO '/tmp/recce_sandbox_http_test.csv'"},
+            "params": {"sql_template": "COPY (SELECT 1 AS x) TO '/tmp/recce_external_access_http_test.csv'"},
         },
     )
     assert response.status_code == 400, (
@@ -217,7 +216,7 @@ with TestClient(app) as client:
     body = response.json()
     detail = body.get("detail", "")
     assert "--duckdb-external-access" in detail, f"Opt-out hint missing in detail: {detail}"
-    assert "sandbox" in detail.lower(), f"Sandbox mention missing in detail: {detail}"
+    assert "external access" in detail.lower(), f"external-access mention missing in detail: {detail}"
 print("OK")
 """
     )
@@ -225,12 +224,12 @@ print("OK")
 
 
 # ---------------------------------------------------------------------------
-# Test 5 — POST /checks/{id}/run returns HTTP 400 for sandbox-blocked SQL
+# Test 5 — POST /checks/{id}/run returns HTTP 400 for SQL blocked by external-access restriction
 # ---------------------------------------------------------------------------
 
 
 def test_rerun_check_returns_400_for_blocked_sql():
-    """POST /api/checks/{id}/run with sandbox-blocked SQL must return HTTP 400 with hint.
+    """POST /api/checks/{id}/run with restricted SQL must return HTTP 400 with hint.
 
     Regression: check_api.py:182 previously awaited the future with no
     DuckDBExternalAccessBlocked guard, returning HTTP 500 instead of 400.
@@ -247,12 +246,12 @@ from recce.models import Check, CheckDAO, RunType
 app = FastAPI()
 app.include_router(check_router)
 
-# Persist a query check whose SQL the sandbox will reject.
+# Persist a query check whose SQL will be rejected when external access is disabled.
 check = Check(
-    name="sandbox-rerun-regression",
+    name="external-access-rerun-regression",
     description="",
     type=RunType.QUERY,
-    params={"sql_template": "COPY (SELECT 1 AS x) TO '/tmp/recce_sandbox_check_test.csv'"},
+    params={"sql_template": "COPY (SELECT 1 AS x) TO '/tmp/recce_external_access_check_test.csv'"},
 )
 CheckDAO().create(check)
 
@@ -264,7 +263,7 @@ with TestClient(app) as client:
     body = response.json()
     detail = body.get("detail", "")
     assert "--duckdb-external-access" in detail, f"Opt-out hint missing in detail: {detail}"
-    assert "sandbox" in detail.lower(), f"Sandbox mention missing in detail: {detail}"
+    assert "external access" in detail.lower(), f"external-access mention missing in detail: {detail}"
 print("OK")
 """
     )

@@ -22,18 +22,18 @@ class RecceConfigException(RecceException):
 
 
 class DuckDBExternalAccessBlocked(RecceException):
-    """Raised when DuckDB's external-access sandbox rejects a user query."""
+    """Raised when DuckDB rejects a query because external access is disabled."""
 
     def __init__(self, original_message: str):
         message = (
-            f"This SQL is blocked by recce's DuckDB external-access sandbox: {original_message}. "
+            f"DuckDB external access is disabled — {original_message}. "
             "To allow, restart with --duckdb-external-access or set "
             "duckdb_external_access: true in recce.yml."
         )
         super().__init__(message, is_raise=True)
 
 
-# String-match against DuckDB internals. Pinned by test_duckdb_sandbox.py.
+# String-match against DuckDB internals. Pinned by test_duckdb_external_access.py.
 _DUCKDB_EXTERNAL_ACCESS_DENIAL_MESSAGES = (
     "file system operations are disabled by configuration",
     "Loading external extensions is disabled through configuration",

@@ -34,9 +34,9 @@ class DbtTestHelper:
         profiles_dir = project_dir
         manifest_path = os.path.join(project_dir, "manifest.json")
 
-        # duckdb_external_access=True so the sandbox does not block the Python
-        # DataFrame replacement scans used by create_model() / create_source().
-        # Sandbox behavior is verified separately in test_duckdb_sandbox.py.
+        # duckdb_external_access=True so external-access restriction does not block
+        # the Python DataFrame replacement scans used by create_model() / create_source().
+        # Restriction behavior is verified separately in test_duckdb_external_access.py.
         dbt_adapter = DbtAdapter.load(
             no_artifacts=True,
             project_dir=project_dir,

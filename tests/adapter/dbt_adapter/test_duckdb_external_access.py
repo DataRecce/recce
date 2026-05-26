@@ -9,14 +9,14 @@ _CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 _PROJECT_DIR = os.path.join(_CURRENT_DIR, "test_proj")
 
 
-def _run_sandbox_script(script: str) -> None:
+def _run_subprocess(script: str) -> None:
     """Run a Python script in a subprocess and assert it exits cleanly.
 
-    All sandbox tests are run in isolated subprocesses because the DuckDB
-    `enable_external_access` setting is irreversible in a running process
-    (it cannot be re-enabled once disabled) and dbt-duckdb uses a class-level
-    singleton connection that is shared across test instances within the same
-    pytest session.
+    Each external-access test runs in an isolated subprocess because the
+    DuckDB `enable_external_access` setting is irreversible in a running
+    process (cannot be re-enabled once disabled) and dbt-duckdb uses a
+    class-level singleton connection that is shared across test
+    instances within the same pytest session.
     """
     result = subprocess.run(
         [sys.executable, "-c", script],
@@ -30,7 +30,7 @@ def _run_sandbox_script(script: str) -> None:
 
 
 def test_dbt_adapter_duckdb_external_access_default_false():
-    """DbtAdapter must default to duckdb_external_access=False so sandbox is on by default.
+    """DbtAdapter must default to duckdb_external_access=False so external access is disabled by default.
 
     Runs in a subprocess to avoid applying enable_external_access=false to the
     shared dbt-duckdb singleton connection, which would break subsequent tests
@@ -53,12 +53,12 @@ def test_dbt_adapter_duckdb_external_access_default_false():
         print("OK")
     """
     )
-    _run_sandbox_script(script)
+    _run_subprocess(script)
 
 
-def test_sandbox_injects_into_credentials_settings():
-    """Regression: sandbox must inject into credentials.settings, not just
-    SET on a one-time connection.
+def test_external_access_setting_injected_into_credentials():
+    """Regression: the restriction must inject into credentials.settings,
+    not just SET on a one-time connection.
 
     Background: DuckDB resets `enable_external_access` to true on every
     fresh connection. dbt-duckdb opens a new cursor per thread (FastAPI
@@ -88,16 +88,16 @@ def test_sandbox_injects_into_credentials_settings():
         print("OK")
     """
     )
-    _run_sandbox_script(script)
+    _run_subprocess(script)
 
 
-def test_sandbox_survives_thread_connection_turnover():
-    """Regression: sandbox must apply to NEW thread connections too.
+def test_external_access_restriction_persists_across_thread_connections():
+    """Regression: external-access restriction must apply to NEW thread connections too.
 
     Background: dbt-duckdb opens a fresh cursor per thread. The original
     bug was: one-time SET on load-time connection did not apply to cursors
     opened later (e.g., by FastAPI thread-pool workers). This test
-    simulates that by querying sandbox state from a worker thread.
+    simulates that by querying the setting from a worker thread.
 
     Runs in a subprocess so the shared dbt-duckdb singleton is not
     contaminated for the rest of the pytest session.
@@ -149,26 +149,27 @@ def test_sandbox_survives_thread_connection_turnover():
         print("OK")
     """
     )
-    _run_sandbox_script(script)
+    _run_subprocess(script)
 
 
 @pytest.mark.parametrize(
     "sql,label",
     [
-        ("COPY (SELECT 1 AS x) TO '/tmp/recce_sandbox_test.csv'", "COPY TO"),
+        ("COPY (SELECT 1 AS x) TO '/tmp/recce_external_access_test.csv'", "COPY TO"),
         ("SELECT * FROM read_csv('/etc/hosts')", "read_csv"),
         ("ATTACH '/tmp/should_not_attach.duckdb' AS evil", "ATTACH"),
         # Bypass attempt: re-enabling external_access via SET. DuckDB
         # rejects this on its own once the database is running, so the
-        # sandbox does not depend on lock_configuration. The wrapper must
-        # still surface this as DuckDBExternalAccessBlocked so the HTTP
-        # path returns 400 with the opt-out hint instead of a generic 500.
+        # restriction does not depend on lock_configuration. The wrapper
+        # must still surface this as DuckDBExternalAccessBlocked so the
+        # HTTP path returns 400 with the opt-out hint instead of a 500.
         ("SET enable_external_access = true", "SET bypass"),
     ],
 )
-def test_duckdb_sandbox_blocks_dangerous_sql(sql, label):
-    """With sandbox on, DbtAdapter.execute must wrap DuckDB denials as
-    DuckDBExternalAccessBlocked (carries the --duckdb-external-access hint).
+def test_blocks_external_access_sql_when_disabled(sql, label):
+    """With external access disabled, DbtAdapter.execute must wrap DuckDB
+    denials as DuckDBExternalAccessBlocked (carries the
+    --duckdb-external-access hint).
 
     If DuckDB ever rewords its denial messages,
     is_duckdb_external_access_blocked() will stop matching and this test
@@ -187,7 +188,7 @@ def test_duckdb_sandbox_blocks_dangerous_sql(sql, label):
                 no_artifacts=True,
                 project_dir=project_dir,
                 profiles_dir=project_dir,
-                duckdb_external_access=False,  # sandbox ON
+                duckdb_external_access=False,  # external access disabled
             )
 
         raised = False
@@ -199,15 +200,15 @@ def test_duckdb_sandbox_blocks_dangerous_sql(sql, label):
             raised = True
         except Exception as e:
             raise AssertionError(f"Wrong exception type: {{type(e).__name__}}: {{e}}")
-        assert raised, {label!r} + " should have been blocked by sandbox but was not"
+        assert raised, {label!r} + " should have been blocked but was not"
         print("OK")
     """
     )
-    _run_sandbox_script(script)
+    _run_subprocess(script)
 
 
-def test_duckdb_sandbox_allows_ordinary_select():
-    """Sandbox must not interfere with ordinary SELECT queries."""
+def test_allows_ordinary_select_when_disabled():
+    """External-access restriction must not interfere with ordinary SELECT queries."""
     script = textwrap.dedent(
         f"""
         from unittest.mock import patch
@@ -220,7 +221,7 @@ def test_duckdb_sandbox_allows_ordinary_select():
                 no_artifacts=True,
                 project_dir=project_dir,
                 profiles_dir=project_dir,
-                duckdb_external_access=False,  # sandbox ON
+                duckdb_external_access=False,  # external access disabled
             )
 
         _, table = adapter.execute("SELECT 1 AS x, 'a' AS y", fetch=True)
@@ -228,10 +229,10 @@ def test_duckdb_sandbox_allows_ordinary_select():
         print("OK")
     """
     )
-    _run_sandbox_script(script)
+    _run_subprocess(script)
 
 
-def test_duckdb_sandbox_disabled_when_external_access_true():
+def test_allows_external_access_sql_when_opted_in():
     """With duckdb_external_access=True, dangerous SQL must succeed (opt-out preserves old behavior)."""
     script = textwrap.dedent(
         f"""
@@ -262,4 +263,4 @@ def test_duckdb_sandbox_disabled_when_external_access_true():
         print("OK")
     """
     )
-    _run_sandbox_script(script)
+    _run_subprocess(script)

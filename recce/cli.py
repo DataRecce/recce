@@ -1109,8 +1109,6 @@ def query(sql, base: bool = False, **kwargs):
     """
     from .core import RecceContext
 
-    # Sandbox is server-only; local CLI commands stay permissive.
-    kwargs.setdefault("duckdb_external_access", True)
     context = RecceContext.load(**kwargs)
     result = _execute_sql(context, sql, base=base)
     print(result.to_string(na_rep="-", index=False))
@@ -1157,8 +1155,6 @@ def diff(
 
     from .core import RecceContext
 
-    # Sandbox is server-only; local CLI commands stay permissive.
-    kwargs.setdefault("duckdb_external_access", True)
     context = RecceContext.load(**kwargs)
     before = _execute_sql(context, sql, base=True)
     if primary_keys is not None:
@@ -1512,7 +1508,7 @@ def run(output, **kwargs):
     # Initialize Recce Config
     RecceConfig(config_file=kwargs.get("config"))
 
-    # Sandbox is server-only; local CLI commands stay permissive.
+    # Only `recce server` restricts DuckDB external access by default.
     kwargs.setdefault("duckdb_external_access", True)
 
     patch_derived_args(kwargs)
