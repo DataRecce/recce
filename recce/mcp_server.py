@@ -67,6 +67,7 @@ WIDGET_TOOLS = {
     "histogram_diff",
     "profile_diff",
     "get_cll",
+    "impact_analysis",
 }
 
 

@@ -85,7 +85,7 @@ async def test_mcp_server_filters_widget_tools_when_widgets_enabled(monkeypatch)
 
 @pytest.mark.asyncio
 async def test_widget_server_registers_six_tools_and_six_resources():
-    """Widget FastMCP instance has exactly 13 tools/resources (Phase A + Phase B + Phase C + Phase D widgets).
+    """Widget FastMCP instance has exactly 14 tools/resources (Phase A + Phase B + Phase C + Phase D widgets).
 
     Uses FastMCP public API: mcp.list_tools() and mcp.list_resources().
     """
@@ -111,6 +111,7 @@ async def test_widget_server_registers_six_tools_and_six_resources():
         "histogram_diff",
         "profile_diff",
         "get_cll",
+        "impact_analysis",
     }
     assert resource_uris == {
         "ui://recce/row_count_diff.html",
@@ -126,6 +127,7 @@ async def test_widget_server_registers_six_tools_and_six_resources():
         "ui://recce/histogram_diff.html",
         "ui://recce/profile_diff.html",
         "ui://recce/get_cll.html",
+        "ui://recce/impact_analysis.html",
     }
 
 
@@ -302,6 +304,7 @@ async def test_widget_tool_annotations_present():
         "histogram_diff",
         "profile_diff",
         "get_cll",
+        "impact_analysis",
     ):
         assert tool_name in tool_map, f"{tool_name} not found in widget mcp tools"
         t = tool_map[tool_name]
@@ -328,6 +331,7 @@ async def test_widget_tool_annotations_present():
     assert tool_map["top_k_diff"].annotations.openWorldHint is True, "top_k_diff: expected openWorldHint=True"
     assert tool_map["histogram_diff"].annotations.openWorldHint is True, "histogram_diff: expected openWorldHint=True"
     assert tool_map["profile_diff"].annotations.openWorldHint is True, "profile_diff: expected openWorldHint=True"
+    assert tool_map["impact_analysis"].annotations.openWorldHint is True, "impact_analysis: expected openWorldHint=True"
 
 
 # ---------------------------------------------------------------------------
@@ -1922,4 +1926,197 @@ async def test_get_cll_returns_calltoolresult_with_pydantic_shape():
     assert "model.jaffle_shop.stg_orders" in validated.parent_map["model.jaffle_shop.orders"]
 
     # warning is None (not provided)
+    assert validated.warning is None
+
+
+# ---------------------------------------------------------------------------
+# Test 89: impact_analysis widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_impact_analysis_widget_registered():
+    """impact_analysis appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'impact_analysis' is in widget mcp tool list
+    - resource URI 'ui://recce/impact_analysis.html' is in widget mcp resource list
+    - select, skip_value_diff, skip_downstream_value_diff are all optional
+    - annotations: openWorldHint=True (runs row_count_diff + value_diff SQL)
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "impact_analysis" in tool_names
+    assert "ui://recce/impact_analysis.html" in resource_uris
+
+    # Verify inputSchema: all args are optional
+    tool = next(t for t in tools if t.name == "impact_analysis")
+    schema = tool.inputSchema
+    assert schema is not None
+    defs = schema.get("$defs", {})
+    inner_schema = next(iter(defs.values()), schema)
+    inner_required = inner_schema.get("required", [])
+    inner_props = inner_schema.get("properties", {})
+    assert "select" not in inner_required, "select must be optional"
+    assert "skip_value_diff" not in inner_required, "skip_value_diff must be optional"
+    assert "skip_downstream_value_diff" not in inner_required, "skip_downstream_value_diff must be optional"
+    assert "select" in inner_props
+    assert "skip_value_diff" in inner_props
+    assert "skip_downstream_value_diff" in inner_props
+
+    # openWorldHint must be True — runs warehouse queries
+    a = tool.annotations
+    assert a is not None
+    assert a.openWorldHint is True, "impact_analysis: expected openWorldHint=True (runs warehouse queries)"
+    assert a.readOnlyHint is True
+    assert a.destructiveHint is False
+
+
+# ---------------------------------------------------------------------------
+# Test 90: impact_analysis returns CallToolResult with correct Pydantic shape
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_impact_analysis_returns_calltoolresult_with_pydantic_shape():
+    """impact_analysis handler returns CallToolResult with structuredContent matching ImpactAnalysisOutput.
+
+    Uses a realistic _tool_impact_analysis return shape:
+    {_guidance, classification_source, max_affected_row_count,
+     confirmed_impacted_models: [{name, change_status, materialized, row_count,
+       schema_changes, value_diff, affected_row_count, data_impact, next_action}],
+     confirmed_not_impacted_models: [name_str, ...],
+     errors: []}
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent passes ImpactAnalysisOutput.model_validate()
+    - confirmed/potential/none models normalised correctly
+    - next_action hydrated into NextAction shape
+    - _guidance extracted to guidance field (without underscore)
+    - _warning extracted to warning field
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import ImpactAnalysisInput, ImpactAnalysisOutput
+
+    mock_server = MagicMock()
+    mock_server._tool_impact_analysis = AsyncMock(
+        return_value={
+            "_guidance": (
+                "confirmed_impacted_models lists all models in the DAG blast radius. " "Use data_impact to triage."
+            ),
+            "classification_source": "lineage_dag",
+            "max_affected_row_count": 150,
+            "confirmed_impacted_models": [
+                {
+                    "name": "orders",
+                    "change_status": "modified",
+                    "materialized": "table",
+                    "row_count": {"base": 1000, "current": 1100, "delta": 100, "delta_pct": 10.0},
+                    "schema_changes": [],
+                    "value_diff": {
+                        "affected_row_count": 150,
+                        "rows_added": 100,
+                        "rows_removed": 0,
+                        "rows_changed": 50,
+                        "columns": {"amount": {"affected_row_count": 50, "base_mean": 80.0, "current_mean": 85.0}},
+                    },
+                    "affected_row_count": 150,
+                    "data_impact": "confirmed",
+                    "next_action": None,
+                },
+                {
+                    "name": "customers",
+                    "change_status": None,
+                    "materialized": "view",
+                    "row_count": None,
+                    "schema_changes": [],
+                    "value_diff": None,
+                    "affected_row_count": None,
+                    "data_impact": "potential",
+                    "next_action": {
+                        "tool": "profile_diff",
+                        "columns": None,
+                        "reason": "downstream view, value_diff skipped",
+                        "priority": "low",
+                    },
+                },
+            ],
+            "confirmed_not_impacted_models": ["payments", "stg_orders"],
+            "errors": [],
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = ImpactAnalysisInput()
+        result = await ws.impact_analysis(args)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 200, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    # structuredContent must round-trip through Pydantic
+    assert result.structuredContent is not None
+    validated = ImpactAnalysisOutput.model_validate(result.structuredContent)
+
+    # guidance echoed (from _guidance, without underscore)
+    assert validated.guidance is not None
+    assert "triage" in validated.guidance
+
+    # classification_source
+    assert validated.classification_source == "lineage_dag"
+
+    # max_affected_row_count
+    assert validated.max_affected_row_count == 150
+
+    # confirmed_impacted_models
+    assert len(validated.confirmed_impacted_models) == 2
+
+    orders = next(m for m in validated.confirmed_impacted_models if m.name == "orders")
+    assert orders.data_impact == "confirmed"
+    assert orders.change_status == "modified"
+    assert orders.materialized == "table"
+    assert orders.row_count is not None
+    assert orders.row_count.base == 1000
+    assert orders.row_count.delta == 100
+    assert orders.row_count.delta_pct == 10.0
+    assert orders.value_diff is not None
+    assert orders.value_diff.affected_row_count == 150
+    assert orders.value_diff.rows_added == 100
+    assert orders.value_diff.rows_changed == 50
+    assert orders.next_action is None
+
+    customers = next(m for m in validated.confirmed_impacted_models if m.name == "customers")
+    assert customers.data_impact == "potential"
+    assert customers.change_status is None
+    assert customers.materialized == "view"
+    assert customers.row_count is None
+    assert customers.value_diff is None
+    assert customers.next_action is not None
+    assert customers.next_action.tool == "profile_diff"
+    assert customers.next_action.priority == "low"
+    assert customers.next_action.columns is None
+
+    # confirmed_not_impacted_models
+    assert sorted(validated.confirmed_not_impacted_models) == ["payments", "stg_orders"]
+
+    # errors empty
+    assert validated.errors == []
+
+    # warning None (not provided)
     assert validated.warning is None

@@ -2062,6 +2062,257 @@ def get_cll_resource() -> str:
 
 
 # ---------------------------------------------------------------------------
+# impact_analysis widget tool + resource
+# ---------------------------------------------------------------------------
+
+
+class ImpactAnalysisInput(BaseModel):
+    select: Optional[str] = Field(
+        default=None,
+        description=(
+            "dbt selector syntax. Default: data-affecting changes only "
+            "(body + macros + contract and their downstream). "
+            "Use 'state:modified+' to include all changes including config."
+        ),
+    )
+    skip_value_diff: bool = Field(
+        default=False,
+        description="Skip row-level value comparison on modified models.",
+    )
+    skip_downstream_value_diff: bool = Field(
+        default=False,
+        description="Skip value comparison on downstream models (faster for large DAGs).",
+    )
+
+
+class RowCountSummary(BaseModel):
+    """Row count comparison between base and current environments."""
+
+    base: Optional[int] = None
+    current: Optional[int] = None
+    delta: Optional[int] = None
+    delta_pct: Optional[float] = None
+
+
+class ImpactValueDiffSummary(BaseModel):
+    """Row-level value diff summary (PK join result) as returned by impact_analysis."""
+
+    affected_row_count: int = 0
+    rows_added: int = 0
+    rows_removed: int = 0
+    rows_changed: int = 0
+    columns: Optional[Dict[str, Any]] = None  # column → {affected_row_count, base_mean, current_mean}
+
+
+class NextAction(BaseModel):
+    """Suggested follow-up tool to investigate a model further."""
+
+    tool: str  # "profile_diff" | "query_diff" | "row_count_diff" | etc.
+    columns: Optional[List[str]] = None
+    reason: str
+    priority: str  # "high" | "medium" | "low"
+
+
+class SchemaChange(BaseModel):
+    """A single column-level schema change."""
+
+    column: str
+    change_status: str  # "added" | "removed" | "modified"
+
+
+class ImpactedModelEntry(BaseModel):
+    """Per-model impact record from _tool_impact_analysis."""
+
+    name: str
+    change_status: Optional[str] = None  # "added" | "removed" | "modified" | None (downstream)
+    materialized: Optional[str] = None  # "table" | "view" | "incremental" | etc.
+    row_count: Optional[RowCountSummary] = None
+    schema_changes: List[SchemaChange] = []
+    value_diff: Optional[ImpactValueDiffSummary] = None
+    affected_row_count: Optional[int] = None
+    data_impact: Optional[str] = None  # "confirmed" | "none" | "potential"
+    next_action: Optional[NextAction] = None
+
+
+class ImpactAnalysisOutput(BaseModel):
+    """Output model for the impact_analysis widget tool.
+
+    Mirrors _tool_impact_analysis return shape (without _guidance).
+
+    Fields:
+      guidance:                   LLM-facing triage hint (from _guidance)
+      classification_source:      always "lineage_dag"
+      max_affected_row_count:     max across all confirmed models
+      confirmed_impacted_models:  list of all blast-radius models with data_impact field
+      confirmed_not_impacted_models: list of model names confirmed clean
+      errors:                     list of per-step error dicts (step, message, model?)
+      warning:                    single-env warning if present
+    """
+
+    guidance: Optional[str] = None
+    classification_source: Optional[str] = None
+    max_affected_row_count: int = 0
+    confirmed_impacted_models: List[ImpactedModelEntry] = []
+    confirmed_not_impacted_models: List[str] = []
+    errors: List[Dict[str, Any]] = []
+    warning: Optional[str] = None
+
+
+@mcp.tool(
+    name="impact_analysis",
+    annotations={
+        "title": "Impact Analysis (Widget)",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,  # runs row_count_diff + value_diff SQL against warehouse
+    },
+    meta={
+        "ui": {"resourceUri": "ui://recce/impact_analysis.html"},
+        "ui/resourceUri": "ui://recce/impact_analysis.html",
+    },
+)
+async def impact_analysis(args: ImpactAnalysisInput) -> CallToolResult:
+    """Show the blast radius of dbt model changes — which models are confirmed-impacted, clean, or need investigation.
+
+    Rendered as a model-level impact dashboard: summary counts, optional SVG mini-DAG
+    of impacted models (up to 15 nodes), and an actionable "What to investigate next"
+    list extracted from each model's next_action field grouped by priority.
+
+    Runs warehouse queries (row_count_diff + value_diff) for non-view models with a
+    primary key. View models and models without a PK receive data_impact='potential'
+    and a next_action hint instead.
+
+    Args:
+        select:                   dbt selector syntax (default: data-affecting changes + downstream)
+        skip_value_diff:          skip value comparison on all models
+        skip_downstream_value_diff: skip value comparison on downstream models only
+
+    Returns:
+        CallToolResult with structuredContent: ImpactAnalysisOutput shape
+        {guidance, classification_source, max_affected_row_count,
+         confirmed_impacted_models, confirmed_not_impacted_models, errors, warning?}
+
+    Use when:
+        - Starting a PR review: "what models are impacted by my changes?"
+        - Triaging blast radius before deciding which diffs to run
+        - Building a structured change report for stakeholders
+    Don't use when:
+        - Need column-level lineage → get_cll
+        - Need detailed row-by-row diffs for a specific model → value_diff / value_diff_detail
+        - Already have impact results and need to drill in → profile_diff / query_diff
+    """
+    raw = await _recce_server._tool_impact_analysis(args.model_dump(exclude_none=True))
+    warning = raw.pop("_warning", None) if isinstance(raw, dict) else None
+
+    guidance = raw.get("_guidance") if isinstance(raw, dict) else None
+    classification_source = raw.get("classification_source") if isinstance(raw, dict) else None
+    max_affected = raw.get("max_affected_row_count", 0) if isinstance(raw, dict) else 0
+    raw_impacted = raw.get("confirmed_impacted_models", []) if isinstance(raw, dict) else []
+    raw_not_impacted = raw.get("confirmed_not_impacted_models", []) if isinstance(raw, dict) else []
+    raw_errors = raw.get("errors", []) if isinstance(raw, dict) else []
+
+    # Normalise impacted model entries
+    impacted_models: List[ImpactedModelEntry] = []
+    for m in raw_impacted:
+        if not isinstance(m, dict):
+            continue
+        rc = m.get("row_count")
+        row_count = (
+            RowCountSummary(
+                base=rc.get("base"),
+                current=rc.get("current"),
+                delta=rc.get("delta"),
+                delta_pct=rc.get("delta_pct"),
+            )
+            if isinstance(rc, dict)
+            else None
+        )
+        vd = m.get("value_diff")
+        value_diff = (
+            ImpactValueDiffSummary(
+                affected_row_count=vd.get("affected_row_count", 0),
+                rows_added=vd.get("rows_added", 0),
+                rows_removed=vd.get("rows_removed", 0),
+                rows_changed=vd.get("rows_changed", 0),
+                columns=vd.get("columns"),
+            )
+            if isinstance(vd, dict)
+            else None
+        )
+        na = m.get("next_action")
+        next_action = (
+            NextAction(
+                tool=na.get("tool", "profile_diff"),
+                columns=na.get("columns"),
+                reason=na.get("reason", ""),
+                priority=na.get("priority", "medium"),
+            )
+            if isinstance(na, dict)
+            else None
+        )
+        schema_changes = [
+            SchemaChange(column=sc["column"], change_status=sc["change_status"])
+            for sc in (m.get("schema_changes") or [])
+            if isinstance(sc, dict) and "column" in sc and "change_status" in sc
+        ]
+        impacted_models.append(
+            ImpactedModelEntry(
+                name=m.get("name", ""),
+                change_status=m.get("change_status"),
+                materialized=m.get("materialized"),
+                row_count=row_count,
+                schema_changes=schema_changes,
+                value_diff=value_diff,
+                affected_row_count=m.get("affected_row_count"),
+                data_impact=m.get("data_impact"),
+                next_action=next_action,
+            )
+        )
+
+    # confirmed_not_impacted_models is a list of name strings
+    not_impacted: List[str] = [n for n in raw_not_impacted if isinstance(n, str)]
+
+    output = ImpactAnalysisOutput(
+        guidance=guidance,
+        classification_source=classification_source,
+        max_affected_row_count=max_affected if isinstance(max_affected, int) else 0,
+        confirmed_impacted_models=impacted_models,
+        confirmed_not_impacted_models=not_impacted,
+        errors=[e for e in raw_errors if isinstance(e, dict)],
+        warning=warning,
+    )
+
+    n_confirmed = sum(1 for m in impacted_models if m.data_impact == "confirmed")
+    n_potential = sum(1 for m in impacted_models if m.data_impact == "potential")
+    n_none = sum(1 for m in impacted_models if m.data_impact == "none")
+    total_impacted = len(impacted_models)
+    text = (
+        f"Impact analysis: {total_impacted} model{'s' if total_impacted != 1 else ''} in blast radius "
+        f"({n_confirmed} confirmed, {n_potential} potential, {n_none} no impact). "
+        f"Max affected rows: {max_affected:,}. Rendered in widget."
+    )
+    return CallToolResult(
+        content=[TextContent(type="text", text=text)],
+        structuredContent=output.model_dump(),
+    )
+
+
+@mcp.resource(
+    uri="ui://recce/impact_analysis.html",
+    mime_type="text/html;profile=mcp-app",
+    meta={
+        "ui": {
+            "csp": {"resourceDomains": ["https://unpkg.com"]},
+            "prefersBorder": False,
+        },
+    },
+)
+def impact_analysis_resource() -> str:
+    return _read_widget_html("impact_analysis")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

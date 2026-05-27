@@ -17,9 +17,11 @@ Phase A ships five widgets: `row_count_diff`, `schema_diff`, `get_server_info`,
 `value_diff`, `value_diff_detail`, and `top_k_diff` (five tier-3 data-table/list
 widgets). Phase C adds two tier-4 chart widgets: `histogram_diff` (hand-rolled SVG
 bar chart) and `profile_diff` (per-column statistical profile card grid). Phase D
-adds the first tier-5 (mini graph) widget: `get_cll` — column-level lineage
-rendered as a hand-rolled SVG mini-DAG with layered layout (sources left, target
-middle, downstream right). Total: **13 of 20 planned widgets** (65% coverage). All run in
+adds two tier-5 (mini graph) widgets: `get_cll` — column-level lineage rendered as
+a hand-rolled SVG mini-DAG — and `impact_analysis` — model-level blast-radius
+dashboard with per-model impact badges, row-count/value-diff chips, SVG mini-DAG
+(up to 15 nodes), and an actionable "What to investigate next" list.
+Total: **14 of 20 planned widgets** (70% coverage). All run in
 **local mode only** — cloud/session mode is not supported until iter 2.
 
 ---
@@ -688,13 +690,39 @@ contrasts with all tier-3 tools (`query`, `query_diff`, `value_diff`, etc.) whic
 set `openWorldHint=True`. Adding it to the `closed_world_tools` assertion in
 `test_widget_server.py` enforces this distinction.
 
+### `impact_analysis` — Model-Level Blast Radius
+
+`impact_analysis` runs warehouse queries (row_count_diff + value_diff SQL) against
+non-view models with a primary key. It renders:
+
+1. **Header** — explosion icon, "Impact analysis" title, impacted model count badge.
+2. **Summary bar** — confirmed / potential / clean counts + max affected rows.
+3. **SVG mini-DAG** (up to 15 models) — 2-layer layout: modified models left, downstream right.
+   Each model card shows impact badge (CONFIRMED/POTENTIAL/CLEAN), row-count delta chip,
+   and next-action hint. Bezier edges connect every modified node to every downstream node.
+4. **"What to investigate next"** — actionable list of `next_action` items grouped by
+   priority (high / medium / low). Only models with `data_impact='potential'` have
+   `next_action`; confirmed and clean models need no follow-up.
+
+Bail-out at >15 models: skip SVG, show summary counts + actionable list only.
+
+`openWorldHint=True` — runs warehouse SQL (unlike `get_cll` which is manifest-only).
+
+### `openWorldHint` for impact_analysis
+
+`impact_analysis` queries the warehouse for row counts and value diffs, so it is added to
+the open-world group (alongside `query`, `profile_diff`, etc.). It is NOT in
+`closed_world_tools`. See the annotations assertion in `test_widget_server.py`.
+
 ### Iter 2 considerations for mini-graph widgets
 
-- **Cytoscape.js or D3** for larger graphs (>12 nodes): adds a CDN dependency but enables
-  interactive pan/zoom, auto-layout (Dagre), and click-to-focus interactions.
+- **Cytoscape.js or D3** for larger graphs (>15 models / >12 nodes): adds a CDN dependency
+  but enables interactive pan/zoom, auto-layout (Dagre), and click-to-focus interactions.
 - **Depth limiting** instead of hard bail-out: show only N hops upstream/downstream.
-- **Column filter**: highlight only the requested column's lineage path, greying out others.
+- **Column filter** (get_cll): highlight only the requested column's lineage path.
 - **Cross-environment diff overlay**: show base vs current columns side-by-side in the card.
+- **`impact_analysis` edge routing**: current bail-out uses full modified×downstream matrix.
+  Iter 2 should use actual DAG parent/child links from lineage_diff to draw only real edges.
 
 ---
 
