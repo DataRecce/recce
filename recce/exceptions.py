@@ -37,7 +37,10 @@ class DuckDBExternalAccessBlocked(RecceException):
 _DUCKDB_EXTERNAL_ACCESS_DENIAL_MESSAGES = (
     "file system operations are disabled by configuration",
     "Loading external extensions is disabled through configuration",
+    # DuckDB <= 1.4.x
     "Cannot change enable_external_access setting while database is running",
+    # DuckDB >= 1.5.x reworded this denial
+    "Cannot enable external access while database is running",
 )
 
 
