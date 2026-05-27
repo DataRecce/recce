@@ -27,8 +27,8 @@ class DuckDBExternalAccessBlocked(RecceException):
     def __init__(self, original_message: str):
         message = (
             f"DuckDB external access is disabled — {original_message}. "
-            "To allow, restart with --duckdb-external-access or set "
-            "duckdb_external_access: true in recce.yml."
+            "This server was started with --disable-duckdb-external-access "
+            "(or duckdb_external_access: false in recce.yml)."
         )
         super().__init__(message, is_raise=True)
 

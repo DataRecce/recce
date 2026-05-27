@@ -29,12 +29,12 @@ def _run_subprocess(script: str) -> None:
     )
 
 
-def test_dbt_adapter_duckdb_external_access_default_false():
-    """DbtAdapter must default to duckdb_external_access=False so external access is disabled by default.
+def test_dbt_adapter_duckdb_external_access_default_true():
+    """DbtAdapter must default to duckdb_external_access=True so external access is allowed by default.
 
-    Runs in a subprocess to avoid applying enable_external_access=false to the
-    shared dbt-duckdb singleton connection, which would break subsequent tests
-    that rely on Python DataFrame scanning (python_scan_all_frames).
+    The restriction is opt-out: callers (e.g. `recce server
+    --disable-duckdb-external-access`) must pass duckdb_external_access=False
+    to disable it.
     """
     script = textwrap.dedent(
         f"""
@@ -49,7 +49,7 @@ def test_dbt_adapter_duckdb_external_access_default_false():
                 project_dir=project_dir,
                 profiles_dir=project_dir,
             )
-        assert adapter.duckdb_external_access is False, f"Expected False, got {{adapter.duckdb_external_access}}"
+        assert adapter.duckdb_external_access is True, f"Expected True, got {{adapter.duckdb_external_access}}"
         print("OK")
     """
     )
@@ -66,7 +66,9 @@ def test_external_access_setting_injected_into_credentials():
     survive that turnover. The fix injects into `credentials.settings`,
     which `initialize_cursor` applies on every new cursor.
 
-    This test pins the contract so the fix isn't accidentally undone.
+    This test pins the contract so the fix isn't accidentally undone. The
+    restriction is opt-out, so the adapter is loaded with
+    duckdb_external_access=False to trigger the injection.
     """
     script = textwrap.dedent(
         f"""
@@ -80,6 +82,7 @@ def test_external_access_setting_injected_into_credentials():
                 no_artifacts=True,
                 project_dir=project_dir,
                 profiles_dir=project_dir,
+                duckdb_external_access=False,  # external access disabled
             )
         settings = adapter.runtime_config.credentials.settings or {{}}
         assert settings.get("enable_external_access") == "false", (
@@ -116,6 +119,7 @@ def test_external_access_restriction_persists_across_thread_connections():
                 no_artifacts=True,
                 project_dir=project_dir,
                 profiles_dir=project_dir,
+                duckdb_external_access=False,  # external access disabled
             )
 
         results = {{}}
@@ -162,14 +166,14 @@ def test_external_access_restriction_persists_across_thread_connections():
         # rejects this on its own once the database is running, so the
         # restriction does not depend on lock_configuration. The wrapper
         # must still surface this as DuckDBExternalAccessBlocked so the
-        # HTTP path returns 400 with the opt-out hint instead of a 500.
+        # HTTP path returns 400 with the disable hint instead of a 500.
         ("SET enable_external_access = true", "SET bypass"),
     ],
 )
 def test_blocks_external_access_sql_when_disabled(sql, label):
     """With external access disabled, DbtAdapter.execute must wrap DuckDB
     denials as DuckDBExternalAccessBlocked (carries the
-    --duckdb-external-access hint).
+    --disable-duckdb-external-access hint).
 
     If DuckDB ever rewords its denial messages,
     is_duckdb_external_access_blocked() will stop matching and this test
@@ -196,7 +200,7 @@ def test_blocks_external_access_sql_when_disabled(sql, label):
             adapter.execute({sql!r})
         except DuckDBExternalAccessBlocked as e:
             msg = str(e)
-            assert "--duckdb-external-access" in msg, f"Opt-out hint missing: {{e}}"
+            assert "--disable-duckdb-external-access" in msg, f"Disable hint missing: {{e}}"
             raised = True
         except Exception as e:
             raise AssertionError(f"Wrong exception type: {{type(e).__name__}}: {{e}}")
@@ -233,7 +237,7 @@ def test_allows_ordinary_select_when_disabled():
 
 
 def test_allows_external_access_sql_when_opted_in():
-    """With duckdb_external_access=True, dangerous SQL must succeed (opt-out preserves old behavior)."""
+    """With duckdb_external_access=True (the default), external-access SQL must succeed."""
     script = textwrap.dedent(
         f"""
         import os, tempfile

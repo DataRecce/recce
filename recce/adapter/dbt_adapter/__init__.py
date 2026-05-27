@@ -25,7 +25,11 @@ from typing import (
 )
 
 from recce.event import log_performance
-from recce.exceptions import DuckDBExternalAccessBlocked, RecceException, is_duckdb_external_access_blocked
+from recce.exceptions import (
+    DuckDBExternalAccessBlocked,
+    RecceException,
+    is_duckdb_external_access_blocked,
+)
 from recce.util.cll import CLLPerformanceTracking, cll, get_cll_cache
 from recce.util.lineage import (
     build_column_key,
@@ -310,7 +314,7 @@ class DbtAdapter(BaseAdapter):
     # Review mode
     review_mode: bool = False
 
-    duckdb_external_access: bool = False
+    duckdb_external_access: bool = True
 
     # Watch the artifact change
     artifacts_observer = Observer()
@@ -384,7 +388,7 @@ class DbtAdapter(BaseAdapter):
                 adapter=adapter,
                 review_mode=review,
                 base_path=target_base_path,
-                duckdb_external_access=kwargs.get("duckdb_external_access", False),
+                duckdb_external_access=kwargs.get("duckdb_external_access", True),
             )
         except DbtProjectError as e:
             raise e
