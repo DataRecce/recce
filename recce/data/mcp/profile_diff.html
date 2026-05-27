@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Profile Diff</title>
+  <style>
+    /* ── Base reset + design tokens ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+      font-size: 13px;
+      margin: 0;
+      padding: 12px 16px 20px;
+      color: var(--color-text-primary, #1a1a1a);
+      background: var(--color-background-primary, #ffffff);
+      line-height: 1.4;
+    }
+
+    /* ── Dark-mode fallback ─────────────────────────────────────────── */
+    @media (prefers-color-scheme: dark) {
+      body {
+        color: var(--color-text-primary, #e5e7eb);
+        background: var(--color-background-primary, #1a1a1a);
+      }
+      .header-icon    { color: var(--color-text-secondary, #9ca3af) !important; }
+      .header-title   { color: var(--color-text-primary, #e5e7eb) !important; }
+      .header-model   { color: var(--color-text-secondary, #9ca3af) !important; }
+      .summary-bar    { background: var(--color-background-secondary, #27272a) !important;
+                        border-color: var(--color-border-primary, #3f3f46) !important; }
+      .summary-text   { color: var(--color-text-secondary, #9ca3af) !important; }
+      .summary-text strong { color: var(--color-text-primary, #e5e7eb) !important; }
+      .warning-bar    { background: var(--color-background-warning, #78350f) !important;
+                        color: var(--color-text-warning, #fde68a) !important;
+                        border-color: #92400e !important; }
+      .col-card       { background: var(--color-background-secondary, #27272a) !important;
+                        border-color: var(--color-border-primary, #3f3f46) !important; }
+      .col-card-header { border-bottom-color: var(--color-border-primary, #3f3f46) !important; }
+      .col-name       { color: var(--color-text-primary, #e5e7eb) !important; }
+      .type-badge     { background: var(--color-background-primary, #18181b) !important;
+                        color: var(--color-text-secondary, #9ca3af) !important;
+                        border-color: var(--color-border-primary, #3f3f46) !important; }
+      .stat-label     { color: var(--color-text-secondary, #9ca3af) !important; }
+      .stat-val       { color: var(--color-text-primary, #e5e7eb) !important; }
+      .stat-val.null  { color: var(--color-text-secondary, #6b7280) !important; }
+      .stat-arrow     { color: var(--color-text-secondary, #6b7280) !important; }
+      .delta-chip     { background: var(--color-background-warning, #78350f) !important;
+                        color: var(--color-text-warning, #fde68a) !important; }
+      .delta-chip.positive { background: #14532d !important; color: #86efac !important; }
+      .delta-chip.negative { background: #7f1d1d !important; color: #fca5a5 !important; }
+      .stat-row       { border-bottom-color: var(--color-border-primary, #3f3f46) !important; }
+      .stat-row:last-child { border-bottom: none !important; }
+      .env-head       { color: var(--color-text-secondary, #9ca3af) !important;
+                        border-bottom-color: var(--color-border-primary, #3f3f46) !important; }
+      .env-head-base  { color: #93c5fd !important; }
+      .env-head-curr  { color: #86efac !important; }
+      .empty-card     { background: var(--color-background-secondary, #27272a) !important; }
+      .empty-title    { color: var(--color-text-primary, #e5e7eb) !important; }
+      .empty-hint     { color: var(--color-text-secondary, #9ca3af) !important; }
+      .error-card     { background: var(--color-background-secondary, #27272a) !important; }
+      .error-title    { color: var(--color-text-danger, #f87171) !important; }
+      .error-hint     { color: var(--color-text-secondary, #9ca3af) !important; }
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .header-icon  { font-size: 15px; line-height: 1; }
+    .header-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-text-primary, #1a1a1a);
+      flex: 1;
+    }
+    .header-model {
+      font-family: var(--font-mono, ui-monospace, monospace);
+      font-size: 11px;
+      color: var(--color-text-secondary, #6b7280);
+    }
+
+    /* ── Summary bar ─────────────────────────────────────────────────── */
+    .summary-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      margin-bottom: 12px;
+      border-radius: var(--border-radius-sm, 4px);
+      border: 1px solid var(--color-border-primary, #e5e7eb);
+      background: var(--color-background-secondary, #f9fafb);
+      font-size: 12px;
+      flex-wrap: wrap;
+    }
+    .summary-text { color: var(--color-text-secondary, #6b7280); }
+    .summary-text strong { color: var(--color-text-primary, #1a1a1a); }
+    .summary-sep { color: var(--color-text-secondary, #9ca3af); }
+
+    /* ── Warning bar ─────────────────────────────────────────────────── */
+    .warning-bar {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 8px 10px;
+      margin-bottom: 10px;
+      border-radius: var(--border-radius-sm, 4px);
+      font-size: 12px;
+      font-style: italic;
+      background: var(--color-background-warning, #fffbeb);
+      color: var(--color-text-warning, #92400e);
+      border: 1px solid var(--color-border-warning, #fcd34d);
+    }
+
+    /* ── Column card grid ────────────────────────────────────────────── */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 10px;
+    }
+    .col-card {
+      border: 1px solid var(--color-border-primary, #e5e7eb);
+      border-radius: var(--border-radius-md, 8px);
+      background: var(--color-background-primary, #ffffff);
+      overflow: hidden;
+    }
+
+    /* ── Card header ─────────────────────────────────────────────────── */
+    .col-card-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--color-border-primary, #e5e7eb);
+      background: var(--color-background-secondary, #f9fafb);
+    }
+    .col-name {
+      font-family: var(--font-mono, ui-monospace, monospace);
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--color-text-primary, #1a1a1a);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .type-badge {
+      font-size: 9.5px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: var(--color-background-primary, #ffffff);
+      color: var(--color-text-secondary, #6b7280);
+      border: 1px solid var(--color-border-primary, #e5e7eb);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* ── Stat table inside each card ──────────────────────────────────── */
+    .stat-table { width: 100%; border-collapse: collapse; }
+    .stat-table .env-head {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 4px 10px 3px;
+      text-align: right;
+      color: var(--color-text-secondary, #6b7280);
+      border-bottom: 1px solid var(--color-border-primary, #e5e7eb);
+    }
+    .stat-table .env-head-base { color: #2563eb; }
+    .stat-table .env-head-curr { color: #16a34a; }
+    .stat-row td {
+      padding: 4px 10px;
+      border-bottom: 1px solid var(--color-border-primary, #f3f4f6);
+      vertical-align: middle;
+    }
+    .stat-row:last-child td { border-bottom: none; }
+    .stat-label {
+      font-size: 11px;
+      color: var(--color-text-secondary, #6b7280);
+      width: 42%;
+    }
+    .stat-val {
+      font-family: var(--font-mono, ui-monospace, monospace);
+      font-size: 11px;
+      color: var(--color-text-primary, #1a1a1a);
+      text-align: right;
+      white-space: nowrap;
+    }
+    .stat-val.null {
+      color: var(--color-text-secondary, #9ca3af);
+      font-style: italic;
+    }
+    .stat-arrow {
+      color: var(--color-text-secondary, #9ca3af);
+      font-size: 10px;
+      padding: 0 2px;
+      text-align: center;
+    }
+    .delta-col { text-align: right; width: 20%; }
+    .delta-chip {
+      display: inline-block;
+      font-size: 10px;
+      font-family: var(--font-mono, ui-monospace, monospace);
+      padding: 0 4px;
+      border-radius: 3px;
+      background: var(--color-background-warning, #fffbeb);
+      color: var(--color-text-warning, #92400e);
+    }
+    .delta-chip.positive { background: #f0fdf4; color: #15803d; }
+    .delta-chip.negative { background: #fef2f2; color: #b91c1c; }
+    .delta-chip.neutral  { display: none; }
+
+    /* ── Empty / error states ────────────────────────────────────────── */
+    .empty-card {
+      padding: 32px 24px;
+      border-radius: var(--border-radius-md, 8px);
+      background: var(--color-background-secondary, #f9fafb);
+      text-align: center;
+    }
+    .empty-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+    .empty-hint  { font-size: 12px; color: var(--color-text-secondary, #6b7280); }
+    .error-card  {
+      padding: 24px;
+      border-radius: var(--border-radius-md, 8px);
+      background: var(--color-background-secondary, #f9fafb);
+    }
+    .error-title { font-size: 13px; font-weight: 600;
+                   color: var(--color-text-danger, #dc2626); margin-bottom: 6px; }
+    .error-hint  { font-size: 12px; color: var(--color-text-secondary, #6b7280); }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="empty-card">
+      <div class="empty-title">Loading profile diff…</div>
+      <div class="empty-hint">Waiting for profiling results.</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      App,
+      applyDocumentTheme,
+      applyHostStyleVariables,
+      applyHostFonts,
+    } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+
+    const app = new App({ name: "Profile Diff", version: "1.0.0" });
+
+    app.onhostcontextchanged = (ctx) => {
+      if (ctx.theme)             applyDocumentTheme(ctx.theme);
+      if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+      if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
+    };
+
+    app.onteardown = async () => { return {}; };
+
+    // ── Helpers ──────────────────────────────────────────────────────
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    /**
+     * Format a numeric stat value. Returns "—" for null/undefined.
+     * Proportions (0-1) are shown as percentages.
+     */
+    function fmtStat(v, isProportion) {
+      if (v === null || v === undefined) return null; // caller handles null
+      if (isProportion) {
+        const pct = (Number(v) * 100).toFixed(1);
+        return pct + "%";
+      }
+      if (typeof v === "number") {
+        // Show up to 4 significant decimal places for floats
+        if (Number.isInteger(v)) return v.toLocaleString();
+        return v.toLocaleString(undefined, { maximumFractionDigits: 4 });
+      }
+      return escapeHtml(String(v));
+    }
+
+    /**
+     * Detect column type category from data_type string for the type badge.
+     * Returns one of: "numeric", "text", "date/time", "boolean", "array", "struct", "unknown"
+     */
+    function colCategory(dataType) {
+      if (!dataType) return "unknown";
+      const t = dataType.toLowerCase();
+      if (t.startsWith("array"))  return "array";
+      if (t.startsWith("struct")) return "struct";
+      if (t.startsWith("bool"))   return "boolean";
+      if (t.startsWith("date") || t.startsWith("timestamp")) return "date/time";
+      if (t.startsWith("int") || t.startsWith("float") || t.startsWith("bigint") ||
+          "numeric number double".split(" ").some(k => t.includes(k))) return "numeric";
+      return "text";
+    }
+
+    /**
+     * Compute a delta string for a pair of numeric values.
+     * Returns {text, cls} where cls is "positive"|"negative"|"neutral".
+     */
+    function delta(base, curr, isProportion) {
+      if (base === null || base === undefined ||
+          curr === null || curr === undefined) return { text: "", cls: "neutral" };
+      const diff = Number(curr) - Number(base);
+      if (diff === 0) return { text: "", cls: "neutral" };
+      const sign = diff > 0 ? "+" : "";
+      let text;
+      if (isProportion) {
+        const pct = (diff * 100).toFixed(1);
+        text = sign + pct + "pp";
+      } else {
+        text = sign + diff.toLocaleString(undefined, { maximumFractionDigits: 4 });
+      }
+      return { text, cls: diff > 0 ? "positive" : "negative" };
+    }
+
+    /**
+     * Render one stat row: label | base value | arrow | current value | delta chip.
+     * skipRow: if both values are null and showEmpty is false, return "".
+     */
+    function statRow(label, baseVal, currVal, { isProportion = false, showEmpty = false } = {}) {
+      const bFmt = fmtStat(baseVal, isProportion);
+      const cFmt = fmtStat(currVal, isProportion);
+
+      if (!showEmpty && bFmt === null && cFmt === null) return "";
+
+      const bHtml = bFmt !== null
+        ? `<span class="stat-val">${escapeHtml(bFmt)}</span>`
+        : `<span class="stat-val null">—</span>`;
+      const cHtml = cFmt !== null
+        ? `<span class="stat-val">${escapeHtml(cFmt)}</span>`
+        : `<span class="stat-val null">—</span>`;
+
+      // Delta chip only for numeric comparisons (not string min/max)
+      const d = (!isProportion && typeof baseVal === "number" && typeof currVal === "number")
+        ? delta(baseVal, currVal, false)
+        : (isProportion && baseVal !== null && currVal !== null)
+          ? delta(baseVal, currVal, true)
+          : { text: "", cls: "neutral" };
+
+      return `
+        <tr class="stat-row">
+          <td class="stat-label">${escapeHtml(label)}</td>
+          <td class="stat-val" style="text-align:right">${bHtml}</td>
+          <td class="stat-arrow">→</td>
+          <td class="stat-val" style="text-align:right">${cHtml}</td>
+          <td class="delta-col"><span class="delta-chip ${d.cls}">${escapeHtml(d.text)}</span></td>
+        </tr>`;
+    }
+
+    /**
+     * Render a string stat row (no numeric delta, just show both values).
+     */
+    function strStatRow(label, baseVal, currVal, showEmpty = false) {
+      if (!showEmpty && baseVal === null && currVal === null) return "";
+      const bHtml = baseVal !== null && baseVal !== undefined
+        ? `<span class="stat-val" title="${escapeHtml(String(baseVal))}">${escapeHtml(String(baseVal).length > 20 ? String(baseVal).slice(0, 20) + "…" : String(baseVal))}</span>`
+        : `<span class="stat-val null">—</span>`;
+      const cHtml = currVal !== null && currVal !== undefined
+        ? `<span class="stat-val" title="${escapeHtml(String(currVal))}">${escapeHtml(String(currVal).length > 20 ? String(currVal).slice(0, 20) + "…" : String(currVal))}</span>`
+        : `<span class="stat-val null">—</span>`;
+      // Highlight if strings differ
+      const diffCls = baseVal !== currVal && baseVal !== null && currVal !== null ? "changed" : "";
+      const chip = diffCls ? `<span class="delta-chip">&Delta;</span>` : `<span class="delta-chip neutral"></span>`;
+      return `
+        <tr class="stat-row">
+          <td class="stat-label">${escapeHtml(label)}</td>
+          <td class="stat-val" style="text-align:right">${bHtml}</td>
+          <td class="stat-arrow">→</td>
+          <td class="stat-val" style="text-align:right">${cHtml}</td>
+          <td class="delta-col">${chip}</td>
+        </tr>`;
+    }
+
+    /** Build HTML for one column card. */
+    function buildCard(col) {
+      const cat = colCategory(col.data_type);
+      const b = col.base || {};
+      const c = col.current || {};
+
+      let rows = "";
+      // Always show row count (count of non-null in not_null_proportion × row_count)
+      rows += statRow("Row count",   b.row_count,   c.row_count,   { showEmpty: true });
+      rows += statRow("Non-null",    b.not_null_proportion, c.not_null_proportion,
+                                    { isProportion: true });
+      rows += statRow("Distinct ct", b.distinct_count,  c.distinct_count);
+      rows += statRow("Distinct %",  b.distinct_proportion, c.distinct_proportion,
+                                    { isProportion: true });
+      rows += strStatRow("Min",  b.min,    c.min);
+      rows += strStatRow("Max",  b.max,    c.max);
+      if (cat === "numeric" || cat === "boolean") {
+        rows += statRow("Avg",    b.avg,    c.avg);
+        rows += statRow("Median", b.median, c.median);
+      }
+
+      return `
+        <div class="col-card">
+          <div class="col-card-header">
+            <span class="col-name" title="${escapeHtml(col.column_name)}">${escapeHtml(col.column_name)}</span>
+            <span class="type-badge">${escapeHtml(col.data_type || "unknown")}</span>
+          </div>
+          <table class="stat-table">
+            <thead>
+              <tr>
+                <th class="env-head" style="text-align:left">Stat</th>
+                <th class="env-head env-head-base">Base</th>
+                <th class="env-head" style="color:transparent">→</th>
+                <th class="env-head env-head-curr">Current</th>
+                <th class="env-head">Δ</th>
+              </tr>
+            </thead>
+            <tbody>${rows || '<tr class="stat-row"><td colspan="5" class="stat-label" style="text-align:center;padding:8px">No stats available</td></tr>'}</tbody>
+          </table>
+        </div>`;
+    }
+
+    /** Classify columns into type buckets for the summary line. */
+    function classifyCols(columns) {
+      let numeric = 0, text = 0, dateTime = 0, other = 0;
+      for (const col of columns) {
+        const cat = colCategory(col.data_type);
+        if (cat === "numeric") numeric++;
+        else if (cat === "text") text++;
+        else if (cat === "date/time") dateTime++;
+        else other++;
+      }
+      return { numeric, text, dateTime, other };
+    }
+
+    /** Main render function called on each tool result. */
+    function render(data) {
+      const root = document.getElementById("root");
+
+      if (!data || typeof data !== "object") {
+        root.innerHTML = `
+          <div class="error-card">
+            <div class="error-title">No data received</div>
+            <div class="error-hint">The profile_diff tool returned no structured content.</div>
+          </div>`;
+        return;
+      }
+
+      const modelName = data.model || "";
+      const columns   = Array.isArray(data.columns) ? data.columns : [];
+      const warning   = data.warning || null;
+
+      // Empty state
+      if (columns.length === 0) {
+        root.innerHTML = `
+          <div class="header">
+            <span class="header-icon">📊</span>
+            <span class="header-title">Profile diff</span>
+            <span class="header-model">${escapeHtml(modelName)}</span>
+          </div>
+          <div class="empty-card">
+            <div class="empty-title">No columns profiled</div>
+            <div class="empty-hint">The model may have no rows or no columns accessible in both environments.</div>
+          </div>`;
+        return;
+      }
+
+      // Summary counts
+      const { numeric, text: textCols, dateTime, other } = classifyCols(columns);
+      const typeParts = [];
+      if (numeric)  typeParts.push(`<strong>${numeric}</strong> numeric`);
+      if (textCols) typeParts.push(`<strong>${textCols}</strong> text`);
+      if (dateTime) typeParts.push(`<strong>${dateTime}</strong> date/time`);
+      if (other)    typeParts.push(`<strong>${other}</strong> other`);
+      const typeSummary = typeParts.join('<span class="summary-sep">, </span>');
+
+      const warningHtml = warning
+        ? `<div class="warning-bar">⚠ ${escapeHtml(warning)}</div>`
+        : "";
+
+      const cardHtmls = columns.map(buildCard).join("");
+
+      root.innerHTML = `
+        <div class="header">
+          <span class="header-icon">📊</span>
+          <span class="header-title">Profile diff</span>
+          <span class="header-model">${escapeHtml(modelName)}</span>
+        </div>
+        ${warningHtml}
+        <div class="summary-bar">
+          <span class="summary-text">Profiling <strong>${columns.length}</strong> column${columns.length !== 1 ? "s" : ""}</span>
+          ${typeParts.length ? `<span class="summary-sep">|</span><span class="summary-text">${typeSummary}</span>` : ""}
+        </div>
+        <div class="cards-grid">${cardHtmls}</div>`;
+    }
+
+    // ── Wire up MCP App ─────────────────────────────────────────────
+
+    app.ontoolresult = ({ structuredContent }) => {
+      try {
+        render(structuredContent);
+      } catch (err) {
+        document.getElementById("root").innerHTML = `
+          <div class="error-card">
+            <div class="error-title">Render error</div>
+            <div class="error-hint">${escapeHtml(String(err))}</div>
+          </div>`;
+      }
+    };
+
+    await app.connect();
+
+    // Apply theme from initial context if available before first change event
+    const initialCtx = app.getHostContext?.();
+    if (initialCtx) {
+      if (initialCtx.theme)              applyDocumentTheme(initialCtx.theme);
+      if (initialCtx.styles?.variables)  applyHostStyleVariables(initialCtx.styles.variables);
+      if (initialCtx.styles?.css?.fonts) applyHostFonts(initialCtx.styles.css.fonts);
+    }
+  </script>
+</body>
+</html>

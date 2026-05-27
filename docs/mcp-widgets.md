@@ -15,8 +15,9 @@ annotates each tool with `_meta.ui.resourceUri` pointing at an HTML resource.
 Phase A ships five widgets: `row_count_diff`, `schema_diff`, `get_server_info`,
 `list_checks`, and `get_model`. Phase B iter 1 adds `query`, `query_diff`,
 `value_diff`, `value_diff_detail`, and `top_k_diff` (five tier-3 data-table/list
-widgets). Phase C widget 1 adds `histogram_diff` (first tier-4 chart widget — hand-rolled SVG bars,
-no external chart library). Total: **11 of 20 planned widgets** (55% coverage). All run in
+widgets). Phase C adds two tier-4 chart widgets: `histogram_diff` (hand-rolled SVG
+bar chart) and `profile_diff` (per-column statistical profile card grid). Phase C is
+now complete. Total: **12 of 20 planned widgets** (60% coverage). All run in
 **local mode only** — cloud/session mode is not supported until iter 2.
 
 ---
@@ -43,8 +44,9 @@ recce/
       value_diff_detail.html # Phase B tier-3: row-level diff table with filter pills
       top_k_diff.html        # Phase B tier-3: side-by-side ranked lists with inline bars
       histogram_diff.html    # Phase C tier-4: hand-rolled SVG bar chart (base vs current bins)
+      profile_diff.html      # Phase C tier-4: per-column profile card grid (count/null/distinct/min/max/avg/median)
 tests/
-  test_widget_server.py      # 26 tests covering WIDGET_TOOLS coordination + widget server.
+  test_widget_server.py      # 28 tests covering WIDGET_TOOLS coordination + widget server.
 docs/
   mcp-widgets.md             # This file.
 ```
@@ -440,6 +442,7 @@ Eight working examples (in order of implementation):
 | `recce/data/mcp/query_diff.html` | **Tier-3 two-env comparison** | Two render modes: side-by-side (no primary_keys → base/current tables) and join-diff (primary_keys → single table with status pills + Added/Removed filter buttons). Row tinting (red=removed, green=added), `in_a`/`in_b` columns stripped from display. |
 | `recce/data/mcp/top_k_diff.html` | **Tier-3 side-by-side ranked lists** | Two-column grid (Base / Current) with ranked entries, inline bars, rank-change arrows (↑↓), and New/Gone badges for env-exclusive categories. Union of categories shown for both sides; count=0 entries denote absent categories. |
 | `recce/data/mcp/histogram_diff.html` | **Tier-4 SVG bar chart** | **First chart widget.** Hand-rolled SVG (no external chart library). Base bars (blue, semi-transparent) overlaid with current bars (green) per bin. viewBox-scaled for responsiveness. Hover tooltip shows bin range + both counts. x-axis label density auto-reduced for dense bins. See "Tier-4 (Chart) Widget Architecture" below. |
+| `recce/data/mcp/profile_diff.html` | **Tier-4 per-column profile card grid** | **Phase C complete.** Per-column statistical profile comparison. ProfileDiffResult base/current DataFrames merged by column_name into card grid. Stats: row_count, not_null_proportion, distinct_count, distinct_proportion, min/max (string, SQL-cast), avg, median. Delta chips (+N, -N) for numeric changes; proportions shown as percentages with pp delta. Columns absent from one env still shown (base or current is null). No sparklines — task returns no per-bin data. |
 
 `get_server_info` is the **recommended canonical example** for new widgets
 because it was written after the idiomatic pattern was established (Day 3
@@ -612,6 +615,15 @@ Phase C introduces chart-tier widgets. The first is `histogram_diff`. Iter 1 use
 - Hover tooltip: a transparent `<rect>` overlay per bin triggers `mousemove` on the SVG; tooltip positioned relative to the containing `chart-wrap` div.
 - Dark mode: `@media (prefers-color-scheme: dark)` overrides all SVG class fill colors and CSS token fallbacks exhaustively.
 
+### Phase C retrospective — hand-roll SVG verdict
+
+Phase C shipped two chart widgets (`histogram_diff` and `profile_diff`) using hand-rolled SVG or plain CSS grid layouts. Neither required an external chart library. Key findings:
+
+- `histogram_diff`: SVG `<rect>` bars with viewBox scaling worked well for the overlaid base/current histogram. The hover tooltip and x-axis label density auto-reduction added ~80 lines of JS but no library dependency.
+- `profile_diff`: Profile data is tabular (one row per column × one column per stat). A CSS grid card layout was more appropriate than SVG. No mini sparklines — `ProfileDiffTask` returns aggregate stats per column only, no per-bin data.
+- **CSP stayed at single unpkg origin** throughout Phase C. Both widgets load only `@modelcontextprotocol/ext-apps@0.4.0` from unpkg.
+- All 12 widgets so far use Claude design tokens (`var(--token, fallback)`) and exhaustive `@media (prefers-color-scheme: dark)` overrides. Pydantic models + `CallToolResult` with explicit `structuredContent` is the established pattern.
+
 ### When to upgrade to a real chart library (iter 2 considerations)
 
 Consider Chart.js or Vega-Lite for future chart widgets when:
@@ -620,7 +632,7 @@ Consider Chart.js or Vega-Lite for future chart widgets when:
 - Multiple series with automatic legend management
 - The chart type is complex (scatter, violin, heatmap)
 
-If upgrading, add the chosen CDN to `resourceDomains` in **all** widget `@mcp.resource` registrations (the list is per-server, shared). Validate with MCP Apps' CSP sandbox before shipping.
+**Trigger threshold exceeded**: 12/20 widgets (60%) now use the hand-roll SVG + Pydantic pattern. If iter 2 introduces charts requiring stacked bars, line charts, or heatmaps, evaluate adopting Chart.js or Vega-Lite. Add the chosen CDN to `resourceDomains` in **all** widget `@mcp.resource` registrations (the list is per-server, shared). Validate with MCP Apps' CSP sandbox before shipping.
 
 ---
 

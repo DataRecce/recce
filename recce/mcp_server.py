@@ -65,6 +65,7 @@ WIDGET_TOOLS = {
     "value_diff_detail",
     "top_k_diff",
     "histogram_diff",
+    "profile_diff",
 }
 
 

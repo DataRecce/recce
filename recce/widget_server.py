@@ -1537,6 +1537,284 @@ def histogram_diff_resource() -> str:
 
 
 # ---------------------------------------------------------------------------
+# profile_diff widget tool + resource
+# ---------------------------------------------------------------------------
+
+# ProfileDiffResult.model_dump(mode='json') shape (from recce/tasks/profile.py):
+#   {
+#     "base":    {"columns": [{"key", "name", "type"}, ...], "data": [[row_values], ...]},
+#     "current": {"columns": [{"key", "name", "type"}, ...], "data": [[row_values], ...]}
+#   }
+#
+# Each row in data corresponds to one profiled column, with values for:
+#   column_name, data_type, row_count, not_null_proportion, distinct_proportion,
+#   distinct_count, is_unique, min, max, avg, median
+#
+# min/max are CAST TO STRING in the SQL template (`cast(min(...) as text_type)`),
+# so they arrive as Python str (or None). avg/median are numeric floats or None.
+# is_unique arrives as bool or None (NULL for empty tables, per template comment).
+
+
+class ProfileColumnStats(BaseModel):
+    """Per-environment stats for a single profiled column.
+
+    All fields are Optional — not all stats apply to every column type:
+      - min/max: only for numeric and date/time columns (cast to str in SQL)
+      - avg: numeric + logical (boolean); None for text/struct
+      - median: numeric only; None otherwise
+      - is_unique: None for empty tables (SQL emits NULL by design)
+    """
+
+    row_count: Optional[int] = None
+    not_null_proportion: Optional[float] = None
+    distinct_proportion: Optional[float] = None
+    distinct_count: Optional[int] = None
+    is_unique: Optional[bool] = None
+    min: Optional[str] = None  # always str — SQL CAST to text type
+    max: Optional[str] = None  # always str — SQL CAST to text type
+    avg: Optional[float] = None
+    median: Optional[float] = None
+
+
+class ProfileColumnDiff(BaseModel):
+    """Profile diff for one column: name, data_type, base stats, current stats."""
+
+    column_name: str
+    data_type: Optional[str] = None
+    base: Optional[ProfileColumnStats] = None
+    current: Optional[ProfileColumnStats] = None
+
+
+class ProfileDiffOutput(BaseModel):
+    """Output model for the profile_diff widget tool.
+
+    ProfileDiffResult.model_dump(mode='json') returns two DataFrames (base, current).
+    Each DataFrame has columns [column_name, data_type, row_count, not_null_proportion,
+    distinct_proportion, distinct_count, is_unique, min, max, avg, median] and data rows,
+    one row per profiled column.
+
+    The delegate merges base + current rows by column_name into per-column ProfileColumnDiff
+    entries, then stores them in a list.
+
+    model is echoed from input for the widget header.
+    warning is extracted from _warning key (single-env mode notice).
+    """
+
+    model: str
+    columns: List[ProfileColumnDiff]
+    warning: Optional[str] = None
+
+
+class ProfileDiffInput(BaseModel):
+    model: str = Field(..., description="dbt model name to profile (e.g. 'customers')")
+    columns: Optional[List[str]] = Field(
+        default=None,
+        description="Columns to profile (default: all columns in the model)",
+    )
+
+
+def _parse_profile_dataframe(raw_df: Optional[dict]) -> Dict[str, ProfileColumnStats]:
+    """Convert a ProfileDiffResult DataFrame dict → {column_name: ProfileColumnStats}.
+
+    Returns empty dict when raw_df is None or missing columns/data.
+    The DataFrame columns list is used to build an index so row values are mapped
+    by position to the correct stat field.
+    """
+    if not raw_df:
+        return {}
+
+    col_meta = raw_df.get("columns") or []
+    col_names = [c.get("name") or c.get("key", "") for c in col_meta]
+    rows = raw_df.get("data") or []
+
+    result: Dict[str, ProfileColumnStats] = {}
+    for row in rows:
+        if not isinstance(row, (list, tuple)) or len(row) < len(col_names):
+            continue
+        row_dict = dict(zip(col_names, row))
+
+        col_name = row_dict.get("column_name")
+        if not col_name:
+            continue
+
+        def _to_float(v: Any) -> Optional[float]:
+            if v is None:
+                return None
+            # May arrive as a Decimal (from agate) serialised to string by model_dump
+            try:
+                return float(v)
+            except (TypeError, ValueError):
+                return None
+
+        def _to_int(v: Any) -> Optional[int]:
+            if v is None:
+                return None
+            try:
+                return int(v)
+            except (TypeError, ValueError):
+                return None
+
+        def _to_str(v: Any) -> Optional[str]:
+            if v is None:
+                return None
+            if hasattr(v, "isoformat"):
+                return v.isoformat()
+            return str(v)
+
+        def _to_bool(v: Any) -> Optional[bool]:
+            if v is None:
+                return None
+            if isinstance(v, bool):
+                return v
+            if isinstance(v, int):
+                return bool(v)
+            if isinstance(v, str):
+                return v.lower() in ("true", "1", "t", "yes")
+            return None
+
+        result[str(col_name)] = ProfileColumnStats(
+            row_count=_to_int(row_dict.get("row_count")),
+            not_null_proportion=_to_float(row_dict.get("not_null_proportion")),
+            distinct_proportion=_to_float(row_dict.get("distinct_proportion")),
+            distinct_count=_to_int(row_dict.get("distinct_count")),
+            is_unique=_to_bool(row_dict.get("is_unique")),
+            min=_to_str(row_dict.get("min")),
+            max=_to_str(row_dict.get("max")),
+            avg=_to_float(row_dict.get("avg")),
+            median=_to_float(row_dict.get("median")),
+        )
+    return result
+
+
+def _parse_data_type_map(raw_df: Optional[dict]) -> Dict[str, Optional[str]]:
+    """Extract {column_name: data_type} from a profile DataFrame dict."""
+    if not raw_df:
+        return {}
+    col_meta = raw_df.get("columns") or []
+    col_names = [c.get("name") or c.get("key", "") for c in col_meta]
+    rows = raw_df.get("data") or []
+
+    result: Dict[str, Optional[str]] = {}
+    for row in rows:
+        if not isinstance(row, (list, tuple)) or len(row) < len(col_names):
+            continue
+        row_dict = dict(zip(col_names, row))
+        col_name = row_dict.get("column_name")
+        if col_name:
+            result[str(col_name)] = row_dict.get("data_type")
+    return result
+
+
+@mcp.tool(
+    name="profile_diff",
+    annotations={
+        "title": "Profile Diff (Widget)",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,  # executes queries against the warehouse
+    },
+    meta={
+        "ui": {"resourceUri": "ui://recce/profile_diff.html"},
+        "ui/resourceUri": "ui://recce/profile_diff.html",
+    },
+)
+async def profile_diff(args: ProfileDiffInput) -> CallToolResult:
+    """Compare per-column statistical profiles across base and current environments.
+
+    Returns side-by-side stats (row count, null proportion, distinct count, min, max,
+    avg, median) for every profiled column, rendered as a card grid. The agent should
+    not enumerate the stats as plain text — the widget handles presentation.
+
+    Column type is inferred by the profiling SQL: numeric columns get avg/median;
+    date/time columns get min/max as ISO strings; text columns show only count
+    and distinct stats.
+
+    Args:
+        model: dbt model name (e.g. 'customers')
+        columns: optional subset of columns to profile (default: all columns)
+
+    Returns:
+        CallToolResult with structuredContent: ProfileDiffOutput shape
+        {model, columns: [{column_name, data_type, base: {stats}, current: {stats}}],
+         warning?}
+
+    Use when:
+        - User asks "did the stats shift" / "any null count change"
+        - PR review needs distribution sanity check across columns
+        - Following up a row_count_diff showing changes — drill into which columns shifted
+        - Verifying numeric ranges (min/max) or distinct cardinality changed
+    Don't use when:
+        - Need value-level diff → value_diff or value_diff_detail
+        - Need distribution bars → histogram_diff (one column at a time)
+        - Need top-K most frequent values → top_k_diff
+        - Single-environment only — tool warns but returns no useful comparison
+    """
+    raw = await _recce_server._tool_profile_diff(args.model_dump(exclude_none=True))
+    warning = raw.pop("_warning", None) if isinstance(raw, dict) else None
+
+    raw_base = raw.get("base") if isinstance(raw, dict) else None
+    raw_curr = raw.get("current") if isinstance(raw, dict) else None
+
+    base_stats = _parse_profile_dataframe(raw_base)
+    curr_stats = _parse_profile_dataframe(raw_curr)
+
+    # Build data_type map from whichever DataFrame has it (prefer current)
+    dtype_base = _parse_data_type_map(raw_base)
+    dtype_curr = _parse_data_type_map(raw_curr)
+
+    # Union of all column names, preserving order (base first, then current-only)
+    all_columns: List[str] = []
+    seen: set = set()
+    for col in list(base_stats.keys()) + list(curr_stats.keys()):
+        if col not in seen:
+            all_columns.append(col)
+            seen.add(col)
+
+    col_diffs: List[ProfileColumnDiff] = []
+    for col_name in all_columns:
+        data_type = dtype_curr.get(col_name) or dtype_base.get(col_name)
+        col_diffs.append(
+            ProfileColumnDiff(
+                column_name=col_name,
+                data_type=data_type,
+                base=base_stats.get(col_name),
+                current=curr_stats.get(col_name),
+            )
+        )
+
+    output = ProfileDiffOutput(
+        model=args.model,
+        columns=col_diffs,
+        warning=warning,
+    )
+
+    n_cols = len(col_diffs)
+    text = (
+        f"Profile diff for '{args.model}': "
+        f"{n_cols} column{'s' if n_cols != 1 else ''} profiled. Rendered in widget."
+    )
+    return CallToolResult(
+        content=[TextContent(type="text", text=text)],
+        structuredContent=output.model_dump(),
+    )
+
+
+@mcp.resource(
+    uri="ui://recce/profile_diff.html",
+    mime_type="text/html;profile=mcp-app",
+    meta={
+        "ui": {
+            "csp": {"resourceDomains": ["https://unpkg.com"]},
+            "prefersBorder": False,
+        },
+    },
+)
+def profile_diff_resource() -> str:
+    return _read_widget_html("profile_diff")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

@@ -85,7 +85,7 @@ async def test_mcp_server_filters_widget_tools_when_widgets_enabled(monkeypatch)
 
 @pytest.mark.asyncio
 async def test_widget_server_registers_six_tools_and_six_resources():
-    """Widget FastMCP instance has exactly 11 tools/resources (Phase A + Phase B + Phase C widgets).
+    """Widget FastMCP instance has exactly 12 tools/resources (Phase A + Phase B + Phase C widgets).
 
     Uses FastMCP public API: mcp.list_tools() and mcp.list_resources().
     """
@@ -109,6 +109,7 @@ async def test_widget_server_registers_six_tools_and_six_resources():
         "value_diff_detail",
         "top_k_diff",
         "histogram_diff",
+        "profile_diff",
     }
     assert resource_uris == {
         "ui://recce/row_count_diff.html",
@@ -122,6 +123,7 @@ async def test_widget_server_registers_six_tools_and_six_resources():
         "ui://recce/value_diff_detail.html",
         "ui://recce/top_k_diff.html",
         "ui://recce/histogram_diff.html",
+        "ui://recce/profile_diff.html",
     }
 
 
@@ -296,6 +298,7 @@ async def test_widget_tool_annotations_present():
         "value_diff_detail",
         "top_k_diff",
         "histogram_diff",
+        "profile_diff",
     ):
         assert tool_name in tool_map, f"{tool_name} not found in widget mcp tools"
         t = tool_map[tool_name]
@@ -320,9 +323,8 @@ async def test_widget_tool_annotations_present():
         tool_map["value_diff_detail"].annotations.openWorldHint is True
     ), "value_diff_detail: expected openWorldHint=True"
     assert tool_map["top_k_diff"].annotations.openWorldHint is True, "top_k_diff: expected openWorldHint=True"
-    assert (
-        tool_map["histogram_diff"].annotations.openWorldHint is True
-    ), "histogram_diff: expected openWorldHint=True"
+    assert tool_map["histogram_diff"].annotations.openWorldHint is True, "histogram_diff: expected openWorldHint=True"
+    assert tool_map["profile_diff"].annotations.openWorldHint is True, "profile_diff: expected openWorldHint=True"
 
 
 # ---------------------------------------------------------------------------
@@ -1497,4 +1499,191 @@ async def test_histogram_diff_returns_calltoolresult_with_pydantic_shape():
     assert validated.max == 500
 
     # _warning extracted
+    assert validated.warning == "Base environment not configured — comparing current against itself."
+
+
+# ---------------------------------------------------------------------------
+# Test 27: profile_diff widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_profile_diff_widget_registered():
+    """profile_diff appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'profile_diff' is in widget mcp tool list
+    - resource URI 'ui://recce/profile_diff.html' is in widget mcp resource list
+    - model is required in inputSchema; columns is optional
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "profile_diff" in tool_names
+    assert "ui://recce/profile_diff.html" in resource_uris
+
+    # Check inputSchema: model required, columns optional.
+    pd_tool = next(t for t in tools if t.name == "profile_diff")
+    schema = pd_tool.inputSchema
+    assert schema is not None
+
+    defs = schema.get("$defs", {})
+    inner_schema = next(iter(defs.values()), schema)
+    inner_required = inner_schema.get("required", [])
+    inner_props = inner_schema.get("properties", {})
+    assert "model" in inner_required, "model must be required"
+    assert "columns" not in inner_required, "columns must be optional"
+    assert "model" in inner_props
+    assert "columns" in inner_props
+
+
+# ---------------------------------------------------------------------------
+# Test 28: profile_diff returns CallToolResult with correct Pydantic shape
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_profile_diff_returns_calltoolresult_with_pydantic_shape():
+    """profile_diff handler returns CallToolResult with structuredContent matching ProfileDiffOutput.
+
+    Uses the actual ProfileDiffResult.model_dump(mode='json') shape (verified from source):
+    ProfileDiffResult has base: DataFrame, current: DataFrame.
+    Each DataFrame: {columns: [{key, name, type}], data: [[row_values], ...]}
+    Profile columns: column_name, data_type, row_count, not_null_proportion,
+    distinct_proportion, distinct_count, is_unique, min, max, avg, median.
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent passes ProfileDiffOutput.model_validate()
+    - per-column diffs are built correctly from base + current DataFrames
+    - model is echoed from input
+    - _warning is extracted to output.warning named field
+    - numeric stats (row_count, distinct_count, avg, etc.) are correctly typed
+    - string stats (min, max) are preserved as str (SQL casts them to text)
+    - is_unique bool is parsed correctly
+    - columns absent from one env still appear in the output (union)
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import ProfileDiffInput, ProfileDiffOutput
+
+    # Profile DataFrame column metadata (matches PROFILE_COLUMN_JINJA_TEMPLATE output)
+    profile_col_meta = [
+        {"key": "column_name", "name": "column_name", "type": "text"},
+        {"key": "data_type", "name": "data_type", "type": "text"},
+        {"key": "row_count", "name": "row_count", "type": "integer"},
+        {"key": "not_null_proportion", "name": "not_null_proportion", "type": "number"},
+        {"key": "distinct_proportion", "name": "distinct_proportion", "type": "number"},
+        {"key": "distinct_count", "name": "distinct_count", "type": "integer"},
+        {"key": "is_unique", "name": "is_unique", "type": "boolean"},
+        {"key": "min", "name": "min", "type": "text"},
+        {"key": "max", "name": "max", "type": "text"},
+        {"key": "avg", "name": "avg", "type": "number"},
+        {"key": "median", "name": "median", "type": "number"},
+    ]
+    # Base: id (numeric), name (text), amount (numeric)
+    base_data = [
+        ["id", "bigint", 1000, 1.0, 1.0, 1000, True, "1", "1000", None, None],
+        ["name", "text", 1000, 0.98, 0.97, 970, False, None, None, None, None],
+        ["amount", "float", 1000, 0.995, 0.72, 720, False, "0.5", "999.9", 105.3, 87.2],
+    ]
+    # Current: id same, name has more nulls, amount shifted, new column "status"
+    curr_data = [
+        ["id", "bigint", 1020, 1.0, 1.0, 1020, True, "1", "1020", None, None],
+        ["name", "text", 1020, 0.95, 0.96, 979, False, None, None, None, None],
+        ["amount", "float", 1020, 0.995, 0.70, 714, False, "0.5", "1099.9", 112.7, 91.4],
+        ["status", "text", 1020, 1.0, 0.05, 51, False, None, None, None, None],
+    ]
+
+    mock_server = MagicMock()
+    mock_server._tool_profile_diff = AsyncMock(
+        return_value={
+            "base": {
+                "columns": profile_col_meta,
+                "data": base_data,
+                "limit": None,
+                "more": None,
+                "total_row_count": None,
+            },
+            "current": {
+                "columns": profile_col_meta,
+                "data": curr_data,
+                "limit": None,
+                "more": None,
+                "total_row_count": None,
+            },
+            "_warning": "Base environment not configured — comparing current against itself.",
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = ProfileDiffInput(model="customers")
+        result = await ws.profile_diff(args)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 200, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    assert result.structuredContent is not None
+    validated = ProfileDiffOutput.model_validate(result.structuredContent)
+
+    # model echoed back
+    assert validated.model == "customers"
+
+    # Union of columns: id, name, amount from base + current; status only in current
+    col_names = [c.column_name for c in validated.columns]
+    assert "id" in col_names
+    assert "name" in col_names
+    assert "amount" in col_names
+    assert "status" in col_names  # current-only column still appears
+    assert len(validated.columns) == 4  # id, name, amount, status
+
+    # id column: base + current both present
+    id_col = next(c for c in validated.columns if c.column_name == "id")
+    assert id_col.data_type == "bigint"
+    assert id_col.base is not None
+    assert id_col.current is not None
+    assert id_col.base.row_count == 1000
+    assert id_col.current.row_count == 1020
+    assert id_col.base.distinct_count == 1000
+    assert id_col.base.is_unique is True
+    assert id_col.base.not_null_proportion == 1.0
+
+    # amount column: numeric — avg and median present
+    amt_col = next(c for c in validated.columns if c.column_name == "amount")
+    assert amt_col.base is not None
+    assert amt_col.base.avg == 105.3
+    assert amt_col.base.median == 87.2
+    assert amt_col.base.min == "0.5"  # SQL casts min to text
+    assert amt_col.base.max == "999.9"
+    assert amt_col.current is not None
+    assert amt_col.current.avg == 112.7
+
+    # name column: text — avg and min/max are None (not profiled for text cols)
+    name_col = next(c for c in validated.columns if c.column_name == "name")
+    assert name_col.base is not None
+    assert name_col.base.avg is None
+    assert name_col.base.min is None
+    assert name_col.base.not_null_proportion == 0.98
+
+    # status column: only in current — base is None
+    status_col = next(c for c in validated.columns if c.column_name == "status")
+    assert status_col.base is None
+    assert status_col.current is not None
+    assert status_col.current.row_count == 1020
+
+    # _warning extracted from _warning key
     assert validated.warning == "Base environment not configured — comparing current against itself."
