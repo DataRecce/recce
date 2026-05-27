@@ -66,6 +66,7 @@ WIDGET_TOOLS = {
     "top_k_diff",
     "histogram_diff",
     "profile_diff",
+    "get_cll",
 }
 
 

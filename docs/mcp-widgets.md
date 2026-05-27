@@ -16,8 +16,10 @@ Phase A ships five widgets: `row_count_diff`, `schema_diff`, `get_server_info`,
 `list_checks`, and `get_model`. Phase B iter 1 adds `query`, `query_diff`,
 `value_diff`, `value_diff_detail`, and `top_k_diff` (five tier-3 data-table/list
 widgets). Phase C adds two tier-4 chart widgets: `histogram_diff` (hand-rolled SVG
-bar chart) and `profile_diff` (per-column statistical profile card grid). Phase C is
-now complete. Total: **12 of 20 planned widgets** (60% coverage). All run in
+bar chart) and `profile_diff` (per-column statistical profile card grid). Phase D
+adds the first tier-5 (mini graph) widget: `get_cll` — column-level lineage
+rendered as a hand-rolled SVG mini-DAG with layered layout (sources left, target
+middle, downstream right). Total: **13 of 20 planned widgets** (65% coverage). All run in
 **local mode only** — cloud/session mode is not supported until iter 2.
 
 ---
@@ -632,7 +634,67 @@ Consider Chart.js or Vega-Lite for future chart widgets when:
 - Multiple series with automatic legend management
 - The chart type is complex (scatter, violin, heatmap)
 
-**Trigger threshold exceeded**: 12/20 widgets (60%) now use the hand-roll SVG + Pydantic pattern. If iter 2 introduces charts requiring stacked bars, line charts, or heatmaps, evaluate adopting Chart.js or Vega-Lite. Add the chosen CDN to `resourceDomains` in **all** widget `@mcp.resource` registrations (the list is per-server, shared). Validate with MCP Apps' CSP sandbox before shipping.
+**Trigger threshold exceeded**: 13/20 widgets (65%) now use the hand-roll SVG + Pydantic pattern. If iter 2 introduces charts requiring stacked bars, line charts, or heatmaps, evaluate adopting Chart.js or Vega-Lite. Add the chosen CDN to `resourceDomains` in **all** widget `@mcp.resource` registrations (the list is per-server, shared). Validate with MCP Apps' CSP sandbox before shipping.
+
+---
+
+## Tier-5 Widget Architecture (Mini Graphs)
+
+Phase D introduces the first tier-5 (mini graph) widget: `get_cll`. Unlike tier-4
+chart widgets that render bars/grids, tier-5 widgets render interactive graph diagrams
+as hand-rolled SVGs with layout algorithms.
+
+### `get_cll` — Column-Level Lineage DAG
+
+`get_cll` reads `CllData` from the dbt adapter and renders it as a layered SVG DAG.
+The actual `CllData` shape (from `recce/models/types.py`) uses:
+- `nodes`: `Dict[str, CllNode]` — keyed by node_id; each node contains `columns: Dict[str, CllColumn]`
+- `columns`: flat `Dict[str, CllColumn]` — keyed by `"{node_id}_{column_name}"` (aggregate index)
+- `parent_map`: `Dict[str, Set[str]]` — child key → set of parent keys (edges)
+- `child_map`: `Dict[str, Set[str]]` — parent key → set of child keys
+
+`CllColumn.depends_on` is a list of `CllColumnDep(node, column)` — these are the column-to-column
+dependency edges used for bezier curve rendering between card rows.
+
+### Layout algorithm (simplified Sugiyama)
+
+1. BFS from the target node, assigning layers: target = 0, upstream = -N, downstream = +N.
+2. Shift layers so min = 0 (left = most upstream).
+3. Within each layer, sort nodes alphabetically by name and stack vertically.
+4. Card width = 200px, column row height = 22px. Card height = header (32px) + N × 22px + 6px padding.
+5. Layer gap = 80px horizontal. Node gap = 20px vertical.
+6. SVG viewBox computed from total extent; `overflow-x: auto` on wrapper div for wide graphs.
+
+### Bezier edge routing
+
+For each column's `depends_on` entry, draw a cubic bezier from:
+- Source: `right-edge` of source node card, at the y-center of the source column row.
+- Target: `left-edge` of target node card, at the y-center of the target column row.
+- Control points: `dx = (target_x - source_x) * 0.45` horizontal offset; same y as endpoints.
+
+This creates smooth S-curves without requiring a graph library.
+
+### Complexity bail-out
+
+If `node_count > 12` OR `edge_count > 30`, the widget skips the SVG layout and renders
+a text summary card listing all node names with a hint to use the Recce web app for the
+full interactive DAG. The `node_count` and `edge_count` fields are pre-computed in the
+Python delegate (`GetCllOutput`) so the widget doesn't need to recompute them.
+
+### `openWorldHint=False` for `get_cll`
+
+`get_cll` reads the dbt manifest (local files) — it never hits the warehouse. This
+contrasts with all tier-3 tools (`query`, `query_diff`, `value_diff`, etc.) which
+set `openWorldHint=True`. Adding it to the `closed_world_tools` assertion in
+`test_widget_server.py` enforces this distinction.
+
+### Iter 2 considerations for mini-graph widgets
+
+- **Cytoscape.js or D3** for larger graphs (>12 nodes): adds a CDN dependency but enables
+  interactive pan/zoom, auto-layout (Dagre), and click-to-focus interactions.
+- **Depth limiting** instead of hard bail-out: show only N hops upstream/downstream.
+- **Column filter**: highlight only the requested column's lineage path, greying out others.
+- **Cross-environment diff overlay**: show base vs current columns side-by-side in the card.
 
 ---
 

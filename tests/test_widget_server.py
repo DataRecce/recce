@@ -85,7 +85,7 @@ async def test_mcp_server_filters_widget_tools_when_widgets_enabled(monkeypatch)
 
 @pytest.mark.asyncio
 async def test_widget_server_registers_six_tools_and_six_resources():
-    """Widget FastMCP instance has exactly 12 tools/resources (Phase A + Phase B + Phase C widgets).
+    """Widget FastMCP instance has exactly 13 tools/resources (Phase A + Phase B + Phase C + Phase D widgets).
 
     Uses FastMCP public API: mcp.list_tools() and mcp.list_resources().
     """
@@ -110,6 +110,7 @@ async def test_widget_server_registers_six_tools_and_six_resources():
         "top_k_diff",
         "histogram_diff",
         "profile_diff",
+        "get_cll",
     }
     assert resource_uris == {
         "ui://recce/row_count_diff.html",
@@ -124,6 +125,7 @@ async def test_widget_server_registers_six_tools_and_six_resources():
         "ui://recce/top_k_diff.html",
         "ui://recce/histogram_diff.html",
         "ui://recce/profile_diff.html",
+        "ui://recce/get_cll.html",
     }
 
 
@@ -299,6 +301,7 @@ async def test_widget_tool_annotations_present():
         "top_k_diff",
         "histogram_diff",
         "profile_diff",
+        "get_cll",
     ):
         assert tool_name in tool_map, f"{tool_name} not found in widget mcp tools"
         t = tool_map[tool_name]
@@ -309,8 +312,8 @@ async def test_widget_tool_annotations_present():
         assert a.idempotentHint is True, f"{tool_name}: expected idempotentHint=True"
         assert a.title is not None and len(a.title) > 0, f"{tool_name}: title must be set"
 
-    # Closed-world tools (no external warehouse I/O)
-    closed_world_tools = ("row_count_diff", "schema_diff", "get_server_info", "list_checks", "get_model")
+    # Closed-world tools (no external warehouse I/O) — get_cll reads manifest only
+    closed_world_tools = ("row_count_diff", "schema_diff", "get_server_info", "list_checks", "get_model", "get_cll")
     for tool_name in closed_world_tools:
         t = tool_map[tool_name]
         assert t.annotations.openWorldHint is False, f"{tool_name}: expected openWorldHint=False"
@@ -1687,3 +1690,236 @@ async def test_profile_diff_returns_calltoolresult_with_pydantic_shape():
 
     # _warning extracted from _warning key
     assert validated.warning == "Base environment not configured — comparing current against itself."
+
+
+# ---------------------------------------------------------------------------
+# Test 87: get_cll widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_cll_widget_registered():
+    """get_cll appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'get_cll' is in widget mcp tool list
+    - resource URI 'ui://recce/get_cll.html' is in widget mcp resource list
+    - node_id and column are required; change_analysis is optional (default False)
+    - annotations: openWorldHint=False (reads manifest, no warehouse I/O)
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "get_cll" in tool_names
+    assert "ui://recce/get_cll.html" in resource_uris
+
+    # Verify inputSchema: node_id + column required; change_analysis optional
+    tool = next(t for t in tools if t.name == "get_cll")
+    schema = tool.inputSchema
+    assert schema is not None
+    defs = schema.get("$defs", {})
+    inner_schema = next(iter(defs.values()), schema)
+    inner_required = inner_schema.get("required", [])
+    inner_props = inner_schema.get("properties", {})
+    assert "node_id" in inner_required, "node_id must be required"
+    assert "column" in inner_required, "column must be required"
+    assert "change_analysis" not in inner_required, "change_analysis must be optional"
+    assert "node_id" in inner_props
+    assert "column" in inner_props
+    assert "change_analysis" in inner_props
+
+    # openWorldHint must be False — CLL reads manifest only, no warehouse
+    a = tool.annotations
+    assert a is not None
+    assert a.openWorldHint is False, "get_cll: expected openWorldHint=False (manifest read, no warehouse)"
+    assert a.readOnlyHint is True
+    assert a.destructiveHint is False
+
+
+# ---------------------------------------------------------------------------
+# Test 88: get_cll returns CallToolResult with correct Pydantic shape + counts
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_cll_returns_calltoolresult_with_pydantic_shape():
+    """get_cll handler returns CallToolResult with structuredContent matching GetCllOutput.
+
+    Uses a realistic CllData.model_dump shape (verified from recce/models/types.py):
+    {nodes: {node_id: {id, name, package_name, resource_type, columns: {col_name: {…}}}},
+     columns: {col_key: {…}},
+     parent_map: {key: [parents]},
+     child_map: {key: [children]}}
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent passes GetCllOutput.model_validate()
+    - node_id, column, change_analysis echoed from input
+    - node_count and edge_count computed correctly
+    - CllColumn.depends_on hydrated into GetCllColumnDep list
+    - parent_map/child_map sets converted to lists
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import GetCllInput, GetCllOutput
+
+    # Realistic jaffle-shop-scale CLL output:
+    # orders.amount depends on raw_orders.amount (passthrough)
+    # stg_orders.amount depends on raw_orders.amount (passthrough)
+    # orders.amount depends on stg_orders.amount (passthrough)
+    mock_server = MagicMock()
+    mock_server._tool_get_cll = AsyncMock(
+        return_value={
+            "nodes": {
+                "source.jaffle_shop.raw_orders": {
+                    "id": "source.jaffle_shop.raw_orders",
+                    "name": "raw_orders",
+                    "package_name": "jaffle_shop",
+                    "resource_type": "source",
+                    "source_name": "jaffle_shop",
+                    "change_status": None,
+                    "change_category": None,
+                    "impacted": None,
+                    "columns": {
+                        "amount": {
+                            "id": "source.jaffle_shop.raw_orders_amount",
+                            "table_id": "source.jaffle_shop.raw_orders",
+                            "name": "amount",
+                            "type": "numeric",
+                            "transformation_type": "source",
+                            "change_status": None,
+                            "depends_on": [],
+                        }
+                    },
+                },
+                "model.jaffle_shop.stg_orders": {
+                    "id": "model.jaffle_shop.stg_orders",
+                    "name": "stg_orders",
+                    "package_name": "jaffle_shop",
+                    "resource_type": "model",
+                    "source_name": None,
+                    "change_status": None,
+                    "change_category": None,
+                    "impacted": None,
+                    "columns": {
+                        "amount": {
+                            "id": "model.jaffle_shop.stg_orders_amount",
+                            "table_id": "model.jaffle_shop.stg_orders",
+                            "name": "amount",
+                            "type": "numeric",
+                            "transformation_type": "passthrough",
+                            "change_status": None,
+                            "depends_on": [{"node": "source.jaffle_shop.raw_orders", "column": "amount"}],
+                        }
+                    },
+                },
+                "model.jaffle_shop.orders": {
+                    "id": "model.jaffle_shop.orders",
+                    "name": "orders",
+                    "package_name": "jaffle_shop",
+                    "resource_type": "model",
+                    "source_name": None,
+                    "change_status": None,
+                    "change_category": None,
+                    "impacted": None,
+                    "columns": {
+                        "amount": {
+                            "id": "model.jaffle_shop.orders_amount",
+                            "table_id": "model.jaffle_shop.orders",
+                            "name": "amount",
+                            "type": "numeric",
+                            "transformation_type": "passthrough",
+                            "change_status": None,
+                            "depends_on": [{"node": "model.jaffle_shop.stg_orders", "column": "amount"}],
+                        }
+                    },
+                },
+            },
+            "columns": {
+                "source.jaffle_shop.raw_orders_amount": {
+                    "id": "source.jaffle_shop.raw_orders_amount",
+                    "table_id": "source.jaffle_shop.raw_orders",
+                    "name": "amount",
+                    "type": "numeric",
+                    "transformation_type": "source",
+                    "change_status": None,
+                    "depends_on": [],
+                },
+            },
+            "parent_map": {
+                "model.jaffle_shop.stg_orders": ["source.jaffle_shop.raw_orders"],
+                "model.jaffle_shop.orders": ["model.jaffle_shop.stg_orders"],
+            },
+            "child_map": {
+                "source.jaffle_shop.raw_orders": ["model.jaffle_shop.stg_orders"],
+                "model.jaffle_shop.stg_orders": ["model.jaffle_shop.orders"],
+            },
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = GetCllInput(
+            node_id="model.jaffle_shop.orders",
+            column="amount",
+            change_analysis=False,
+        )
+        result = await ws.get_cll(args)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 160, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    # structuredContent must round-trip through Pydantic
+    assert result.structuredContent is not None
+    validated = GetCllOutput.model_validate(result.structuredContent)
+
+    # Input echoed back
+    assert validated.node_id == "model.jaffle_shop.orders"
+    assert validated.column == "amount"
+    assert validated.change_analysis is False
+
+    # Counts
+    assert validated.node_count == 3
+    assert validated.edge_count == 2  # parent_map has 2 entries each with 1 parent
+
+    # Nodes normalised correctly
+    assert "model.jaffle_shop.orders" in validated.nodes
+    orders_node = validated.nodes["model.jaffle_shop.orders"]
+    assert orders_node.name == "orders"
+    assert orders_node.resource_type == "model"
+    assert "amount" in orders_node.columns
+    orders_amount = orders_node.columns["amount"]
+    assert orders_amount.transformation_type == "passthrough"
+    assert len(orders_amount.depends_on) == 1
+    assert orders_amount.depends_on[0].node == "model.jaffle_shop.stg_orders"
+    assert orders_amount.depends_on[0].column == "amount"
+
+    # Source node
+    assert "source.jaffle_shop.raw_orders" in validated.nodes
+    src_node = validated.nodes["source.jaffle_shop.raw_orders"]
+    assert src_node.resource_type == "source"
+    assert src_node.source_name == "jaffle_shop"
+    src_amount = src_node.columns["amount"]
+    assert src_amount.transformation_type == "source"
+    assert len(src_amount.depends_on) == 0
+
+    # parent_map / child_map are lists (not sets)
+    assert "model.jaffle_shop.orders" in validated.parent_map
+    assert isinstance(validated.parent_map["model.jaffle_shop.orders"], list)
+    assert "model.jaffle_shop.stg_orders" in validated.parent_map["model.jaffle_shop.orders"]
+
+    # warning is None (not provided)
+    assert validated.warning is None

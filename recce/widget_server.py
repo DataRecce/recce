@@ -1815,6 +1815,253 @@ def profile_diff_resource() -> str:
 
 
 # ---------------------------------------------------------------------------
+# get_cll widget tool + resource
+# ---------------------------------------------------------------------------
+
+
+class GetCllInput(BaseModel):
+    node_id: str = Field(..., description="Full dbt node ID (e.g. 'model.jaffle_shop.customers')")
+    column: str = Field(..., description="Column name to trace lineage for")
+    change_analysis: bool = Field(
+        default=False,
+        description="Highlight columns whose transformation logic changed between base and current",
+    )
+
+
+class GetCllColumnDep(BaseModel):
+    """A single column-to-column dependency edge (source of column data)."""
+
+    node: str  # node_id of the source node
+    column: str  # source column name
+
+
+class GetCllColumnInfo(BaseModel):
+    """Per-column lineage info from CllColumn, adapted for the widget."""
+
+    id: Optional[str] = None
+    table_id: Optional[str] = None
+    name: Optional[str] = None
+    type: Optional[str] = None
+    transformation_type: str = "unknown"  # source|passthrough|renamed|derived|unknown
+    change_status: Optional[str] = None
+    depends_on: List[GetCllColumnDep] = []
+
+
+class GetCllNodeInfo(BaseModel):
+    """Per-node info from CllNode, adapted for the widget."""
+
+    id: str
+    name: str
+    package_name: str
+    resource_type: str
+    source_name: Optional[str] = None
+    change_status: Optional[str] = None
+    change_category: Optional[str] = None
+    impacted: Optional[bool] = None
+    # columns dict: column_name → GetCllColumnInfo
+    columns: Dict[str, GetCllColumnInfo] = {}
+
+
+class GetCllOutput(BaseModel):
+    """Output model for the get_cll widget tool.
+
+    Mirrors CllData.model_dump(mode='json') after normalisation.
+
+    CllData has:
+      nodes:      Dict[str, CllNode]     — keyed by node_id
+      columns:    Dict[str, CllColumn]   — keyed by "{node_id}_{column_name}"
+      parent_map: Dict[str, Set[str]]    — child → set of parent keys
+      child_map:  Dict[str, Set[str]]    — parent → set of child keys
+
+    The widget uses nodes/columns to draw cards and parent_map/child_map for edges.
+    We echo the query params so the widget header can show "{node}.{column}".
+
+    node_count / edge_count enable the bail-out path in the widget without
+    the widget having to recompute them.
+    """
+
+    node_id: str  # echoed from input
+    column: str  # echoed from input
+    change_analysis: bool  # echoed from input
+    nodes: Dict[str, GetCllNodeInfo]
+    columns: Dict[str, GetCllColumnInfo]
+    parent_map: Dict[str, List[str]]  # Set serialises as list in JSON
+    child_map: Dict[str, List[str]]
+    node_count: int
+    edge_count: int  # total directed edges (sum of len(parents) for each key)
+    warning: Optional[str] = None
+
+
+@mcp.tool(
+    name="get_cll",
+    annotations={
+        "title": "Column Lineage (Widget)",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,  # reads dbt manifest only, no warehouse I/O
+    },
+    meta={
+        "ui": {"resourceUri": "ui://recce/get_cll.html"},
+        "ui/resourceUri": "ui://recce/get_cll.html",
+    },
+)
+async def get_cll(args: GetCllInput) -> CallToolResult:
+    """Show column-level lineage — which upstream columns feed into a target column, and which downstream columns consume it.
+
+    Rendered as a mini SVG DAG with layered layout: source nodes on the left,
+    the queried node in the middle, downstream nodes on the right. Column rows
+    are shown inside model "cards" (rectangles). Bezier edges connect source
+    column rows to target column rows.
+
+    For complex graphs (>12 nodes or >30 edges), falls back to a summary list
+    with a hint to use the Recce web app lineage view for the full DAG.
+
+    Only available with dbt adapter (reads dbt manifest — no warehouse I/O).
+
+    Args:
+        node_id: Full dbt node ID (e.g. 'model.jaffle_shop.customers')
+        column: Column name within that model to trace lineage for
+        change_analysis: True to highlight transformation-logic changes between base and current envs
+
+    Returns:
+        CallToolResult with structuredContent: GetCllOutput shape
+        {node_id, column, change_analysis, nodes, columns, parent_map, child_map,
+         node_count, edge_count, warning?}
+
+    Use when:
+        - User asks "where does column X come from / what uses it"
+        - Tracing data origin for a specific field during PR review
+        - Verifying a refactor preserved column semantics (with change_analysis=True)
+    Don't use when:
+        - Need full model-level DAG → lineage_diff (future widget) or Recce web app
+        - Need impact_analysis across changed models → impact_analysis
+        - Column doesn't exist in the model → use get_model to verify schema first
+        - Non-dbt adapter → tool raises immediately
+    """
+    raw = await _recce_server._tool_get_cll(args.model_dump())
+    # raw is CllData.model_dump(mode="json"):
+    #   {nodes: {node_id: {id, name, ...}},
+    #    columns: {col_key: {id, name, ...}},
+    #    parent_map: {key: [parents...]},
+    #    child_map: {key: [children...]}}
+    warning = raw.pop("_warning", None) if isinstance(raw, dict) else None
+
+    raw_nodes = raw.get("nodes", {}) if isinstance(raw, dict) else {}
+    raw_cols = raw.get("columns", {}) if isinstance(raw, dict) else {}
+    raw_parent_map = raw.get("parent_map", {}) if isinstance(raw, dict) else {}
+    raw_child_map = raw.get("child_map", {}) if isinstance(raw, dict) else {}
+
+    # Normalise nodes
+    nodes_out: Dict[str, GetCllNodeInfo] = {}
+    for nid, ndata in raw_nodes.items():
+        if not isinstance(ndata, dict):
+            continue
+        raw_node_cols = ndata.get("columns", {}) or {}
+        node_cols: Dict[str, GetCllColumnInfo] = {}
+        for cname, cdata in raw_node_cols.items():
+            if isinstance(cdata, dict):
+                deps = [
+                    GetCllColumnDep(node=d["node"], column=d["column"])
+                    for d in (cdata.get("depends_on") or [])
+                    if isinstance(d, dict) and "node" in d and "column" in d
+                ]
+                node_cols[cname] = GetCllColumnInfo(
+                    id=cdata.get("id"),
+                    table_id=cdata.get("table_id"),
+                    name=cdata.get("name"),
+                    type=cdata.get("type"),
+                    transformation_type=cdata.get("transformation_type") or "unknown",
+                    change_status=cdata.get("change_status"),
+                    depends_on=deps,
+                )
+        nodes_out[nid] = GetCllNodeInfo(
+            id=ndata.get("id", nid),
+            name=ndata.get("name", nid),
+            package_name=ndata.get("package_name", ""),
+            resource_type=ndata.get("resource_type", "model"),
+            source_name=ndata.get("source_name"),
+            change_status=ndata.get("change_status"),
+            change_category=ndata.get("change_category"),
+            impacted=ndata.get("impacted"),
+            columns=node_cols,
+        )
+
+    # Normalise flat columns dict (keyed by "{node_id}_{column_name}")
+    cols_out: Dict[str, GetCllColumnInfo] = {}
+    for col_key, cdata in raw_cols.items():
+        if not isinstance(cdata, dict):
+            continue
+        deps = [
+            GetCllColumnDep(node=d["node"], column=d["column"])
+            for d in (cdata.get("depends_on") or [])
+            if isinstance(d, dict) and "node" in d and "column" in d
+        ]
+        cols_out[col_key] = GetCllColumnInfo(
+            id=cdata.get("id"),
+            table_id=cdata.get("table_id"),
+            name=cdata.get("name"),
+            type=cdata.get("type"),
+            transformation_type=cdata.get("transformation_type") or "unknown",
+            change_status=cdata.get("change_status"),
+            depends_on=deps,
+        )
+
+    # Normalise parent_map / child_map (sets serialise as lists in JSON)
+    parent_map_out: Dict[str, List[str]] = {
+        k: list(v) if isinstance(v, (list, set)) else [] for k, v in raw_parent_map.items()
+    }
+    child_map_out: Dict[str, List[str]] = {
+        k: list(v) if isinstance(v, (list, set)) else [] for k, v in raw_child_map.items()
+    }
+
+    # Compute counts for bail-out logic
+    node_count = len(nodes_out)
+    edge_count = sum(len(parents) for parents in parent_map_out.values())
+
+    output = GetCllOutput(
+        node_id=args.node_id,
+        column=args.column,
+        change_analysis=args.change_analysis,
+        nodes=nodes_out,
+        columns=cols_out,
+        parent_map=parent_map_out,
+        child_map=child_map_out,
+        node_count=node_count,
+        edge_count=edge_count,
+        warning=warning,
+    )
+
+    # Short content text — widget handles rendering
+    node_name = nodes_out.get(
+        args.node_id, GetCllNodeInfo(id=args.node_id, name=args.node_id, package_name="", resource_type="model")
+    ).name
+    text = (
+        f"Column lineage for {node_name}.{args.column}: "
+        f"{node_count} node{'s' if node_count != 1 else ''}, "
+        f"{edge_count} edge{'s' if edge_count != 1 else ''}. Rendered in widget."
+    )
+    return CallToolResult(
+        content=[TextContent(type="text", text=text)],
+        structuredContent=output.model_dump(),
+    )
+
+
+@mcp.resource(
+    uri="ui://recce/get_cll.html",
+    mime_type="text/html;profile=mcp-app",
+    meta={
+        "ui": {
+            "csp": {"resourceDomains": ["https://unpkg.com"]},
+            "prefersBorder": False,
+        },
+    },
+)
+def get_cll_resource() -> str:
+    return _read_widget_html("get_cll")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
