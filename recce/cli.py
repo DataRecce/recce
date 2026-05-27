@@ -1219,14 +1219,14 @@ def diff(
     envvar="RECCE_WHOLE_MODEL_IMPACT",
 )
 @click.option(
-    "--disable-duckdb-external-access",
+    "--duckdb-external-access",
     is_flag=True,
     default=False,
     help=(
-        "Block recce's DuckDB session from accessing external state "
+        "Allow recce's DuckDB session to access external state "
         "(local files via read_csv/COPY TO, HTTP via httpfs/ATTACH, "
-        "and INSTALL/LOAD of extensions). Default: allowed. "
-        "Enable this when exposing the server to untrusted users."
+        "and INSTALL/LOAD of extensions). Default: blocked. "
+        "Only enable if you trust every user who can reach this server."
     ),
 )
 @add_options(dbt_related_options)
@@ -1277,11 +1277,9 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
 
     RecceConfig(config_file=kwargs.get("config"))
 
-    # Permissive by default (opt-out): external access stays on unless an
-    # explicit flag or recce.yml setting disables it.
-    disabled_by_flag = kwargs.pop("disable_duckdb_external_access", False)
-    allowed_by_config = bool(RecceConfig().get("duckdb_external_access", True))
-    kwargs["duckdb_external_access"] = allowed_by_config and not disabled_by_flag
+    kwargs["duckdb_external_access"] = kwargs.get("duckdb_external_access", False) or bool(
+        RecceConfig().get("duckdb_external_access", False)
+    )
 
     # Initialize startup performance tracking
     from recce.util.startup_perf import StartupPerfTracker, set_startup_tracker
@@ -1509,6 +1507,9 @@ def run(output, **kwargs):
 
     # Initialize Recce Config
     RecceConfig(config_file=kwargs.get("config"))
+
+    # Only `recce server` restricts DuckDB external access by default.
+    kwargs.setdefault("duckdb_external_access", True)
 
     patch_derived_args(kwargs)
     # Remove share_url from kwargs to avoid affecting state loader creation

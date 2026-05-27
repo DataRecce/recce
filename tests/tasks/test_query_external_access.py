@@ -115,7 +115,7 @@ try:
         task.execute()
     except DuckDBExternalAccessBlocked as e:
         msg = str(e)
-        assert "--disable-duckdb-external-access" in msg, f"Disable hint missing: {msg}"
+        assert "--duckdb-external-access" in msg, f"Opt-out hint missing: {msg}"
         raised = True
     except Exception as e:
         raise AssertionError(f"Wrong exception type: {type(e).__name__}: {e}")
@@ -149,7 +149,7 @@ try:
     task.execute()
 except DuckDBExternalAccessBlocked as e:
     msg = str(e)
-    assert "--disable-duckdb-external-access" in msg, f"Disable hint missing: {msg}"
+    assert "--duckdb-external-access" in msg, f"Opt-out hint missing: {msg}"
     raised = True
 except Exception as e:
     raise AssertionError(f"Wrong exception type: {type(e).__name__}: {e}")
@@ -215,7 +215,7 @@ with TestClient(app) as client:
     )
     body = response.json()
     detail = body.get("detail", "")
-    assert "--disable-duckdb-external-access" in detail, f"Disable hint missing in detail: {detail}"
+    assert "--duckdb-external-access" in detail, f"Opt-out hint missing in detail: {detail}"
     assert "external access" in detail.lower(), f"external-access mention missing in detail: {detail}"
 print("OK")
 """
@@ -262,7 +262,7 @@ with TestClient(app) as client:
     )
     body = response.json()
     detail = body.get("detail", "")
-    assert "--disable-duckdb-external-access" in detail, f"Disable hint missing in detail: {detail}"
+    assert "--duckdb-external-access" in detail, f"Opt-out hint missing in detail: {detail}"
     assert "external access" in detail.lower(), f"external-access mention missing in detail: {detail}"
 print("OK")
 """
@@ -280,9 +280,9 @@ def test_export_run_returns_400_for_blocked_sql():
 
     Regression: run_api.py's export handler previously caught
     DuckDBExternalAccessBlocked under the generic `except Exception` arm,
-    returning HTTP 500 instead of 400. Reachable when the server was
-    started with --disable-duckdb-external-access (or
-    duckdb_external_access: false in recce.yml).
+    returning HTTP 500 instead of 400. Reachable when a Run was persisted
+    by a permissive `recce run` and later exported through `recce server`
+    (which restricts external access by default).
     """
     setup = _make_setup_script(_ADAPTER_PROJ_DIR)
     script = (
@@ -317,7 +317,7 @@ with TestClient(app) as client:
     )
     body = response.json()
     detail = body.get("detail", "")
-    assert "--disable-duckdb-external-access" in detail, f"Disable hint missing in detail: {detail}"
+    assert "--duckdb-external-access" in detail, f"Opt-out hint missing in detail: {detail}"
     assert "external access" in detail.lower(), f"external-access mention missing in detail: {detail}"
 print("OK")
 """

@@ -314,7 +314,7 @@ class DbtAdapter(BaseAdapter):
     # Review mode
     review_mode: bool = False
 
-    duckdb_external_access: bool = True
+    duckdb_external_access: bool = False
 
     # Watch the artifact change
     artifacts_observer = Observer()
@@ -388,7 +388,7 @@ class DbtAdapter(BaseAdapter):
                 adapter=adapter,
                 review_mode=review,
                 base_path=target_base_path,
-                duckdb_external_access=kwargs.get("duckdb_external_access", True),
+                duckdb_external_access=kwargs.get("duckdb_external_access", False),
             )
         except DbtProjectError as e:
             raise e

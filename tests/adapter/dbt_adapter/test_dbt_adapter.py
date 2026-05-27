@@ -19,8 +19,8 @@ def test_dbt_adapter_support_tasks(dbt_test_helper):
     assert support_tasks["change_analysis"] is True
 
 
-def test_dbt_adapter_duckdb_external_access_can_be_disabled():
-    """DbtAdapter.load() must propagate duckdb_external_access=False from kwargs (the disable path)."""
+def test_dbt_adapter_duckdb_external_access_can_be_set_true():
+    """DbtAdapter.load() must propagate duckdb_external_access=True from kwargs."""
     current_dir = os.path.dirname(os.path.abspath(__file__))
     project_dir = os.path.join(current_dir, "test_proj")
     with patch("recce.adapter.dbt_adapter.log_performance"):
@@ -28,13 +28,13 @@ def test_dbt_adapter_duckdb_external_access_can_be_disabled():
             no_artifacts=True,
             project_dir=project_dir,
             profiles_dir=project_dir,
-            duckdb_external_access=False,
+            duckdb_external_access=True,
         )
-    assert adapter.duckdb_external_access is False
+    assert adapter.duckdb_external_access is True
 
 
 def test_recce_context_propagates_duckdb_external_access():
-    """RecceContext.load(duckdb_external_access=False, ...) must reach the adapter via **kwargs."""
+    """RecceContext.load(duckdb_external_access=True, ...) must reach the adapter via **kwargs."""
     from recce.core import RecceContext
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -45,10 +45,10 @@ def test_recce_context_propagates_duckdb_external_access():
             no_artifacts=True,
             project_dir=project_dir,
             profiles_dir=project_dir,
-            duckdb_external_access=False,
+            duckdb_external_access=True,
         )
 
-    assert ctx.adapter.duckdb_external_access is False
+    assert ctx.adapter.duckdb_external_access is True
 
 
 def test_dbt_adapter_support_tasks_without_required_dbt_package(dbt_test_helper):
