@@ -1375,6 +1375,168 @@ def top_k_diff_resource() -> str:
 
 
 # ---------------------------------------------------------------------------
+# histogram_diff widget tool + resource
+# ---------------------------------------------------------------------------
+
+
+class HistogramDiffInput(BaseModel):
+    model: str = Field(..., description="dbt model name to analyze (e.g. 'customers')")
+    column_name: str = Field(..., description="Column name to generate histogram for (numeric or datetime)")
+    num_bins: Optional[int] = Field(
+        default=None,
+        description="Number of histogram bins (default: 50)",
+    )
+
+
+class HistogramEnvStats(BaseModel):
+    """Per-environment histogram counts.
+
+    HistogramDiffTask.execute() returns per-env dicts:
+      counts: List[int]  — count per bin (same length as num_bins)
+      total:  int        — total rows in this environment
+
+    An empty dict {} is returned when the environment fails or produces no data.
+    """
+
+    counts: List[int] = []  # count per bin
+    total: Optional[int] = None  # total rows (may be None if env produced empty dict)
+
+
+class HistogramDiffOutput(BaseModel):
+    """Output model for the histogram_diff widget tool.
+
+    Mirrors HistogramDiffTask.execute() return shape after _warning extraction:
+      base:      {counts, total}
+      current:   {counts, total}
+      min:       overall min value across both envs (numeric or ISO date string)
+      max:       overall max value across both envs
+      bin_edges: list of bin boundary values (N+1 values for N bins)
+      labels:    list of bin label strings for numeric cols; null for datetime cols
+
+    model, column_name are echoed from input for the widget header.
+    warning is extracted from _warning key (single-env mode notice).
+    """
+
+    model: str
+    column_name: str
+    base: HistogramEnvStats
+    current: HistogramEnvStats
+    min: Optional[Any] = None
+    max: Optional[Any] = None
+    bin_edges: List[Any] = []  # List[int | float | date]
+    labels: Optional[List[str]] = None  # None for datetime columns
+    warning: Optional[str] = None
+
+
+@mcp.tool(
+    name="histogram_diff",
+    annotations={
+        "title": "Histogram Diff (Widget)",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,  # executes queries against the warehouse
+    },
+    meta={
+        "ui": {"resourceUri": "ui://recce/histogram_diff.html"},
+        "ui/resourceUri": "ui://recce/histogram_diff.html",
+    },
+)
+async def histogram_diff(args: HistogramDiffInput) -> CallToolResult:
+    """Compare numeric or datetime column distributions across base and current environments.
+
+    Renders an SVG bar chart widget — base bars and current bars overlaid per bin.
+    The agent should not enumerate bin counts as plain text — the widget handles
+    all rendering.
+
+    Column type is auto-detected from the dbt catalog; no explicit column_type
+    argument is required.
+
+    Args:
+        model: dbt model name (e.g. 'orders')
+        column_name: numeric or datetime column to bin (e.g. 'amount', 'created_at')
+        num_bins: optional bin count (default: 50 for numeric; adaptive for datetime)
+
+    Returns:
+        CallToolResult with structuredContent: HistogramDiffOutput shape
+        {model, column_name,
+         base:    {counts, total},
+         current: {counts, total},
+         min, max, bin_edges, labels?,
+         warning?}
+
+    Use when:
+        - User asks "how is X distributed" / "did the distribution shift"
+        - Numeric or continuous column investigation during PR review
+        - Detecting outliers or distribution skew between environments
+    Don't use when:
+        - Categorical column → use top_k_diff instead
+        - Need per-row diff → use value_diff_detail
+        - Stats summary only (min/max/stddev) → use profile_diff
+        - String / boolean columns (not supported) → use top_k_diff
+    """
+    raw = await _recce_server._tool_histogram_diff(args.model_dump(exclude_none=True))
+    warning = raw.pop("_warning", None) if isinstance(raw, dict) else None
+
+    raw_base = raw.get("base", {}) if isinstance(raw, dict) else {}
+    raw_curr = raw.get("current", {}) if isinstance(raw, dict) else {}
+
+    base_stats = HistogramEnvStats(
+        counts=raw_base.get("counts") or [],
+        total=raw_base.get("total"),
+    )
+    curr_stats = HistogramEnvStats(
+        counts=raw_curr.get("counts") or [],
+        total=raw_curr.get("total"),
+    )
+
+    # bin_edges may contain date objects — convert to ISO strings for JSON serialisation
+    raw_edges = raw.get("bin_edges") or [] if isinstance(raw, dict) else []
+    bin_edges = [e.isoformat() if hasattr(e, "isoformat") else e for e in raw_edges]
+
+    raw_min = raw.get("min") if isinstance(raw, dict) else None
+    raw_max = raw.get("max") if isinstance(raw, dict) else None
+    min_val = raw_min.isoformat() if hasattr(raw_min, "isoformat") else raw_min
+    max_val = raw_max.isoformat() if hasattr(raw_max, "isoformat") else raw_max
+
+    output = HistogramDiffOutput(
+        model=args.model,
+        column_name=args.column_name,
+        base=base_stats,
+        current=curr_stats,
+        min=min_val,
+        max=max_val,
+        bin_edges=bin_edges,
+        labels=raw.get("labels") if isinstance(raw, dict) else None,
+        warning=warning,
+    )
+
+    n_bins = len(base_stats.counts) or len(curr_stats.counts)
+    text = (
+        f"Histogram diff for '{args.model}.{args.column_name}': "
+        f"{n_bins} bin{'s' if n_bins != 1 else ''} rendered in widget."
+    )
+    return CallToolResult(
+        content=[TextContent(type="text", text=text)],
+        structuredContent=output.model_dump(),
+    )
+
+
+@mcp.resource(
+    uri="ui://recce/histogram_diff.html",
+    mime_type="text/html;profile=mcp-app",
+    meta={
+        "ui": {
+            "csp": {"resourceDomains": ["https://unpkg.com"]},
+            "prefersBorder": False,
+        },
+    },
+)
+def histogram_diff_resource() -> str:
+    return _read_widget_html("histogram_diff")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

@@ -85,7 +85,7 @@ async def test_mcp_server_filters_widget_tools_when_widgets_enabled(monkeypatch)
 
 @pytest.mark.asyncio
 async def test_widget_server_registers_six_tools_and_six_resources():
-    """Widget FastMCP instance has exactly 10 tools/resources (Phase A + Phase B widgets).
+    """Widget FastMCP instance has exactly 11 tools/resources (Phase A + Phase B + Phase C widgets).
 
     Uses FastMCP public API: mcp.list_tools() and mcp.list_resources().
     """
@@ -108,6 +108,7 @@ async def test_widget_server_registers_six_tools_and_six_resources():
         "value_diff",
         "value_diff_detail",
         "top_k_diff",
+        "histogram_diff",
     }
     assert resource_uris == {
         "ui://recce/row_count_diff.html",
@@ -120,6 +121,7 @@ async def test_widget_server_registers_six_tools_and_six_resources():
         "ui://recce/value_diff.html",
         "ui://recce/value_diff_detail.html",
         "ui://recce/top_k_diff.html",
+        "ui://recce/histogram_diff.html",
     }
 
 
@@ -293,6 +295,7 @@ async def test_widget_tool_annotations_present():
         "value_diff",
         "value_diff_detail",
         "top_k_diff",
+        "histogram_diff",
     ):
         assert tool_name in tool_map, f"{tool_name} not found in widget mcp tools"
         t = tool_map[tool_name]
@@ -309,7 +312,7 @@ async def test_widget_tool_annotations_present():
         t = tool_map[tool_name]
         assert t.annotations.openWorldHint is False, f"{tool_name}: expected openWorldHint=False"
 
-    # query, query_diff, value_diff, value_diff_detail, and top_k_diff hit the warehouse — openWorldHint must be True
+    # query, query_diff, value_diff, value_diff_detail, top_k_diff, and histogram_diff hit the warehouse
     assert tool_map["query"].annotations.openWorldHint is True, "query: expected openWorldHint=True"
     assert tool_map["query_diff"].annotations.openWorldHint is True, "query_diff: expected openWorldHint=True"
     assert tool_map["value_diff"].annotations.openWorldHint is True, "value_diff: expected openWorldHint=True"
@@ -317,6 +320,9 @@ async def test_widget_tool_annotations_present():
         tool_map["value_diff_detail"].annotations.openWorldHint is True
     ), "value_diff_detail: expected openWorldHint=True"
     assert tool_map["top_k_diff"].annotations.openWorldHint is True, "top_k_diff: expected openWorldHint=True"
+    assert (
+        tool_map["histogram_diff"].annotations.openWorldHint is True
+    ), "histogram_diff: expected openWorldHint=True"
 
 
 # ---------------------------------------------------------------------------
@@ -1343,6 +1349,152 @@ async def test_top_k_diff_returns_calltoolresult_with_pydantic_shape():
     assert validated.current.counts[3] == 50  # cancelled appeared in current
     assert validated.current.valids == 1030
     assert validated.current.total == 1038
+
+    # _warning extracted
+    assert validated.warning == "Base environment not configured — comparing current against itself."
+
+
+# ---------------------------------------------------------------------------
+# Test 25: histogram_diff widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_histogram_diff_widget_registered():
+    """histogram_diff appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'histogram_diff' is in widget mcp tool list
+    - resource URI 'ui://recce/histogram_diff.html' is in widget mcp resource list
+    - model and column_name are required in inputSchema; num_bins is optional
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "histogram_diff" in tool_names
+    assert "ui://recce/histogram_diff.html" in resource_uris
+
+    # Check inputSchema: model + column_name required, num_bins optional.
+    # FastMCP wraps the Pydantic model in an 'args' outer envelope.
+    hd_tool = next(t for t in tools if t.name == "histogram_diff")
+    schema = hd_tool.inputSchema
+    assert schema is not None
+
+    defs = schema.get("$defs", {})
+    inner_schema = next(iter(defs.values()), schema)
+    inner_required = inner_schema.get("required", [])
+    inner_props = inner_schema.get("properties", {})
+    assert "model" in inner_required, "model must be required"
+    assert "column_name" in inner_required, "column_name must be required"
+    assert "num_bins" not in inner_required, "num_bins must be optional"
+    assert "model" in inner_props
+    assert "column_name" in inner_props
+    assert "num_bins" in inner_props
+
+
+# ---------------------------------------------------------------------------
+# Test 26: histogram_diff returns CallToolResult with correct Pydantic shape
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_histogram_diff_returns_calltoolresult_with_pydantic_shape():
+    """histogram_diff handler returns CallToolResult with structuredContent matching HistogramDiffOutput.
+
+    Uses the actual HistogramDiffTask.execute() return shape (verified from source):
+    {
+      "base":     {"counts": [int, ...], "total": int},
+      "current":  {"counts": [int, ...], "total": int},
+      "min":      <numeric or date value>,
+      "max":      <numeric or date value>,
+      "bin_edges": [edge0, edge1, ..., edgeN],
+      "labels":   ["lo-hi", ...] for numeric cols; None for datetime,
+    }
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent passes HistogramDiffOutput.model_validate()
+    - base and current counts are hydrated correctly
+    - bin_edges and labels are preserved
+    - min/max are echoed from the raw result
+    - _warning is extracted to output.warning named field
+    - model and column_name are echoed from input
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import HistogramDiffInput, HistogramDiffOutput
+
+    mock_server = MagicMock()
+    # Realistic HistogramDiffTask.execute() return shape (confirmed from recce/tasks/histogram.py).
+    # Numeric column: 5 bins, shared bin_edges, labels from integer binning.
+    mock_server._tool_histogram_diff = AsyncMock(
+        return_value={
+            "base": {
+                "counts": [120, 340, 210, 80, 15],
+                "total": 765,
+            },
+            "current": {
+                "counts": [100, 360, 220, 90, 20],
+                "total": 790,
+            },
+            "min": 0,
+            "max": 500,
+            "bin_edges": [0, 100, 200, 300, 400, 500],
+            "labels": ["0-100", "100-200", "200-300", "300-400", "400-500"],
+            "_warning": "Base environment not configured — comparing current against itself.",
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = HistogramDiffInput(model="orders", column_name="amount")
+        result = await ws.histogram_diff(args)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 200, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    assert result.structuredContent is not None
+    validated = HistogramDiffOutput.model_validate(result.structuredContent)
+
+    # model + column_name echoed back
+    assert validated.model == "orders"
+    assert validated.column_name == "amount"
+
+    # base env stats
+    assert len(validated.base.counts) == 5
+    assert validated.base.counts[0] == 120
+    assert validated.base.counts[1] == 340
+    assert validated.base.total == 765
+
+    # current env stats
+    assert len(validated.current.counts) == 5
+    assert validated.current.counts[1] == 360
+    assert validated.current.total == 790
+
+    # bin_edges and labels preserved
+    assert len(validated.bin_edges) == 6
+    assert validated.bin_edges[0] == 0
+    assert validated.bin_edges[5] == 500
+    assert validated.labels is not None
+    assert len(validated.labels) == 5
+    assert validated.labels[0] == "0-100"
+
+    # min/max
+    assert validated.min == 0
+    assert validated.max == 500
 
     # _warning extracted
     assert validated.warning == "Base environment not configured — comparing current against itself."
