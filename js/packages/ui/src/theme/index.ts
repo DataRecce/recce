@@ -24,7 +24,7 @@ export {
   CURRENT_BAR_COLOR_DARK,
   CURRENT_BAR_COLOR_DARK_WITH_ALPHA,
   CURRENT_BAR_COLOR_WITH_ALPHA,
-  getBarColors,
+  getChartBarColors,
   getChartThemeColors,
   getThemedPluginOptions,
   getThemedScaleOptions,

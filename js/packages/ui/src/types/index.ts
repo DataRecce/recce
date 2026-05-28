@@ -90,13 +90,10 @@ export type {
 // =============================================================================
 
 export type {
-  ChartBarColors,
-  ChartThemeColors,
   HistogramChartProps,
   HistogramDataset,
   HistogramDataType,
 } from "../components/data/HistogramChart";
-
 export type {
   TopKBarChartProps,
   TopKDataset,

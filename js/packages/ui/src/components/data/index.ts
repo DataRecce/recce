@@ -5,15 +5,31 @@
 // AG Grid theme
 export { dataGridThemeDark, dataGridThemeLight } from "./agGridTheme";
 export {
-  type ChartBarColors,
-  type ChartThemeColors,
-  getChartBarColors,
-  getChartThemeColors,
   HistogramChart,
   type HistogramChartProps,
   type HistogramDataset,
   type HistogramDataType,
 } from "./HistogramChart";
+// Paired histograms for inline profile distribution (DRC-3390)
+export {
+  computeContinuousLayout,
+  PairedHistogramContinuous,
+  type PairedHistogramContinuousData,
+  type PairedHistogramContinuousProps,
+} from "./PairedHistogramContinuous";
+export {
+  computeDiscreteSlots,
+  computeRanksSlots,
+  PairedHistogramDiscrete,
+  type PairedHistogramDiscreteCountsData,
+  type PairedHistogramDiscreteData,
+  type PairedHistogramDiscreteProps,
+  type PairedHistogramDiscreteRanksData,
+} from "./PairedHistogramDiscrete";
+export {
+  ProfileDistributionUnsupportedBanner,
+  type ProfileDistributionUnsupportedBannerProps,
+} from "./ProfileDistributionUnsupportedBanner";
 // AG Grid wrapper with screenshot support
 export {
   type ColDef,
