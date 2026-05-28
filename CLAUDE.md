@@ -13,9 +13,9 @@ For detailed documentation beyond AGENTS.md essentials:
 
 ## Package Manager & Tooling
 
-- This project uses **pnpm**, not npm/npx. Use `pnpm install`, `pnpm test`, `pnpm lint`.
-- Python projects use **Ruff** (not Flake8/Black) for linting and formatting.
-- Before running tests locally, ensure required services (e.g., PostgreSQL via Docker) are running.
+- **Frontend (from `js/`):** this monorepo uses **pnpm** — never npm or npx. Run `cd js && pnpm install`, `cd js && pnpm test`, `cd js && pnpm lint`. There is no root `package.json`; pnpm commands from the repo root will fail.
+- **Python (from repo root):** linting and formatting are **Black + isort + flake8**, driven by the Makefile — `make format`, `make check`, `make flake8`. Pre-commit hooks (`.pre-commit-config.yaml`) enforce the same. There is no Ruff configuration in this repo.
+- **Integration tests** require dbt artifacts at `integration_tests/dbt/target/manifest.json` and `integration_tests/dbt/target-base/manifest.json`. `make test` (unit tests) runs without external services.
 
 For frontend-specific tooling details (Node version via `nave`, Biome, Vitest, pnpm v11 quirks), see `js/CLAUDE.md`.
 

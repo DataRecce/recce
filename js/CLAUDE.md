@@ -2,6 +2,8 @@
 
 Frontend-specific instructions for the `js/` monorepo. Applies to `js/app/` (OSS Next.js shell), `js/packages/ui/` (`@datarecce/ui`), and `js/packages/storybook/`.
 
+> **Working directory:** every command in this document assumes you are in the `js/` directory (i.e., `cd js` first, or equivalently use `pnpm --dir js …` from the repo root). There is no root `package.json` — running pnpm from the repo root will fail.
+
 For repo-wide guidance see `../CLAUDE.md` and `../AGENTS.md`.
 
 ## Package Manager & Tooling
