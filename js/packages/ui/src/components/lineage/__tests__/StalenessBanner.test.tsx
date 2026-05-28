@@ -395,6 +395,167 @@ describe("StalenessBanner", () => {
 });
 
 // ============================================================================
+// Cross-shell prop surface (DRC-3508)
+// ============================================================================
+
+describe("StalenessBanner props (cross-shell)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorageMock.clear();
+    localStorageMock.setItem(LOCAL_STORAGE_KEYS.snapshotBaseIntroSeen, "1");
+    mockApiPost.mockResolvedValue({});
+    mockUseLineageGraphContext.mockReturnValue({ cloudMode: false });
+  });
+
+  function renderWithProps(
+    staleness: SessionStaleness | undefined,
+    props: React.ComponentProps<typeof StalenessBanner>,
+  ) {
+    const client = createTestClient();
+    client.setQueryData(
+      cacheKeys.lineage(),
+      makeServerInfo(staleness) as ServerInfoResult,
+    );
+    const result = render(
+      <QueryClientProvider client={client}>
+        <StalenessBanner {...props} />
+      </QueryClientProvider>,
+    );
+    return { ...result, client };
+  }
+
+  it("requireCloudMode=false renders even when cloudMode is unset", () => {
+    renderWithProps(OUTDATED_STALENESS, { requireCloudMode: false });
+
+    expect(screen.getByText(/Production data has changed/)).toBeInTheDocument();
+  });
+
+  it("messageVariant='metadata' uses the cloud-side wording", () => {
+    renderWithProps(OUTDATED_STALENESS, {
+      requireCloudMode: false,
+      messageVariant: "metadata",
+    });
+
+    expect(
+      screen.getByText(/Production metadata has changed/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Production data has changed/)).toBeNull();
+  });
+
+  it("dismissible=true renders a close button and hides after click", async () => {
+    const user = userEvent.setup();
+    renderWithProps(OUTDATED_STALENESS, {
+      requireCloudMode: false,
+      dismissible: true,
+      sessionId: "sess-1",
+    });
+
+    const dismiss = screen.getByRole("button", { name: /Dismiss/ });
+    await user.click(dismiss);
+
+    expect(screen.queryByText(/Production data has changed/)).toBeNull();
+  });
+
+  it("dismissible=true scopes the dismissal key per sessionId", async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderWithProps(OUTDATED_STALENESS, {
+      requireCloudMode: false,
+      dismissible: true,
+      sessionId: "sess-A",
+    });
+    await user.click(screen.getByRole("button", { name: /Dismiss/ }));
+    expect(screen.queryByText(/Production data has changed/)).toBeNull();
+    unmount();
+
+    // Same staleness shape, different sessionId — banner should re-fire.
+    renderWithProps(OUTDATED_STALENESS, {
+      requireCloudMode: false,
+      dismissible: true,
+      sessionId: "sess-B",
+    });
+    expect(screen.getByText(/Production data has changed/)).toBeInTheDocument();
+  });
+
+  it("toastAdapter override routes refresh-error toast through the adapter", async () => {
+    const user = userEvent.setup();
+    mockApiPost.mockRejectedValue(new Error("Network error"));
+    const adapterSuccess = vi.fn();
+    const adapterError = vi.fn();
+
+    renderWithProps(OUTDATED_STALENESS, {
+      requireCloudMode: false,
+      toastAdapter: { success: adapterSuccess, error: adapterError },
+    });
+
+    await user.click(screen.getByRole("button", { name: /Refresh base/ }));
+
+    await waitFor(() => {
+      expect(adapterError).toHaveBeenCalledWith(
+        "Refresh failed — try again.",
+        expect.objectContaining({ duration: 5000 }),
+      );
+    });
+    // Default adapter (OSS toaster) must NOT have been called.
+    expect(mockToasterError).not.toHaveBeenCalled();
+  });
+
+  it("successToastOnlyOnUserRefresh=true suppresses spurious success toast", async () => {
+    const adapterSuccess = vi.fn();
+    const { client } = renderWithProps(OUTDATED_STALENESS, {
+      requireCloudMode: false,
+      successToastOnlyOnUserRefresh: true,
+      toastAdapter: { success: adapterSuccess, error: vi.fn() },
+    });
+
+    // Simulate an unrelated cache update (other tab refreshed) — no user click.
+    await act(async () => {
+      client.setQueryData(
+        cacheKeys.lineage(),
+        makeServerInfo(UPTODATE_STALENESS) as ServerInfoResult,
+      );
+    });
+
+    expect(adapterSuccess).not.toHaveBeenCalled();
+  });
+
+  it("successToastOnlyOnUserRefresh=true fires success toast when user clicked Refresh", async () => {
+    const user = userEvent.setup();
+    const adapterSuccess = vi.fn();
+    const { client } = renderWithProps(OUTDATED_STALENESS, {
+      requireCloudMode: false,
+      successToastOnlyOnUserRefresh: true,
+      toastAdapter: { success: adapterSuccess, error: vi.fn() },
+    });
+
+    await user.click(screen.getByRole("button", { name: /Refresh base/ }));
+    await act(async () => {
+      client.setQueryData(
+        cacheKeys.lineage(),
+        makeServerInfo(UPTODATE_STALENESS) as ServerInfoResult,
+      );
+    });
+
+    await waitFor(() => {
+      expect(adapterSuccess).toHaveBeenCalledWith(
+        expect.stringContaining("Base refreshed"),
+        expect.objectContaining({ duration: 8000 }),
+      );
+    });
+  });
+
+  it("showFirstTimePopover=false omits the popover", async () => {
+    localStorageMock.clear();
+    renderWithProps(OUTDATED_STALENESS, {
+      requireCloudMode: false,
+      showFirstTimePopover: false,
+    });
+
+    expect(screen.getByText(/Production data has changed/)).toBeInTheDocument();
+    expect(screen.queryByText(/Recce now snapshots your base data/)).toBeNull();
+  });
+});
+
+// ============================================================================
 // FirstTimePopover tests
 // ============================================================================
 
