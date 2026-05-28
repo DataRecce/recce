@@ -15,8 +15,11 @@ import { SchemaContainerMock, SchemaRowMock } from "./SchemaRowMock";
  * that makes the chart honest under PR 2's quantile-bin payload.
  *
  * GA replacement for the prototype `PairedHistogramContinuousCell`,
- * rewritten for the new payload schema (`bin_edges`, `base_density`,
- * `current_density`). Grid-mode rendering is **out of scope at GA**.
+ * rewritten for the new payload schema (`base_bin_edges`,
+ * `current_bin_edges`, `base_density`, `current_density`). Base and current
+ * carry **independent** quantile edges; the cell overlays both onto a shared
+ * value axis and bars the merged edge grid. Grid-mode rendering is **out of
+ * scope at GA**.
  *
  * Theme follows the storybook toolbar (light / dark) via `useIsDark()`.
  */
@@ -105,7 +108,8 @@ export const EmptyPayload: Story = {
   render: () => (
     <PairedHistogramContinuous
       data={{
-        binEdges: [],
+        baseBinEdges: [],
+        currentBinEdges: [],
         baseDensity: [],
         currentDensity: [],
         baseTotal: 0,
@@ -128,7 +132,8 @@ export const DegenerateRange: Story = {
   render: () => (
     <PairedHistogramContinuous
       data={{
-        binEdges: [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+        baseBinEdges: [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+        currentBinEdges: [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
         baseDensity: Array(11).fill(0.1),
         currentDensity: Array(11).fill(0.15),
         baseTotal: 10,

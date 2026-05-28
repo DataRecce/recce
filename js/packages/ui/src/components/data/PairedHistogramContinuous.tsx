@@ -19,10 +19,21 @@ import {
  *
  * This is the GA replacement for the prototype `PairedHistogramContinuousCell`,
  * rewritten for the quantile-bin payload shipped by PR 2. The visual
- * vocabulary is preserved (paired bars per bin, agreement zone +
- * differential), but bar **width** now varies with the bin's quantile
+ * vocabulary is preserved (agreement zone + differential), but bar
+ * **width** now varies with the bin's quantile
  * span and bar **height** with density, so the **area** of each bar reads
  * directly as the proportion of rows in that bin.
+ *
+ * Per-env edges, merged x-grid: base and current are binned on their own
+ * quantile edges (that's the only way each stays constant-area — see the
+ * PR #1398 discussion). They generally don't line up. Rather than force
+ * one env onto the other's edges (which destroys the equal-area property
+ * and, in the backend, collapses the two densities into one), we overlay
+ * both edge sets onto a **shared value axis** and draw a bar at every
+ * segment of the *merged* edge set. Each merged segment falls entirely
+ * within one base bin and one current bin, so both densities are constant
+ * across it — which lets the original agreement-zone + differential
+ * renderer run unchanged on the skinnier segments.
  *
  * Why constant-area: with quantile bins, equal-row-count slots have
  * different widths. Uniform-width rendering would overweight wide,
@@ -46,11 +57,13 @@ import {
  * through with minimal adapting.
  */
 export interface PairedHistogramContinuousData {
-  /** Length 12 quantile-bin edges. */
-  binEdges: number[];
-  /** Length 11 — base density per bin (count / total / span). */
+  /** Length 12 — base quantile-bin edges. */
+  baseBinEdges: number[];
+  /** Length 12 — current quantile-bin edges (independent of base's). */
+  currentBinEdges: number[];
+  /** Length 11 — base density per base bin (count / total / span). */
   baseDensity: number[];
-  /** Length 11 — current density per bin. */
+  /** Length 11 — current density per current bin. */
   currentDensity: number[];
   baseTotal: number;
   currentTotal: number;
@@ -179,12 +192,47 @@ export function PairedHistogramContinuous({
   );
 }
 
+interface ContinuousSegment {
+  x: number;
+  width: number;
+  baseDensity: number;
+  currentDensity: number;
+  lo: number;
+  hi: number;
+}
+
 /**
- * Compute per-bin x / width / density given a quantile-bin payload and an
- * available chart width. Bars are positioned proportionally to their
- * quantile span — wide bins (sparse regions) get wide bars, narrow bins
- * (dense regions) get narrow bars. Heights remain proportional to density,
- * so the **area** of every bar reads as the row-proportion in that bin.
+ * Density of the bin containing value `v`, or 0 if `v` falls outside the
+ * env's range. Edges are ascending; bins are half-open `[edge[i], edge[i+1])`
+ * with the final bin closed on the right so the max value lands in-range.
+ * Callers only pass segment midpoints, which always sit strictly inside one
+ * bin of the env that contributed an edge — so the half-open/closed choice
+ * only matters for the other env's out-of-range tails (correctly → 0).
+ */
+function densityAt(edges: number[], density: number[], v: number): number {
+  if (v < edges[0] || v > edges[edges.length - 1]) return 0;
+  for (let i = 0; i < density.length; i += 1) {
+    if (v >= edges[i] && v < edges[i + 1]) return density[i];
+  }
+  // v === last edge: belongs to the final bin.
+  return density[density.length - 1];
+}
+
+/**
+ * Compute per-segment x / width / density for the **merged** edge grid.
+ *
+ * Base and current carry independent quantile edges, so they share no
+ * x-slots. We union both edge arrays into one ascending breakpoint set and
+ * emit a segment between each consecutive pair. Every segment lies wholly
+ * inside one base bin and one current bin, so both densities are constant
+ * across it — which is what lets the renderer keep the original
+ * agreement-zone (min) + differential (max − min) decomposition.
+ *
+ * Segments are positioned on a shared value axis spanning the union of both
+ * ranges, so widths track quantile span and the **area** of each bar reads
+ * as the row-proportion in that segment. Subdividing a bin onto the merged
+ * grid preserves its area (sub-segments sum back to the bin's area), so each
+ * env stays constant-area overall.
  *
  * File-level export (not in the package barrel) so the unit tests in this
  * directory can validate the geometry without rendering.
@@ -193,62 +241,74 @@ export function computeContinuousLayout(
   data: PairedHistogramContinuousData,
   width: number,
 ): {
-  bins: {
-    x: number;
-    width: number;
-    baseDensity: number;
-    currentDensity: number;
-    lo: number;
-    hi: number;
-  }[];
+  bins: ContinuousSegment[];
   maxDensity: number;
   minVal: number;
   maxVal: number;
 } {
-  const { binEdges, baseDensity, currentDensity } = data;
+  const { baseBinEdges, currentBinEdges, baseDensity, currentDensity } = data;
 
-  // Guard: payload must have N+1 edges for N bins, and both density
-  // arrays must agree on N. If anything's off, return an empty layout —
-  // the renderer falls back to an empty SVG above.
-  const binCount = baseDensity.length;
-  if (
-    binCount === 0 ||
-    binCount !== currentDensity.length ||
-    binEdges.length !== binCount + 1
-  ) {
+  // Guard: each env must have N+1 edges for N bins. Both must be internally
+  // consistent and non-empty. If either is off, return an empty layout — the
+  // renderer falls back to an empty SVG above.
+  const baseValid =
+    baseDensity.length > 0 && baseBinEdges.length === baseDensity.length + 1;
+  const currValid =
+    currentDensity.length > 0 &&
+    currentBinEdges.length === currentDensity.length + 1;
+  if (!baseValid || !currValid) {
     return { bins: [], maxDensity: 0, minVal: 0, maxVal: 0 };
   }
 
-  const minVal = binEdges[0];
-  const maxVal = binEdges[binEdges.length - 1];
+  const minVal = Math.min(baseBinEdges[0], currentBinEdges[0]);
+  const maxVal = Math.max(
+    baseBinEdges[baseBinEdges.length - 1],
+    currentBinEdges[currentBinEdges.length - 1],
+  );
   const totalSpan = maxVal - minVal;
 
-  // Degenerate range (all bins collapsed to a point): fall back to
-  // uniform-width slots so we still render something visible.
-  const useUniform = totalSpan <= 0 || !Number.isFinite(totalSpan);
+  const bins: ContinuousSegment[] = [];
 
-  const bins = [];
-  let cursor = 0;
-  for (let i = 0; i < binCount; i += 1) {
-    const lo = binEdges[i];
-    const hi = binEdges[i + 1];
-    const span = hi - lo;
-    const w = useUniform
-      ? width / binCount
-      : Math.max(0, (span / totalSpan) * width);
-    bins.push({
-      x: cursor,
-      width: w,
-      baseDensity: baseDensity[i],
-      currentDensity: currentDensity[i],
-      lo,
-      hi,
-    });
-    cursor += w;
+  // Degenerate range (everything collapsed to a point): fall back to
+  // uniform-width slots, index-aligning the two envs' bins, so we still
+  // render something visible.
+  if (totalSpan <= 0 || !Number.isFinite(totalSpan)) {
+    const n = Math.max(baseDensity.length, currentDensity.length);
+    const w = width / n;
+    for (let i = 0; i < n; i += 1) {
+      bins.push({
+        x: i * w,
+        width: w,
+        baseDensity: baseDensity[i] ?? 0,
+        currentDensity: currentDensity[i] ?? 0,
+        lo: minVal,
+        hi: maxVal,
+      });
+    }
+  } else {
+    // Merge both edge sets into one ascending, de-duplicated breakpoint
+    // array, then emit a segment between each consecutive pair.
+    const merged = Array.from(
+      new Set([...baseBinEdges, ...currentBinEdges]),
+    ).sort((a, b) => a - b);
+    for (let i = 0; i < merged.length - 1; i += 1) {
+      const lo = merged[i];
+      const hi = merged[i + 1];
+      if (hi <= lo) continue;
+      const mid = (lo + hi) / 2;
+      bins.push({
+        x: ((lo - minVal) / totalSpan) * width,
+        width: ((hi - lo) / totalSpan) * width,
+        baseDensity: densityAt(baseBinEdges, baseDensity, mid),
+        currentDensity: densityAt(currentBinEdges, currentDensity, mid),
+        lo,
+        hi,
+      });
+    }
   }
 
-  // Account for any rounding drift: stretch the last bin to the right edge.
-  // Applies in both quantile-proportional and uniform modes — floating-point
+  // Account for any rounding drift: stretch the last segment to the right
+  // edge. Applies in both merged and uniform modes — floating-point
   // accumulation can leave a sub-pixel gap either way.
   if (bins.length > 0) {
     const last = bins[bins.length - 1];
@@ -256,8 +316,9 @@ export function computeContinuousLayout(
   }
 
   const allDensities: number[] = [];
-  for (const d of baseDensity) allDensities.push(d);
-  for (const d of currentDensity) allDensities.push(d);
+  for (const b of bins) {
+    allDensities.push(b.baseDensity, b.currentDensity);
+  }
   const maxDensity = Math.max(1e-9, ...allDensities);
 
   return { bins, maxDensity, minVal, maxVal };

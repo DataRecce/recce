@@ -3,7 +3,8 @@
  * @description Tests for the constant-area paired histogram cell (DRC-3390 PR 3).
  *
  * Visual behavior covered:
- *   - One <g> per bin
+ *   - One <g> per merged-edge segment (base ∪ current edges)
+ *   - Per-segment densities looked up from each env's own bins
  *   - Bar widths track the quantile span (constant-area), not slot-uniform
  *   - Heights track density relative to max density across both envs
  *   - Differential rect colored by which env exceeds the other in that bin
@@ -25,28 +26,54 @@ vi.mock("../../../hooks/useIsDark", () => ({
   useIsDark: vi.fn(() => false),
 }));
 
-// 11 bins with quantile-driven widths: tight in the middle, wide at the
-// edges (typical for a long-tailed distribution where APPROX_PERCENTILE
-// hits 80% of the mass between bins 3 and 7).
+// Base and current on DIFFERENT edges (the post-#1398 contract). This is
+// the worked example from the PR discussion:
+//   base    [0:0.1, 10:0.6, 20:0.3, 40:0.1, 60]
+//   current [0:0.0,  5:0.2, 15:0.6, 30:0.2, 60]
+// Merged edges → [0, 5, 10, 15, 20, 30, 40, 60] → 7 segments. Each segment
+// carries the base density and current density of the bin it falls inside.
 const sampleData: PairedHistogramContinuousData = {
-  binEdges: [0, 10, 25, 50, 80, 120, 165, 220, 290, 400, 600, 1000],
-  baseDensity: [
-    0.01, 0.02, 0.04, 0.06, 0.08, 0.07, 0.05, 0.03, 0.015, 0.005, 0.001,
-  ],
-  currentDensity: [
-    0.02, 0.03, 0.045, 0.055, 0.085, 0.065, 0.04, 0.025, 0.012, 0.006, 0.0015,
-  ],
+  baseBinEdges: [0, 10, 20, 40, 60],
+  baseDensity: [0.1, 0.6, 0.3, 0.1],
+  currentBinEdges: [0, 5, 15, 30, 60],
+  currentDensity: [0.0, 0.2, 0.6, 0.2],
   baseTotal: 10_000,
   currentTotal: 12_000,
 };
 
+// Expected merged-grid segments for `sampleData` (PR-discussion worked
+// example). The renderer and layout must agree on these.
+const expectedSegments = [
+  { lo: 0, hi: 5, baseDensity: 0.1, currentDensity: 0.0 },
+  { lo: 5, hi: 10, baseDensity: 0.1, currentDensity: 0.2 },
+  { lo: 10, hi: 15, baseDensity: 0.6, currentDensity: 0.2 },
+  { lo: 15, hi: 20, baseDensity: 0.6, currentDensity: 0.6 },
+  { lo: 20, hi: 30, baseDensity: 0.3, currentDensity: 0.6 },
+  { lo: 30, hi: 40, baseDensity: 0.3, currentDensity: 0.2 },
+  { lo: 40, hi: 60, baseDensity: 0.1, currentDensity: 0.2 },
+];
+
 describe("PairedHistogramContinuous", () => {
-  it("renders one group per bin", () => {
+  it("renders one group per merged-edge segment", () => {
     const { container } = render(
       <PairedHistogramContinuous data={sampleData} />,
     );
     const groups = container.querySelectorAll("svg > g");
-    expect(groups.length).toBe(sampleData.baseDensity.length);
+    expect(groups.length).toBe(expectedSegments.length);
+  });
+
+  it("computeContinuousLayout: subdivides onto the merged edge grid with per-env densities", () => {
+    const layout = computeContinuousLayout(sampleData, 140);
+    expect(layout.bins.map((b) => [b.lo, b.hi])).toEqual(
+      expectedSegments.map((s) => [s.lo, s.hi]),
+    );
+    expect(layout.bins.map((b) => b.baseDensity)).toEqual(
+      expectedSegments.map((s) => s.baseDensity),
+    );
+    expect(layout.bins.map((b) => b.currentDensity)).toEqual(
+      expectedSegments.map((s) => s.currentDensity),
+    );
+    expect(layout.maxDensity).toBeCloseTo(0.6, 6);
   });
 
   it("renders at fixed cell-density dimensions (140x28)", () => {
@@ -85,8 +112,9 @@ describe("PairedHistogramContinuous", () => {
     // Single-bin payload: current density >> base density. Should produce
     // a single solid blue rect (no agreement zone since baseH would be 0).
     const data: PairedHistogramContinuousData = {
-      binEdges: [0, 10],
+      baseBinEdges: [0, 10],
       baseDensity: [0],
+      currentBinEdges: [0, 10],
       currentDensity: [0.5],
       baseTotal: 0,
       currentTotal: 5,
@@ -107,8 +135,9 @@ describe("PairedHistogramContinuous", () => {
     // rect should be solid orange. Scoped to "svg > g rect" so the
     // checkerboard <pattern> rects in <defs> don't pollute the assertion.
     const data: PairedHistogramContinuousData = {
-      binEdges: [0, 10],
+      baseBinEdges: [0, 10],
       baseDensity: [0.5],
+      currentBinEdges: [0, 10],
       currentDensity: [0],
       baseTotal: 5,
       currentTotal: 0,
@@ -123,8 +152,10 @@ describe("PairedHistogramContinuous", () => {
 
   it("handles bin-edge / density length mismatch by rendering an empty SVG", () => {
     const broken: PairedHistogramContinuousData = {
-      binEdges: [0, 1, 2],
+      // 3 edges but 4 densities — internally inconsistent base side.
+      baseBinEdges: [0, 1, 2],
       baseDensity: [1, 2, 3, 4],
+      currentBinEdges: [0, 1, 2, 3, 4],
       currentDensity: [1, 1, 1, 1],
       baseTotal: 10,
       currentTotal: 4,
@@ -137,8 +168,9 @@ describe("PairedHistogramContinuous", () => {
 
   it("handles a zero-span payload (degenerate column) by falling back to uniform widths", () => {
     const collapsed: PairedHistogramContinuousData = {
-      binEdges: [5, 5, 5],
+      baseBinEdges: [5, 5, 5],
       baseDensity: [0.5, 0.5],
+      currentBinEdges: [5, 5, 5],
       currentDensity: [0.5, 0.5],
       baseTotal: 2,
       currentTotal: 2,
@@ -186,7 +218,8 @@ describe("PairedHistogramContinuous", () => {
 
   it("computeContinuousLayout: empty payload returns empty bins", () => {
     const empty: PairedHistogramContinuousData = {
-      binEdges: [],
+      baseBinEdges: [],
+      currentBinEdges: [],
       baseDensity: [],
       currentDensity: [],
       baseTotal: 0,

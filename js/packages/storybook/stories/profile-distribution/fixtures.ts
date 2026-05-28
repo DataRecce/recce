@@ -2,9 +2,9 @@
  * Synthetic payload fixtures for the Paired Histograms GA cells (DRC-3390 Stage A).
  *
  * These match the **frozen** payload schemas Stage B produces:
- *   - Continuous → `{kind:"histogram", bin_edges:[12], base_density:[11],
- *     current_density:[11], base_total, current_total}` (quantile bins,
- *     constant-area).
+ *   - Continuous → `{kind:"histogram", base_bin_edges:[12],
+ *     current_bin_edges:[12], base_density:[11], current_density:[11],
+ *     base_total, current_total}` (per-env quantile bins, constant-area).
  *   - Discrete   → `{kind:"topk", values, base_counts, current_counts,
  *     base_total, current_total, trimmed}` (top-K with gap-on-absent).
  *   - Null       → `{kind:null}` (per-column failure).
@@ -23,7 +23,10 @@
 
 interface ProfileDistributionHistogramPayload {
   kind: "histogram";
-  bin_edges: number[];
+  /** Per-env quantile edges — base and current bin on their own edges, so
+   * each side stays constant-area (see PR #1398). They generally differ. */
+  base_bin_edges: number[];
+  current_bin_edges: number[];
   base_density: number[];
   current_density: number[];
   base_total: number;
@@ -84,28 +87,32 @@ type ProfileDistributionResult =
 
 /**
  * Build a histogram payload from per-bin row proportions instead of
- * raw densities. The constant-area contract is `density × span =
- * proportion`, so feeding proportions in (which sum to ~1.0) lets the
- * tooltip percentages read sensibly. Stage B's real payloads always
- * arrive density-normalized; this helper keeps the fixtures honest.
+ * raw densities, with **independent base / current edges** (the post-#1398
+ * contract). The constant-area contract is `density × span = proportion`,
+ * so feeding proportions in (each side summing to ~1.0) lets the tooltip
+ * percentages read sensibly. Stage B's real payloads always arrive
+ * density-normalized on per-env quantile edges; this helper keeps the
+ * fixtures honest.
  */
 function continuousFromProportions(
-  edges: number[],
+  baseEdges: number[],
   baseProps: number[],
+  currentEdges: number[],
   currentProps: number[],
   baseTotal: number,
   currentTotal: number,
 ): ProfileDistributionHistogramPayload {
-  const toDensity = (props: number[]) =>
+  const toDensity = (edges: number[], props: number[]) =>
     props.map((p, i) => {
       const span = edges[i + 1] - edges[i];
       return span > 0 ? p / span : 0;
     });
   return {
     kind: "histogram",
-    bin_edges: edges,
-    base_density: toDensity(baseProps),
-    current_density: toDensity(currentProps),
+    base_bin_edges: baseEdges,
+    current_bin_edges: currentEdges,
+    base_density: toDensity(baseEdges, baseProps),
+    current_density: toDensity(currentEdges, currentProps),
     base_total: baseTotal,
     current_total: currentTotal,
   };
@@ -115,12 +122,15 @@ function continuousFromProportions(
  * 11 quantile bins concentrated in the middle (typical of a long-tailed
  * order-amount distribution).
  *
- * Edges span $0 → $1000 with most mass between $50 and $300. Per-bin
- * proportions sum to 1.0, so tooltip percentages add up to 100%.
+ * Base and current span $0 → $1000 but break at **different** quantile
+ * edges (current's mass shifted slightly right post-deploy), so the merged
+ * x-grid has more than 11 segments. Per-bin proportions sum to 1.0 on each
+ * side, so each side's tooltip percentages add up to 100%.
  */
 export const continuousOrderAmount = continuousFromProportions(
   [0, 10, 25, 50, 80, 120, 165, 220, 290, 400, 600, 1000],
   [0.01, 0.04, 0.08, 0.12, 0.16, 0.2, 0.14, 0.1, 0.08, 0.05, 0.02],
+  [0, 8, 22, 48, 95, 140, 185, 245, 320, 430, 640, 1000],
   [0.008, 0.03, 0.07, 0.11, 0.17, 0.22, 0.15, 0.1, 0.07, 0.05, 0.02],
   12_000,
   14_500,
@@ -128,8 +138,9 @@ export const continuousOrderAmount = continuousFromProportions(
 
 /**
  * Symmetric, low-divergence column (timestamps from a stable signup
- * source). Base ≈ Current, so the chart should read as mostly checkerboard
- * with very thin differential strips.
+ * source). Base ≈ Current — edges nearly coincide and densities barely
+ * move — so the chart reads as mostly checkerboard with very thin
+ * differential strips.
  */
 export const continuousStable = continuousFromProportions(
   [
@@ -137,6 +148,10 @@ export const continuousStable = continuousFromProportions(
     1707696000, 1708300800, 1708905600, 1709510400, 1710115200, 1710720000,
   ],
   [0.02, 0.03, 0.06, 0.1, 0.15, 0.28, 0.15, 0.1, 0.06, 0.03, 0.02],
+  [
+    1704067200, 1704680000, 1705280000, 1705885000, 1706490000, 1707095000,
+    1707700000, 1708305000, 1708910000, 1709515000, 1710118000, 1710720000,
+  ],
   [0.025, 0.035, 0.06, 0.1, 0.14, 0.27, 0.15, 0.1, 0.06, 0.04, 0.02],
   25_000,
   24_500,
@@ -144,11 +159,17 @@ export const continuousStable = continuousFromProportions(
 
 /**
  * Added column — base totals 0, all mass on current side. Renders as a
- * solid-blue chart (current dominates every bin).
+ * solid-blue chart (current dominates every bin). Base still carries valid
+ * edges (the warehouse returns them even for an empty side); we reuse
+ * current's edges so the merged grid stays clean with no base mass.
  */
+const addedCurrentEdges = [
+  0, 50, 100, 150, 200, 300, 400, 500, 700, 900, 1200, 1500,
+];
 export const continuousAddedOnly = continuousFromProportions(
-  [0, 50, 100, 150, 200, 300, 400, 500, 700, 900, 1200, 1500],
+  addedCurrentEdges,
   Array(11).fill(0),
+  addedCurrentEdges,
   [0.02, 0.08, 0.2, 0.3, 0.18, 0.1, 0.06, 0.03, 0.02, 0.008, 0.002],
   0,
   18_000,
@@ -451,7 +472,8 @@ export const mixedTaskResult: ProfileDistributionResult = {
 
 export function toContinuousProps(p: ProfileDistributionHistogramPayload) {
   return {
-    binEdges: p.bin_edges,
+    baseBinEdges: p.base_bin_edges,
+    currentBinEdges: p.current_bin_edges,
     baseDensity: p.base_density,
     currentDensity: p.current_density,
     baseTotal: p.base_total,
