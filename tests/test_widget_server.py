@@ -74,8 +74,10 @@ async def test_mcp_server_filters_widget_tools_when_widgets_enabled(monkeypatch)
     assert "list_checks" not in names
     assert "get_model" not in names
     assert "query" not in names
-    # Other tools must still be present
-    assert "lineage_diff" in names
+    assert "lineage_diff" not in names
+    # Non-widget tools must still be present
+    assert "create_check" in names
+    assert "run_check" in names
 
 
 # ---------------------------------------------------------------------------
@@ -85,7 +87,7 @@ async def test_mcp_server_filters_widget_tools_when_widgets_enabled(monkeypatch)
 
 @pytest.mark.asyncio
 async def test_widget_server_registers_six_tools_and_six_resources():
-    """Widget FastMCP instance has exactly 14 tools/resources (Phase A + Phase B + Phase C + Phase D widgets).
+    """Widget FastMCP instance has exactly 15 tools/resources (Phase A + Phase B + Phase C + Phase D + lineage_diff).
 
     Uses FastMCP public API: mcp.list_tools() and mcp.list_resources().
     """
@@ -112,6 +114,7 @@ async def test_widget_server_registers_six_tools_and_six_resources():
         "profile_diff",
         "get_cll",
         "impact_analysis",
+        "lineage_diff",
     }
     assert resource_uris == {
         "ui://recce/row_count_diff.html",
@@ -128,6 +131,7 @@ async def test_widget_server_registers_six_tools_and_six_resources():
         "ui://recce/profile_diff.html",
         "ui://recce/get_cll.html",
         "ui://recce/impact_analysis.html",
+        "ui://recce/lineage_diff.html",
     }
 
 
@@ -2140,3 +2144,164 @@ def test_schema_change_models_have_distinct_shapes():
     assert schema_diff_fields == {"added", "removed", "type_changed", "unchanged_count"}
     assert impact_fields == {"column", "change_status"}
     assert SchemaChange is not ColumnSchemaChange
+
+
+# ---------------------------------------------------------------------------
+# Test 91: lineage_diff widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_lineage_diff_widget_registered():
+    """lineage_diff appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'lineage_diff' is in widget mcp tool list
+    - resource URI 'ui://recce/lineage_diff.html' is in widget mcp resource list
+    - select, exclude, packages, view_mode are all optional
+    - annotations: openWorldHint=False (no warehouse query, manifest-only)
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "lineage_diff" in tool_names
+    assert "ui://recce/lineage_diff.html" in resource_uris
+
+    tool = next(t for t in tools if t.name == "lineage_diff")
+    schema = tool.inputSchema
+    assert schema is not None
+    defs = schema.get("$defs", {})
+    inner_schema = next(iter(defs.values()), schema)
+    inner_required = inner_schema.get("required", [])
+    inner_props = inner_schema.get("properties", {})
+    assert "select" not in inner_required, "select must be optional"
+    assert "exclude" not in inner_required, "exclude must be optional"
+    assert "packages" not in inner_required, "packages must be optional"
+    assert "view_mode" not in inner_required, "view_mode must be optional"
+    for key in ("select", "exclude", "packages", "view_mode"):
+        assert key in inner_props, f"missing prop: {key}"
+
+    a = tool.annotations
+    assert a is not None
+    assert a.readOnlyHint is True
+    assert a.destructiveHint is False
+    assert a.openWorldHint is False, "lineage_diff: expected openWorldHint=False (manifest-only, no warehouse query)"
+
+
+# ---------------------------------------------------------------------------
+# Test 92: lineage_diff returns CallToolResult with correct Pydantic shape
+#          covering both under-cap and over-cap (>MAX_INLINE_NODES) branches.
+# ---------------------------------------------------------------------------
+
+
+def _make_lineage_dataframe(node_count: int) -> dict:
+    """Build a realistic _tool_lineage_diff return shape with `node_count` nodes.
+
+    DataFrame format: {columns: [{key, name, type}, ...], data: [tuple, ...]}.
+    Edges chain node_0 → node_1 → node_2 → ... (linear DAG for predictable tests).
+    """
+    node_cols = [
+        {"key": "idx", "name": "idx", "type": "integer"},
+        {"key": "id", "name": "id", "type": "text"},
+        {"key": "name", "name": "name", "type": "text"},
+        {"key": "resource_type", "name": "resource_type", "type": "text"},
+        {"key": "materialized", "name": "materialized", "type": "text"},
+        {"key": "change_status", "name": "change_status", "type": "text"},
+        {"key": "impacted", "name": "impacted", "type": "boolean"},
+    ]
+    nodes_data = []
+    for i in range(node_count):
+        change_status = "modified" if i == 0 else None
+        impacted = i == 0
+        nodes_data.append(
+            (i, f"model.recce.node_{i}", f"node_{i}", "model", "table", change_status, impacted)
+        )
+
+    edge_cols = [
+        {"key": "from", "name": "from", "type": "integer"},
+        {"key": "to", "name": "to", "type": "integer"},
+    ]
+    edges_data = [(i, i + 1) for i in range(max(0, node_count - 1))]
+
+    return {
+        "nodes": {"columns": node_cols, "data": nodes_data},
+        "edges": {"columns": edge_cols, "data": edges_data},
+    }
+
+
+@pytest.mark.asyncio
+async def test_lineage_diff_returns_calltoolresult_with_pydantic_shape():
+    """lineage_diff handler returns CallToolResult with structuredContent matching LineageDiffOutput.
+
+    Verifies BOTH branches:
+    - Under-cap (3 nodes): nodes + edges populated, exceeds_limit=False.
+    - Over-cap (11 nodes > MAX_INLINE_NODES=10): nodes=[], edges=[], exceeds_limit=True.
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import MAX_INLINE_NODES, LineageDiffInput, LineageDiffOutput
+
+    # ── Under-cap branch (3 nodes, 2 edges) ──────────────────────────
+    mock_server = MagicMock()
+    mock_server._tool_lineage_diff = AsyncMock(return_value=_make_lineage_dataframe(3))
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        result = await ws.lineage_diff(LineageDiffInput())
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    text = result.content[0].text
+    assert isinstance(text, str)
+    assert len(text) < 200
+    assert "widget" in text.lower()
+
+    assert result.structuredContent is not None
+    validated = LineageDiffOutput.model_validate(result.structuredContent)
+    assert validated.node_count == 3
+    assert validated.exceeds_limit is False
+    assert validated.max_inline_nodes == MAX_INLINE_NODES == 10
+    assert len(validated.nodes) == 3
+    assert len(validated.edges) == 2
+    # First node is the modified root
+    first = next(n for n in validated.nodes if n.idx == 0)
+    assert first.id == "model.recce.node_0"
+    assert first.name == "node_0"
+    assert first.change_status == "modified"
+    assert first.impacted is True
+    # Edge alias round-trip — model_dump(by_alias=True) emits 'from'/'to' keys
+    raw_edges = result.structuredContent["edges"]
+    assert raw_edges[0] == {"from": 0, "to": 1}
+    # validated edges use python attribute names
+    assert validated.edges[0].from_idx == 0
+    assert validated.edges[0].to_idx == 1
+
+    # ── Over-cap branch (11 > 10) ────────────────────────────────────
+    mock_server2 = MagicMock()
+    mock_server2._tool_lineage_diff = AsyncMock(return_value=_make_lineage_dataframe(11))
+
+    ws._recce_server = mock_server2
+    try:
+        result2 = await ws.lineage_diff(LineageDiffInput())
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result2, CallToolResult)
+    text2 = result2.content[0].text
+    assert "exceed" in text2.lower() or "cap" in text2.lower(), f"expected over-cap message, got: {text2!r}"
+
+    validated2 = LineageDiffOutput.model_validate(result2.structuredContent)
+    assert validated2.node_count == 11
+    assert validated2.exceeds_limit is True
+    assert validated2.max_inline_nodes == 10
+    assert validated2.nodes == [], "over-cap must return empty nodes list"
+    assert validated2.edges == [], "over-cap must return empty edges list"

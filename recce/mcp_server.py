@@ -68,6 +68,7 @@ WIDGET_TOOLS = {
     "profile_diff",
     "get_cll",
     "impact_analysis",
+    "lineage_diff",
 }
 
 

@@ -2317,6 +2317,183 @@ def impact_analysis_resource() -> str:
 
 
 # ---------------------------------------------------------------------------
+# lineage_diff widget tool + resource (Phase E first version, 10-node cap)
+# ---------------------------------------------------------------------------
+
+MAX_INLINE_NODES = 10
+
+
+class LineageDiffInput(BaseModel):
+    select: Optional[str] = Field(
+        default=None,
+        description="dbt selector syntax (e.g. 'state:modified+', '1+state:modified')",
+    )
+    exclude: Optional[str] = Field(
+        default=None,
+        description="dbt selector syntax for exclusion",
+    )
+    packages: Optional[List[str]] = Field(
+        default=None,
+        description="Restrict to specific dbt packages by name",
+    )
+    view_mode: Optional[str] = Field(
+        default="changed_models",
+        description="'all' (full lineage) or 'changed_models' (default, modified + downstream).",
+    )
+
+
+class LineageNode(BaseModel):
+    """One node in the lineage DAG, flattened from the DataFrame row format."""
+
+    idx: int
+    id: str
+    name: Optional[str] = None
+    resource_type: Optional[str] = None
+    materialized: Optional[str] = None
+    change_status: Optional[str] = None  # "added" | "modified" | "removed" | None
+    impacted: bool = False
+
+
+class LineageEdge(BaseModel):
+    """One directed edge in the lineage DAG (parent_idx -> child_idx).
+
+    The underlying DataFrame uses 'from'/'to' column keys, which are Python
+    reserved words — Pydantic aliases let us accept those keys while exposing
+    idiomatic Python attribute names.
+    """
+
+    from_idx: int = Field(alias="from")
+    to_idx: int = Field(alias="to")
+
+    model_config = {"populate_by_name": True}
+
+
+class LineageDiffOutput(BaseModel):
+    """Output model for the lineage_diff widget tool.
+
+    First-version contract: when node_count > MAX_INLINE_NODES the widget
+    receives empty `nodes`/`edges` lists plus `exceeds_limit=True` so the HTML
+    can render a graceful skip message. No truncation, no toggle.
+    """
+
+    nodes: List[LineageNode]
+    edges: List[LineageEdge]
+    node_count: int
+    exceeds_limit: bool
+    max_inline_nodes: int
+
+
+def _dataframe_rows(df: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Convert a serialized DataFrame ({columns:[{name,...}], data:[tuple,...]})
+    into a flat list of {column_name: value} dicts.
+
+    Returns [] when columns or data are missing/empty.
+    """
+    columns = df.get("columns") or []
+    rows = df.get("data") or []
+    keys = [c.get("name") for c in columns if isinstance(c, dict)]
+    return [dict(zip(keys, row)) for row in rows]
+
+
+@mcp.tool(
+    name="lineage_diff",
+    annotations={
+        "title": "Lineage Diff (Widget)",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,
+    },
+    meta={
+        "ui": {"resourceUri": "ui://recce/lineage_diff.html"},
+        "ui/resourceUri": "ui://recce/lineage_diff.html",
+    },
+)
+async def lineage_diff(args: LineageDiffInput) -> CallToolResult:
+    """Show the lineage DAG diff between base and current dbt environments.
+
+    Renders an interactive SVG of modified models and their dependencies, hand-rolled
+    using the same BFS layered layout as the impact_analysis mini-DAG. First version
+    is capped at MAX_INLINE_NODES (10) inline nodes — larger graphs are skipped with
+    a graceful message pointing the user to the Recce web UI.
+
+    Args:
+        select: dbt selector syntax (e.g. "state:modified+", "customers orders")
+        exclude: dbt selector for exclusion
+        packages: restrict to specific dbt packages by name
+        view_mode: 'all' or 'changed_models' (default)
+
+    Returns:
+        CallToolResult with structuredContent: LineageDiffOutput shape
+        {nodes: [{idx, id, name, resource_type, materialized, change_status, impacted}],
+         edges: [{from, to}], node_count, exceeds_limit, max_inline_nodes}
+
+    Use when:
+        - User asks "show me the lineage diff" / "what models depend on X"
+        - Visualizing the dependency graph of changed models in a small PR
+    Don't use when:
+        - Need column-level lineage → use get_cll
+        - Need data impact triage with row counts → use impact_analysis
+        - Lineage scope exceeds 10 nodes — widget will show a skip message and the
+          user should be directed to the Recce web UI
+
+    Error Handling:
+        - Underlying _tool_lineage_diff raises on adapter/context failure
+        - >10 nodes returns exceeds_limit=True with empty nodes/edges (not an error)
+    """
+    result = await _recce_server._tool_lineage_diff(args.model_dump(exclude_none=True))
+    nodes_df = result.get("nodes", {}) if isinstance(result, dict) else {}
+    edges_df = result.get("edges", {}) if isinstance(result, dict) else {}
+
+    raw_nodes = _dataframe_rows(nodes_df)
+    raw_edges = _dataframe_rows(edges_df)
+
+    nodes = [LineageNode(**row) for row in raw_nodes]
+    edges = [LineageEdge(**row) for row in raw_edges]
+
+    node_count = len(nodes)
+    exceeds = node_count > MAX_INLINE_NODES
+
+    output = LineageDiffOutput(
+        nodes=[] if exceeds else nodes,
+        edges=[] if exceeds else edges,
+        node_count=node_count,
+        exceeds_limit=exceeds,
+        max_inline_nodes=MAX_INLINE_NODES,
+    )
+
+    if exceeds:
+        text = (
+            f"Lineage diff: {node_count} nodes exceeds {MAX_INLINE_NODES}-node "
+            f"inline widget cap. Open the Recce web UI for the full view."
+        )
+    else:
+        text = (
+            f"Lineage diff: {node_count} node{'s' if node_count != 1 else ''}, "
+            f"{len(edges)} edge{'s' if len(edges) != 1 else ''}. Rendered in widget."
+        )
+
+    return CallToolResult(
+        content=[TextContent(type="text", text=text)],
+        structuredContent=output.model_dump(by_alias=True),
+    )
+
+
+@mcp.resource(
+    uri="ui://recce/lineage_diff.html",
+    mime_type="text/html;profile=mcp-app",
+    meta={
+        "ui": {
+            "csp": {"resourceDomains": ["https://unpkg.com"]},
+            "prefersBorder": False,
+        },
+    },
+)
+def lineage_diff_resource() -> str:
+    return _read_widget_html("lineage_diff")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

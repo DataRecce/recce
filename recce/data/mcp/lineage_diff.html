@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lineage Diff</title>
+  <style>
+    /* ── Base reset + design tokens ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+      font-size: 13px;
+      margin: 0;
+      padding: 12px 16px 20px;
+      color: var(--color-text-primary, #1a1a1a);
+      background: var(--color-background-primary, #ffffff);
+      line-height: 1.4;
+    }
+
+    /* ── Dark-mode fallback ─────────────────────────────────────────── */
+    @media (prefers-color-scheme: dark) {
+      body {
+        color: var(--color-text-primary, #e5e7eb);
+        background: var(--color-background-primary, #1a1a1a);
+      }
+      .header-title  { color: var(--color-text-primary, #e5e7eb) !important; }
+      .badge         { background: var(--color-background-secondary, #27272a) !important;
+                       color: var(--color-text-secondary, #9ca3af) !important; }
+      .dag-wrap      { border-color: var(--color-border-primary, #3f3f46) !important;
+                       background: var(--color-background-secondary, #18181b) !important; }
+      .node-box rect.node-bg { stroke: var(--color-border-primary, #3f3f46) !important;
+                               fill: var(--color-background-secondary, #27272a) !important; }
+      .node-box .node-label  { fill: var(--color-text-secondary, #9ca3af) !important; }
+      .node-box.added     rect.node-bg { stroke: #22c55e !important; fill: #052e16 !important; }
+      .node-box.added     .node-label  { fill: #86efac !important; }
+      .node-box.modified  rect.node-bg { stroke: #f59e0b !important; fill: #451a03 !important; }
+      .node-box.modified  .node-label  { fill: #fcd34d !important; }
+      .node-box.removed   rect.node-bg { stroke: #ef4444 !important; fill: #450a0a !important; }
+      .node-box.removed   .node-label  { fill: #fca5a5 !important; }
+      .node-box.impacted  rect.node-bg { stroke: #f59e0b !important;
+                                          fill: var(--color-background-secondary, #292524) !important; }
+      .node-box.impacted  .node-label  { fill: #fcd34d !important; }
+      .edge-path     { stroke: var(--color-border-primary, #4b5563) !important; }
+      .arrow-head    { fill: var(--color-border-primary, #4b5563) !important; }
+      .empty-card    { background: var(--color-background-secondary, #27272a) !important; }
+      .empty-title   { color: var(--color-text-primary, #e5e7eb) !important; }
+      .empty-hint    { color: var(--color-text-secondary, #9ca3af) !important; }
+      .error-card    { background: var(--color-background-secondary, #27272a) !important; }
+      .error-title   { color: var(--color-danger, #f87171) !important; }
+    }
+
+    /* ── Header ──────────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .header-icon  { font-size: 16px; }
+    .header-title { font-size: 14px; font-weight: 600;
+                    color: var(--color-text-primary, #1a1a1a); flex: 1; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 10px;
+      background: var(--color-background-secondary, #f4f4f5);
+      color: var(--color-text-secondary, #52525b);
+    }
+
+    /* ── DAG viewport ────────────────────────────────────────────────── */
+    .dag-wrap {
+      overflow-x: auto;
+      overflow-y: hidden;
+      border: 1px solid var(--color-border-primary, #e4e4e7);
+      border-radius: 8px;
+      background: var(--color-background-secondary, #fafafa);
+      padding: 8px;
+    }
+    .dag-svg { display: block; }
+
+    /* ── SVG node elements (light-mode defaults) ─────────────────────── */
+    .node-box rect.node-bg {
+      fill: var(--color-background-primary, #ffffff);
+      stroke: var(--color-border-primary, #d4d4d8);
+      stroke-width: 1;
+    }
+    .node-box .node-label {
+      font-size: 11px;
+      font-weight: 600;
+      fill: var(--color-text-secondary, #52525b);
+    }
+    /* Change-status tints */
+    .node-box.added    rect.node-bg { stroke: #22c55e; fill: #f0fdf4; }
+    .node-box.added    .node-label  { fill: #166534; }
+    .node-box.modified rect.node-bg { stroke: #f59e0b; fill: #fffbeb; }
+    .node-box.modified .node-label  { fill: #92400e; }
+    .node-box.removed  rect.node-bg { stroke: #ef4444; fill: #fef2f2; }
+    .node-box.removed  .node-label  { fill: #991b1b; }
+    /* Impacted (but not directly changed) — neutral warning tint */
+    .node-box.impacted rect.node-bg { stroke: #f59e0b; fill: var(--color-background-primary, #ffffff); }
+    .node-box.impacted .node-label  { fill: var(--color-text-primary, #92400e); }
+
+    .edge-path  { fill: none; stroke: var(--color-border-secondary, #94a3b8);
+                   stroke-width: 1.5; opacity: 0.7; }
+    .arrow-head { fill: var(--color-border-secondary, #94a3b8); }
+
+    /* ── Empty / error states ────────────────────────────────────────── */
+    .empty-card {
+      padding: 24px;
+      background: var(--color-background-secondary, #f4f4f5);
+      border-radius: 8px;
+      text-align: center;
+    }
+    .empty-title { font-weight: 600; margin-bottom: 4px; }
+    .empty-hint  { font-size: 12px; color: var(--color-text-secondary, #6b7280); }
+    .error-card  { padding: 16px; border-radius: 8px;
+                   border: 1px solid var(--color-danger, #f87171);
+                   background: var(--color-background-secondary, #f4f4f5); }
+    .error-title { font-weight: 600; color: var(--color-danger, #dc2626); margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="empty-card">
+      <div class="empty-title">Loading lineage diff…</div>
+      <div class="empty-hint">Waiting for results.</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      App,
+      applyDocumentTheme,
+      applyHostStyleVariables,
+      applyHostFonts,
+    } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+
+    const app = new App({ name: "Lineage Diff", version: "1.0.0" });
+
+    app.onhostcontextchanged = (ctx) => {
+      if (ctx.theme)             applyDocumentTheme(ctx.theme);
+      if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+      if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
+    };
+
+    app.onteardown = async () => { return {}; };
+
+    // ── Constants ────────────────────────────────────────────────────
+    const NODE_W       = 140;
+    const NODE_H       = 36;
+    const LAYER_GAP_X  = 60;   // horizontal gap between layers
+    const NODE_GAP_Y   = 18;   // vertical gap between nodes in same layer
+    const SVG_PAD_X    = 16;
+    const SVG_PAD_Y    = 16;
+    const LABEL_MAX    = 18;   // truncate node label
+
+    // ── Helpers ──────────────────────────────────────────────────────
+    function escapeHtml(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function svgEl(tag, attrs = {}) {
+      const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+      return el;
+    }
+
+    function shortName(s, max = LABEL_MAX) {
+      if (!s) return "—";
+      return s.length > max ? s.slice(0, max - 1) + "…" : s;
+    }
+
+    // Classify node CSS bucket — change_status takes priority, then impacted.
+    function nodeClass(node) {
+      if (node.change_status === "added")    return "added";
+      if (node.change_status === "removed")  return "removed";
+      if (node.change_status === "modified") return "modified";
+      if (node.impacted) return "impacted";
+      return "";
+    }
+
+    // ── BFS layer assignment ─────────────────────────────────────────
+    // Each node is assigned to a layer = max(parent_layer) + 1.
+    // Nodes with no parents (roots) start at layer 0.
+    function assignLayers(nodes, edges) {
+      const parentMap = {};     // child_idx → [parent_idx]
+      for (const n of nodes) parentMap[n.idx] = [];
+      for (const e of edges) {
+        const from = e.from ?? e.from_idx;
+        const to   = e.to   ?? e.to_idx;
+        if (parentMap[to] !== undefined) parentMap[to].push(from);
+      }
+
+      const layerOf = {};
+      // Topological iteration: keep refining until stable. For <=10 nodes
+      // a single pass through nodes in idx order, repeated up to N times,
+      // converges trivially.
+      const idxList = nodes.map(n => n.idx);
+      for (let iter = 0; iter < nodes.length + 1; iter++) {
+        let changed = false;
+        for (const i of idxList) {
+          const parents = parentMap[i] || [];
+          let layer = 0;
+          for (const p of parents) {
+            const pl = layerOf[p];
+            if (pl !== undefined) layer = Math.max(layer, pl + 1);
+          }
+          if (layerOf[i] !== layer) {
+            layerOf[i] = layer;
+            changed = true;
+          }
+        }
+        if (!changed) break;
+      }
+      return layerOf;
+    }
+
+    function computeLayout(nodes, edges) {
+      if (nodes.length === 0) {
+        return { positions: {}, svgW: 200, svgH: 80 };
+      }
+
+      const layerOf = assignLayers(nodes, edges);
+
+      // Group nodes by layer
+      const layers = {};
+      for (const n of nodes) {
+        const ln = layerOf[n.idx] ?? 0;
+        if (!(ln in layers)) layers[ln] = [];
+        layers[ln].push(n);
+      }
+      for (const ln of Object.keys(layers)) {
+        layers[ln].sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));
+      }
+
+      const layerNums = Object.keys(layers).map(Number).sort((a, b) => a - b);
+      const numLayers = layerNums.length;
+
+      const layerX = {};
+      layerNums.forEach((ln, i) => {
+        layerX[ln] = SVG_PAD_X + i * (NODE_W + LAYER_GAP_X);
+      });
+
+      const positions = {};
+      let maxBottom = 0;
+      for (const ln of layerNums) {
+        let yOffset = SVG_PAD_Y;
+        for (const n of layers[ln]) {
+          positions[n.idx] = { x: layerX[ln], y: yOffset, w: NODE_W, h: NODE_H };
+          yOffset += NODE_H + NODE_GAP_Y;
+        }
+        maxBottom = Math.max(maxBottom, yOffset);
+      }
+
+      const svgW = numLayers > 0
+        ? SVG_PAD_X * 2 + numLayers * NODE_W + (numLayers - 1) * LAYER_GAP_X
+        : 200;
+      const svgH = maxBottom + SVG_PAD_Y;
+
+      return { positions, svgW, svgH };
+    }
+
+    // ── Build a single node box ──────────────────────────────────────
+    function buildNode(node, pos) {
+      const { x, y, w, h } = pos;
+      const cls = nodeClass(node);
+      const g = svgEl("g", { class: "node-box" + (cls ? " " + cls : "") });
+      g.appendChild(svgEl("rect", {
+        class: "node-bg",
+        x, y, width: w, height: h,
+        rx: 6, ry: 6,
+      }));
+      const label = svgEl("text", {
+        class: "node-label",
+        x: x + w / 2,
+        y: y + h / 2,
+        "text-anchor": "middle",
+        "dominant-baseline": "middle",
+      });
+      label.textContent = shortName(node.name || node.id);
+      g.appendChild(label);
+      // Tooltip with full name for hover
+      const title = svgEl("title", {});
+      title.textContent = (node.name || node.id) +
+        (node.change_status ? ` (${node.change_status})` : "");
+      g.appendChild(title);
+      return g;
+    }
+
+    // ── Build bezier edges with arrow head ───────────────────────────
+    function buildEdges(edges, positions) {
+      const g = svgEl("g", { class: "edges" });
+
+      // Arrow marker (defined once)
+      const defs = svgEl("defs");
+      const marker = svgEl("marker", {
+        id: "arrow",
+        viewBox: "0 0 10 10",
+        refX: "9",
+        refY: "5",
+        markerWidth: "6",
+        markerHeight: "6",
+        orient: "auto-start-reverse",
+      });
+      const arrowPath = svgEl("path", {
+        class: "arrow-head",
+        d: "M 0 0 L 10 5 L 0 10 z",
+      });
+      marker.appendChild(arrowPath);
+      defs.appendChild(marker);
+      g.appendChild(defs);
+
+      for (const e of edges) {
+        const from = e.from ?? e.from_idx;
+        const to   = e.to   ?? e.to_idx;
+        const src = positions[from];
+        const dst = positions[to];
+        if (!src || !dst) continue;
+        const srcX = src.x + src.w;
+        const srcY = src.y + src.h / 2;
+        const dstX = dst.x;
+        const dstY = dst.y + dst.h / 2;
+        const dx = Math.max(20, (dstX - srcX) * 0.45);
+        const d = `M ${srcX} ${srcY} C ${srcX + dx} ${srcY}, ${dstX - dx} ${dstY}, ${dstX} ${dstY}`;
+        g.appendChild(svgEl("path", {
+          class: "edge-path",
+          d,
+          "marker-end": "url(#arrow)",
+        }));
+      }
+      return g;
+    }
+
+    // ── Main render ──────────────────────────────────────────────────
+    function render(data) {
+      const root = document.getElementById("root");
+      const nodes = data?.nodes || [];
+      const edges = data?.edges || [];
+      const nodeCount = data?.node_count ?? nodes.length;
+      const maxInline = data?.max_inline_nodes ?? 10;
+      const exceedsLimit = !!data?.exceeds_limit;
+
+      const headerHtml = `
+        <div class="header">
+          <span class="header-icon">🌳</span>
+          <span class="header-title">Lineage diff</span>
+          <span class="badge">${nodeCount} model${nodeCount !== 1 ? "s" : ""}</span>
+        </div>`;
+
+      // Empty result (no nodes at all in scope)
+      if (!exceedsLimit && nodes.length === 0) {
+        root.innerHTML = headerHtml + `
+          <div class="empty-card">
+            <div class="empty-title">No lineage nodes in scope</div>
+            <div class="empty-hint">No selected dbt models or no diff between environments.</div>
+          </div>`;
+        return;
+      }
+
+      // Over cap → graceful skip
+      if (exceedsLimit) {
+        root.innerHTML = headerHtml + `
+          <div class="empty-card">
+            <div class="empty-title">Too many nodes (${nodeCount})</div>
+            <div class="empty-hint">
+              Exceeds the ${maxInline}-node inline widget capacity.
+              Open the Recce web UI for the full lineage view.
+            </div>
+          </div>`;
+        return;
+      }
+
+      // Build SVG
+      const { positions, svgW, svgH } = computeLayout(nodes, edges);
+      const svg = svgEl("svg", {
+        class: "dag-svg",
+        width: svgW,
+        height: svgH,
+        viewBox: `0 0 ${svgW} ${svgH}`,
+      });
+      svg.appendChild(buildEdges(edges, positions));
+      for (const n of nodes) {
+        const pos = positions[n.idx];
+        if (!pos) continue;
+        svg.appendChild(buildNode(n, pos));
+      }
+
+      root.innerHTML = headerHtml;
+      const wrap = document.createElement("div");
+      wrap.className = "dag-wrap";
+      wrap.appendChild(svg);
+      root.appendChild(wrap);
+    }
+
+    // ── Wire up MCP App ──────────────────────────────────────────────
+    app.ontoolresult = ({ structuredContent }) => {
+      try {
+        render(structuredContent);
+      } catch (err) {
+        document.getElementById("root").innerHTML = `
+          <div class="error-card">
+            <div class="error-title">Render error</div>
+            <div class="empty-hint">${escapeHtml(String(err))}</div>
+          </div>`;
+      }
+    };
+
+    await app.connect();
+
+    const initialCtx = app.getHostContext?.();
+    if (initialCtx) {
+      if (initialCtx.theme)              applyDocumentTheme(initialCtx.theme);
+      if (initialCtx.styles?.variables)  applyHostStyleVariables(initialCtx.styles.variables);
+      if (initialCtx.styles?.css?.fonts) applyHostFonts(initialCtx.styles.css.fonts);
+    }
+  </script>
+</body>
+</html>
