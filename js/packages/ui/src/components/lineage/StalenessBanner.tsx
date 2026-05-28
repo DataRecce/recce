@@ -9,7 +9,7 @@ import Stack from "@mui/material/Stack";
 import type { SxProps, Theme } from "@mui/material/styles";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { IoClose } from "react-icons/io5";
 import { MdInfo } from "react-icons/md";
 import {
@@ -104,6 +104,11 @@ export interface StalenessBannerProps {
    * Additional `sx` merged into the `Paper` root when `variant="card"`.
    * Typical use: shell-specific positioning offsets (`top`, `left`, etc.)
    * since the floating card sits over the work area in cloud.
+   *
+   * **Note**: the card variant only defaults `left: 50%` + horizontal centering.
+   * Callers must position vertically via `cardSx={{ top: ... }}` to avoid the
+   * card pinning to the viewport top under any sticky chrome (e.g. cloud passes
+   * `top: 180` to clear its top nav).
    */
   cardSx?: SxProps<Theme>;
 }
@@ -133,10 +138,12 @@ export function StalenessBanner({
   const { cloudMode } = useLineageGraphContext();
   const { apiClient } = useApiConfig();
 
-  const toast = useMemo<StalenessToastAdapter>(
-    () => toastAdapter ?? defaultToastAdapter,
-    [toastAdapter],
-  );
+  // Inline ternary instead of useMemo: the result identity is already
+  // caller-stable (toastAdapter when supplied, module-stable defaultToastAdapter
+  // otherwise), so a memo adds no stability the caller hasn't already
+  // delivered. Referential changes propagate downstream from the caller's own
+  // adapter contract.
+  const toast: StalenessToastAdapter = toastAdapter ?? defaultToastAdapter;
 
   const [refreshing, setRefreshing] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -195,6 +202,24 @@ export function StalenessBanner({
       );
     }
   }, [dismissible, sessionId]);
+
+  // Dev-time guard: when the caller opts out of the cloud-mode gate
+  // (`requireCloudMode={false}`) they're almost certainly mounting outside
+  // the OSS shell, where the module-singleton `toaster` may not have a
+  // `<Toaster>` mounted to listen to. The `defaultToastAdapter` would then
+  // silently no-op. Surface the missing adapter loudly in dev. Symmetric with
+  // the `dismissible && !sessionId` guard above.
+  useEffect(() => {
+    if (
+      process.env.NODE_ENV !== "production" &&
+      requireCloudMode === false &&
+      !toastAdapter
+    ) {
+      console.warn(
+        "StalenessBanner: `requireCloudMode={false}` without `toastAdapter` — the default adapter targets the OSS module-singleton toaster and may silently no-op outside the OSS shell.",
+      );
+    }
+  }, [requireCloudMode, toastAdapter]);
 
   // Toast when staleness clears (outdated → matching transition).
   useEffect(() => {

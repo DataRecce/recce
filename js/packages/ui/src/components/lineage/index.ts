@@ -13,7 +13,10 @@ export * from "./contextmenu";
 export * from "./controls";
 export * from "./edges";
 // First-time popover for the snapshot-base staleness intro
-export { FirstTimePopover } from "./FirstTimePopover";
+export {
+  FirstTimePopover,
+  type FirstTimePopoverProps,
+} from "./FirstTimePopover";
 export { GraphNode as GraphNodeOss, type GraphNodeProps } from "./GraphNodeOss";
 export * from "./hooks";
 // Composed components for rendering lineage graphs

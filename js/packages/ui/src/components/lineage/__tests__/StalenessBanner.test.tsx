@@ -399,12 +399,30 @@ describe("StalenessBanner", () => {
 // ============================================================================
 
 describe("StalenessBanner props (cross-shell)", () => {
+  // Silence dev-time warnings (dismissible + toastAdapter guards) so the
+  // non-guard-specific tests stay quiet. Dedicated guard tests re-spy and
+  // assert on the warn output.
+  let warnSpy: ReturnType<typeof vi.spyOn> | null = null;
+
   beforeEach(() => {
     vi.clearAllMocks();
     localStorageMock.clear();
+    // Clear sessionStorage too — every test here uses a unique sessionId today
+    // (sess-1, sess-A, sess-B, sess-cloud-1, sess-guarded) so collisions don't
+    // exist, but the suite is one ID rename away from order-dependent failures.
+    sessionStorage.clear();
     localStorageMock.setItem(LOCAL_STORAGE_KEYS.snapshotBaseIntroSeen, "1");
     mockApiPost.mockResolvedValue({});
     mockUseLineageGraphContext.mockReturnValue({ cloudMode: false });
+    warnSpy = vi
+      .spyOn(console, "warn")
+      // biome-ignore lint/suspicious/noEmptyBlockStatements: suppress dev-guard noise across cross-shell suite
+      .mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy?.mockRestore();
+    warnSpy = null;
   });
 
   function renderWithProps(
@@ -555,52 +573,70 @@ describe("StalenessBanner props (cross-shell)", () => {
   });
 
   describe("dismissible guard (dev-time)", () => {
-    it("warns when dismissible=true is passed without sessionId", () => {
-      const warnSpy = vi
-        .spyOn(console, "warn")
-        // biome-ignore lint/suspicious/noEmptyBlockStatements: Intentionally suppressing console.warn for this test
-        .mockImplementation(() => {});
+    // Pass a no-op toastAdapter in the negative-assertion cases so the
+    // separate `requireCloudMode={false}` + missing-adapter warning doesn't
+    // pollute these assertions. Each test is scoped to the dismissible guard.
+    const silentAdapter = { success: vi.fn(), error: vi.fn() };
 
+    it("warns when dismissible=true is passed without sessionId", () => {
       renderWithProps(OUTDATED_STALENESS, {
         requireCloudMode: false,
         dismissible: true,
+        toastAdapter: silentAdapter,
       });
 
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining("dismissible=true"),
       );
-      warnSpy.mockRestore();
     });
 
     it("does not warn when dismissible=true and sessionId is provided", () => {
-      const warnSpy = vi
-        .spyOn(console, "warn")
-        // biome-ignore lint/suspicious/noEmptyBlockStatements: Intentionally suppressing console.warn for this test
-        .mockImplementation(() => {});
-
       renderWithProps(OUTDATED_STALENESS, {
         requireCloudMode: false,
         dismissible: true,
         sessionId: "sess-guarded",
+        toastAdapter: silentAdapter,
       });
 
       expect(warnSpy).not.toHaveBeenCalled();
-      warnSpy.mockRestore();
     });
 
     it("does not warn when dismissible is false (sessionId irrelevant)", () => {
-      const warnSpy = vi
-        .spyOn(console, "warn")
-        // biome-ignore lint/suspicious/noEmptyBlockStatements: Intentionally suppressing console.warn for this test
-        .mockImplementation(() => {});
-
       renderWithProps(OUTDATED_STALENESS, {
         requireCloudMode: false,
         dismissible: false,
+        toastAdapter: silentAdapter,
       });
 
       expect(warnSpy).not.toHaveBeenCalled();
-      warnSpy.mockRestore();
+    });
+  });
+
+  describe("toastAdapter guard (dev-time)", () => {
+    it("warns when requireCloudMode=false is passed without a toastAdapter", () => {
+      renderWithProps(OUTDATED_STALENESS, {
+        requireCloudMode: false,
+      });
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("requireCloudMode"),
+      );
+    });
+
+    it("does not warn when toastAdapter is provided", () => {
+      renderWithProps(OUTDATED_STALENESS, {
+        requireCloudMode: false,
+        toastAdapter: { success: vi.fn(), error: vi.fn() },
+      });
+
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it("does not warn when requireCloudMode defaults to true (OSS shell)", () => {
+      mockUseLineageGraphContext.mockReturnValue({ cloudMode: true });
+      renderWithProps(OUTDATED_STALENESS, {});
+
+      expect(warnSpy).not.toHaveBeenCalled();
     });
   });
 
