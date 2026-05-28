@@ -136,11 +136,10 @@ export interface PairedHistogramDiscreteProps {
 /**
  * Renderer-agnostic slot shape — the bar heights are pre-resolved so the
  * SVG body doesn't have to know whether they came from proportions or
- * rank positions. `displayValue` is the formatted-for-display string
- * (`formatValue(raw)`); the SVG body never sees the raw `unknown` value.
+ * rank positions. `hoverTitle` already carries the formatted display
+ * string, so the SVG body never sees the raw `unknown` value.
  */
 interface RenderSlot {
-  displayValue: string;
   baseH: number;
   currH: number;
   hoverTitle: string;
@@ -291,27 +290,27 @@ function computeRenderSlots(
 ): RenderSlot[] {
   if (data.mode === "ranks") {
     const { slots } = computeRanksSlots(data);
-    return slots.map((s) => {
-      const displayValue = formatValue(s.value);
-      return {
-        displayValue,
-        baseH: heightForRank(s.baseRank, data.k, chartHeight),
-        currH: heightForRank(s.currRank, data.k, chartHeight),
-        hoverTitle: formatRankTooltip(displayValue, s.baseRank, s.currRank),
-      };
-    });
+    return slots.map((s) => ({
+      baseH: heightForRank(s.baseRank, data.k, chartHeight),
+      currH: heightForRank(s.currRank, data.k, chartHeight),
+      hoverTitle: formatRankTooltip(
+        formatValue(s.value),
+        s.baseRank,
+        s.currRank,
+      ),
+    }));
   }
 
   const { slots, maxProp } = computeDiscreteSlots(data);
-  return slots.map((s) => {
-    const displayValue = formatValue(s.value);
-    return {
-      displayValue,
-      baseH: (s.baseProp / maxProp) * chartHeight,
-      currH: (s.currProp / maxProp) * chartHeight,
-      hoverTitle: formatProportionTooltip(displayValue, s.baseProp, s.currProp),
-    };
-  });
+  return slots.map((s) => ({
+    baseH: (s.baseProp / maxProp) * chartHeight,
+    currH: (s.currProp / maxProp) * chartHeight,
+    hoverTitle: formatProportionTooltip(
+      formatValue(s.value),
+      s.baseProp,
+      s.currProp,
+    ),
+  }));
 }
 
 /** Default `formatValue`: `String(v)`. Cheap, safe; the seam exists so
