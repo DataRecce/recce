@@ -554,6 +554,56 @@ describe("StalenessBanner props (cross-shell)", () => {
     expect(screen.queryByText(/Recce now snapshots your base data/)).toBeNull();
   });
 
+  describe("dismissible guard (dev-time)", () => {
+    it("warns when dismissible=true is passed without sessionId", () => {
+      const warnSpy = vi
+        .spyOn(console, "warn")
+        // biome-ignore lint/suspicious/noEmptyBlockStatements: Intentionally suppressing console.warn for this test
+        .mockImplementation(() => {});
+
+      renderWithProps(OUTDATED_STALENESS, {
+        requireCloudMode: false,
+        dismissible: true,
+      });
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("dismissible=true"),
+      );
+      warnSpy.mockRestore();
+    });
+
+    it("does not warn when dismissible=true and sessionId is provided", () => {
+      const warnSpy = vi
+        .spyOn(console, "warn")
+        // biome-ignore lint/suspicious/noEmptyBlockStatements: Intentionally suppressing console.warn for this test
+        .mockImplementation(() => {});
+
+      renderWithProps(OUTDATED_STALENESS, {
+        requireCloudMode: false,
+        dismissible: true,
+        sessionId: "sess-guarded",
+      });
+
+      expect(warnSpy).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it("does not warn when dismissible is false (sessionId irrelevant)", () => {
+      const warnSpy = vi
+        .spyOn(console, "warn")
+        // biome-ignore lint/suspicious/noEmptyBlockStatements: Intentionally suppressing console.warn for this test
+        .mockImplementation(() => {});
+
+      renderWithProps(OUTDATED_STALENESS, {
+        requireCloudMode: false,
+        dismissible: false,
+      });
+
+      expect(warnSpy).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+  });
+
   describe("variant='card' (cloud floating-overlay surface)", () => {
     it("renders a MUI Paper root instead of the default Box", () => {
       const { container } = renderWithProps(OUTDATED_STALENESS, {

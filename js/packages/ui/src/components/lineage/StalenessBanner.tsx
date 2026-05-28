@@ -184,6 +184,18 @@ export function StalenessBanner({
     setDismissedSignature(readDismissedSignature(dismissedKey));
   }, [dismissedKey]);
 
+  // Dev-time guard: `dismissible` without `sessionId` silently degrades to
+  // in-memory dismissal (sessionStorage persistence is skipped because the
+  // dismissedKey gate is null). Surface the misuse loudly in dev so callers
+  // don't ship a banner that loses its dismissal state on every remount.
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production" && dismissible && !sessionId) {
+      console.warn(
+        "StalenessBanner: `dismissible=true` requires `sessionId` — dismissals will not persist across remounts.",
+      );
+    }
+  }, [dismissible, sessionId]);
+
   // Toast when staleness clears (outdated → matching transition).
   useEffect(() => {
     const transitioned = prevOutdated.current === true && !outdated;
