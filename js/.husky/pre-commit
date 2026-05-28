@@ -7,6 +7,64 @@ export GIT_WORK_TREE="$REPO_ROOT"
 # Reminder: All commits require --signoff (-s) for DCO compliance
 # The commit-msg hook will enforce this, but here's a heads up!
 
+# --- Pinned-dependency guard ---
+# Some deps are deliberately pinned for known upstream bugs. Dependabot
+# consolidations have silently re-bumped past similar pins in the sister
+# recce-cloud-infra repo (DRC-3460, PR #1333, PR #1376). This guard checks the
+# STAGED content of js/package.json and blocks the commit if a pinned dep has
+# drifted. Override after verifying upstream is fixed:
+#   ALLOW_BIOME_BUMP=1 git commit ...
+PINNED_PKG_JSON="js/package.json"
+if git diff --cached --name-only --diff-filter=ACMR | grep -qx "$PINNED_PKG_JSON"; then
+    # Pinned: @biomejs/biome → 2.4.15.
+    #
+    # Rationale: biome 2.4.12 through 2.4.16 have a deterministic Rust stack
+    # overflow on macOS arm64 when running TS-aware nursery rules
+    # (noFloatingPromises, noMisusedPromises, noUnnecessaryConditions).
+    # Upstream issue: biomejs/biome#10411 (closed, partial fix in #10442
+    # shipped in 2.4.16 2026-05-27). The sister recce-cloud-infra repo tested
+    # 2.4.16 locally on 2026-05-28 and CONFIRMED it still crashes — see
+    # DataRecce/recce-cloud-infra#1382 for the testing notes.
+    #
+    # The js/biome.json in this repo does NOT currently enable those rules,
+    # so 2.4.15 is safe here. But a silent dependabot bump past this version
+    # (or a future enabling of those rules) could regress us. Any change
+    # requires deliberate ack. When biome ships a release that confirms the
+    # full fix, update EXPECTED_BIOME in the same commit as the bump.
+    EXPECTED_BIOME="2.4.15"
+    STAGED_BIOME=$(git show ":$PINNED_PKG_JSON" \
+        | grep -E '"@biomejs/biome":' \
+        | sed -E 's/.*"@biomejs\/biome":[[:space:]]*"([^"]+)".*/\1/')
+    if [ -n "$STAGED_BIOME" ] && [ "$STAGED_BIOME" != "$EXPECTED_BIOME" ] && [ -z "$ALLOW_BIOME_BUMP" ]; then
+        echo "ERROR: @biomejs/biome is pinned to $EXPECTED_BIOME but the staged"
+        echo "       $PINNED_PKG_JSON sets it to $STAGED_BIOME."
+        echo ""
+        echo "Why this is pinned:"
+        echo "  DRC-3460 — biome 2.4.12 through 2.4.16 hit a deterministic Rust"
+        echo "  stack overflow on macOS arm64 when running TS-aware nursery rules"
+        echo "  (noFloatingPromises, noMisusedPromises, noUnnecessaryConditions)."
+        echo "  Upstream: biomejs/biome#10411 (closed, partial fix #10442 shipped"
+        echo "  in 2.4.16) — still crashes the sister recce-cloud-infra repo on"
+        echo "  2.4.16 as of 2026-05-28."
+        echo ""
+        echo "  This repo's js/biome.json does NOT currently enable those rules,"
+        echo "  but the sister recce-cloud-infra repo has been bitten by silent"
+        echo "  Dependabot-consolidation bumps twice (PRs #1333 and #1376). We"
+        echo "  require a deliberate ack for any biome version change here too."
+        echo ""
+        echo "Before bumping, verify on macOS arm64:"
+        echo "  1. cd js && pnpm install"
+        echo "  2. pnpm exec biome check --staged   # must NOT stack overflow"
+        echo "  3. pnpm exec biome check src/        # must NOT stack overflow"
+        echo ""
+        echo "If verified clean, override:"
+        echo "  ALLOW_BIOME_BUMP=1 git commit ..."
+        echo ""
+        echo "Then update EXPECTED_BIOME in this hook to the new pinned version."
+        exit 1
+    fi
+fi
+
 # Check if there are any staged TypeScript/JavaScript files in the js directory
 STAGED_JS_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep "^js/" | grep -E '\.(ts|tsx|js|jsx|mjs)$' || true)
 
