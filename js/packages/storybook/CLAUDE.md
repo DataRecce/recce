@@ -1,5 +1,7 @@
 # Storybook Package - Claude Guidance
 
+> For monorepo-wide frontend tooling (pnpm, Biome, Vitest, style conventions, `@datarecce/ui` publishing), see **[`../../CLAUDE.md`](../../CLAUDE.md)** (`js/CLAUDE.md`). This file covers Storybook-specific testing patterns only.
+
 ## Testing Portal-Rendered Content (MUI Dialogs, Popovers)
 
 MUI components like `Dialog`, `Popover`, `Menu`, and `Modal` render their content via React Portals **outside** the story's canvas element. This affects how you query elements in Storybook interaction tests.

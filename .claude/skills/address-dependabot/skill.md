@@ -50,6 +50,8 @@ digraph address_dependabot {
 
 This repo contains `@datarecce/ui`, a **published npm package** consumed by external projects. Its `dependencies` field is a contract with consumers. This shapes how dependency updates are applied.
 
+For frontend tooling context (pnpm v11 `strictDepBuilds`/`allowBuilds`, Biome migration on bump, Node version via `nave`), reference **[`js/CLAUDE.md`](../../../js/CLAUDE.md)** before applying npm updates.
+
 ### The Three Zones
 
 | Zone | File | Who sees it | Bump freely? |

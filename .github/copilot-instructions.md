@@ -1,5 +1,7 @@
 # Recce Copilot Instructions
 
+> Claude Code and other agents using `CLAUDE.md` should also consult **[`js/CLAUDE.md`](../js/CLAUDE.md)** for frontend tooling specifics (pnpm commands, Biome, Vitest, `@datarecce/ui` publishing, pnpm v11 `strictDepBuilds`/`allowBuilds`, style conventions). This file remains the canonical Copilot context.
+
 ## Project Overview
 
 Recce is a data validation and review tool for dbt and SQLMesh projects. It's a Python/TypeScript monorepo providing CLI

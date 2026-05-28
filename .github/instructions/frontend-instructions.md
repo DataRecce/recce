@@ -4,6 +4,8 @@ applyTo: "js/**/*.ts,js/**/*.tsx,js/**/*.js,js/**/*.jsx,js/**/*.json,js/**/*.mjs
 
 # Frontend Build Instructions (js/ Directory)
 
+> This file is the **Copilot-targeted** frontend guide (scoped via `applyTo:` frontmatter). Claude Code and other agents using `CLAUDE.md` should consult **[`js/CLAUDE.md`](../../js/CLAUDE.md)** for the equivalent guidance — both should stay in sync on tooling specifics (pnpm v11, Biome, `@datarecce/ui` publishing, style conventions).
+
 ## Critical Frontend Build Requirements
 
 **MANDATORY BUILD PROCESS - Frontend changes are NOT visible until this is run:**
