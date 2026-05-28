@@ -19,6 +19,7 @@ export {
   BASE_BAR_COLOR_DARK_WITH_ALPHA,
   BASE_BAR_COLOR_WITH_ALPHA,
   // Chart theme utilities
+  type ChartBarColors,
   type ChartThemeColors,
   CURRENT_BAR_COLOR,
   CURRENT_BAR_COLOR_DARK,
