@@ -97,9 +97,9 @@ import {
   EXPLORE_MIN_ZOOM,
   edgeTypes,
   FIT_VIEW_PADDING,
-  getNodeColor,
   initialNodes,
   LEGIBLE_MIN_ZOOM,
+  makeGetNodeColor,
   nodeTypes,
 } from "./config";
 import {
@@ -508,6 +508,14 @@ export function PrivateLineageView(
     wholeModelChangedNodeIds,
     publish: publishImpactSets,
   } = usePublishedImpactSets();
+
+  // MiniMap node coloring. Mirror the canvas: in the new CLL experience,
+  // impacted-but-unchanged nodes are amber, so thread the impacted set through
+  // instead of coloring by change status alone (DRC-3250).
+  const minimapNodeColor = useMemo(
+    () => makeGetNodeColor({ impactedNodeIds, newCllExperience }),
+    [impactedNodeIds, newCllExperience],
+  );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only run when lineageGraph changes (initial load/refetch).
   useLayoutEffect(() => {
@@ -1546,7 +1554,7 @@ export function PrivateLineageView(
             </Panel>
             {nodes.length <= MINIMAP_NODE_THRESHOLD && (
               <MiniMap
-                nodeColor={getNodeColor}
+                nodeColor={minimapNodeColor}
                 nodeStrokeWidth={3}
                 zoomable
                 pannable

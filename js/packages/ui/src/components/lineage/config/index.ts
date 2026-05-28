@@ -3,6 +3,8 @@ export {
   edgeTypes,
   getNodeColor,
   initialNodes,
+  makeGetNodeColor,
+  type NodeColorOptions,
   nodeTypes,
 } from "./nodeTypes";
 

@@ -527,6 +527,35 @@ export function getStyleForImpacted(isDark?: boolean): ChangeStatusStyle {
 }
 
 /**
+ * Resolve a lineage node's accent style (color + background + icon) from its
+ * change/impact state. This is the single source of truth for a node card's
+ * color: `LineageNode` renders from it, and the MiniMap copies the resulting
+ * color so the canvas and the minimap can never drift apart.
+ *
+ * In the new CLL experience a node with no change of its own but downstream of
+ * an upstream change is "impacted" (amber); otherwise the change status drives
+ * the color, using the muted "cll" palette inside the new experience.
+ */
+export function getNodeChangeStyle(
+  state: {
+    changeStatus?: ChangeStatus;
+    isImpacted?: boolean;
+    newCllExperience?: boolean;
+  },
+  isDark?: boolean,
+): ChangeStatusStyle {
+  const { changeStatus, isImpacted, newCllExperience } = state;
+  const isUnchanged = !changeStatus || changeStatus === "unchanged";
+  return newCllExperience && isImpacted && isUnchanged
+    ? getStyleForImpacted(isDark)
+    : getIconForChangeStatus(
+        changeStatus,
+        isDark,
+        newCllExperience ? "cll" : "default",
+      );
+}
+
+/**
  * Get icon and color for a resource type
  *
  * @param resourceType - The resource type (model, source, seed, etc.)
