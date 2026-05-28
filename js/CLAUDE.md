@@ -42,7 +42,7 @@ When updating frontend deps:
 
 1. **Audit:** `pnpm audit && pnpm outdated`.
 2. **Apply:** Update root `js/package.json`; add `pnpm.overrides` for shared packages.
-3. **Verify:** `pnpm install && pnpm lint && pnpm type:check && pnpm test && pnpm build`.
+3. **Verify:** `pnpm install && pnpm lint && pnpm type:check && pnpm test && pnpm run build`.
 
 Packages requiring overrides (exist in multiple `package.json`): `@emotion/react`, `@mui/material`, `@tanstack/react-query`, `@xyflow/react`, `axios`, `date-fns`, `lodash`, `tailwindcss`, `typescript`, `vitest`.
 

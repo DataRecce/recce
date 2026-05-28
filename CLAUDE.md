@@ -49,7 +49,7 @@ When asked to "update deps" or "check for updates":
 1. **Audit:** Frontend — see `js/CLAUDE.md` for `pnpm audit && pnpm outdated` workflow and overrides list. Python — `make deps-check-python`.
 2. **Present:** Group by SECURITY/MAJOR/MINOR with numbered list
 3. **Apply:** Frontend updates per `js/CLAUDE.md`; Python updates via `pyproject.toml`.
-4. **Verify:** Run all quality checks (`make test` for Python; `pnpm install && pnpm lint && pnpm type:check && pnpm test && pnpm build` for frontend).
+4. **Verify:** Run all quality checks (`make test` for Python; `cd js && pnpm install && pnpm lint && pnpm type:check && pnpm test && pnpm run build` for frontend).
 
 ## Commit and PR Workflow
 
