@@ -12,7 +12,7 @@ import { LOCAL_STORAGE_KEYS } from "../../api/storageKeys";
  *
  * @param anchorEl - DOM element to anchor the popover to (typically the banner).
  */
-interface FirstTimePopoverProps {
+export interface FirstTimePopoverProps {
   anchorEl: HTMLElement | null;
 }
 
