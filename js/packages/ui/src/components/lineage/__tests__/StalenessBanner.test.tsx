@@ -553,6 +553,121 @@ describe("StalenessBanner props (cross-shell)", () => {
     expect(screen.getByText(/Production data has changed/)).toBeInTheDocument();
     expect(screen.queryByText(/Recce now snapshots your base data/)).toBeNull();
   });
+
+  describe("variant='card' (cloud floating-overlay surface)", () => {
+    it("renders a MUI Paper root instead of the default Box", () => {
+      const { container } = renderWithProps(OUTDATED_STALENESS, {
+        requireCloudMode: false,
+        variant: "card",
+      });
+
+      // Card branch wraps content in <Paper> (which MUI renders with a
+      // `MuiPaper-root` class). Banner branch uses a plain <Box>, so this
+      // assertion fails for the default variant — proves the branch ran.
+      expect(container.querySelector(".MuiPaper-root")).not.toBeNull();
+    });
+
+    it("supports the full cloud-shell prop bundle end-to-end", async () => {
+      const user = userEvent.setup();
+      const adapter = { success: vi.fn(), error: vi.fn() };
+
+      renderWithProps(OUTDATED_STALENESS, {
+        requireCloudMode: false,
+        variant: "card",
+        dismissible: true,
+        sessionId: "sess-cloud-1",
+        toastAdapter: adapter,
+        successToastOnlyOnUserRefresh: true,
+        messageVariant: "metadata",
+        showFirstTimePopover: false,
+        cardSx: { top: 180 },
+      });
+
+      // Wording flips to the metadata variant.
+      expect(
+        screen.getByText(/Production metadata has changed/),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/Production data has changed/)).toBeNull();
+
+      // Refresh button still wired through to the apiClient.
+      await user.click(screen.getByRole("button", { name: /Refresh base/ }));
+      expect(mockApiPost).toHaveBeenCalledWith("/api/refresh-base");
+
+      // Dismiss button hides the card (sessionStorage-backed dismissal).
+      await user.click(screen.getByRole("button", { name: /Dismiss/ }));
+      expect(screen.queryByText(/Production metadata has changed/)).toBeNull();
+
+      // Popover opted out — must not appear even without the localStorage flag.
+      expect(
+        screen.queryByText(/Recce now snapshots your base data/),
+      ).toBeNull();
+    });
+
+    it("cardSx object override produces different emotion classes than defaults", () => {
+      const { container, unmount } = renderWithProps(OUTDATED_STALENESS, {
+        requireCloudMode: false,
+        variant: "card",
+      });
+      const defaultClass =
+        container.querySelector(".MuiPaper-root")?.className ?? "";
+      unmount();
+
+      const { container: overrideContainer } = renderWithProps(
+        OUTDATED_STALENESS,
+        {
+          requireCloudMode: false,
+          variant: "card",
+          // Use a sentinel offset that the default does not set.
+          cardSx: { top: 999 },
+        },
+      );
+      const overrideClass =
+        overrideContainer.querySelector(".MuiPaper-root")?.className ?? "";
+
+      // Emotion compiles `sx` to className suffixes; an additional rule must
+      // produce a non-identical className. This proves the `cardSx` merge is
+      // reaching the Paper element rather than being silently dropped.
+      expect(overrideClass).not.toBe(defaultClass);
+    });
+
+    it("cardSx array form (multiple sx layers) flattens without throwing", () => {
+      // The component does `Array.isArray(cardSx) ? cardSx : [cardSx]` so it
+      // can spread either shape into MUI's sx array. Regression target: if
+      // someone "simplifies" that branch to `[cardSx]` always, MUI receives
+      // a nested array and warns at runtime.
+      expect(() => {
+        renderWithProps(OUTDATED_STALENESS, {
+          requireCloudMode: false,
+          variant: "card",
+          cardSx: [{ top: 200 }, { bgcolor: "primary.light" }],
+        });
+      }).not.toThrow();
+
+      expect(
+        screen.getByText(/Production data has changed/),
+      ).toBeInTheDocument();
+    });
+
+    it("zIndex theme callback resolves against the MUI theme", () => {
+      // The card branch sets `zIndex: (theme) => theme.zIndex.drawer + 1`.
+      // If the theme is not in scope, MUI logs a warning. We spy on
+      // console.error so any theme-resolution warning would fail the test.
+      const errSpy = vi
+        .spyOn(console, "error")
+        // biome-ignore lint/suspicious/noEmptyBlockStatements: Intentionally suppressing console.error for this test
+        .mockImplementation(() => {});
+
+      const { container } = renderWithProps(OUTDATED_STALENESS, {
+        requireCloudMode: false,
+        variant: "card",
+      });
+
+      expect(container.querySelector(".MuiPaper-root")).not.toBeNull();
+      expect(errSpy).not.toHaveBeenCalled();
+
+      errSpy.mockRestore();
+    });
+  });
 });
 
 // ============================================================================
