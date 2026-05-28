@@ -10,12 +10,12 @@ export GIT_WORK_TREE="$REPO_ROOT"
 # --- Pinned-dependency guard ---
 # Some deps are deliberately pinned for known upstream bugs. Dependabot
 # consolidations have silently re-bumped past similar pins in the sister
-# recce-cloud-infra repo (DRC-3460, PR #1333, PR #1376). This guard checks the
+# recce-cloud-infra repo (DRC-3460, PR #1333, PR #1374). This guard checks the
 # STAGED content of js/package.json and blocks the commit if a pinned dep has
 # drifted. Override after verifying upstream is fixed:
 #   ALLOW_BIOME_BUMP=1 git commit ...
 PINNED_PKG_JSON="js/package.json"
-if git diff --cached --name-only --diff-filter=ACMR | grep -qx "$PINNED_PKG_JSON"; then
+if git diff --cached --name-only --diff-filter=ACM | grep -qx "$PINNED_PKG_JSON"; then
     # Pinned: @biomejs/biome → 2.4.15.
     #
     # Rationale: biome 2.4.12 through 2.4.16 have a deterministic Rust stack
@@ -32,10 +32,24 @@ if git diff --cached --name-only --diff-filter=ACMR | grep -qx "$PINNED_PKG_JSON
     # requires deliberate ack. When biome ships a release that confirms the
     # full fix, update EXPECTED_BIOME in the same commit as the bump.
     EXPECTED_BIOME="2.4.15"
+    # head -1 hardens against a future pnpm.overrides entry adding a second
+    # "@biomejs/biome": line. Fail-loud (below) if extraction is empty so a
+    # package.json reformat (or removed dep) can't silently disable the guard.
     STAGED_BIOME=$(git show ":$PINNED_PKG_JSON" \
         | grep -E '"@biomejs/biome":' \
+        | head -1 \
         | sed -E 's/.*"@biomejs\/biome":[[:space:]]*"([^"]+)".*/\1/')
-    if [ -n "$STAGED_BIOME" ] && [ "$STAGED_BIOME" != "$EXPECTED_BIOME" ] && [ -z "$ALLOW_BIOME_BUMP" ]; then
+    if [ -z "$STAGED_BIOME" ] && [ -z "$ALLOW_BIOME_BUMP" ]; then
+        echo "ERROR: Could not extract @biomejs/biome version from staged $PINNED_PKG_JSON."
+        echo "       The pinned-dependency guard expects a single-line entry like:"
+        echo "         \"@biomejs/biome\": \"X.Y.Z\""
+        echo ""
+        echo "       If the dep was intentionally removed or the file format changed,"
+        echo "       override and update this guard in the same commit:"
+        echo "         ALLOW_BIOME_BUMP=1 git commit ..."
+        exit 1
+    fi
+    if [ "$STAGED_BIOME" != "$EXPECTED_BIOME" ] && [ -z "$ALLOW_BIOME_BUMP" ]; then
         echo "ERROR: @biomejs/biome is pinned to $EXPECTED_BIOME but the staged"
         echo "       $PINNED_PKG_JSON sets it to $STAGED_BIOME."
         echo ""
@@ -49,7 +63,7 @@ if git diff --cached --name-only --diff-filter=ACMR | grep -qx "$PINNED_PKG_JSON
         echo ""
         echo "  This repo's js/biome.json does NOT currently enable those rules,"
         echo "  but the sister recce-cloud-infra repo has been bitten by silent"
-        echo "  Dependabot-consolidation bumps twice (PRs #1333 and #1376). We"
+        echo "  Dependabot-consolidation bumps twice (PRs #1333 and #1374). We"
         echo "  require a deliberate ack for any biome version change here too."
         echo ""
         echo "Before bumping, verify on macOS arm64:"
