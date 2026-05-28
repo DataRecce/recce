@@ -9,9 +9,8 @@ import { createCheckCardData, outdatedChecks } from "./fixtures";
 // ============================================
 
 const cardMeta: Meta<typeof CheckCard> = {
-  title: "Check/OutdatedCheckIndicator",
+  title: "Checks/OutdatedCheckIndicator",
   component: CheckCard,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {

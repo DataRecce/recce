@@ -11,8 +11,8 @@ overrides:
   'brace-expansion@>=4.0.0 <5.0.5': '>=5.0.5'
   'js-yaml@<3.14.2': '>=3.14.2'
   'glob@>=10.2.0 <10.5.0': '>=10.5.0'
-  '@tanstack/react-query': 5.100.10
-  '@types/react': 19.2.14
+  '@tanstack/react-query': 5.100.14
+  '@types/react': 19.2.15
   '@types/react-dom': 19.2.3
   '@vitejs/plugin-react': ^5.2.0
   '@biomejs/biome': 2.4.15
@@ -24,13 +24,13 @@ overrides:
   '@mui/system': ^9.0.0
   '@xyflow/react': ^12.10.2
   '@dagrejs/dagre': 3.0.0
-  ag-grid-community: ^35.2.1
-  ag-grid-react: ^35.2.1
+  ag-grid-community: ^35.3.0
+  ag-grid-react: ^35.3.0
   lodash: ^4.18.1
   next-themes: ^0.4.6
   typescript: ^6.0.3
   tailwindcss: ^4.3.0
-  postcss: ^8.5.14
+  postcss: ^8.5.15
   '@tailwindcss/postcss': ^4.3.0
   ajv: ^8.18.0
   serialize-javascript: '>=7.0.5'
@@ -39,7 +39,7 @@ overrides:
   'minimatch@>=9.0.0 <9.0.7': '>=9.0.7'
   'minimatch@>=10.0.0 <10.2.3': '>=10.2.3'
   'rollup@>=4.0.0 <4.59.0': '>=4.59.0'
-  '@amplitude/unified': 1.1.5
+  '@amplitude/unified': 1.1.9
   lodash-es: '>=4.18.1'
   '@xmldom/xmldom@<0.8.12': '>=0.8.12'
   '@xmldom/xmldom@>=0.9.0 <0.9.9': '>=0.9.9'
@@ -49,6 +49,12 @@ overrides:
   vite: '>=7.3.2 <8.0.0'
   'yaml@>=1.0.0 <1.10.3': '>=1.10.3'
   'yaml@>=2.0.0 <2.8.3': '>=2.8.3'
+  'js-cookie@<3.0.7': ^3.0.7
+  'ws@>=8.0.0 <8.20.1': ^8.20.1
+  # Pinned to 4.2.x: date-fns 4.3.0 added a modularized optimization fallback
+  # that breaks `vi.mock("date-fns", ...)` in TimelineEvent.test.tsx (OSS).
+  # Revisit when the test mock is updated to handle subpath re-exports.
+  date-fns: ~4.2.1
 
 allowBuilds:
   # Allowed: these packages produce native artifacts we use at runtime

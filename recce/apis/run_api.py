@@ -28,7 +28,7 @@ from recce.apis.run_func import (
     submit_run,
 )
 from recce.event import log_api_event
-from recce.exceptions import RecceException
+from recce.exceptions import DuckDBExternalAccessBlocked, RecceException
 from recce.models import RunDAO
 
 logger = logging.getLogger("uvicorn")
@@ -76,7 +76,10 @@ async def create_run_handler(input: CreateRunIn):
     if input.nowait:
         return run
     else:
-        run.result = await future
+        try:
+            run.result = await future
+        except DuckDBExternalAccessBlocked as e:
+            raise HTTPException(status_code=400, detail=str(e))
         return run
 
 
@@ -319,6 +322,8 @@ async def export_run_handler(run_id: UUID, format: str = Query("csv", descriptio
     async with sem:
         try:
             columns, rows = await asyncio.to_thread(_execute_export_query, run)
+        except DuckDBExternalAccessBlocked as e:
+            raise HTTPException(status_code=400, detail=str(e))
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:

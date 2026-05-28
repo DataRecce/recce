@@ -157,7 +157,7 @@ export interface LineageNodeProps {
   isWholeModelChanged?: boolean;
   /** This model is downstream of (impacted by) a whole-model change. Suppresses the graph badge (the signal lives on NodeView's title chip + stripe) and the change-category text label. Precedence is enforced internally: `isWholeModelChanged` outranks this flag. */
   isWholeModelImpacted?: boolean;
-  /** Whether the `--whole-model-impact` server flag is on. When false, no per-column badges render and the original "Breaking / Non Breaking / Partial Breaking" text labels are restored. */
+  /** Whether the `--whole-model-impact` server flag is on. When false, no per-column badges render and the "Model-Wide Change / Column Change / Additive Change" text labels are shown instead. */
   wholeModelImpact?: boolean;
 
   // === Callbacks ===
@@ -176,9 +176,9 @@ export interface LineageNodeProps {
 // =============================================================================
 
 const CHANGE_CATEGORY_LABELS: Record<ChangeCategory, string> = {
-  breaking: "Breaking",
-  non_breaking: "Non Breaking",
-  partial_breaking: "Partial Breaking",
+  breaking: "Model-Wide Change",
+  non_breaking: "Additive Change",
+  partial_breaking: "Column Change",
   unknown: "Unknown",
 };
 

@@ -20,7 +20,8 @@ Separation of concerns across models, APIs, tasks, adapters, and state. Import r
 
 Monorepo with `@datarecce/ui` shared package. OSS app (`js/app/`) stays thin; shared components, hooks, and API clients live in `js/packages/ui/`.
 
-→ `docs/frontend.md`
+→ `docs/frontend.md` (structure, import rules, build process)
+→ `js/CLAUDE.md` (tooling: pnpm, Biome, Vitest, @datarecce/ui publishing, style conventions, pnpm v11 quirks)
 
 ## Testing
 

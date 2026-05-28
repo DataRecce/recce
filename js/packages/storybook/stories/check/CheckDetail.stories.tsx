@@ -10,9 +10,8 @@ import {
 } from "./fixtures";
 
 const meta: Meta<typeof CheckDetail> = {
-  title: "Check/CheckDetail",
+  title: "Checks/CheckDetail",
   component: CheckDetail,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {

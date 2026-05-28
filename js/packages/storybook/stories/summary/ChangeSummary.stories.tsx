@@ -9,9 +9,8 @@ import {
 } from "./fixtures";
 
 const meta: Meta<typeof ChangeSummary> = {
-  title: "Visualizations/Summary/ChangeSummary",
+  title: "Checks/ChangeSummary",
   component: ChangeSummary,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {

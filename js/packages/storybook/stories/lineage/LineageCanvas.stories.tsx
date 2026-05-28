@@ -48,7 +48,6 @@ import {
 const meta: Meta<typeof LineageCanvas> = {
   title: "Lineage/LineageCanvas",
   component: LineageCanvas,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {
