@@ -9,7 +9,6 @@
  *   - Differential rect colored by which env exceeds the other in that bin
  *   - Agreement zone (min(base, current)) uses the checkerboard SVG pattern
  *   - Light / dark theme bar colors
- *   - Endpoint + midpoint labels
  *   - Degenerate / zero / mismatched payloads don't crash
  */
 
@@ -50,57 +49,13 @@ describe("PairedHistogramContinuous", () => {
     expect(groups.length).toBe(sampleData.baseDensity.length);
   });
 
-  it("uses default cell-density dimensions when not provided", () => {
+  it("renders at fixed cell-density dimensions (140x28)", () => {
     const { container } = render(
       <PairedHistogramContinuous data={sampleData} />,
     );
     const svg = container.querySelector("svg");
     expect(svg?.getAttribute("width")).toBe("140");
     expect(svg?.getAttribute("height")).toBe("28");
-  });
-
-  it("respects custom width and height", () => {
-    const { container } = render(
-      <PairedHistogramContinuous data={sampleData} width={240} height={92} />,
-    );
-    const svg = container.querySelector("svg");
-    expect(svg?.getAttribute("width")).toBe("240");
-    expect(svg?.getAttribute("height")).toBe("92");
-  });
-
-  it("renders endpoint labels when showEndpoints is true", () => {
-    const { container } = render(
-      <PairedHistogramContinuous data={sampleData} showEndpoints />,
-    );
-    const texts = Array.from(container.querySelectorAll("text"));
-    // Title <title> element is also a "text" node in some queries; filter
-    // to only the SVG <text> elements (which carry textContent).
-    const labels = texts.map((t) => t.textContent).filter(Boolean);
-    expect(labels).toContain("0");
-    expect(labels).toContain("1K");
-  });
-
-  it("does not render endpoint labels by default", () => {
-    const { container } = render(
-      <PairedHistogramContinuous data={sampleData} />,
-    );
-    // Only the <title> for accessibility; no SVG <text> for axis labels.
-    const textNodes = container.querySelectorAll("svg > g text");
-    expect(textNodes.length).toBe(0);
-  });
-
-  it("renders midpoint when showMidpoint is true", () => {
-    const { container } = render(
-      <PairedHistogramContinuous
-        data={sampleData}
-        showEndpoints
-        showMidpoint
-      />,
-    );
-    const labels = Array.from(container.querySelectorAll("text")).map(
-      (t) => t.textContent,
-    );
-    expect(labels).toContain("500"); // midpoint of [0, 1000] — integer renders verbatim
   });
 
   it("light theme uses the light bar palette (#F6AD55 / #63B3ED)", () => {
@@ -209,19 +164,18 @@ describe("PairedHistogramContinuous", () => {
     ).toBe(true);
   });
 
-  it("uses custom formatter for endpoint labels", () => {
+  it("uses custom formatValue in tooltip bin-range prefix", () => {
     const { container } = render(
       <PairedHistogramContinuous
         data={sampleData}
-        showEndpoints
         formatValue={(v) => `$${v}`}
       />,
     );
-    const labels = Array.from(container.querySelectorAll("text")).map(
-      (t) => t.textContent,
-    );
-    expect(labels).toContain("$0");
-    expect(labels).toContain("$1000");
+    const titles = Array.from(container.querySelectorAll("svg title"))
+      .map((t) => t.textContent ?? "")
+      // skip the accessible <title> at the top of the SVG
+      .filter((t) => t.includes("["));
+    expect(titles.some((t) => t.startsWith("$0"))).toBe(true);
   });
 
   it("computeContinuousLayout: bar widths sum to the available width", () => {
@@ -249,18 +203,6 @@ describe("PairedHistogramContinuous", () => {
     );
     expect(container.querySelector("svg")?.getAttribute("class")).toBe(
       "my-chart",
-    );
-  });
-
-  it("renders an accessible aria-label", () => {
-    const { container } = render(
-      <PairedHistogramContinuous
-        data={sampleData}
-        ariaLabel="customer order amount"
-      />,
-    );
-    expect(container.querySelector("svg")?.getAttribute("aria-label")).toBe(
-      "customer order amount",
     );
   });
 });

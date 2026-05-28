@@ -8,9 +8,10 @@ import {
   BaselineRule,
   CELL_HEIGHT,
   CELL_WIDTH,
+  CONTINUOUS_ARIA_LABEL,
   formatProportionTooltip,
   PairedHistogramSvg,
-} from "./pairedHistogramCanvas";
+} from "./PairedHistogramCanvas";
 
 /**
  * Small continuous paired-bar chart for high-cardinality quantitative data
@@ -57,26 +58,15 @@ export interface PairedHistogramContinuousData {
 
 export interface PairedHistogramContinuousProps {
   data: PairedHistogramContinuousData;
-  /** Pixel width of the rendered SVG. Default `CELL_WIDTH` (140). */
-  width?: number;
-  /** Pixel height of the rendered SVG. Default `CELL_HEIGHT` (28). */
-  height?: number;
-  /** Render endpoint labels (min / max). Default false — bin range is
-   * shown on hover via the per-bar tooltip; in-chart labels eat too much
-   * vertical room at cell density. */
-  showEndpoints?: boolean;
-  /** Also render midpoint label between min and max. Default false. */
-  showMidpoint?: boolean;
-  /** Override default label formatter. Default: 1.2K-style abbreviation. */
+  /** Override default tooltip-range formatter. Default: 1.2K-style abbreviation. */
   formatValue?: (v: number) => string;
   /** Optional CSS class. */
   className?: string;
-  /** Accessible label override for the SVG. */
-  ariaLabel?: string;
 }
 
 /**
- * PairedHistogramContinuous — constant-area paired-bar chart.
+ * PairedHistogramContinuous — constant-area paired-bar chart, fixed
+ * `CELL_WIDTH × CELL_HEIGHT` (140×28) for SchemaView cell density.
  *
  * @example
  * ```tsx
@@ -85,13 +75,8 @@ export interface PairedHistogramContinuousProps {
  */
 export function PairedHistogramContinuous({
   data,
-  width = CELL_WIDTH,
-  height = CELL_HEIGHT,
-  showEndpoints = false,
-  showMidpoint = false,
   formatValue = formatAsAbbreviatedNumber,
   className,
-  ariaLabel = "Paired baseline and current continuous distribution",
 }: PairedHistogramContinuousProps) {
   const isDark = useIsDark();
   const bars = getChartBarColors(isDark);
@@ -99,7 +84,6 @@ export function PairedHistogramContinuous({
   const baseFill = bars.base;
   const currentFill = bars.current;
   const baselineColor = theme.borderColor;
-  const labelColor = theme.textColor;
 
   // SVG pattern IDs are document-global; useId() gives each cell instance
   // its own ID so patterns don't collide between adjacent histograms.
@@ -107,31 +91,24 @@ export function PairedHistogramContinuous({
   const patternId = `phc-overlap-${reactId.replace(/:/g, "")}`;
 
   const layout = useMemo(() => {
-    return computeContinuousLayout(data, width);
-  }, [data, width]);
+    return computeContinuousLayout(data, CELL_WIDTH);
+  }, [data]);
 
-  const labelHeight = showEndpoints ? 11 : 0;
-  const chartHeight = Math.max(8, height - labelHeight - 2);
+  // 2 px breathing room at the bottom so the baseline doesn't sit flush.
+  const chartHeight = Math.max(8, CELL_HEIGHT - 2);
 
   // Empty / degenerate input — render an empty SVG so size is preserved.
   if (layout.bins.length === 0) {
     return (
       <PairedHistogramSvg
-        width={width}
-        height={height}
+        ariaLabel={CONTINUOUS_ARIA_LABEL}
         className={className}
-        ariaLabel={ariaLabel}
       />
     );
   }
 
   return (
-    <PairedHistogramSvg
-      width={width}
-      height={height}
-      className={className}
-      ariaLabel={ariaLabel}
-    >
+    <PairedHistogramSvg ariaLabel={CONTINUOUS_ARIA_LABEL} className={className}>
       <defs>
         <pattern
           id={patternId}
@@ -197,27 +174,7 @@ export function PairedHistogramContinuous({
         );
       })}
 
-      <BaselineRule width={width} y={chartHeight} stroke={baselineColor} />
-
-      {showEndpoints && (
-        <g
-          fontFamily="system-ui, -apple-system, sans-serif"
-          fontSize={9}
-          fill={labelColor}
-        >
-          <text x={0} y={height - 1} textAnchor="start">
-            {formatValue(layout.minVal)}
-          </text>
-          {showMidpoint && (
-            <text x={width / 2} y={height - 1} textAnchor="middle">
-              {formatValue((layout.minVal + layout.maxVal) / 2)}
-            </text>
-          )}
-          <text x={width} y={height - 1} textAnchor="end">
-            {formatValue(layout.maxVal)}
-          </text>
-        </g>
-      )}
+      <BaselineRule y={chartHeight} stroke={baselineColor} />
     </PairedHistogramSvg>
   );
 }
@@ -229,8 +186,8 @@ export function PairedHistogramContinuous({
  * (dense regions) get narrow bars. Heights remain proportional to density,
  * so the **area** of every bar reads as the row-proportion in that bin.
  *
- * Exported so tests + lineage pre-warm (PR 4) can validate the geometry
- * without rendering.
+ * File-level export (not in the package barrel) so the unit tests in this
+ * directory can validate the geometry without rendering.
  */
 export function computeContinuousLayout(
   data: PairedHistogramContinuousData,

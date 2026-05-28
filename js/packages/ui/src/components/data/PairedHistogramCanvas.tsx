@@ -18,37 +18,41 @@ import type { ReactNode } from "react";
  * side-by-side bars, etc.
  */
 
-/** Default schema-row cell width (px). Tuned to the SchemaView column. */
+/** Schema-row cell width (px). Tuned to the SchemaView column. */
 export const CELL_WIDTH = 140;
 
-/** Default schema-row cell height (px). Fits inside the current 35px schema row. */
+/** Schema-row cell height (px). Fits inside the current 35px schema row. */
 export const CELL_HEIGHT = 28;
 
+/** Accessible label for the continuous paired-histogram cell. */
+export const CONTINUOUS_ARIA_LABEL =
+  "Paired baseline and current continuous distribution";
+
+/** Accessible label for the discrete paired-histogram cell. */
+export const DISCRETE_ARIA_LABEL =
+  "Paired baseline and current categorical distribution";
+
 export interface PairedHistogramSvgProps {
-  width: number;
-  height: number;
-  className?: string;
   ariaLabel: string;
+  className?: string;
   children?: ReactNode;
 }
 
 /**
  * Outer SVG frame used by both paired-histogram cells. Renders an
  * accessible title and reserves the chart area; callers draw bins and
- * decorations as children.
+ * decorations as children. Size is fixed at `CELL_WIDTH × CELL_HEIGHT`.
  */
 export function PairedHistogramSvg({
-  width,
-  height,
-  className,
   ariaLabel,
+  className,
   children,
 }: PairedHistogramSvgProps) {
   return (
     <svg
-      width={width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
+      width={CELL_WIDTH}
+      height={CELL_HEIGHT}
+      viewBox={`0 0 ${CELL_WIDTH} ${CELL_HEIGHT}`}
       className={className}
       style={{ display: "block", overflow: "visible" }}
       role="img"
@@ -61,7 +65,6 @@ export function PairedHistogramSvg({
 }
 
 export interface BaselineRuleProps {
-  width: number;
   y: number;
   stroke: string;
 }
@@ -69,10 +72,18 @@ export interface BaselineRuleProps {
 /**
  * Horizontal rule drawn under the bars so empty slots still read as
  * "this slot has zero bars" rather than "this slot doesn't exist".
+ * Spans the full `CELL_WIDTH`.
  */
-export function BaselineRule({ width, y, stroke }: BaselineRuleProps) {
+export function BaselineRule({ y, stroke }: BaselineRuleProps) {
   return (
-    <line x1={0} y1={y} x2={width} y2={y} stroke={stroke} strokeWidth={0.5} />
+    <line
+      x1={0}
+      y1={y}
+      x2={CELL_WIDTH}
+      y2={y}
+      stroke={stroke}
+      strokeWidth={0.5}
+    />
   );
 }
 

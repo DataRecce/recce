@@ -44,7 +44,7 @@ export function ProfileDistributionUnsupportedBanner({
       variant="outlined"
       className={className}
       sx={{
-        fontSize: "12px",
+        fontSize: "0.75rem",
         py: 0.5,
         px: 1,
         "& .MuiAlert-message": { py: 0.5 },
@@ -53,7 +53,7 @@ export function ProfileDistributionUnsupportedBanner({
       aria-live="polite"
       data-testid="profile-distribution-unsupported-banner"
     >
-      <AlertTitle sx={{ fontSize: "12px", fontWeight: 600, mb: 0.25 }}>
+      <AlertTitle sx={{ fontSize: "0.75rem", fontWeight: 600, mb: 0.25 }}>
         {title}
       </AlertTitle>
       {message}

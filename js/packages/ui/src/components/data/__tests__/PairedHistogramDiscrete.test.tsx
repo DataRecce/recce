@@ -7,6 +7,7 @@
 import { render } from "@testing-library/react";
 import { vi } from "vitest";
 import { useIsDark } from "../../../hooks/useIsDark";
+import { CELL_WIDTH } from "../PairedHistogramCanvas";
 import {
   computeDiscreteSlots,
   computeRanksSlots,
@@ -49,10 +50,7 @@ describe("PairedHistogramDiscrete", () => {
       baseTotal: 0,
       currentTotal: 10,
     };
-    const width = 140;
-    const { container } = render(
-      <PairedHistogramDiscrete data={data} width={width} />,
-    );
+    const { container } = render(<PairedHistogramDiscrete data={data} />);
     const visibleRects = Array.from(
       container.querySelectorAll("svg > g rect"),
     ).filter((r) => r.getAttribute("fill") !== "none");
@@ -61,10 +59,10 @@ describe("PairedHistogramDiscrete", () => {
     expect(visibleRects.length).toBe(1);
     const rect = visibleRects[0];
     expect(rect.getAttribute("fill")).toBe("#63B3ED");
-    // Current bar sits on the right half of its slot (slot midpoint = width / 2
+    // Current bar sits on the right half of its slot (slot midpoint = CELL_WIDTH / 2
     // when there's a single slot).
     const x = Number.parseFloat(rect.getAttribute("x") ?? "0");
-    expect(x).toBeGreaterThan(width / 2);
+    expect(x).toBeGreaterThan(CELL_WIDTH / 2);
   });
 
   it("leaves a gap when current side count is 0 — removed value", () => {
@@ -75,10 +73,7 @@ describe("PairedHistogramDiscrete", () => {
       baseTotal: 10,
       currentTotal: 0,
     };
-    const width = 140;
-    const { container } = render(
-      <PairedHistogramDiscrete data={data} width={width} />,
-    );
+    const { container } = render(<PairedHistogramDiscrete data={data} />);
     const visibleRects = Array.from(
       container.querySelectorAll("svg > g rect"),
     ).filter((r) => r.getAttribute("fill") !== "none");
@@ -87,57 +82,14 @@ describe("PairedHistogramDiscrete", () => {
     expect(rect.getAttribute("fill")).toBe("#F6AD55");
     // Base bar sits on the left half of its slot.
     const x = Number.parseFloat(rect.getAttribute("x") ?? "0");
-    expect(x).toBeLessThan(width / 2);
+    expect(x).toBeLessThan(CELL_WIDTH / 2);
   });
 
-  it("uses default cell-density dimensions when not provided", () => {
+  it("renders at fixed cell-density dimensions (140x28)", () => {
     const { container } = render(<PairedHistogramDiscrete data={sampleData} />);
     const svg = container.querySelector("svg");
     expect(svg?.getAttribute("width")).toBe("140");
     expect(svg?.getAttribute("height")).toBe("28");
-  });
-
-  it("respects custom width and height", () => {
-    const { container } = render(
-      <PairedHistogramDiscrete data={sampleData} width={220} height={100} />,
-    );
-    const svg = container.querySelector("svg");
-    expect(svg?.getAttribute("width")).toBe("220");
-    expect(svg?.getAttribute("height")).toBe("100");
-  });
-
-  it("does not render value labels by default", () => {
-    const { container } = render(<PairedHistogramDiscrete data={sampleData} />);
-    expect(container.querySelectorAll("svg g text").length).toBe(0);
-  });
-
-  it("renders one label per value when showLabels is true", () => {
-    const { container } = render(
-      <PairedHistogramDiscrete data={sampleData} showLabels />,
-    );
-    const labels = container.querySelectorAll("svg g text");
-    expect(labels.length).toBe(sampleData.values.length);
-    expect(Array.from(labels).map((l) => l.textContent)).toEqual(
-      sampleData.values,
-    );
-  });
-
-  it("truncates labels longer than labelMaxChars", () => {
-    const longData: PairedHistogramDiscreteData = {
-      ...sampleData,
-      values: ["United States", "Great Britain", "Germany", "France", "Japan"],
-    };
-    const { container } = render(
-      <PairedHistogramDiscrete data={longData} showLabels labelMaxChars={4} />,
-    );
-    const texts = Array.from(container.querySelectorAll("svg g text")).map(
-      (t) => t.textContent ?? "",
-    );
-    for (const t of texts) {
-      expect(t.length).toBeLessThanOrEqual(4);
-    }
-    // Each truncated label ends with the ellipsis character.
-    expect(texts.every((t) => t.endsWith("…"))).toBe(true);
   });
 
   it("renders trimmed marker when trimmed prop is set", () => {
@@ -308,6 +260,48 @@ describe("PairedHistogramDiscrete — ranks mode", () => {
     expect(firstH).toBeGreaterThan(lastH);
   });
 
+  it("clamps invalid rank (rank > k → would be negative height) so no malformed rect renders", () => {
+    // Stage B contract violation: rank 7 > k 5 would compute a negative
+    // height. The clamp drops it to 0 — no <rect> emitted for that bar,
+    // and crucially no SVG with a negative `height` attribute.
+    const data: PairedHistogramDiscreteRanksData = {
+      mode: "ranks",
+      values: ["over_k"],
+      baseRanks: [7],
+      currentRanks: [null],
+      k: 5,
+    };
+    const { container } = render(<PairedHistogramDiscrete data={data} />);
+    const visibleHeights = Array.from(
+      container.querySelectorAll("svg > g rect"),
+    )
+      .filter((r) => r.getAttribute("fill") !== "none")
+      .map((r) => Number.parseFloat(r.getAttribute("height") ?? "0"));
+    expect(visibleHeights.every((h) => h >= 0)).toBe(true);
+  });
+
+  it("clamps invalid rank (rank ≤ 0 → would overflow chart height) to the chart height", () => {
+    // Stage B contract violation: rank 0 (or any rank below 1) would
+    // compute a bar taller than the chart. The clamp caps it at the
+    // chart height so the bar stays inside the SVG frame.
+    const data: PairedHistogramDiscreteRanksData = {
+      mode: "ranks",
+      values: ["under_one"],
+      baseRanks: [0],
+      currentRanks: [null],
+      k: 5,
+    };
+    const { container } = render(<PairedHistogramDiscrete data={data} />);
+    const visible = Array.from(
+      container.querySelectorAll("svg > g rect"),
+    ).filter((r) => r.getAttribute("fill") !== "none");
+    expect(visible.length).toBe(1);
+    // CELL_HEIGHT 28 - 2px padding = 26 max bar height.
+    const h = Number.parseFloat(visible[0].getAttribute("height") ?? "0");
+    expect(h).toBeLessThanOrEqual(26);
+    expect(h).toBeGreaterThan(0);
+  });
+
   it("value present only in base top-K: no current bar", () => {
     const data: PairedHistogramDiscreteRanksData = {
       mode: "ranks",
@@ -316,10 +310,7 @@ describe("PairedHistogramDiscrete — ranks mode", () => {
       currentRanks: [null],
       k: 5,
     };
-    const width = 140;
-    const { container } = render(
-      <PairedHistogramDiscrete data={data} width={width} />,
-    );
+    const { container } = render(<PairedHistogramDiscrete data={data} />);
     const visible = Array.from(
       container.querySelectorAll("svg > g rect"),
     ).filter((r) => r.getAttribute("fill") !== "none");
@@ -328,7 +319,7 @@ describe("PairedHistogramDiscrete — ranks mode", () => {
     expect(visible[0].getAttribute("fill")).toBe("#F6AD55");
     // Base bar sits on the left half of its slot.
     const x = Number.parseFloat(visible[0].getAttribute("x") ?? "0");
-    expect(x).toBeLessThan(width / 2);
+    expect(x).toBeLessThan(CELL_WIDTH / 2);
   });
 
   it("value present only in current top-K: no base bar, sits on the right of the chart", () => {
@@ -339,10 +330,7 @@ describe("PairedHistogramDiscrete — ranks mode", () => {
       currentRanks: [1, 2, 3],
       k: 5,
     };
-    const width = 150;
-    const { container } = render(
-      <PairedHistogramDiscrete data={data} width={width} />,
-    );
+    const { container } = render(<PairedHistogramDiscrete data={data} />);
     // The current-only slot is the last group (rightmost).
     const groups = container.querySelectorAll("svg > g");
     const lastBars = Array.from(
@@ -352,7 +340,7 @@ describe("PairedHistogramDiscrete — ranks mode", () => {
     expect(lastBars[0].getAttribute("fill")).toBe("#63B3ED");
     // And the slot itself is on the right two-thirds of the chart.
     const lastSlotX = Number.parseFloat(lastBars[0].getAttribute("x") ?? "0");
-    expect(lastSlotX).toBeGreaterThan(width * (2 / 3));
+    expect(lastSlotX).toBeGreaterThan(CELL_WIDTH * (2 / 3));
   });
 
   it("tooltip shows both ranks when present", () => {
@@ -448,15 +436,28 @@ describe("PairedHistogramDiscrete — ranks mode", () => {
     expect(slots[3]).toEqual({ value: "new_d", baseRank: null, currRank: 2 });
   });
 
-  it("computeRanksSlots: drops entries absent from both sides defensively", () => {
-    const { slots } = computeRanksSlots({
-      mode: "ranks",
-      values: ["a", "ghost", "b"],
-      baseRanks: [1, null, 2],
-      currentRanks: [1, null, 2],
-      k: 3,
+  it("computeRanksSlots: warns and drops entries absent from both sides defensively", () => {
+    // Stage B contract violation: a value with `null` on both sides
+    // should never appear in the payload. The cell drops it silently
+    // from the slot list but emits a console.warn so the violation
+    // surfaces in dev tools.
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {
+      /* swallow so vitest output stays clean */
     });
-    expect(slots.map((s) => s.value)).toEqual(["a", "b"]);
+    try {
+      const { slots } = computeRanksSlots({
+        mode: "ranks",
+        values: ["a", "ghost", "b"],
+        baseRanks: [1, null, 2],
+        currentRanks: [1, null, 2],
+        k: 3,
+      });
+      expect(slots.map((s) => s.value)).toEqual(["a", "b"]);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy.mock.calls[0]?.[0]).toContain("PairedHistogramDiscrete");
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 
   it("counts-mode payload without explicit mode still renders bars (back-compat)", () => {
@@ -492,7 +493,7 @@ describe("PairedHistogramDiscrete — formatValue", () => {
     expect(titles.some((t) => t.includes("a ["))).toBe(true);
   });
 
-  it("applies custom formatValue prop to labels", () => {
+  it("applies custom formatValue prop to the tooltip prefix", () => {
     const data: PairedHistogramDiscreteData = {
       values: [null],
       baseCounts: [10],
@@ -501,18 +502,8 @@ describe("PairedHistogramDiscrete — formatValue", () => {
       currentTotal: 12,
     };
     const { container } = render(
-      <PairedHistogramDiscrete
-        data={data}
-        showLabels
-        formatValue={() => "∅"}
-      />,
+      <PairedHistogramDiscrete data={data} formatValue={() => "∅"} />,
     );
-    // Visible label uses the formatted string.
-    const labels = Array.from(container.querySelectorAll("svg g text")).map(
-      (t) => t.textContent,
-    );
-    expect(labels).toContain("∅");
-    // And so does the per-bar hover title (prefix).
     const titles = Array.from(container.querySelectorAll("svg title")).map(
       (t) => t.textContent ?? "",
     );

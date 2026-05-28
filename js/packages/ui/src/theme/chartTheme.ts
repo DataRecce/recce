@@ -14,6 +14,8 @@ export interface ChartThemeColors {
   barLabelColor: string;
   /** Subdued text color for secondary labels like percentages */
   secondaryTextColor: string;
+  /** Semi-transparent background for chips/badges drawn over bars (e.g. trimmed-top-K marker). */
+  overlayBackgroundColor: string;
 }
 
 /**
@@ -30,6 +32,8 @@ export function getChartThemeColors(isDark: boolean): ChartThemeColors {
     tooltipTextColor: isDark ? "#e5e7eb" : "#111827",
     barLabelColor: isDark ? "#ffffff" : "#1f2937",
     secondaryTextColor: isDark ? "#e5e7eb" : "#6b7280",
+    // 80% (cc) opacity: legible over a tall bar without reading as a hard block.
+    overlayBackgroundColor: isDark ? "#1f2937cc" : "#ffffffcc",
   };
 }
 

@@ -7,10 +7,11 @@ import {
   BaselineRule,
   CELL_HEIGHT,
   CELL_WIDTH,
+  DISCRETE_ARIA_LABEL,
   formatProportionTooltip,
   formatRankTooltip,
   PairedHistogramSvg,
-} from "./pairedHistogramCanvas";
+} from "./PairedHistogramCanvas";
 
 /**
  * Small categorical paired-bar chart for top-K low-cardinality data —
@@ -117,16 +118,6 @@ export type PairedHistogramDiscreteData =
 
 export interface PairedHistogramDiscreteProps {
   data: PairedHistogramDiscreteData;
-  /** Pixel width of the rendered SVG. Default `CELL_WIDTH` (140). */
-  width?: number;
-  /** Pixel height of the rendered SVG. Default `CELL_HEIGHT` (28). */
-  height?: number;
-  /** Render value labels below bars. Default false — values shown on hover
-   * via the per-bar tooltip; in-chart labels collide at any non-trivial
-   * cardinality. */
-  showLabels?: boolean;
-  /** Maximum chars per label before truncation. Default 4. */
-  labelMaxChars?: number;
   /**
    * Convert each raw value to its display string. Default: `String(v)`.
    * Override to handle NULL nicely, abbreviate large numbers, format
@@ -140,8 +131,6 @@ export interface PairedHistogramDiscreteProps {
   formatValue?: (v: unknown) => string;
   /** Optional CSS class. */
   className?: string;
-  /** Accessible label override for the SVG. */
-  ariaLabel?: string;
 }
 
 /**
@@ -159,8 +148,9 @@ interface RenderSlot {
 
 /**
  * PairedHistogramDiscrete — paired-bar top-K chart with gap-on-absent
- * semantics. Supports counts mode (proportion-sized bars) and ranks mode
- * (rank-position-sized bars).
+ * semantics, fixed `CELL_WIDTH × CELL_HEIGHT` (140×28) for SchemaView
+ * cell density. Supports counts mode (proportion-sized bars) and ranks
+ * mode (rank-position-sized bars).
  *
  * @example
  * ```tsx
@@ -169,13 +159,8 @@ interface RenderSlot {
  */
 export function PairedHistogramDiscrete({
   data,
-  width = CELL_WIDTH,
-  height = CELL_HEIGHT,
-  showLabels = false,
-  labelMaxChars = 4,
   formatValue = defaultFormatValue,
   className,
-  ariaLabel = "Paired baseline and current categorical distribution",
 }: PairedHistogramDiscreteProps) {
   const isDark = useIsDark();
   const bars = getChartBarColors(isDark);
@@ -183,12 +168,10 @@ export function PairedHistogramDiscrete({
   const baseFill = bars.base;
   const currentFill = bars.current;
   const baselineColor = theme.borderColor;
-  const labelColor = theme.textColor;
   const trimColor = theme.secondaryTextColor;
 
-  const labelHeight = showLabels ? 12 : 0;
-  // 2 px breathing room between bars and the next visual element.
-  const chartHeight = Math.max(8, height - labelHeight - 2);
+  // 2 px breathing room at the bottom so the baseline doesn't sit flush.
+  const chartHeight = Math.max(8, CELL_HEIGHT - 2);
 
   const renderSlots = useMemo(
     () => computeRenderSlots(data, chartHeight, formatValue),
@@ -199,15 +182,13 @@ export function PairedHistogramDiscrete({
   if (renderSlots.length === 0) {
     return (
       <PairedHistogramSvg
-        width={width}
-        height={height}
+        ariaLabel={DISCRETE_ARIA_LABEL}
         className={className}
-        ariaLabel={ariaLabel}
       />
     );
   }
 
-  const slotWidth = width / Math.max(1, renderSlots.length);
+  const slotWidth = CELL_WIDTH / Math.max(1, renderSlots.length);
   // Slot layout: 10% padding each side, two bars side by side with a small
   // gap. When one side's count is 0, that bar simply doesn't render —
   // leaving a visible gap that signals "category absent on this side."
@@ -217,12 +198,7 @@ export function PairedHistogramDiscrete({
   const pairBarW = Math.max(1, (innerW - gap) / 2);
 
   return (
-    <PairedHistogramSvg
-      width={width}
-      height={height}
-      className={className}
-      ariaLabel={ariaLabel}
-    >
+    <PairedHistogramSvg ariaLabel={DISCRETE_ARIA_LABEL} className={className}>
       {renderSlots.map((s, i) => {
         const slotX = i * slotWidth;
         const baseX = slotX + slotPad;
@@ -268,46 +244,23 @@ export function PairedHistogramDiscrete({
         );
       })}
 
-      <BaselineRule width={width} y={chartHeight} stroke={baselineColor} />
-
-      {showLabels && (
-        <g
-          fontFamily="system-ui, -apple-system, sans-serif"
-          fontSize={9}
-          fill={labelColor}
-          textAnchor="middle"
-        >
-          {renderSlots.map((s, i) => (
-            <text
-              // biome-ignore lint/suspicious/noArrayIndexKey: stable backend order
-              key={i}
-              x={i * slotWidth + slotWidth / 2}
-              y={chartHeight + 9}
-            >
-              {truncate(s.displayValue, labelMaxChars)}
-            </text>
-          ))}
-        </g>
-      )}
+      <BaselineRule y={chartHeight} stroke={baselineColor} />
 
       {data.trimmed && (
         // Small chip-style background behind the marker so the text stays
         // legible when a tall rightmost bar reaches the top of the chart.
-        // Semi-transparent (cc ≈ 80%) so it still reads as an overlay
-        // rather than a hard block. Background sourced from the theme's
-        // tooltip background so the chip blends with adjacent surfaces.
         <g pointerEvents="none">
           <rect
-            x={width - 38}
+            x={CELL_WIDTH - 38}
             y={1}
             width={37}
             height={10}
-            fill={`${theme.tooltipBackgroundColor}cc`}
+            fill={theme.overlayBackgroundColor}
             rx={2}
             data-testid="trimmed-marker-bg"
           />
           <text
-            x={width - 1}
+            x={CELL_WIDTH - 1}
             y={9}
             fontFamily="system-ui, -apple-system, sans-serif"
             fontSize={8}
@@ -328,8 +281,8 @@ export function PairedHistogramDiscrete({
  * ranks into pixel heights so the SVG body is identical between modes.
  *
  * `formatValue` runs here, once per slot, so the SVG body only ever sees
- * pre-formatted display strings (label truncation, tooltip prefix). The
- * compute functions stay payload-typed (`value: unknown`).
+ * pre-formatted display strings. The compute functions stay payload-typed
+ * (`value: unknown`).
  */
 function computeRenderSlots(
   data: PairedHistogramDiscreteData,
@@ -370,6 +323,10 @@ function defaultFormatValue(v: unknown): string {
 /**
  * Rank-position → pixel height. Rank 1 fills the chart; rank k draws as
  * `1/k * chartHeight`; `null` rank → 0 (bar omitted entirely).
+ *
+ * Result is clamped to `[0, chartHeight]` so a Stage B contract violation
+ * (rank > k → negative height, rank ≤ 0 → over-tall) renders a
+ * well-formed bar instead of an SVG layout glitch.
  */
 function heightForRank(
   rank: number | null,
@@ -377,15 +334,16 @@ function heightForRank(
   chartHeight: number,
 ): number {
   if (rank === null || k <= 0) return 0;
-  return ((k - rank + 1) / k) * chartHeight;
+  const h = ((k - rank + 1) / k) * chartHeight;
+  return Math.max(0, Math.min(chartHeight, h));
 }
 
 /**
  * Compute per-slot proportions + max prop given a counts-mode top-K
  * payload.
  *
- * Exported so the layout can be unit-tested without rendering and so
- * PR 4's lineage pre-warm can validate payloads cheaply.
+ * File-level export (not in the package barrel) so the unit tests in
+ * this directory can validate the layout without rendering.
  */
 export function computeDiscreteSlots(data: PairedHistogramDiscreteCountsData): {
   slots: {
@@ -441,10 +399,14 @@ export function computeDiscreteSlots(data: PairedHistogramDiscreteCountsData): {
  * Compute per-slot ranks given a ranks-mode top-K payload. Slot order
  * is preserved from `data.values` — Stage B's contract is that the
  * caller has already arranged base-first, then current-only appended
- * sorted by current rank. Values absent from both top-Ks are dropped
- * defensively (the contract says they won't appear).
+ * sorted by current rank.
  *
- * Exported alongside `computeDiscreteSlots` for unit testing.
+ * Defensively drops entries absent from both top-Ks (Stage B's contract
+ * says they won't appear) and emits a `console.warn` so the contract
+ * violation surfaces in dev tools instead of vanishing silently.
+ *
+ * File-level export (not in the package barrel) so the unit tests in
+ * this directory can validate the layout without rendering.
  */
 export function computeRanksSlots(data: PairedHistogramDiscreteRanksData): {
   slots: {
@@ -470,22 +432,20 @@ export function computeRanksSlots(data: PairedHistogramDiscreteRanksData): {
     return { slots: [] };
   }
 
-  const slots = values
-    .map((value, i) => ({
-      value,
-      baseRank: baseRanks[i] ?? null,
-      currRank: currentRanks[i] ?? null,
-    }))
-    // Defensive: drop entries absent from both sides. Stage B promises
-    // this won't happen, but if it ever does we'd rather render an
-    // empty slot than draw a phantom value.
-    .filter((s) => s.baseRank !== null || s.currRank !== null);
-
+  const mapped = values.map((value, i) => ({
+    value,
+    baseRank: baseRanks[i] ?? null,
+    currRank: currentRanks[i] ?? null,
+  }));
+  const slots = mapped.filter(
+    (s) => s.baseRank !== null || s.currRank !== null,
+  );
+  if (slots.length < mapped.length) {
+    console.warn(
+      `[PairedHistogramDiscrete] computeRanksSlots: dropped ${
+        mapped.length - slots.length
+      } value(s) absent from both base and current top-K (Stage B contract violation).`,
+    );
+  }
   return { slots };
-}
-
-function truncate(s: string, maxChars: number): string {
-  if (s.length <= maxChars) return s;
-  if (maxChars <= 1) return "…";
-  return `${s.slice(0, maxChars - 1)}…`;
 }

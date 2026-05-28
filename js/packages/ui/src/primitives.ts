@@ -314,14 +314,11 @@ export {
  * `InlineProfileDistributionCell` integration ships in Stage C.
  */
 export {
-  computeContinuousLayout,
   PairedHistogramContinuous,
   type PairedHistogramContinuousData,
   type PairedHistogramContinuousProps,
 } from "./components/data/PairedHistogramContinuous";
 export {
-  computeDiscreteSlots,
-  computeRanksSlots,
   PairedHistogramDiscrete,
   type PairedHistogramDiscreteCountsData,
   type PairedHistogramDiscreteData,

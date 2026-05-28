@@ -12,14 +12,11 @@ export {
 } from "./HistogramChart";
 // Paired histograms for inline profile distribution (DRC-3390)
 export {
-  computeContinuousLayout,
   PairedHistogramContinuous,
   type PairedHistogramContinuousData,
   type PairedHistogramContinuousProps,
 } from "./PairedHistogramContinuous";
 export {
-  computeDiscreteSlots,
-  computeRanksSlots,
   PairedHistogramDiscrete,
   type PairedHistogramDiscreteCountsData,
   type PairedHistogramDiscreteData,

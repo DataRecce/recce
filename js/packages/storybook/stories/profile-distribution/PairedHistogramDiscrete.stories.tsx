@@ -354,10 +354,7 @@ export const MixedTypesDefault: Story = {
         columnName="mixed_column"
         status="changed"
         distribution={
-          <PairedHistogramDiscrete
-            showLabels
-            data={toDiscreteProps(discreteMixedTypes)}
-          />
+          <PairedHistogramDiscrete data={toDiscreteProps(discreteMixedTypes)} />
         }
       />
     </SchemaContainerMock>
@@ -366,7 +363,7 @@ export const MixedTypesDefault: Story = {
     docs: {
       description: {
         story:
-          '**Before** view: no `formatValue` prop supplied, so the cell falls back to `String(v)`. The NULL bucket renders as the literal text `"null"`, the boolean renders as `"true"`, and the big integer `1500000` becomes a wide digit string that crowds the label. The cell still renders — it just looks ugly. This is what Stage C would ship if it forgot to pass a formatter.',
+          '**Before** view: no `formatValue` prop supplied, so the cell falls back to `String(v)`. Hover any bar to see the tooltip prefix — the NULL bucket reads as `"null"`, the boolean as `"true"`, and the big integer `1500000` verbatim. The cell still renders correctly — the values are just unprettified. This is what Stage C would ship if it forgot to pass a formatter.',
       },
     },
   },
@@ -381,7 +378,6 @@ export const MixedTypesCustomFormatter: Story = {
         status="changed"
         distribution={
           <PairedHistogramDiscrete
-            showLabels
             formatValue={mixedFormatter}
             data={toDiscreteProps(discreteMixedTypes)}
           />
@@ -393,7 +389,7 @@ export const MixedTypesCustomFormatter: Story = {
     docs: {
       description: {
         story:
-          "**After** view: a caller-supplied `formatValue` collapses NULL to `∅`, abbreviates `1500000` to `1.5M`, and lets strings/booleans pass through. Stage C will dispatch on `column.type` to pick the right formatter (NULL glyph, number abbreviation, date format, etc.); the cell itself stays type-blind — this single prop is the entire seam.",
+          "**After** view: a caller-supplied `formatValue` collapses NULL to `∅`, abbreviates `1500000` to `1.5M`, and lets strings/booleans pass through. Hover any bar to see the formatted tooltip prefix. Stage C will dispatch on `column.type` to pick the right formatter (NULL glyph, number abbreviation, date format, etc.); the cell itself stays type-blind — this single prop is the entire seam.",
       },
     },
   },
