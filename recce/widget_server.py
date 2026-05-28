@@ -2113,8 +2113,12 @@ class NextAction(BaseModel):
     priority: str  # "high" | "medium" | "low"
 
 
-class SchemaChange(BaseModel):
-    """A single column-level schema change."""
+class ColumnSchemaChange(BaseModel):
+    """A single column-level schema change used by impact_analysis.
+
+    Distinct from the model-level SchemaChange defined for schema_diff
+    (which carries added/removed/type_changed lists per model).
+    """
 
     column: str
     change_status: str  # "added" | "removed" | "modified"
@@ -2127,7 +2131,7 @@ class ImpactedModelEntry(BaseModel):
     change_status: Optional[str] = None  # "added" | "removed" | "modified" | None (downstream)
     materialized: Optional[str] = None  # "table" | "view" | "incremental" | etc.
     row_count: Optional[RowCountSummary] = None
-    schema_changes: List[SchemaChange] = []
+    schema_changes: List[ColumnSchemaChange] = []
     value_diff: Optional[ImpactValueDiffSummary] = None
     affected_row_count: Optional[int] = None
     data_impact: Optional[str] = None  # "confirmed" | "none" | "potential"
@@ -2252,7 +2256,7 @@ async def impact_analysis(args: ImpactAnalysisInput) -> CallToolResult:
             else None
         )
         schema_changes = [
-            SchemaChange(column=sc["column"], change_status=sc["change_status"])
+            ColumnSchemaChange(column=sc["column"], change_status=sc["change_status"])
             for sc in (m.get("schema_changes") or [])
             if isinstance(sc, dict) and "column" in sc and "change_status" in sc
         ]

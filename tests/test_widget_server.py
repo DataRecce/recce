@@ -2120,3 +2120,23 @@ async def test_impact_analysis_returns_calltoolresult_with_pydantic_shape():
 
     # warning None (not provided)
     assert validated.warning is None
+
+
+def test_schema_change_models_have_distinct_shapes():
+    """Guard against name collisions between schema_diff and impact_analysis schema models.
+
+    `SchemaChange` (model-level, for schema_diff) and `ColumnSchemaChange`
+    (column-level, for impact_analysis) used to share the same class name,
+    which silently shadowed the schema_diff model at module import time and
+    broke schema_diff serialization with a Pydantic "column / change_status
+    Field required" error. This test pins the field surfaces so any future
+    accidental shadow fails loudly.
+    """
+    from recce.widget_server import ColumnSchemaChange, SchemaChange
+
+    schema_diff_fields = set(SchemaChange.model_fields.keys())
+    impact_fields = set(ColumnSchemaChange.model_fields.keys())
+
+    assert schema_diff_fields == {"added", "removed", "type_changed", "unchanged_count"}
+    assert impact_fields == {"column", "change_status"}
+    assert SchemaChange is not ColumnSchemaChange
