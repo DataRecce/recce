@@ -190,13 +190,19 @@ export interface ProfileDistributionParams {
 /**
  * Paired-histogram payload for a continuous (numeric or datetime) column.
  *
- * Spec contract: 12 ``bin_edges`` and 11 entries each in ``base_density`` /
- * ``current_density``. The two density arrays share a single x-axis so the
- * frontend can render base + current as a paired plot.
+ * Each env carries its OWN edge array, built from its OWN quantiles:
+ * ``base_bin_edges`` / ``current_bin_edges`` each hold 12 edges, paired with
+ * ``base_density`` / ``current_density`` of 11 entries each. The two edge
+ * arrays intentionally do NOT line up — the backend renders each env on its
+ * own quantile spans (``density = (1/NUM_BINS)/span``), the only assumption-
+ * free rendering of percentile-only data. The frontend overlays the two
+ * staircases on a shared value axis; it must not assume aligned bins. See
+ * PR #1398 / DRC-3390 for the contract rationale.
  */
 export interface ProfileDistributionHistogramPayload {
   kind: "histogram";
-  bin_edges: number[];
+  base_bin_edges: number[];
+  current_bin_edges: number[];
   base_density: number[];
   current_density: number[];
   base_total: number;

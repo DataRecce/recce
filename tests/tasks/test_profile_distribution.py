@@ -32,6 +32,9 @@ import pytest
 from recce.adapter.capabilities import AdapterCapabilities
 from recce.tasks import ProfileDistributionTask
 from recce.tasks.profile_distribution import (
+    NUM_BINS,
+    _build_histogram_payload,
+    _env_edges_and_density,
     _fallback_cache,
     _get_cache,
     classify_column_type,
@@ -47,6 +50,102 @@ def _clear_caches():
     _fallback_cache.clear()
     yield
     _fallback_cache.clear()
+
+
+# ---------------------------------------------------------------------------
+# Histogram payload — per-env edges (PR #1398 contract)
+# ---------------------------------------------------------------------------
+
+
+# A full set of inner quantiles (one per QUANTILE_FRACTIONS entry).
+def _quantiles(values):
+    assert len(values) == NUM_BINS - 1, "need one value per inner quantile"
+    return list(values)
+
+
+def test_env_edges_equal_area():
+    """Each bin carries 1/NUM_BINS of the rows: area = density * width."""
+    edges, density = _env_edges_and_density(
+        _quantiles([10, 20, 30, 40, 50, 60, 70, 80, 90, 95]),
+        min_value=0,
+        max_value=100,
+    )
+    # min + 10 quantiles + max → NUM_BINS + 1 edges, NUM_BINS bins.
+    assert len(edges) == NUM_BINS + 1
+    assert len(density) == NUM_BINS
+    areas = [density[i] * (edges[i + 1] - edges[i]) for i in range(len(density))]
+    # QUANTILE_FRACTIONS is rounded to 6 decimals, so areas equal 1/NUM_BINS
+    # only to that precision — use an absolute tolerance accordingly.
+    for area in areas:
+        assert area == pytest.approx(1.0 / NUM_BINS, abs=1e-5)
+    assert sum(areas) == pytest.approx(1.0, abs=1e-4)
+
+
+def test_env_edges_empty_without_bounds():
+    """All-NULL column (no min/max) yields empty edge + density arrays."""
+    assert _env_edges_and_density([1, 2, 3], min_value=None, max_value=None) == ([], [])
+
+
+def test_env_edges_tie_emits_zero_not_infinity():
+    """A heavily-tied column collapses adjacent quantiles onto one value.
+
+    Zero-width bins surface as density 0, never an infinite spike. The mass
+    sitting on the tied value is a point mass (a Dirac) that this continuous
+    renderer deliberately does NOT draw — so the integrated continuous density
+    is < 1, with the remainder being the dropped point mass. This is the known
+    point-mass limitation (parked for Stage B); the assertion pins the current
+    behaviour so a future fix is a conscious change."""
+    # All inner quantiles pinned to the min fence: 10/11 of the mass ties at 0.
+    edges, density = _env_edges_and_density(
+        _quantiles([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+        min_value=0,
+        max_value=100,
+    )
+    assert all(d >= 0.0 for d in density)
+    assert all(d != float("inf") for d in density)
+    integrated = sum(density[i] * (edges[i + 1] - edges[i]) for i in range(len(density)))
+    # Only the final [0, 100] bin has non-zero width; it carries just the last
+    # fraction slice (~1/NUM_BINS). The tied point mass is dropped.
+    assert integrated == pytest.approx(1.0 / NUM_BINS, abs=1e-4)
+
+
+def test_histogram_payload_base_and_current_diverge():
+    """Divergent base/current quantiles must produce DIFFERENT edges AND
+    densities — the core regression for the shared-edge collapse bug."""
+    payload = _build_histogram_payload(
+        quantile_values_base=_quantiles([10, 20, 30, 40, 50, 60, 70, 80, 90, 95]),
+        quantile_values_current=_quantiles([1, 2, 3, 4, 5, 50, 60, 70, 80, 90]),
+        base_total=100,
+        current_total=100,
+        base_min=0,
+        base_max=100,
+        current_min=0,
+        current_max=100,
+    )
+    assert payload["kind"] == "histogram"
+    # Per-env edge arrays, each independently shaped.
+    assert payload["base_bin_edges"] != payload["current_bin_edges"]
+    assert payload["base_density"] != payload["current_density"]
+    assert len(payload["base_density"]) == len(payload["base_bin_edges"]) - 1
+    assert len(payload["current_density"]) == len(payload["current_bin_edges"]) - 1
+
+
+def test_histogram_payload_identical_inputs_match():
+    """Sanity: identical base/current data DOES yield identical curves (the
+    only case where the two sides legitimately coincide)."""
+    qs = _quantiles([10, 20, 30, 40, 50, 60, 70, 80, 90, 95])
+    payload = _build_histogram_payload(
+        quantile_values_base=list(qs),
+        quantile_values_current=list(qs),
+        base_total=100,
+        current_total=100,
+        base_min=0,
+        base_max=100,
+        current_min=0,
+        current_max=100,
+    )
+    assert payload["base_bin_edges"] == payload["current_bin_edges"]
+    assert payload["base_density"] == payload["current_density"]
 
 
 # ---------------------------------------------------------------------------
@@ -270,10 +369,13 @@ def test_continuous_numeric_column(dbt_test_helper):
 
     col = result["columns"]["amount"]
     assert col["kind"] == "histogram"
-    # 12 edges + 11 densities by spec.
-    assert len(col["bin_edges"]) >= 2  # at least min/max even with sketch noise
-    assert isinstance(col["base_density"], list)
-    assert isinstance(col["current_density"], list)
+    # Per-env edges: each side carries its own edge array (min + quantiles +
+    # max). At least the min/max fences survive even under sketch noise.
+    assert len(col["base_bin_edges"]) >= 2
+    assert len(col["current_bin_edges"]) >= 2
+    # density has one entry per bin (edges - 1).
+    assert len(col["base_density"]) == len(col["base_bin_edges"]) - 1
+    assert len(col["current_density"]) == len(col["current_bin_edges"]) - 1
     assert col["base_total"] == 100
     assert col["current_total"] == 100
 
@@ -386,12 +488,13 @@ def test_timestamp_column_drc_3504(dbt_test_helper):
     col = result["columns"].get("ts")
     assert col is not None, "timestamp column should produce a payload, not be skipped"
     assert col["kind"] == "histogram"
-    # Regression: the prototype's empty-chart symptom was bin_edges == [] +
+    # Regression: the prototype's empty-chart symptom was empty edges +
     # totals == 0. Here, with the DRC-3504 fix, both totals reflect real
-    # row counts and the bin edges contain at least the min/max fences.
+    # row counts and each env's edge array contains at least the min/max fences.
     assert col["base_total"] == 6
     assert col["current_total"] == 6
-    assert len(col["bin_edges"]) >= 2
+    assert len(col["base_bin_edges"]) >= 2
+    assert len(col["current_bin_edges"]) >= 2
 
 
 def test_bad_column_does_not_blank_other_columns_drc_3507(dbt_test_helper):

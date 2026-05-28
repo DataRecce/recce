@@ -66,13 +66,22 @@ logger = logging.getLogger("uvicorn")
 # Stage C and updating the spec in DRC-3390).
 # ---------------------------------------------------------------------------
 
-# Quantile boundaries (11 values → 10 bins, deciles). The bin densities
-# (``base_density`` / ``current_density``) hold 11 values: 11 quantiles
-# produce 10 bins between them, but Stage C's renderer expects
-# ``len(densities) == len(bin_edges) - 1``. We emit 12 edges + 11 densities
-# to keep the spec contract from DRC-3390. Two "fence" edges are appended to
-# expose the empirical min/max as the outer bin boundaries.
-NUM_BINS = 11  # 11 inner deciles + 2 outer fences → 12 edges, 11 densities
+# Quantile binning, rendered per-env. Each env's histogram is built on ITS
+# OWN quantile edges: ``NUM_BINS - 1`` inner cuts plus the empirical min/max
+# fences give ``NUM_BINS + 1`` edges and ``NUM_BINS`` bins, each holding
+# ``1 / NUM_BINS`` of that env's rows. The density of a bin is therefore
+# ``(1 / NUM_BINS) / bin_width`` — narrow bands (data concentrated) read tall,
+# wide bands (data sparse) read short, and every bar carries equal *area*
+# (= row-share). This is the only assumption-free rendering of percentile-only
+# data: we get back approx quantiles, not bin counts, so we cannot measure an
+# env's mass in some *other* env's bins.
+#
+# Base and current edges are emitted SEPARATELY (``base_bin_edges`` /
+# ``current_bin_edges``) and intentionally do NOT line up — averaging them onto
+# a shared grid would collapse both densities to an identical curve and break
+# the equal-area property. Stage C overlays the two staircases on a shared
+# value axis. See PR #1398 / DRC-3390 for the contract rationale.
+NUM_BINS = 11  # NUM_BINS bins per env → NUM_BINS + 1 edges, NUM_BINS densities
 QUANTILE_FRACTIONS: Tuple[float, ...] = tuple(round(i / NUM_BINS, 6) for i in range(1, NUM_BINS))
 # (0.0909…, 0.1818…, …, 0.9090…) — 10 inner cuts between min and max.
 
@@ -332,79 +341,80 @@ def _cache_key(model: str, dbt_adapter, columns: Optional[List[str]]) -> Tuple[s
 # ---------------------------------------------------------------------------
 
 
+def _env_edges_and_density(
+    quantile_values: List[float],
+    min_value: Optional[float],
+    max_value: Optional[float],
+) -> Tuple[List[float], List[float]]:
+    """Build one env's ``(bin_edges, density)`` from its own quantiles.
+
+    Edges are this env's empirical ``min`` + its inner quantile values +
+    ``max``; each gap holds the cumulative-fraction delta between the
+    quantiles that bound it (``1 / NUM_BINS`` in the normal full-quantile
+    case). Density = ``Δfraction / bin_width`` so bar *area* reads as
+    row-share. A zero (or negative, from sketch noise) width or fraction
+    delta emits ``0.0`` — a heavily-tied column collapses adjacent quantiles
+    onto the same value, which we surface as an empty bin rather than an
+    infinite spike.
+
+    Returns ``([], [])`` when the env has no usable bounds (all-NULL column).
+    """
+    if min_value is None or max_value is None:
+        return [], []
+
+    # Pair each present quantile value with its cumulative fraction, bracketed
+    # by the min (fraction 0.0) and max (fraction 1.0) fences.
+    points: List[Tuple[float, float]] = [(float(min_value), 0.0)]
+    for frac, v in zip(QUANTILE_FRACTIONS, quantile_values or []):
+        if v is not None:
+            points.append((float(v), float(frac)))
+    points.append((float(max_value), 1.0))
+
+    # Sort by value — out-of-order quantiles from sketch noise would otherwise
+    # produce negative bin widths. Fractions ride along so the per-bin Δfraction
+    # is computed against the (possibly reordered) neighbours.
+    points.sort(key=lambda p: p[0])
+
+    edges: List[float] = [p[0] for p in points]
+    density: List[float] = []
+    for i in range(len(edges) - 1):
+        width = edges[i + 1] - edges[i]
+        dfrac = points[i + 1][1] - points[i][1]
+        if width <= 0 or dfrac <= 0:
+            density.append(0.0)
+        else:
+            density.append(dfrac / width)
+    return edges, density
+
+
 def _build_histogram_payload(
     quantile_values_base: List[float],
     quantile_values_current: List[float],
     base_total: int,
     current_total: int,
-    min_value: Optional[float],
-    max_value: Optional[float],
+    base_min: Optional[float],
+    base_max: Optional[float],
+    current_min: Optional[float],
+    current_max: Optional[float],
 ) -> Dict[str, Any]:
     """Compose the locked ``kind: histogram`` payload for a single column.
 
-    The payload contract is frozen with Stage C: 12 bin edges + 11 densities
-    per env. We construct edges from the union envelope of base + current
-    quantiles so the two histograms share a single x-axis.
+    Base and current each get their OWN edge array built from their OWN
+    quantiles (see :func:`_env_edges_and_density`). The two staircases are
+    rendered overlaid on a shared value axis by Stage C but their edges
+    deliberately do NOT line up — this is the equal-area, percentile-only
+    rendering locked in PR #1398. ``base_bin_edges`` and ``current_bin_edges``
+    each hold ``NUM_BINS + 1`` values; the paired density arrays hold
+    ``NUM_BINS`` each (one per bin). An env with no data yields empty arrays
+    for that side while keeping the ``kind`` tag.
     """
-    # Defensive: if the percentile fragment returned None for everything
-    # (column was all NULL), emit empty buckets but keep the kind tag.
-    qb = [v for v in (quantile_values_base or []) if v is not None]
-    qc = [v for v in (quantile_values_current or []) if v is not None]
-
-    # Pad to 10 quantiles each (NUM_BINS - 1 = 10) so downstream math is uniform.
-    while len(qb) < NUM_BINS - 1:
-        qb.append(None)
-    while len(qc) < NUM_BINS - 1:
-        qc.append(None)
-    qb = qb[: NUM_BINS - 1]
-    qc = qc[: NUM_BINS - 1]
-
-    # Outer fences: empirical min / max where available.
-    edges_inner: List[float] = []
-    for i in range(NUM_BINS - 1):
-        vals = [v for v in (qb[i], qc[i]) if v is not None]
-        if vals:
-            edges_inner.append(float(sum(vals) / len(vals)))
-
-    if not edges_inner and (min_value is None or max_value is None):
-        # No data at all.
-        return {
-            "kind": "histogram",
-            "bin_edges": [],
-            "base_density": [],
-            "current_density": [],
-            "base_total": int(base_total or 0),
-            "current_total": int(current_total or 0),
-        }
-
-    lo = float(min_value) if min_value is not None else (edges_inner[0] if edges_inner else 0.0)
-    hi = float(max_value) if max_value is not None else (edges_inner[-1] if edges_inner else 1.0)
-
-    bin_edges: List[float] = [lo] + edges_inner + [hi]
-    # Sort defensively — out-of-order quantiles from sketch noise would
-    # otherwise produce negative bin widths.
-    bin_edges = sorted(bin_edges)
-
-    # 12 edges → 11 bins.
-    # Constant-area (quantile-binned) density: each bin holds 1/NUM_BINS of
-    # the rows, so density = (1 / NUM_BINS) / bin_width. When a bin width
-    # is zero (duplicated quantile from a heavily-tied column), emit 0.
-    def _densities(edges: List[float]) -> List[float]:
-        out: List[float] = []
-        for i in range(len(edges) - 1):
-            width = edges[i + 1] - edges[i]
-            if width <= 0:
-                out.append(0.0)
-            else:
-                out.append((1.0 / NUM_BINS) / width)
-        return out
-
-    base_density = _densities(bin_edges)
-    current_density = _densities(bin_edges)
+    base_edges, base_density = _env_edges_and_density(quantile_values_base, base_min, base_max)
+    current_edges, current_density = _env_edges_and_density(quantile_values_current, current_min, current_max)
 
     return {
         "kind": "histogram",
-        "bin_edges": bin_edges,
+        "base_bin_edges": base_edges,
+        "current_bin_edges": current_edges,
         "base_density": base_density,
         "current_density": current_density,
         "base_total": int(base_total or 0),
@@ -629,15 +639,15 @@ class ProfileDistributionTask(Task):
             try:
                 base_min, base_max = base_min_max.get(name, (None, None))
                 curr_min, curr_max = curr_min_max.get(name, (None, None))
-                mn = _safe_min(base_min, curr_min)
-                mx = _safe_max(base_max, curr_max)
                 columns[name] = _build_histogram_payload(
                     quantile_values_base=base_pct.get(name, []),
                     quantile_values_current=curr_pct.get(name, []),
                     base_total=base_total or 0,
                     current_total=curr_total or 0,
-                    min_value=mn,
-                    max_value=mx,
+                    base_min=base_min,
+                    base_max=base_max,
+                    current_min=curr_min,
+                    current_max=curr_max,
                 )
             except Exception:
                 logger.debug("profile_distribution: failed to assemble histogram for %s", name, exc_info=True)
@@ -992,28 +1002,6 @@ def _coerce_percentile_array(adapter_type: Optional[str], raw: Any) -> List[floa
         return [float(v) for v in raw if v is not None]
     except (TypeError, ValueError):
         return []
-
-
-def _safe_min(a: Any, b: Any) -> Any:
-    if a is None:
-        return b
-    if b is None:
-        return a
-    try:
-        return min(a, b)
-    except TypeError:
-        return a
-
-
-def _safe_max(a: Any, b: Any) -> Any:
-    if a is None:
-        return b
-    if b is None:
-        return a
-    try:
-        return max(a, b)
-    except TypeError:
-        return a
 
 
 def _emit_telemetry(
