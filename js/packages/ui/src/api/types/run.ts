@@ -501,15 +501,6 @@ export function isHistogramDiffRun(
   return run.type === "histogram_diff";
 }
 
-/**
- * Type guard for profile_distribution runs (DRC-3390).
- */
-export function isProfileDistributionRun(
-  run: Run,
-): run is Run & { type: "profile_distribution" } {
-  return run.type === "profile_distribution";
-}
-
 // ============================================================================
 // Utility Types
 // ============================================================================
