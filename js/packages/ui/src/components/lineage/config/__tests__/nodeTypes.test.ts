@@ -8,12 +8,15 @@
  * `getNodeChangeStyle(...).color` for the equivalent state (the single source
  * of truth `LineageNode` also renders from). The one thing the minimap can't
  * read off `node.data` is impact, so we also check the impacted set is honored.
+ * The unchanged-node case is additionally pinned against a literal palette
+ * value (not just `getNodeChangeStyle`) so a future drift is caught.
  */
 
 import { describe, expect, it } from "vitest";
 import type { LineageGraphNode } from "../../../../contexts/lineage/types";
+import { colors } from "../../../../theme";
 import { getNodeChangeStyle, getStyleForImpacted } from "../../styles";
-import { getNodeColor, makeGetNodeColor } from "../nodeTypes";
+import { makeGetNodeColor } from "../nodeTypes";
 
 // Minimal node factory — only `id` and `data.changeStatus` matter here.
 function makeNode(id: string, changeStatus?: string): LineageGraphNode {
@@ -82,16 +85,19 @@ describe("makeGetNodeColor", () => {
     });
   });
 
-  describe("getNodeColor (impact-agnostic default)", () => {
-    it("colors by change status only", () => {
-      expect(getNodeColor(makeNode("m", "modified"))).toBe(
-        getNodeChangeStyle({ changeStatus: "modified" }).color,
-      );
+  describe("unchanged-node color (literal pin, DRC-3250)", () => {
+    // The pre-refactor getNodeColor returned colors.neutral[400] for a node
+    // with no changeStatus. Routing through getNodeChangeStyle now resolves
+    // "unchanged" to colors.neutral[500] in both palettes — an intentional,
+    // accepted shift. Pin the literal so any future palette change is caught.
+    it("paints an unchanged node neutral[500] in the new experience", () => {
+      const getColor = makeGetNodeColor({ newCllExperience: true });
+      expect(getColor(makeNode("plain"))).toBe(colors.neutral[500]);
     });
 
-    it("does not honor impact (no impacted set bound)", () => {
-      // The default has no impacted set, so an unchanged node is never amber.
-      expect(getNodeColor(makeNode("m"))).toBe(getNodeChangeStyle({}).color);
+    it("paints an unchanged node neutral[500] in the legacy experience", () => {
+      const getColor = makeGetNodeColor({});
+      expect(getColor(makeNode("plain"))).toBe(colors.neutral[500]);
     });
   });
 });

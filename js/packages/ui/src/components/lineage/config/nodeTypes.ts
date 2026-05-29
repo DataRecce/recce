@@ -64,13 +64,3 @@ export const makeGetNodeColor =
       newCllExperience,
     }).color;
   };
-
-/**
- * Default impact-agnostic node color. Kept for callers that don't have the
- * CLL impacted set; equivalent to the original change-status-only coloring.
- * Used by MiniMap for node coloring.
- *
- * @param node - The lineage graph node
- * @returns Hex color string
- */
-export const getNodeColor = makeGetNodeColor();
