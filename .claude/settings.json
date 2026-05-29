@@ -1,5 +1,7 @@
 {
   "enabledPlugins": {
-    "hookify@claude-plugins-official": true
+    "hookify@claude-plugins-official": true,
+    "mcp-apps@claude-plugins-official": true,
+    "mcp-server-dev@claude-plugins-official": true
   }
 }
