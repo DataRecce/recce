@@ -16,6 +16,12 @@ build
 .noai
 .DS_Store
 
+# Test / runtime artifacts (dbt run logs, hypothesis example cache).
+# `logs/` (no leading slash) matches dbt log dirs at any depth,
+# e.g. ./logs and integration_tests/dbt/logs.
+logs/
+.hypothesis/
+
 # Dependabot CLI output
 deps-*.yml
 
