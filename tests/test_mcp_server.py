@@ -2312,7 +2312,10 @@ class TestImpactAnalysisBehavior:
 
         adapter.select_nodes.side_effect = mock_select_nodes
 
-        def mock_get_model(node_id):
+        # base param mirrors the real adapter signature; the value_diff builder calls
+        # get_model(node_id, base=True) to intersect base columns. No drift here, so both
+        # sides return identical columns.
+        def mock_get_model(node_id, base=False):
             models = {
                 "model.project.modified_model": {
                     "primary_key": "id",
@@ -2637,3 +2640,73 @@ class TestImpactAnalysisBehavior:
         assert "max_affected_row_count" in result
         assert "total_affected_row_count" not in result
         assert "suggested_deep_dives" not in result
+
+    @pytest.mark.asyncio
+    async def test_value_diff_excludes_schema_drifted_columns(self, mcp_server):
+        """Schema drift: a column present in CURRENT but absent in BASE must NOT appear
+        in the value_diff SQL.
+
+        Deriving the per-column diff list from a single (current) relation's
+        introspection produces ``b."<col>" IS DISTINCT FROM c."<col>"`` against a base
+        relation that lacks ``<col>`` → Snowflake Binder Error
+        ``Table "b" does not have a column named "<col>"``. The diff must use only the
+        intersection of base and current columns; drifted columns are reported via
+        schema_changes, not fed into the per-column diff expression.
+
+        Regression test for the impact_analysis value_diff stale-column Binder Error.
+        """
+        server, mock_context = mcp_server
+        mock_context.get_lineage_diff.return_value = MagicMock(
+            model_dump=MagicMock(return_value=self.LINEAGE_DIFF_DATA)
+        )
+
+        adapter = self._make_mock_adapter()
+
+        # CURRENT relation carries a stale `full_name` column that BASE lacks (schema drift).
+        # get_model(base=False) reflects CURRENT introspection (includes full_name);
+        # get_model(base=True) reflects BASE (no full_name).
+        def mock_get_model_drift(node_id, base=False):
+            modified_cols = {"id": {"type": "INTEGER"}, "amount": {"type": "DECIMAL"}}
+            if not base:
+                modified_cols["full_name"] = {"type": "VARCHAR"}  # stale, current-only
+            models = {
+                "model.project.modified_model": {"primary_key": "id", "columns": modified_cols},
+                "model.project.downstream_model": {
+                    "primary_key": "id",
+                    "columns": {"id": {"type": "INTEGER"}, "total": {"type": "DECIMAL"}},
+                },
+            }
+            return models.get(node_id, {})
+
+        adapter.get_model.side_effect = mock_get_model_drift
+
+        captured_queries = []
+
+        def capture_execute(query, fetch=False):
+            captured_queries.append(str(query))
+            # Row long enough for both pre-fix ([amount, full_name]) and post-fix
+            # ([amount]) column layouts so result parsing never crashes.
+            row = [0, 0, 1, 1, 10.0, 12.0, 0]
+            table = MagicMock()
+            table.__len__ = MagicMock(return_value=1)
+            table.__getitem__ = MagicMock(side_effect=lambda i: row if i == 0 else None)
+            return (None, table)
+
+        adapter.execute.side_effect = capture_execute
+        mock_context.adapter = adapter
+
+        with (
+            patch("recce.mcp_server.sentry_metrics", None),
+            patch.object(RowCountDiffTask, "execute", return_value={}),
+        ):
+            result = await self._call_impact_analysis(server)
+
+        # The drifted column must never reach the SQL — neither the b. nor the c. side.
+        for q in captured_queries:
+            assert "full_name" not in q, f"drifted column leaked into value_diff SQL: {q}"
+
+        # modified_model value_diff covers only the common non-PK column (amount).
+        models_by_name = {m["name"]: m for m in result["confirmed_impacted_models"]}
+        modified = models_by_name["modified_model"]
+        assert modified["value_diff"] is not None
+        assert set(modified["value_diff"]["columns"].keys()) == {"amount"}

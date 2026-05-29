@@ -1871,11 +1871,27 @@ class RecceMCPServer:
                     if not pk:
                         continue  # no PK → value_diff stays null
 
-                    # Get column info for building SQL
+                    # Get column info for building SQL. model_info reflects the CURRENT
+                    # relation only (get_model -> get_columns(base=False)).
                     columns_info = model_info.get("columns", {})
-                    non_pk_cols = [c for c in columns_info if c != pk]
+
+                    # Restrict the diff to columns present in BOTH the base and current
+                    # relations. The per-column expression `b."col" IS DISTINCT FROM c."col"`
+                    # references the same column on both sides, so a column that has drifted
+                    # (exists in one relation but not the other) fails the warehouse binder.
+                    # Intersect both sides, mirroring ValueDiffTask; drifted columns are
+                    # already reported via schema_changes (Step 2b). get_model(base=True)
+                    # manages its own warehouse connection for the base-side introspection.
+                    base_model_info = self.context.adapter.get_model(node_id, base=True)
+                    common_cols = set(columns_info) & set(base_model_info.get("columns", {}))
+
+                    # The PK is the FULL OUTER JOIN key — it must exist on both sides.
+                    if pk not in common_cols:
+                        continue  # PK drifted; cannot value-diff without a shared join key
+
+                    non_pk_cols = [c for c in columns_info if c != pk and c in common_cols]
                     if not non_pk_cols:
-                        continue  # only PK column, no value diff to compute
+                        continue  # only PK column (or all non-PK columns drifted), no value diff
 
                     # Build relations for base and current schemas
                     base_rel = self.context.adapter.create_relation(model["name"], base=True)
