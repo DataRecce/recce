@@ -297,15 +297,38 @@ export type {
  * HistogramDataType.
  */
 export {
-  type ChartBarColors,
-  type ChartThemeColors,
-  getChartBarColors,
-  getChartThemeColors,
   HistogramChart,
   type HistogramChartProps,
   type HistogramDataset,
   type HistogramDataType,
 } from "./components/data/HistogramChart";
+/**
+ * Paired-histogram cells for inline profile-distribution rendering (DRC-3390).
+ *
+ * @remarks
+ * `PairedHistogramContinuous` renders a quantile-bin, constant-area paired
+ * bar chart for continuous columns. `PairedHistogramDiscrete` renders a
+ * top-K paired bar chart with gap-on-absent semantics for categorical
+ * columns. `ProfileDistributionUnsupportedBanner` surfaces the once-per-task
+ * "adapter doesn't support this feature" envelope. The schema-row
+ * `InlineProfileDistributionCell` integration ships in Stage C.
+ */
+export {
+  PairedHistogramContinuous,
+  type PairedHistogramContinuousData,
+  type PairedHistogramContinuousProps,
+} from "./components/data/PairedHistogramContinuous";
+export {
+  PairedHistogramDiscrete,
+  type PairedHistogramDiscreteCountsData,
+  type PairedHistogramDiscreteData,
+  type PairedHistogramDiscreteProps,
+  type PairedHistogramDiscreteRanksData,
+} from "./components/data/PairedHistogramDiscrete";
+export {
+  ProfileDistributionUnsupportedBanner,
+  type ProfileDistributionUnsupportedBannerProps,
+} from "./components/data/ProfileDistributionUnsupportedBanner";
 /**
  * Screenshot data grid primitives (AG Grid wrapper).
  *
@@ -327,7 +350,6 @@ export {
   ScreenshotDataGrid,
   type ScreenshotDataGridProps,
 } from "./components/data/ScreenshotDataGrid";
-
 /**
  * Top-K bar chart primitives (value distribution).
  *
@@ -340,6 +362,12 @@ export {
   type TopKDataset,
   type TopKItem,
 } from "./components/data/TopKBarChart";
+export {
+  type ChartBarColors,
+  type ChartThemeColors,
+  getChartBarColors,
+  getChartThemeColors,
+} from "./theme/chartTheme";
 
 // =============================================================================
 // SCHEMA PRIMITIVES
