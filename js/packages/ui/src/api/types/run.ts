@@ -41,8 +41,8 @@ import type {
  *
  * Note: ``profile_distribution`` is a backend-only run type (DRC-3390). It
  * feeds into schema-view cells rather than rendering as a checklist run, so
- * it does *not* appear in {@link RegisteredRunType}. The dispatcher accepts
- * it; the registry does not.
+ * the run registry has no entry for it — `findByRunType` returns `undefined`.
+ * The dispatcher accepts it; the registry does not.
  */
 export type RunType =
   | "simple"

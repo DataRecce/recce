@@ -16,10 +16,16 @@ import {
   defaultRunTypeConfig,
   findByRunType,
   type IconComponent,
-  REGISTERED_RUN_TYPES,
   type RunTypeConfig,
   type RunTypeRegistry,
 } from "../registry";
+
+// The registered run types are exactly the keys of the registry (aliased here
+// as defaultRunTypeConfig) — derive the iteration list from it so the test
+// can't drift from the registry.
+const REGISTERED_RUN_TYPES = Object.keys(
+  defaultRunTypeConfig,
+) as (keyof typeof defaultRunTypeConfig)[];
 
 // ============================================================================
 // Test Fixtures

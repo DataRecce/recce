@@ -95,48 +95,6 @@ export interface RunRegistry {
   simple: RegistryEntry<never>;
 }
 
-/**
- * Subset of {@link RunType} that has a registry entry — i.e., the user-facing
- * run types that surface as checklist items with a title, icon, and (for
- * most) a result view. Backend-only run types like ``profile_distribution``
- * (DRC-3390) are deliberately *not* in this set: their results feed into
- * other views (the schema cells) rather than rendering as stand-alone
- * checklist runs.
- */
-export type RegisteredRunType = keyof RunRegistry;
-
-/**
- * Enumeration of registered run types. Iterate this (not ``RUN_TYPES``) when
- * you need to walk every type that has a checklist-displayable entry.
- */
-export const REGISTERED_RUN_TYPES: readonly RegisteredRunType[] = [
-  "query",
-  "query_base",
-  "query_diff",
-  "row_count",
-  "row_count_diff",
-  "profile",
-  "profile_diff",
-  "value_diff",
-  "value_diff_detail",
-  "top_k_diff",
-  "histogram_diff",
-  "lineage_diff",
-  "schema_diff",
-  "simple",
-] as const;
-
-/**
- * Runtime guard narrowing an arbitrary {@link RunType} to a registered one.
- * Use this when a value typed as ``RunType`` (e.g., ``check.type``) needs to
- * be passed to {@link findByRunType}.
- */
-export function isRegisteredRunType(
-  runType: RunType,
-): runType is RegisteredRunType {
-  return (REGISTERED_RUN_TYPES as readonly RunType[]).includes(runType);
-}
-
 // ============================================================================
 // Registry
 // ============================================================================
@@ -253,16 +211,24 @@ export const registry: RunRegistry = {
  * @returns The registry entry for the run type
  *
  * @example
+ * A run type with no registry entry (e.g. the backend-only
+ * `profile_distribution`, DRC-3390) returns `undefined` — callers passing a
+ * dynamic `RunType` must handle that. Literal registered keys keep their
+ * precise entry type via the overload.
+ *
+ * @example
  * ```ts
  * const entry = findByRunType("query");
  * console.log(entry.title); // "Query"
  * console.log(entry.icon); // TbSql
  * ```
  */
-export function findByRunType<T extends RegisteredRunType>(
+export function findByRunType<T extends keyof RunRegistry>(
   runType: T,
-): RunRegistry[T] {
-  return registry[runType];
+): RunRegistry[T];
+export function findByRunType(runType: RunType): RegistryEntry | undefined;
+export function findByRunType(runType: RunType): RegistryEntry | undefined {
+  return (registry as Partial<Record<RunType, RegistryEntry>>)[runType];
 }
 
 // ============================================================================
@@ -323,6 +289,6 @@ export function createRunTypeRegistry(
  */
 export function createBoundFindByRunType(
   reg: RunRegistry,
-): <T extends RegisteredRunType>(runType: T) => RunRegistry[T] {
-  return <T extends RegisteredRunType>(runType: T) => reg[runType];
+): <T extends keyof RunRegistry>(runType: T) => RunRegistry[T] {
+  return <T extends keyof RunRegistry>(runType: T) => reg[runType];
 }

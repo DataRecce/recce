@@ -21,7 +21,6 @@ import type {
   QueryDiffViewOptions,
   QueryViewOptions,
   Run,
-  RunType,
   TopKDiffParams,
   TopKViewOptions,
   ValueDiffDetailViewOptions,
@@ -130,10 +129,10 @@ export interface RunTypeConfig<
  *   custom: { title: "Custom", icon: MyIcon }
  * };
  */
-// Keyed on the registered subset, not all of RunType, so backend-only run
+// Keyed on the registry's own keys, not all of RunType, so backend-only run
 // types like ``profile_distribution`` (which never surface as checklist
 // runs with their own title / icon / result view) don't require a placeholder
-// entry. See ``RegisteredRunType`` in registry.ts.
+// entry.
 export type RunTypeRegistry = {
   [K in keyof import("./registry").RunRegistry]: RunTypeConfig;
 };

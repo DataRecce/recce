@@ -15,10 +15,7 @@
 // Imports
 // ============================================================================
 
-import {
-  findByRunType,
-  type RegisteredRunType,
-} from "@datarecce/ui/components/run";
+import { findByRunType } from "@datarecce/ui/components/run";
 
 // ============================================================================
 // Test Suites
@@ -168,7 +165,7 @@ describe("registry", () => {
 
     describe("icon consistency", () => {
       it("all run types have icons that are functions", () => {
-        const runTypes: RegisteredRunType[] = [
+        const runTypes = [
           "lineage_diff",
           "schema_diff",
           "query",
@@ -183,7 +180,7 @@ describe("registry", () => {
           "top_k_diff",
           "histogram_diff",
           "simple",
-        ];
+        ] as const;
 
         for (const runType of runTypes) {
           const entry = findByRunType(runType);
@@ -198,7 +195,7 @@ describe("registry", () => {
 
     describe("title consistency", () => {
       it("all run types have non-empty string titles", () => {
-        const runTypes: RegisteredRunType[] = [
+        const runTypes = [
           "lineage_diff",
           "schema_diff",
           "query",
@@ -213,7 +210,7 @@ describe("registry", () => {
           "top_k_diff",
           "histogram_diff",
           "simple",
-        ];
+        ] as const;
 
         for (const runType of runTypes) {
           const entry = findByRunType(runType);
@@ -350,7 +347,7 @@ describe("registry", () => {
 
     describe("edge cases", () => {
       it("handles all valid run types without errors", () => {
-        const runTypes: RegisteredRunType[] = [
+        const runTypes = [
           "lineage_diff",
           "schema_diff",
           "query",
@@ -365,7 +362,7 @@ describe("registry", () => {
           "top_k_diff",
           "histogram_diff",
           "simple",
-        ];
+        ] as const;
 
         for (const runType of runTypes) {
           expect(() => findByRunType(runType)).not.toThrow();
