@@ -422,6 +422,49 @@ def _build_histogram_payload(
     }
 
 
+def _build_topk_ranks_payload(
+    base_values: List[Any],
+    current_values: List[Any],
+    k: int,
+) -> Dict[str, Any]:
+    """Compose the ``kind: topk, mode: ranks`` payload for a single column.
+
+    Used on the no-counts path (DuckDB ``approx_top_k`` returns values only).
+    The cell can't size bars by proportion, so it sizes them by rank
+    position. Slot order is **base-first**: base's top-K in base-rank order,
+    then values present only in current's top-K appended on the right (in
+    current-rank order). ``base_ranks`` / ``current_ranks`` carry each value's
+    1-indexed rank within that env, ``None`` where it isn't in that env's
+    top-K. This is the wire shape Stage C's discrete cell consumes directly
+    (see DRC-3390's 2026-05-29 contract correction).
+    """
+    seen: Dict[Any, int] = {}
+    for v in base_values or []:
+        if v not in seen:
+            seen[v] = len(seen)
+    for v in current_values or []:
+        if v not in seen:
+            seen[v] = len(seen)
+    union = list(seen.keys())[:k]
+
+    base_index = {v: i for i, v in enumerate(base_values or [])}
+    curr_index = {v: i for i, v in enumerate(current_values or [])}
+
+    base_ranks = [(base_index[v] + 1) if v in base_index else None for v in union]
+    current_ranks = [(curr_index[v] + 1) if v in curr_index else None for v in union]
+    trimmed = (len(current_values or []) >= k) or (len(base_values or []) >= k)
+
+    return {
+        "kind": "topk",
+        "mode": "ranks",
+        "values": union,
+        "base_ranks": base_ranks,
+        "current_ranks": current_ranks,
+        "k": k,
+        "trimmed": trimmed,
+    }
+
+
 def _build_topk_payload(
     base_values: List[Any],
     base_counts: Optional[List[int]],
@@ -434,7 +477,18 @@ def _build_topk_payload(
     Aligns ``base`` and ``current`` onto a unified value-axis so Stage C can
     render gap-on-absent semantics. ``trimmed`` tells Stage C whether either
     env had more values than fit in the top-K slice.
+
+    When neither env exposes counts (DuckDB, the Stage B hot path) this
+    dispatches to {@link _build_topk_ranks_payload} — the ``ranks`` variant —
+    so the counts arrays returned here are never wholly ``None``. Per-slot
+    ``None`` (one env missing a value) still means gap-on-absent.
     """
+    # No counts on either side → rank-only variant. Both sides switch together
+    # by contract, so the cell never mixes counts on one side with ranks on
+    # the other.
+    if base_counts is None and current_counts is None:
+        return _build_topk_ranks_payload(base_values, current_values, k)
+
     # Union of value sets, preserving order from current-then-base (mirrors
     # the prototype's "what's important now" frame).
     seen: Dict[Any, int] = {}
@@ -679,17 +733,12 @@ class ProfileDistributionTask(Task):
         # the frontend knows to render the "effectively unique" tag rather
         # than treating the column as "no data."
         for name in degenerate:
-            # Use null (not []) for the counts so this matches the normal
-            # DuckDB categorical path, which emits null when the sketch
-            # exposes no counts. One "no counts" encoding for the same
-            # adapter; the empty ``values`` list is what flags degeneracy.
-            columns[name] = {
-                "kind": "topk",
-                "values": [],
-                "base_counts": None,
-                "current_counts": None,
-                "trimmed": False,
-            }
+            # Emit the same ``ranks`` shape as the normal DuckDB categorical
+            # path (one no-counts encoding for the adapter); the empty
+            # ``values`` list is what flags degeneracy. Stage C renders an
+            # empty cell, signalling "effectively unique" rather than "no
+            # data."
+            columns[name] = _build_topk_ranks_payload([], [], TOP_K_DEFAULT)
 
         result = {
             "status": "ok",

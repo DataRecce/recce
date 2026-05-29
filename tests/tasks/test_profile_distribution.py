@@ -421,9 +421,18 @@ def test_low_cardinality_categorical_column(dbt_test_helper):
     assert result["status"] == "ok"
     col = result["columns"]["status"]
     assert col["kind"] == "topk"
-    # DuckDB doesn't return counts — frontend renders gap-on-absent.
+    # DuckDB returns no counts, so the no-counts path emits the ``ranks``
+    # variant (DRC-3390 contract): per-env 1-indexed ranks aligned to the
+    # union, ``None`` where a value is absent in that env's top-K.
+    assert col["mode"] == "ranks"
     # All three statuses should be present in the union.
     assert set(col["values"]) >= {"active", "pending", "done"}
+    # base == current here (same csv), so the rank arrays match, are aligned
+    # to ``values``, and are a 1-indexed permutation with no missing slots.
+    assert col["base_ranks"] == col["current_ranks"]
+    assert len(col["base_ranks"]) == len(col["values"])
+    assert None not in col["base_ranks"]
+    assert sorted(col["base_ranks"]) == list(range(1, len(col["values"]) + 1))
 
 
 def test_high_cardinality_categorical_column(dbt_test_helper):
@@ -466,11 +475,13 @@ def test_uuid_cap_degenerate_column(dbt_test_helper):
     # acceptable here; the assertion guards the spec rule.
     assert col["kind"] == "topk"
     if not col["values"]:
-        # Cap-degenerate path: the spec contract. Counts are null (not []),
-        # matching the normal categorical "no counts" encoding.
+        # Cap-degenerate path: the spec contract. Emits the ``ranks`` shape
+        # with empty arrays (the no-counts encoding for this adapter); the
+        # empty ``values`` list is what flags degeneracy.
+        assert col["mode"] == "ranks"
         assert col["values"] == []
-        assert col["base_counts"] is None
-        assert col["current_counts"] is None
+        assert col["base_ranks"] == []
+        assert col["current_ranks"] == []
         assert col["trimmed"] is False
 
 

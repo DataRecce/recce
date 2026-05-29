@@ -217,23 +217,56 @@ export interface ProfileDistributionHistogramPayload {
 }
 
 /**
- * Categorical top-K payload for a single column.
+ * Categorical top-K payload, **counts mode** — emitted by adapters whose
+ * sketch exposes per-value counts (Snowflake / BigQuery / … in Stage D).
  *
  * ``values`` is the union of the two envs' top-K, in current-then-base order.
  * ``base_counts`` / ``current_counts`` are aligned onto ``values`` (same
- * length, ``null`` in slots where the env didn't have that value in its
- * top-K). When the adapter's sketch doesn't expose counts at all (DuckDB
- * in Stage B), the whole counts array is ``null`` — the frontend renders
- * rank-only.
+ * length, ``null`` in the slots where that env didn't have the value in its
+ * top-K — Stage C renders those as gap-on-absent). The column-wide
+ * denominator for proportions is the envelope's ``base_total`` /
+ * ``current_total``, not the sum of the shown slots.
+ *
+ * When the adapter exposes **no** counts (DuckDB ``approx_top_k`` in Stage B),
+ * the backend emits {@link ProfileDistributionTopKRanksPayload} instead — the
+ * counts arrays here are therefore never wholly ``null``.
  *
  * ``trimmed`` is true when either env hit the sketch's ``k`` cap, meaning
  * there are more distinct values than fit in the slice.
  */
 export interface ProfileDistributionTopKPayload {
   kind: "topk";
+  /** Absent or ``"counts"`` selects this variant (vs ``"ranks"``). */
+  mode?: "counts";
   values: unknown[];
-  base_counts: (number | null)[] | null;
-  current_counts: (number | null)[] | null;
+  base_counts: (number | null)[];
+  current_counts: (number | null)[];
+  trimmed: boolean;
+}
+
+/**
+ * Categorical top-K payload, **ranks mode** — emitted when the adapter
+ * returns the top-K values but no counts (DuckDB ``approx_top_k``, the
+ * Stage B hot path). Bar heights encode rank position only.
+ *
+ * Slot order is baked in by the backend: base's top-K in base-rank order,
+ * then values present only in current's top-K appended on the right (in
+ * current-rank order). ``base_ranks`` / ``current_ranks`` carry each value's
+ * 1-indexed rank within that env's top-K, or ``null`` where the value isn't
+ * in that env's top-K (no bar drawn for that side — gap-on-absent). ``k`` is
+ * the top-K cap, driving bar-height scaling.
+ *
+ * Promoting this variant into the wire contract (it previously lived only in
+ * the Storybook fixtures) is what lets DuckDB categorical columns render a
+ * real paired cell — see DRC-3390's 2026-05-29 contract correction.
+ */
+export interface ProfileDistributionTopKRanksPayload {
+  kind: "topk";
+  mode: "ranks";
+  values: unknown[];
+  base_ranks: (number | null)[];
+  current_ranks: (number | null)[];
+  k: number;
   trimmed: boolean;
 }
 
@@ -248,12 +281,14 @@ export interface ProfileDistributionNullPayload {
 }
 
 /**
- * Per-column payload — one of the three variants above. Stage C narrows on
- * ``kind`` to pick the right cell renderer.
+ * Per-column payload — one of the variants above. Stage C narrows on ``kind``
+ * (histogram / topk / null), then on ``mode`` within ``topk`` (counts vs
+ * ranks), to pick the right cell renderer.
  */
 export type ProfileDistributionColumnPayload =
   | ProfileDistributionHistogramPayload
   | ProfileDistributionTopKPayload
+  | ProfileDistributionTopKRanksPayload
   | ProfileDistributionNullPayload;
 
 /**
