@@ -71,6 +71,13 @@ export { NodeTag, type NodeTagProps } from "./components/lineage/tags";
 // =============================================================================
 
 /**
+ * Lineage diff view supporting types for check results.
+ *
+ * @remarks
+ * Exports: LineageDiffViewOptions, LineageViewRef.
+ */
+export type { LineageDiffViewOptions } from "./api/lineagecheck";
+/**
  * Check action primitives for check-level actions.
  *
  * @remarks
@@ -143,20 +150,6 @@ export {
  * Exports: CheckList, CheckListProps.
  */
 export { CheckList, type CheckListProps } from "./components/check/CheckList";
-
-/**
- * Lineage diff view primitives for check results.
- *
- * @remarks
- * Exports: LineageDiffView, LineageDiffViewOptions, LineageDiffViewProps, LineageViewRef.
- */
-export {
-  LineageDiffView,
-  type LineageDiffViewOptions,
-  type LineageDiffViewProps,
-  type LineageViewRef,
-} from "./components/check/LineageDiffView";
-
 /**
  * Preset check template primitives.
  *
@@ -170,7 +163,6 @@ export {
   PresetCheckTemplateView,
   type PresetCheckTemplateViewProps,
 } from "./components/check/PresetCheckTemplateView";
-
 /**
  * Check timeline primitives.
  *
@@ -187,7 +179,6 @@ export {
   type TimelineEventProps,
   type TimelineEventType,
 } from "./components/check/timeline";
-
 /**
  * Check utility functions.
  *
@@ -201,6 +192,7 @@ export {
   formatSqlAsMarkdown,
   isDisabledByNoResult,
 } from "./components/check/utils";
+export type { LineageViewRef } from "./components/lineage/LineageView";
 
 // =============================================================================
 // RUN PRIMITIVES
