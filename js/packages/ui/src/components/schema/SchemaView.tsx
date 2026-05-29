@@ -23,6 +23,7 @@ import {
   useLineageViewContext,
   useRecceServerFlag,
 } from "../../contexts";
+import { useInlineProfileDistribution } from "../../hooks/useInlineProfileDistribution";
 import { trackColumnLevelLineage } from "../../lib/api/track";
 import type {
   SchemaDiffRow,
@@ -33,8 +34,9 @@ import {
   EmptyRowsRenderer,
   ScreenshotDataGrid,
 } from "../../primitives";
-
+import { ProfileDistributionUnsupportedBanner } from "../data/ProfileDistributionUnsupportedBanner";
 import { createDataGridFromData } from "../ui/dataGrid";
+import type { SchemaDistributionData } from "../ui/dataGrid/schemaCells";
 
 export function SchemaLegend() {
   return (
@@ -243,35 +245,69 @@ export function PrivateSchemaView(
     return frozen?.size ? frozen : undefined;
   }, [newCllExperience, lineageViewContext?.impactedColumnIds]);
 
-  const { columns, rows } = useMemo(() => {
+  // Resolve the dbt node used for context-menu actions and inline profiling.
+  const profileNode = useMemo(() => {
     const resourceType = current?.resource_type ?? base?.resource_type;
-    const node =
-      resourceType &&
+    return resourceType &&
       ["model", "seed", "snapshot", "source"].includes(resourceType)
-        ? (current ?? base)
-        : undefined;
-    const nodeId = current?.id ?? base?.id;
+      ? (current ?? base)
+      : undefined;
+  }, [current, base]);
+  const nodeId = current?.id ?? base?.id;
 
+  // DRC-3390 Stage C: inline paired distributions. The hook self-gates on the
+  // `inline_profile` server flag — a no-op (status "disabled") when it's off.
+  const distribution = useInlineProfileDistribution({
+    model: profileNode?.name,
+    nodeId,
+  });
+
+  // Thread distribution data into the grid only while loading or on success;
+  // "unsupported" shows a banner instead, "error"/"disabled" render nothing.
+  const distributionData: SchemaDistributionData | undefined = useMemo(() => {
+    if (distribution.status !== "ok" && distribution.status !== "loading") {
+      return undefined;
+    }
+    return {
+      payloads: distribution.columns,
+      baseTotal: distribution.baseTotal,
+      currentTotal: distribution.currentTotal,
+      isLoading: distribution.isLoading,
+      hasError: false,
+    };
+  }, [
+    distribution.status,
+    distribution.columns,
+    distribution.baseTotal,
+    distribution.currentTotal,
+    distribution.isLoading,
+  ]);
+
+  const { columns, rows } = useMemo(() => {
     return createDataGridFromData(
       { type: "schema_diff", base: base?.columns, current: current?.columns },
       {
-        node,
+        node: profileNode,
         cllRunningMap,
         showMenu,
         columnChanges,
         onViewCode,
         impactedColumns,
         nodeId,
+        distribution: distributionData,
       },
     );
   }, [
     base,
     current,
+    profileNode,
+    nodeId,
     cllRunningMap,
     showMenu,
     columnChanges,
     onViewCode,
     impactedColumns,
+    distributionData,
   ]);
 
   const { lineageGraph, isActionAvailable } = useLineageGraphContext();
@@ -417,6 +453,13 @@ export function PrivateSchemaView(
         <SchemaLegend />
         {headerAction}
       </Stack>
+      {distribution.status === "unsupported" && (
+        <Box sx={{ px: 1, pb: 0.5 }}>
+          <ProfileDistributionUnsupportedBanner
+            reason={distribution.unsupportedReason}
+          />
+        </Box>
+      )}
       {rows.length > 0 && (
         <ScreenshotDataGrid
           style={{

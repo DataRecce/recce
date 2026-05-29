@@ -264,3 +264,43 @@
 .schema-index-new {
   font-weight: 700;
 }
+
+/* Inline paired-distribution column (DRC-3390 Stage C). Strip ag-grid's
+ * default cell padding + line-height so the fixed-size paired-histogram SVG
+ * fills the cell horizontally and centers vertically. */
+.schema-column-profile-distribution {
+  padding: 0 4px !important;
+  line-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Per-column pending dot shown while the profile_distribution run is in
+ * flight. Small pulsing circle, no synthetic chart (never fake data). */
+.schema-distribution-pending {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--schema-color-muted);
+  animation: schema-distribution-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes schema-distribution-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+/* Per-column failure / run error marker — a muted dash, deliberately quiet
+ * so a single bad column doesn't shout next to healthy cells. */
+.schema-distribution-error {
+  color: var(--schema-color-muted);
+  font-size: 0.8rem;
+  line-height: 1;
+}

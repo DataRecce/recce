@@ -121,7 +121,7 @@ export type {
   TopKResult,
   TopKViewOptions,
 } from "./profile";
-export { submitProfileDiff } from "./profile";
+export { submitProfileDiff, submitProfileDistribution } from "./profile";
 // Row Count API
 export type {
   RowCount,
