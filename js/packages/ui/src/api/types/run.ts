@@ -198,9 +198,16 @@ export interface ProfileDistributionParams {
  * free rendering of percentile-only data. The frontend overlays the two
  * staircases on a shared value axis; it must not assume aligned bins. See
  * PR #1398 / DRC-3390 for the contract rationale.
+ *
+ * Edge encoding is always numeric, but the UNIT depends on the column type:
+ * numeric columns emit raw values, datetime columns emit epoch SECONDS (the
+ * DRC-3504 ``epoch()`` cast). The payload carries no numeric-vs-datetime
+ * marker, so the consumer must use the column's out-of-band dbt type to
+ * decide whether to format edges as dates. Stage C owns that formatting.
  */
 export interface ProfileDistributionHistogramPayload {
   kind: "histogram";
+  /** Numeric values, or epoch seconds for datetime columns — see above. */
   base_bin_edges: number[];
   current_bin_edges: number[];
   base_density: number[];

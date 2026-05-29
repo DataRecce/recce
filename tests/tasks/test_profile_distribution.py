@@ -380,6 +380,29 @@ def test_continuous_numeric_column(dbt_test_helper):
     assert col["current_total"] == 100
 
 
+def test_empty_columns_ok_payload_has_totals(dbt_test_helper):
+    """Empty-columns "ok" path still satisfies the frozen contract.
+
+    When the ``columns`` filter matches nothing (or every column is a skip
+    type), the task short-circuits before the probe phase. The TS contract
+    (ProfileDistributionOkResult) declares base_total/current_total as
+    required numbers, so the early return must emit them — Stage C reads
+    ``result.base_total`` and would otherwise get ``undefined``.
+    """
+    csv = "amount\n1\n2\n3\n"
+    dbt_test_helper.create_model("orders_empty_filter", csv, csv)
+
+    # Filter to a column that doesn't exist → column_records is empty.
+    task = ProfileDistributionTask({"model": "orders_empty_filter", "columns": ["nope"]})
+    result = task.execute()
+
+    assert result["status"] == "ok"
+    assert result["columns"] == {}
+    # Required by the contract even though no columns were profiled.
+    assert result["base_total"] == 0
+    assert result["current_total"] == 0
+
+
 def test_low_cardinality_categorical_column(dbt_test_helper):
     """Low-cardinality categorical → topk with values present."""
     # ~50/50 split.
@@ -443,10 +466,11 @@ def test_uuid_cap_degenerate_column(dbt_test_helper):
     # acceptable here; the assertion guards the spec rule.
     assert col["kind"] == "topk"
     if not col["values"]:
-        # Cap-degenerate path: the spec contract.
+        # Cap-degenerate path: the spec contract. Counts are null (not []),
+        # matching the normal categorical "no counts" encoding.
         assert col["values"] == []
-        assert col["base_counts"] == []
-        assert col["current_counts"] == []
+        assert col["base_counts"] is None
+        assert col["current_counts"] is None
         assert col["trimmed"] is False
 
 

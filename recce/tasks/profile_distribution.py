@@ -576,7 +576,18 @@ class ProfileDistributionTask(Task):
 
             if not column_records:
                 elapsed_ms = int((time.perf_counter() - wall_start) * 1000)
-                payload = {"status": "ok", "strategy": strategy, "columns": {}}
+                # The probe phase hasn't run, so row totals are unknown. The
+                # frozen TS contract declares base_total/current_total as
+                # required numbers (ProfileDistributionOkResult), so emit 0
+                # rather than omitting them — there are no columns to render
+                # against a denominator anyway.
+                payload = {
+                    "status": "ok",
+                    "strategy": strategy,
+                    "columns": {},
+                    "base_total": 0,
+                    "current_total": 0,
+                }
                 cache[key] = payload
                 _emit_telemetry(strategy, elapsed_ms, phase_wall, 0, 0, cache_hit=False)
                 return payload
@@ -668,11 +679,15 @@ class ProfileDistributionTask(Task):
         # the frontend knows to render the "effectively unique" tag rather
         # than treating the column as "no data."
         for name in degenerate:
+            # Use null (not []) for the counts so this matches the normal
+            # DuckDB categorical path, which emits null when the sketch
+            # exposes no counts. One "no counts" encoding for the same
+            # adapter; the empty ``values`` list is what flags degeneracy.
             columns[name] = {
                 "kind": "topk",
                 "values": [],
-                "base_counts": [],
-                "current_counts": [],
+                "base_counts": None,
+                "current_counts": None,
                 "trimmed": False,
             }
 
