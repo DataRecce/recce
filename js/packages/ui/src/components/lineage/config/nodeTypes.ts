@@ -1,9 +1,8 @@
 import type { LineageGraphNode } from "../../../contexts/lineage/types";
-import { colors } from "../../../theme";
 import { GraphColumnNode } from "../GraphColumnNodeOss";
 import GraphEdge from "../GraphEdgeOss";
 import { GraphNode } from "../GraphNodeOss";
-import { getIconForChangeStatus } from "../styles";
+import { getNodeChangeStyle } from "../styles";
 
 /**
  * Node types configuration for ReactFlow.
@@ -28,14 +27,40 @@ export const edgeTypes = {
 export const initialNodes: LineageGraphNode[] = [];
 
 /**
- * Get the color for a node based on its change status.
- * Used by MiniMap for node coloring.
- *
- * @param node - The lineage graph node
- * @returns Hex color string
+ * Inputs that let the MiniMap mirror the canvas's CLL coloring. Both come
+ * from the lineage view context (`usePublishedImpactSets` + the
+ * `new_cll_experience` server flag).
  */
-export const getNodeColor = (node: LineageGraphNode): string => {
-  return node.data.changeStatus
-    ? getIconForChangeStatus(node.data.changeStatus).hexColor
-    : colors.neutral[400];
-};
+export interface NodeColorOptions {
+  /**
+   * Node IDs that are impacted by an upstream change (the amber nodes in the
+   * new CLL experience). Matches `LineageViewContextType.impactedNodeIds`.
+   */
+  impactedNodeIds?: Set<string>;
+  /** Whether the new CLL experience is active (`new_cll_experience` flag). */
+  newCllExperience?: boolean;
+}
+
+/**
+ * Build a MiniMap node-color function that copies the canvas node card's color.
+ *
+ * The color decision (impacted-amber vs change-status, muted "cll" palette in
+ * the new experience) lives in one place — `getNodeChangeStyle`, which
+ * `LineageNode` also renders from — so the minimap can't drift from the graph.
+ * The only thing the minimap can't read off the node is its impact state
+ * (`GraphNodeOss` pulls that from context, not `node.data`), so the impacted
+ * set is threaded in here (DRC-3250).
+ *
+ * @param options - Impacted-node set and CLL-experience flag from context.
+ * @returns A `nodeColor` callback for `<MiniMap>`.
+ */
+export const makeGetNodeColor =
+  (options: NodeColorOptions = {}) =>
+  (node: LineageGraphNode): string => {
+    const { impactedNodeIds, newCllExperience } = options;
+    return getNodeChangeStyle({
+      changeStatus: node.data.changeStatus,
+      isImpacted: newCllExperience ? impactedNodeIds?.has(node.id) : false,
+      newCllExperience,
+    }).color;
+  };
