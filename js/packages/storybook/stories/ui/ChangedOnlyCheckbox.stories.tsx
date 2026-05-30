@@ -4,9 +4,8 @@ import { useState } from "react";
 import { expect, fn, userEvent, within } from "storybook/test";
 
 const meta: Meta<typeof ChangedOnlyCheckbox> = {
-  title: "UI/ChangedOnlyCheckbox",
+  title: "Primitives/ChangedOnlyCheckbox",
   component: ChangedOnlyCheckbox,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {

@@ -46,7 +46,6 @@ import {
   useThemeColors,
 } from "../../hooks";
 import { useMultiNodesActionOss as useMultiNodesAction } from "../../hooks/useMultiNodesActionOss";
-import useValueDiffAlertDialog from "../../hooks/useValueDiffAlertDialogOss";
 import {
   trackCopyToClipboard,
   trackMultiNodesAction,
@@ -93,6 +92,7 @@ import { ColumnLevelLineageControlOss } from "./ColumnLevelLineageControlOss";
 import { computeColumnLineage } from "./computeColumnLineage";
 import { computeImpactedColumns } from "./computeImpactedColumns";
 import { computeIsImpacted } from "./computeIsImpacted";
+import { computeWholeModelImpact } from "./computeWholeModelImpact";
 import {
   EXPLORE_MIN_ZOOM,
   edgeTypes,
@@ -139,7 +139,13 @@ export const MINIMAP_NODE_THRESHOLD = 500;
 function computeImpactedSets(
   lineageGraph: LineageGraph,
   cll: ColumnLineageData,
-): { nodeIds: Set<string>; columnIds: Set<string> } {
+  wholeModelImpact = false,
+): {
+  nodeIds: Set<string>;
+  columnIds: Set<string>;
+  wholeModelImpactedNodeIds?: Set<string>;
+  wholeModelChangedNodeIds?: Set<string>;
+} {
   const columnIds = computeImpactedColumns(cll);
   const nodeIds = new Set<string>();
   for (const nodeId of Object.keys(lineageGraph.nodes)) {
@@ -154,6 +160,16 @@ function computeImpactedSets(
     ) {
       nodeIds.add(nodeId);
     }
+  }
+  if (wholeModelImpact) {
+    const { wholeModelImpactedNodeIds, wholeModelChangedNodeIds } =
+      computeWholeModelImpact(lineageGraph, cll);
+    return {
+      nodeIds,
+      columnIds,
+      wholeModelImpactedNodeIds,
+      wholeModelChangedNodeIds,
+    };
   }
   return { nodeIds, columnIds };
 }
@@ -262,8 +278,10 @@ export function PrivateLineageView(
   } = useLineageGraphContext();
 
   const { featureToggles, singleEnv } = useRecceInstanceContext();
+
   const { data: serverFlags } = useRecceServerFlag();
   const newCllExperience = serverFlags?.new_cll_experience ?? false;
+  const wholeModelImpact = serverFlags?.whole_model_impact ?? false;
   const { runId, showRunId, closeRunResult, runAction, isRunResultOpen } =
     useRecceActionContext();
   const { run } = useRun(runId);
@@ -486,6 +504,8 @@ export function PrivateLineageView(
   const {
     impactedNodeIds,
     impactedColumnIds,
+    wholeModelImpactedNodeIds,
+    wholeModelChangedNodeIds,
     publish: publishImpactSets,
   } = usePublishedImpactSets();
 
@@ -610,7 +630,11 @@ export function PrivateLineageView(
       // Compute impacted sets once; thread into ancestry to avoid redundant DFS.
       const impacted =
         newCllExperience && cll
-          ? computeImpactedSets(lineageGraph, cll)
+          ? computeImpactedSets(
+              lineageGraph,
+              cll,
+              serverFlags?.whole_model_impact ?? false,
+            )
           : undefined;
 
       const [nodes, edges, nodeColumnSetMap] = await toReactFlow(lineageGraph, {
@@ -938,7 +962,11 @@ export function PrivateLineageView(
 
     const impacted =
       newCllExperience && cll
-        ? computeImpactedSets(lineageGraph, cll)
+        ? computeImpactedSets(
+            lineageGraph,
+            cll,
+            serverFlags?.whole_model_impact ?? false,
+          )
         : undefined;
 
     const [newNodes, newEdges, newNodeColumnSetMap] = await toReactFlow(
@@ -1015,8 +1043,6 @@ export function PrivateLineageView(
       preservePositions,
     });
   };
-
-  const valueDiffAlertDialog = useValueDiffAlertDialog();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: handleViewOptionsChanged and onNodeClick are intentionally omitted
   useEffect(() => {
@@ -1194,6 +1220,8 @@ export function PrivateLineageView(
     deselect,
     impactedNodeIds,
     impactedColumnIds,
+    wholeModelChangedNodeIds,
+    wholeModelImpactedNodeIds,
     isNodeHighlighted: (nodeId: string) => highlighted.has(nodeId),
     isNodeSelected: (nodeId: string) => selectedNodeIds.has(nodeId),
     isEdgeHighlighted: (source, target) => {
@@ -1222,6 +1250,7 @@ export function PrivateLineageView(
     },
     changeAnalysisMode,
     newCllExperience,
+    wholeModelImpact,
     setChangeAnalysisMode,
     getNodeAction: (nodeId: string) => {
       return multiNodeAction.actionState.actions[nodeId];
@@ -1286,17 +1315,11 @@ export function PrivateLineageView(
         );
         trackMultiNodesAction({ type: "value_diff", selected: "single" });
       } else {
-        const nodeCount =
-          selectMode === "selecting"
-            ? selectedNodes.length
-            : filteredNodeIds.length;
-        if (await valueDiffAlertDialog.confirm(nodeCount)) {
-          await multiNodeAction.runValueDiff();
-          trackMultiNodesAction({
-            type: "value_diff",
-            selected: selectMode === "selecting" ? "multi" : "none",
-          });
-        }
+        await multiNodeAction.runValueDiff();
+        trackMultiNodesAction({
+          type: "value_diff",
+          selected: selectMode === "selecting" ? "multi" : "none",
+        });
       }
     },
     addLineageDiffCheck: async () => {
@@ -1572,7 +1595,6 @@ export function PrivateLineageView(
           <Box></Box>
         )}
       </HSplit>
-      {valueDiffAlertDialog.AlertDialog}
     </LineageViewContext.Provider>
   );
 }

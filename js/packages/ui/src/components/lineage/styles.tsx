@@ -618,6 +618,25 @@ export function getIconForMaterialization(
   }
 }
 
+/**
+ * Tooltip label for a node: "<name> - <kind>", or just "<name>" if we have
+ * nothing meaningful to append.
+ *
+ * For models, "kind" is the materialization (view/table/incremental/…) when
+ * available; otherwise the resource type. For non-models the resource type
+ * itself (seed/source/snapshot/…) is the kind.
+ */
+export function formatNodeTooltip(
+  name: string,
+  resourceType?: string,
+  materialized?: string,
+): string {
+  if (!resourceType) return name;
+  const kind =
+    resourceType === "model" ? materialized || resourceType : resourceType;
+  return `${name} - ${kind}`;
+}
+
 // =============================================================================
 // STYLE CONSTANTS
 // =============================================================================
@@ -697,3 +716,63 @@ export const cllChangeStatusBackgroundsDark: Record<
   impacted: "rgb(50 44 24)",
   unchanged: "rgb(38 38 38)",
 };
+
+/**
+ * Impacted accent + badge palette. Mirrors `--schema-color-impacted-accent`
+ * and `--schema-badge-impacted-{bg,fg}` in ../schema/style.css under
+ * `.cll-experience` — keep both in sync by hand (no build-time check).
+ */
+const IMPACTED_HUE_LIGHT = "252 211 77"; // matches cllChangeStatusColors.impacted
+
+export const cllImpactedAccent = {
+  light: cllChangeStatusColors.impacted,
+  dark: `rgb(${IMPACTED_HUE_LIGHT})`,
+} as const;
+
+export const cllImpactedBadgeBg = {
+  light: `rgb(${IMPACTED_HUE_LIGHT} / 0.35)`,
+  dark: `rgb(${IMPACTED_HUE_LIGHT} / 0.18)`,
+} as const;
+
+export const cllImpactedBadgeFg = {
+  // Text-contrast hue, not derivable from the accent.
+  light: "rgb(146 64 14)",
+  dark: `rgb(${IMPACTED_HUE_LIGHT})`,
+} as const;
+
+/**
+ * Changed accent + badge palette. Mirrors `--schema-color-changed-accent`
+ * and `--schema-badge-changed-{bg,fg}` in ../schema/style.css under
+ * `.cll-experience` — keep both in sync by hand (no build-time check).
+ */
+export const cllChangedAccent = cllChangeStatusColors.modified;
+
+export const cllChangedBadgeBg = {
+  light: "rgb(255 173 21 / 0.25)",
+  dark: "rgb(255 173 21 / 0.2)",
+} as const;
+
+export const cllChangedBadgeFg = {
+  light: "rgb(160 100 0)",
+  dark: "rgb(255 200 80)",
+} as const;
+
+/**
+ * Additive accent + badge palette. Mirrors `--schema-color-added-accent`
+ * and `--schema-badge-added-{bg,fg}` in ../schema/style.css — keep both in
+ * sync by hand (no build-time check).
+ */
+export const cllAdditiveAccent = {
+  light: cllChangeStatusColors.added,
+  dark: "rgb(80 200 100)",
+} as const;
+
+export const cllAdditiveBadgeBg = {
+  light: "rgb(46 160 67 / 0.2)",
+  dark: "rgb(46 160 67 / 0.2)",
+} as const;
+
+export const cllAdditiveBadgeFg = {
+  light: "rgb(22 110 40)",
+  dark: cllAdditiveAccent.dark,
+} as const;

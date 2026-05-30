@@ -5,9 +5,8 @@ import { fn } from "storybook/test";
 import { manyChecks, sampleChecks } from "./fixtures";
 
 const meta: Meta<typeof CheckList> = {
-  title: "Check/CheckList",
+  title: "Checks/CheckList",
   component: CheckList,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {

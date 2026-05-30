@@ -205,7 +205,11 @@ class CloudBackend:
         check_id = arguments.get("check_id")
         if not check_id:
             raise ValueError("check_id is required")
-        run = await self._request("POST", f"checks/{quote(str(check_id), safe='')}/run", json={"nowait": False})
+        run = await self._request(
+            "POST",
+            f"checks/{quote(str(check_id), safe='')}/run",
+            json={"nowait": False},
+        )
         if self._run_succeeded(run):
             await self._auto_approve(check_id)
         return run
@@ -230,12 +234,20 @@ class CloudBackend:
         # executable run). lineage_diff/schema_diff are recorded server-side via
         # POST /checks/{id}/run, mirroring local _create_metadata_run.
         if check_id and check_type != "simple":
-            run = await self._request("POST", f"checks/{quote(str(check_id), safe='')}/run", json={"nowait": False})
+            run = await self._request(
+                "POST",
+                f"checks/{quote(str(check_id), safe='')}/run",
+                json={"nowait": False},
+            )
             run_executed = True
             run_error = run.get("error")
             if self._run_succeeded(run):
                 await self._auto_approve(check_id)
-        result = {"check_id": str(check_id), "created": True, "run_executed": run_executed}
+        result = {
+            "check_id": str(check_id),
+            "created": True,
+            "run_executed": run_executed,
+        }
         if run_error:
             result["run_error"] = run_error
         return result
@@ -248,7 +260,11 @@ class CloudBackend:
         post-success side-effect, not part of the run contract.
         """
         try:
-            await self._request("PATCH", f"checks/{quote(str(check_id), safe='')}", json={"is_checked": True})
+            await self._request(
+                "PATCH",
+                f"checks/{quote(str(check_id), safe='')}",
+                json={"is_checked": True},
+            )
         except (RecceCloudException, InstanceSpawningError) as e:
             logger.warning(f"[MCP] Auto-approve failed for check {check_id}: {e}")
 
@@ -292,7 +308,10 @@ class CloudBackend:
             if source in id_to_idx and target in id_to_idx:
                 edge_rows.append((id_to_idx[source], id_to_idx[target]))
         edges_df = DataFrame.from_data(columns={"from": "integer", "to": "integer"}, data=edge_rows)
-        return {"nodes": nodes_df.model_dump(mode="json"), "edges": edges_df.model_dump(mode="json")}
+        return {
+            "nodes": nodes_df.model_dump(mode="json"),
+            "edges": edges_df.model_dump(mode="json"),
+        }
 
     async def _tool_schema_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         info = await self._request("GET", "info")
@@ -316,7 +335,10 @@ class CloudBackend:
     async def _tool_impact_analysis(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         info = await self._request("GET", "info")
         nodes = info.get("lineage", {}).get("nodes", {})
-        select = arguments.get("select", "state:modified.body+ state:modified.macros+ state:modified.contract+")
+        select = arguments.get(
+            "select",
+            "state:modified.body+ state:modified.macros+ state:modified.contract+",
+        )
         impacted_node_ids = set((await self._request("POST", "select", json={"select": select})).get("nodes", []))
         modified_node_ids = set(
             (await self._request("POST", "select", json={"select": "state:modified"})).get("nodes", [])
@@ -676,13 +698,62 @@ class RecceMCPServer:
                     },
                 )
             )
+            # analyze_model is local-only: it relies on the local dbt manifest and
+            # the adapter-side _full_cll_map cache. The cloud backend (RecceMCPCloudBackend)
+            # does not implement it, so advertising it in cloud mode would surface a
+            # ValueError("Unknown tool: analyze_model") when an agent tries to call it.
+            if self.backend is None:
+                tools.append(
+                    Tool(
+                        name="analyze_model",
+                        description=(
+                            "Parse a dbt model's compiled SQL into structured evidence (refs, projections, "
+                            "filters, joins, group_by, having, order_by, aggregations, case_expressions, "
+                            "distinct, has_subquery, has_cte, is_set_operation) and return its downstream "
+                            "column impact (which other models and columns depend on it, 1 hop). "
+                            "Single-environment tool — does not require target-base/ or git history. "
+                            "Useful for understanding what a model does structurally and who would be "
+                            "affected by changes to it. Only available with dbt adapter in local mode.\n\n"
+                            "Notes on the structure: refs lists upstream tables/sources only (CTE aliases "
+                            "are excluded). is_set_operation=true means the model is a UNION/INTERSECT/"
+                            "EXCEPT; projections and filters are merged across all legs. downstream covers "
+                            "only direct dependents — for transitive impact, traverse with get_cll.\n\n"
+                            "Performance: the first call per session builds the full column-level lineage "
+                            "map (potentially seconds on large projects); subsequent calls reuse the cached "
+                            "map and are fast.\n\n"
+                            "Returns: {model_id, structure: SqlStructure, downstream: {models, columns}}. "
+                            "If sqlglot cannot parse the compiled SQL, structure.unparseable=true and "
+                            "the agent should fall back to text-level inspection."
+                        ),
+                        inputSchema={
+                            "type": "object",
+                            "properties": {
+                                "model_id": {
+                                    "type": "string",
+                                    "description": (
+                                        "Full unique ID of the model to analyze " "(e.g., 'model.project.model_name')."
+                                    ),
+                                },
+                            },
+                            "required": ["model_id"],
+                        },
+                    )
+                )
             tools.append(
                 Tool(
                     name="get_server_info",
                     description="Get server context information including current backend mode "
                     "('local', 'cloud', or 'none' when unconfigured), adapter type, git branch, "
                     "supported tasks, and review mode status. Useful for diagnostics and "
-                    "understanding which diff tools are available.",
+                    "understanding which diff tools are available.\n\n"
+                    "The 'base_status' field is a single-cased enum (all lowercase) reporting "
+                    "whether the local target-base/ artifacts are usable for diff operations:\n"
+                    "  - 'fresh': artifacts are within the freshness threshold and SHA matches; safe to diff.\n"
+                    "  - 'stale_time': artifacts older than the freshness threshold; diff results may be outdated.\n"
+                    "  - 'stale_sha': artifacts were generated against a different git SHA than current HEAD.\n"
+                    "  - 'missing': no manifest.json under target-base/; diffs will fail until rebuilt.\n"
+                    "  - 'single_env': server is running in single-env mode; diff is not applicable.\n"
+                    "  - 'unknown': freshness check did not run (e.g., cloud mode or check skipped).",
                     inputSchema={
                         "type": "object",
                         "properties": {},
@@ -1283,6 +1354,8 @@ class RecceMCPServer:
                     result = await self._tool_get_model(arguments)
                 elif name == "get_cll":
                     result = await self._tool_get_cll(arguments)
+                elif name == "analyze_model":
+                    result = await self._tool_analyze_model(arguments)
                 elif name == "get_server_info":
                     result = await self._tool_get_server_info(arguments)
                 elif name == "select_nodes":
@@ -2028,6 +2101,44 @@ class RecceMCPServer:
         )
         return cll.model_dump(mode="json")
 
+    async def _tool_analyze_model(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Return structural analysis of a model's compiled SQL plus downstream column impact."""
+        model_id = arguments.get("model_id")
+        if not model_id:
+            raise ValueError("model_id is required")
+        if self.context.adapter_type != "dbt":
+            raise ValueError("analyze_model is only available with dbt adapter")
+
+        from recce.adapter.dbt_adapter import DbtAdapter
+        from recce.util.ast_analyze import (
+            analyze_sql,
+            collect_downstream,
+            get_compiled_sql_from_manifest,
+        )
+
+        dbt_adapter: DbtAdapter = self.context.adapter
+        compiled_sql = get_compiled_sql_from_manifest(dbt_adapter.manifest, model_id)
+        if compiled_sql is None:
+            raise ValueError(
+                f"Cannot resolve compiled SQL for {model_id}. "
+                "Run `dbt compile` to populate target/ before calling analyze_model."
+            )
+
+        # Mirror the dialect lookup used by build_full_cll_map (see DbtAdapter:1078)
+        # — manifest metadata first, then live adapter.type(). Without this, BigQuery /
+        # Snowflake / etc. fall through to sqlglot's default dialect and return unparseable.
+        dialect = getattr(dbt_adapter.manifest.metadata, "adapter_type", None) or dbt_adapter.adapter.type()
+        structure = analyze_sql(compiled_sql, dialect=dialect)
+
+        cll_data = dbt_adapter.build_full_cll_map()
+        downstream = collect_downstream(cll_data, model_id)
+
+        return {
+            "model_id": model_id,
+            "structure": structure.model_dump(mode="json"),
+            "downstream": downstream,
+        }
+
     async def _tool_get_server_info(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Get server context information"""
         context = self.context
@@ -2038,6 +2149,14 @@ class RecceMCPServer:
             "support_tasks": context.support_tasks(),
             "single_env": self.single_env,
         }
+
+        # Include base_status so agents can programmatically detect stale state.
+        # All-lowercase enum (matches the recommendation field's casing):
+        # "fresh" | "stale_time" | "stale_sha" | "missing" | "single_env" | "unknown"
+        if self.single_env:
+            result["base_status"] = "single_env"
+        else:
+            result["base_status"] = getattr(self, "_base_status", "unknown")
 
         # Add git and pull_request info if state_loader is available
         if context.state_loader:
@@ -2122,7 +2241,10 @@ class RecceMCPServer:
                 else:
                     self.single_env = not base_path.is_dir()
 
-                load_kwargs = {"target_path": target_path, "target_base_path": effective_base}
+                load_kwargs = {
+                    "target_path": target_path,
+                    "target_base_path": effective_base,
+                }
                 if project_dir:
                     load_kwargs["project_dir"] = project_dir
                 self.context = load_context(**load_kwargs)
@@ -2570,6 +2692,43 @@ async def run_mcp_server(
                 kwargs.get("target_base_path", "target-base"),
             )
             server._local_cache_key = cache_key
+
+            # Freshness check (M2, AC-3): warn on stale or missing base artifacts at startup.
+            # Lazy import to avoid circular import; best-effort — startup never fails here.
+            try:
+                from recce.cli import check_base_freshness, resolve_target_base_path
+
+                # Honor --project-dir like the CLI does. Without this, MCP
+                # startup looks for ./target-base/manifest.json relative to
+                # CWD, missing artifacts that exist at --project-dir-relative
+                # paths (or worse, picking up a stale manifest from another
+                # project that happens to live in CWD).
+                _tb = resolve_target_base_path(
+                    kwargs.get("project_dir"),
+                    kwargs.get("target_base_path", "target-base"),
+                )
+                _freshness = check_base_freshness(target_base_path=_tb)
+                server._base_status = _freshness.get("status", "fresh")
+                if server._base_status in ("stale_time", "stale_sha"):
+                    _age = _freshness.get("artifact_age_hours") or 0
+                    logger.warning(
+                        f"Base artifacts are stale ({_age:.1f} hours old). "
+                        "Diffs may not reflect the latest base. "
+                        f"Run: dbt docs generate --target-path {_tb} "
+                        "(or use `recce check-base` for full diagnosis)"
+                    )
+                elif server._base_status == "missing":
+                    # MISSING is the most actionable failure of the three: diffs
+                    # will fail outright, not silently mislead. Surface it loudly
+                    # alongside the rebuild path.
+                    logger.warning(
+                        f"Base artifacts not found at '{_tb}/manifest.json'. "
+                        "Diff tools will fail until base artifacts are built. "
+                        f"Run: dbt build --target-path {_tb} "
+                        "(or use `recce check-base` for full diagnosis)"
+                    )
+            except Exception as _e:
+                logger.debug(f"[MCP] Base freshness check skipped: {_e}")
 
     # Run in either stdio or SSE mode
     if sse:

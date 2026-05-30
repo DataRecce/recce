@@ -5,7 +5,7 @@
  * @description A wrapper component for content that can be captured as a screenshot.
  *
  * This component provides a ref-forwardable container that can be used with
- * html-to-image or similar libraries to capture its contents as an image.
+ * snapdom or similar libraries to capture its contents as an image.
  */
 
 import type { BoxProps } from "@mui/material/Box";
@@ -25,7 +25,7 @@ export interface ScreenshotBoxProps extends BoxProps {
  * A container component that can be captured as a screenshot.
  *
  * The component forwards its ref to the outer container, allowing parent
- * components to capture the element using html-to-image or similar libraries.
+ * components to capture the element using snapdom or similar libraries.
  *
  * @example
  * ```tsx

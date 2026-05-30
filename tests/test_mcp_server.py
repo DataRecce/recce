@@ -6,7 +6,11 @@ import pytest
 # Skip all tests in this module if mcp is not available
 pytest.importorskip("mcp")
 
-from mcp.types import CallToolRequest, CallToolRequestParams  # noqa: E402
+from mcp.types import (  # noqa: E402
+    CallToolRequest,
+    CallToolRequestParams,
+    ListToolsRequest,
+)
 
 from recce.core import RecceContext  # noqa: E402
 from recce.mcp_server import RecceMCPServer, run_mcp_server  # noqa: E402
@@ -889,6 +893,177 @@ class TestRecceMCPServer:
 
         with pytest.raises(ValueError, match="only available with dbt"):
             await server._tool_get_cll({})
+
+    @pytest.mark.asyncio
+    async def test_tool_analyze_model(self, mcp_server):
+        """Test the analyze_model tool returns structure + downstream"""
+        from types import SimpleNamespace
+
+        from recce.models.types import CllColumn, CllData, CllNode
+
+        server, mock_context = mcp_server
+        mock_context.adapter_type = "dbt"
+
+        node_a = SimpleNamespace(
+            compiled_code="SELECT id, status FROM customers WHERE status = 'active'",
+            raw_code="",
+        )
+        mock_context.adapter.manifest = SimpleNamespace(
+            nodes={"model.proj.a": node_a},
+            metadata=SimpleNamespace(adapter_type="postgres"),
+        )
+        # Shape mirrors what DbtAdapter.build_full_cll_map produces:
+        # child_map drives downstream, CllColumn.table_id resolves ownership.
+        mock_context.adapter.build_full_cll_map.return_value = CllData(
+            nodes={
+                "model.proj.a": CllNode(
+                    id="model.proj.a",
+                    name="a",
+                    package_name="proj",
+                    resource_type="model",
+                    columns={"id": CllColumn(name="id")},
+                ),
+                "model.proj.b": CllNode(
+                    id="model.proj.b",
+                    name="b",
+                    package_name="proj",
+                    resource_type="model",
+                    columns={"x": CllColumn(name="x")},
+                ),
+            },
+            columns={
+                "model.proj.a_id": CllColumn(id="model.proj.a_id", table_id="model.proj.a", name="id"),
+                "model.proj.b_x": CllColumn(id="model.proj.b_x", table_id="model.proj.b", name="x"),
+            },
+            child_map={
+                "model.proj.a": {"model.proj.b"},
+                "model.proj.a_id": {"model.proj.b_x"},
+            },
+        )
+
+        result = await server._tool_analyze_model({"model_id": "model.proj.a"})
+
+        assert result["model_id"] == "model.proj.a"
+        assert result["structure"]["refs"] == ["customers"]
+        assert len(result["structure"]["filters"]) == 1
+        assert result["downstream"]["models"] == ["model.proj.b"]
+        assert result["downstream"]["columns"] == [{"node": "model.proj.b", "column": "x"}]
+
+    @pytest.mark.asyncio
+    async def test_tool_analyze_model_missing_id(self, mcp_server):
+        """Test analyze_model raises when model_id is missing"""
+        server, _ = mcp_server
+        with pytest.raises(ValueError, match="model_id is required"):
+            await server._tool_analyze_model({})
+
+    @pytest.mark.asyncio
+    async def test_tool_analyze_model_non_dbt(self, mcp_server):
+        """Test analyze_model raises for non-dbt adapter"""
+        server, mock_context = mcp_server
+        mock_context.adapter_type = "sqlmesh"
+        with pytest.raises(ValueError, match="only available with dbt"):
+            await server._tool_analyze_model({"model_id": "model.proj.a"})
+
+    @pytest.mark.asyncio
+    async def test_tool_analyze_model_missing_compiled_sql(self, mcp_server):
+        """Test analyze_model raises when compiled SQL is not available"""
+        from types import SimpleNamespace
+
+        server, mock_context = mcp_server
+        mock_context.adapter_type = "dbt"
+        mock_context.adapter.manifest = SimpleNamespace(nodes={})
+        with pytest.raises(ValueError, match="compiled SQL"):
+            await server._tool_analyze_model({"model_id": "model.proj.missing"})
+
+    @pytest.mark.asyncio
+    async def test_tool_analyze_model_forwards_dialect_from_manifest(self, mcp_server):
+        """Dialect must be sourced from manifest metadata so BigQuery-specific
+        syntax (backticked qualified identifier) parses instead of silently
+        falling through to unparseable=true."""
+        from types import SimpleNamespace
+
+        from recce.models.types import CllData
+
+        server, mock_context = mcp_server
+        mock_context.adapter_type = "dbt"
+
+        # Only parses with dialect=bigquery; default sqlglot rejects this.
+        node = SimpleNamespace(
+            compiled_code="SELECT user.name FROM `my-project.dataset.users` AS user",
+            raw_code="",
+        )
+        mock_context.adapter.manifest = SimpleNamespace(
+            nodes={"model.proj.a": node},
+            metadata=SimpleNamespace(adapter_type="bigquery"),
+        )
+        mock_context.adapter.build_full_cll_map.return_value = CllData()
+
+        result = await server._tool_analyze_model({"model_id": "model.proj.a"})
+
+        assert result["structure"]["unparseable"] is False
+        assert result["structure"]["refs"] == ["users"]
+
+    @pytest.mark.asyncio
+    async def test_tool_analyze_model_falls_back_to_adapter_type(self, mcp_server):
+        """When manifest.metadata.adapter_type is absent, fall back to adapter.type()."""
+        from types import SimpleNamespace
+
+        from recce.models.types import CllData
+
+        server, mock_context = mcp_server
+        mock_context.adapter_type = "dbt"
+
+        node = SimpleNamespace(
+            compiled_code="SELECT user.name FROM `my-project.dataset.users` AS user",
+            raw_code="",
+        )
+        mock_context.adapter.manifest = SimpleNamespace(
+            nodes={"model.proj.a": node},
+            metadata=SimpleNamespace(),  # no adapter_type attr -> getattr returns None
+        )
+        mock_context.adapter.adapter.type.return_value = "bigquery"
+        mock_context.adapter.build_full_cll_map.return_value = CllData()
+
+        result = await server._tool_analyze_model({"model_id": "model.proj.a"})
+
+        assert result["structure"]["unparseable"] is False
+        mock_context.adapter.adapter.type.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_tool_analyze_model_rejects_test_resource_type(self, mcp_server):
+        """analyze_model must refuse non-{model,seed,snapshot} nodes so an agent
+        doesn't accidentally analyze a dbt test's compiled SQL as if it were a model."""
+        from types import SimpleNamespace
+
+        server, mock_context = mcp_server
+        mock_context.adapter_type = "dbt"
+
+        test_node = SimpleNamespace(
+            compiled_code="SELECT * FROM model_a WHERE id IS NULL",
+            raw_code="",
+            resource_type="test",
+        )
+        mock_context.adapter.manifest = SimpleNamespace(
+            nodes={"test.proj.not_null_model_a_id": test_node},
+            metadata=SimpleNamespace(adapter_type="postgres"),
+        )
+
+        with pytest.raises(ValueError, match="resource_type"):
+            await server._tool_analyze_model({"model_id": "test.proj.not_null_model_a_id"})
+
+    @pytest.mark.asyncio
+    async def test_analyze_model_advertised_in_local_mode_only(self):
+        """analyze_model is local-only; advertising it in cloud mode would surface
+        a 'Unknown tool' error because RecceMCPCloudBackend doesn't implement it."""
+        local_server = RecceMCPServer(MagicMock(spec=RecceContext), backend=None)
+        cloud_server = RecceMCPServer(MagicMock(spec=RecceContext), backend=MagicMock())
+        req = ListToolsRequest(method="tools/list", params=None)
+
+        local_tools = (await local_server.server.request_handlers[ListToolsRequest](req)).root.tools
+        cloud_tools = (await cloud_server.server.request_handlers[ListToolsRequest](req)).root.tools
+
+        assert any(t.name == "analyze_model" for t in local_tools)
+        assert not any(t.name == "analyze_model" for t in cloud_tools)
 
     @pytest.mark.asyncio
     async def test_tool_get_server_info(self, mcp_server):

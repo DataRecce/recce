@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
 
 const STORY_URL =
-  "/iframe.html?id=visualizations-histogram-histogramresultview";
+  "/iframe.html?id=diffs-results-histogram-histogramdiffresultview";
 
-test.describe("HistogramResultView visual", () => {
+test.describe("HistogramDiffResultView visual", () => {
   test("default story", async ({ page }) => {
     await page.goto(`${STORY_URL}--default&viewMode=story`);
     await page.waitForSelector("#storybook-root", {

@@ -124,10 +124,14 @@ git commit -s -m "feat(check): add timeline component"
 | Layer | Stack |
 |-------|-------|
 | Backend | Python 3.10-3.13, FastAPI, Click, Pydantic, dbt adapters, uv (package manager) |
-| Frontend | Node.js 20+, Next.js 16, React 19, TypeScript 5.9, MUI 7, Biome 2.4, Tailwind 4 |
+| Frontend | Node.js 24+, Next.js 16, React 19, TypeScript 5.9, MUI 7, Biome 2.4, Tailwind 4 |
 | Testing | pytest, Vitest, React Testing Library, Playwright |
 
 ---
+
+## Frontend Specifics
+
+For pnpm v11 quirks (`strictDepBuilds`, `allowBuilds`, Corepack pinning), Biome/Vitest tooling, `@datarecce/ui` publishing, and frontend style conventions, see **[js/CLAUDE.md](./js/CLAUDE.md)**.
 
 ## Common Pitfalls
 
@@ -144,3 +148,4 @@ git commit -s -m "feat(check): add timeline component"
 ## Additional Resources
 
 - **[CLAUDE.md](./CLAUDE.md)** - Claude-specific workflows and deep dives
+- **[js/CLAUDE.md](./js/CLAUDE.md)** - Frontend-specific instructions (pnpm, Biome, @datarecce/ui, style conventions)

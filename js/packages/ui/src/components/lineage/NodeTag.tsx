@@ -29,24 +29,59 @@ import { findByRunType } from "../run";
 import { getTagRootSx, tagStartElementSx } from "./tags";
 
 // =============================================================================
-// INTERNAL COMPONENTS
+// INLINE-CONTENT COMPONENTS
 // =============================================================================
+// Renders just the row-count value/diff (no pill background, no refresh button).
+// Used to embed row-count info inline in other UI like action buttons.
+
+export interface RowCountSummaryProps {
+  /**
+   * Either a single-env `RowCount` ("N rows") or a `RowCountDiff` with
+   * `base`/`curr` for the diff display ("N → M rows ↑ +X%").
+   */
+  rowCount: RowCount | RowCountDiff;
+}
+
+/**
+ * Row-count display — inline content only. Accepts either a single-env
+ * `RowCount` ("N rows") or a `RowCountDiff` ("N → M rows ↑ +X%"). Use inside
+ * buttons or other tight layouts where the pill-style tag would be too heavy.
+ */
+export function RowCountSummary({ rowCount }: RowCountSummaryProps) {
+  if ("base" in rowCount) {
+    return <_RowCountByRate rowCount={rowCount} />;
+  }
+  return <span>{formatRowCountValue(rowCount.curr)}</span>;
+}
+
+// =============================================================================
+// INTERNAL HELPERS
+// =============================================================================
+
+// `null` → "N/A"; otherwise thousands-separated count + singular/plural.
+// Matches the existing format in NodeRunsAggregated.tsx (graph node body).
+function formatRowCountValue(n: number | null): string {
+  if (n === null) return "N/A";
+  return `${n.toLocaleString()} ${n === 1 ? "row" : "rows"}`;
+}
 
 function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
   const base = rowCount.base;
   const current = rowCount.curr;
-  const baseLabel = rowCount.base === null ? "N/A" : `${rowCount.base} rows`;
-  const currentLabel = rowCount.curr === null ? "N/A" : `${rowCount.curr} rows`;
+  const baseLabel = formatRowCountValue(base);
+  const currentLabel = formatRowCountValue(current);
 
   if (base === null && current === null) {
-    return <> Failed to load</>;
+    return <>Failed to load</>;
   }
   if (base === null || current === null) {
     return (
       <Stack
+        component="span"
         direction="row"
         spacing={0.5}
         sx={{
+          display: "inline-flex",
           alignItems: "center",
         }}
       >
@@ -63,9 +98,11 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
   if (base === current) {
     return (
       <Stack
+        component="span"
         direction="row"
         spacing={0.5}
         sx={{
+          display: "inline-flex",
           alignItems: "center",
         }}
       >
@@ -84,9 +121,11 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
   if (base < current) {
     return (
       <Stack
+        component="span"
         direction="row"
         spacing={0.5}
         sx={{
+          display: "inline-flex",
           alignItems: "center",
         }}
       >
@@ -108,9 +147,11 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
   }
   return (
     <Stack
+      component="span"
       direction="row"
       spacing={0.5}
       sx={{
+        display: "inline-flex",
         alignItems: "center",
       }}
     >

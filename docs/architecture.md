@@ -9,7 +9,7 @@ Recce is a monolithic client-server application where the Python backend serves 
 | Layer | Stack | Key Packages |
 |-------|-------|--------------|
 | Backend | Python 3.10-3.13 | FastAPI, Click, Pydantic, dbt adapters |
-| Frontend | Node.js 20+ | Next.js 16, React 19, TypeScript 5.9, MUI 7, Biome 2.3, Tailwind 4 |
+| Frontend | Node.js 24+ | Next.js 16, React 19, TypeScript 5.9, MUI 7, Biome 2.3, Tailwind 4 |
 | Visualization | React | Reactflow 12 (lineage), CodeMirror 6 (SQL/YAML) |
 | State Management | React | React Query 5 (API), React Context |
 

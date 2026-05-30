@@ -107,7 +107,7 @@ export const QueryDiffResultView = createResultView<
     const isJoinMode =
       run.result && "diff" in run.result && run.result.diff != null;
 
-    // Compute baseTitle/currentTitle for sandbox editor
+    // Preview-change runs (carry `current_model`) get Original/Editor labels.
     let baseTitle: string | undefined;
     let currentTitle: string | undefined;
     if (run.params && (run.params as QueryPreviewChangeParams).current_model) {

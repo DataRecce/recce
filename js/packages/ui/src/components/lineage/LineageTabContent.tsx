@@ -10,6 +10,11 @@
  *  - UPSTREAM section: direct parents (filterable / paginated)
  *  - Focused-node card (orange accent)
  *  - DOWNSTREAM section: direct children (filterable / paginated)
+ *
+ * Impact marks: when the focused node and a neighbor are both in the impact
+ * set, the row gets a yellow rail/tint/arrow (matching the canvas via
+ * `cllChangeStatusColors.impacted`). Tooltip is "Impacts this model"
+ * upstream / "Impacted by this model" downstream.
  */
 
 import Box from "@mui/material/Box";
@@ -27,7 +32,27 @@ import {
 } from "react-icons/md";
 import type { LineageGraphNode } from "../../contexts/lineage/types";
 import { useThemeColors } from "../../hooks";
-import { changeStatusColors } from "./styles";
+import {
+  changeStatusColors,
+  cllChangeStatusColors,
+  cllImpactedAccent,
+  cllImpactedBadgeBg,
+  cllImpactedBadgeFg,
+} from "./styles";
+
+// Translucent overlay (vs. the solid `cllChangeStatusBackgrounds*.impacted`
+// canvas fill) so the row's `background.paper` shows through.
+const impactTint = {
+  light: "rgb(252 211 77 / 0.18)",
+  dark: "rgb(252 211 77 / 0.10)",
+} as const;
+
+/** Text/thin-icon color for impacted accents — needs stronger contrast than
+ *  the canvas amber (`cllChangeStatusColors.impacted`), which works only as a
+ *  filled shape (dot, rail, chip bg). Mirrors the chip foreground palette. */
+function impactedTextColor(isDark: boolean): string {
+  return isDark ? cllImpactedBadgeFg.dark : cllImpactedBadgeFg.light;
+}
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -46,6 +71,7 @@ const PAGE_STEP = 20;
 
 type Direction = "up" | "down";
 type ChangeStatus = "added" | "removed" | "modified" | "unchanged";
+type EffectiveStatus = ChangeStatus | "impacted";
 
 export interface LineageTabContentProps {
   node: LineageGraphNode;
@@ -61,14 +87,35 @@ export interface LineageTabContentProps {
   historyTrail?: string[];
   /** Jump to an entry in the history (breadcrumb click). */
   onJumpToHistory?: (index: number) => void;
+  /**
+   * Nodes that propagate impact downward (own breaking/partial_breaking change,
+   * added/removed, or receive upstream impact). Drives upstream rail marks.
+   */
+  impactingNodeIds?: Set<string>;
+  /** Nodes with CLL `impacted = true`. Drives downstream rail marks. */
+  impactedNodeIds?: Set<string>;
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Status helpers
 // ---------------------------------------------------------------------------
 
 function getChangeStatus(node: LineageGraphNode | undefined): ChangeStatus {
   return node?.data.changeStatus ?? "unchanged";
+}
+
+/** Unchanged-but-impacted nodes display as "impacted", matching the canvas. */
+function effectiveStatus(
+  status: ChangeStatus,
+  cllImpacted: boolean | undefined,
+): EffectiveStatus {
+  return status === "unchanged" && cllImpacted ? "impacted" : status;
+}
+
+function colorForEffective(status: EffectiveStatus): string {
+  return status === "impacted"
+    ? cllChangeStatusColors.impacted
+    : changeStatusColors[status];
 }
 
 function getDisplayName(
@@ -91,19 +138,34 @@ function filterIds(
   );
 }
 
+function getChipTitle(onlyImpact: boolean, isUp: boolean): string {
+  if (onlyImpact) return "Show all models";
+  return isUp ? "Show only impacting models" : "Show only impacted models";
+}
+
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function StatusDot({ status }: { status: ChangeStatus }) {
+function StatusDot({
+  status,
+  cllImpacted,
+}: {
+  status: ChangeStatus;
+  /** When true, color the dot as impacted (matches canvas). */
+  cllImpacted?: boolean;
+}) {
+  const effective = effectiveStatus(status, cllImpacted);
   return (
     <Box
       component="span"
+      data-testid="lineage-status-dot"
+      data-status={effective}
       sx={{
         width: "8px",
         height: "8px",
         borderRadius: "2px",
-        backgroundColor: changeStatusColors[status],
+        backgroundColor: colorForEffective(effective),
         flex: "0 0 auto",
       }}
     />
@@ -113,14 +175,31 @@ function StatusDot({ status }: { status: ChangeStatus }) {
 interface DirectRowProps {
   name: string;
   status: ChangeStatus;
+  direction: Direction;
+  /** When true, decorate the row with the impact mark (rail + tint + arrow). */
+  decorateAsImpacted?: boolean;
+  /** Carries CLL `impacted = true` — drives the dot color, independent of
+   *  `decorateAsImpacted` (which drives row decoration). */
+  dotImpacted?: boolean;
   onClick?: () => void;
 }
 
-function DirectRow({ name, status, onClick }: DirectRowProps) {
+function DirectRow({
+  name,
+  status,
+  direction,
+  decorateAsImpacted,
+  dotImpacted,
+  onClick,
+}: DirectRowProps) {
+  const { isDark } = useThemeColors();
+  const tooltip =
+    direction === "up" ? "Impacts this model" : "Impacted by this model";
   return (
     <Box
       onClick={onClick}
       sx={{
+        position: "relative",
         display: "flex",
         alignItems: "center",
         gap: 0.75,
@@ -133,10 +212,28 @@ function DirectRow({ name, status, onClick }: DirectRowProps) {
         lineHeight: 1.3,
         color: "text.primary",
         minWidth: 0,
+        backgroundColor: decorateAsImpacted
+          ? isDark
+            ? impactTint.dark
+            : impactTint.light
+          : undefined,
         "&:hover": onClick ? { backgroundColor: "action.hover" } : undefined,
       }}
     >
-      <StatusDot status={status} />
+      {decorateAsImpacted && (
+        <Box
+          aria-hidden="true"
+          sx={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: "3px",
+            backgroundColor: cllChangeStatusColors.impacted,
+          }}
+        />
+      )}
+      <StatusDot status={status} cllImpacted={dotImpacted} />
       <Box
         component="span"
         sx={{
@@ -150,20 +247,148 @@ function DirectRow({ name, status, onClick }: DirectRowProps) {
       >
         {name}
       </Box>
+      {decorateAsImpacted && (
+        <Tooltip title={tooltip} placement="top" arrow>
+          <Box
+            component="span"
+            aria-label={tooltip}
+            data-testid="lineage-impact-mark"
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "16px",
+              height: "16px",
+              color: impactedTextColor(isDark),
+              flex: "0 0 auto",
+            }}
+          >
+            {/* Arrow is direction-agnostic; the tooltip carries the direction. */}
+            <MdArrowDownward size={12} />
+          </Box>
+        </Tooltip>
+      )}
     </Box>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Impact chip — shown in section headers when impactCount > 0
+// ---------------------------------------------------------------------------
+
+interface ChipPaletteProps {
+  isDark: boolean;
+  active: boolean;
+}
+
+function chipBackground({ isDark, active }: ChipPaletteProps): string {
+  // Active: deeper amber so white text passes contrast (yellow + white fails).
+  if (active) return cllImpactedAccent.dark;
+  return isDark ? cllImpactedBadgeBg.dark : cllImpactedBadgeBg.light;
+}
+
+function chipForeground({ isDark, active }: ChipPaletteProps): string {
+  if (active) return "#fff";
+  return isDark ? cllImpactedBadgeFg.dark : cllImpactedBadgeFg.light;
+}
+
+const CHIP_BASE_SX = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "4px",
+  ml: 0.75,
+  px: "7px",
+  py: "1px",
+  borderRadius: "999px",
+  fontSize: "10px",
+  fontWeight: 600,
+  letterSpacing: "0.02em",
+};
+
+function ChipDot({ color }: { color: string }) {
+  return (
+    <Box
+      component="span"
+      aria-hidden="true"
+      sx={{
+        width: "5px",
+        height: "5px",
+        borderRadius: "50%",
+        backgroundColor: color,
+      }}
+    />
+  );
+}
+
+function ChipButton({
+  label,
+  title,
+  active,
+  isDark,
+  onClick,
+}: {
+  label: string;
+  title: string;
+  active: boolean;
+  isDark: boolean;
+  onClick: () => void;
+}) {
+  const palette = { isDark, active };
+  return (
+    <Tooltip title={title} placement="top" arrow>
+      <Box
+        component="button"
+        type="button"
+        data-testid="lineage-impact-chip"
+        aria-pressed={active}
+        aria-label={title}
+        onClick={onClick}
+        sx={{
+          ...CHIP_BASE_SX,
+          backgroundColor: chipBackground(palette),
+          color: chipForeground(palette),
+          border: "none",
+          font: "inherit",
+          cursor: "pointer",
+          "&:hover": {
+            filter: active ? "brightness(0.95)" : "brightness(0.97)",
+          },
+        }}
+      >
+        <ChipDot color={chipForeground(palette)} />
+        {label}
+      </Box>
+    </Tooltip>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Section header
+// ---------------------------------------------------------------------------
+
 function SectionHeader({
   direction,
   directCount,
+  impactCount,
+  onlyImpact,
+  onToggleOnlyImpact,
 }: {
   direction: Direction;
   directCount: number;
+  /** Number of direct neighbors on this side that are part of the impact chain. */
+  impactCount?: number;
+  /** Current state of the per-side "only impact" filter toggle. */
+  onlyImpact: boolean;
+  /** Toggles the per-side "only impacted" filter. */
+  onToggleOnlyImpact: () => void;
 }) {
   const isUp = direction === "up";
   const ArrowIcon = isUp ? MdArrowUpward : MdArrowDownward;
-  const { background } = useThemeColors();
+  const { isDark, background } = useThemeColors();
+  const count = impactCount ?? 0;
+  const showChip = count > 0;
+  const label = isUp ? `${count} impacting` : `${count} impacted`;
+
   return (
     <Stack
       direction="row"
@@ -191,6 +416,15 @@ function SectionHeader({
       <Box component="span" sx={{ color: "text.disabled", fontWeight: 500 }}>
         · {directCount} direct
       </Box>
+      {showChip && (
+        <ChipButton
+          label={label}
+          title={getChipTitle(onlyImpact, isUp)}
+          active={onlyImpact}
+          isDark={isDark}
+          onClick={onToggleOnlyImpact}
+        />
+      )}
     </Stack>
   );
 }
@@ -301,12 +535,23 @@ function ShowMoreRow({ hidden, onClick }: ShowMoreRowProps) {
 function FocusCard({
   node,
   onCenterFocus,
+  cllImpacted,
 }: {
   node: LineageGraphNode;
   onCenterFocus?: () => void;
+  /** Drives the impacted accent on unchanged-but-impacted focus. */
+  cllImpacted?: boolean;
 }) {
   const status = getChangeStatus(node);
+  const effective = effectiveStatus(status, cllImpacted);
   const { isDark, background } = useThemeColors();
+  const accentColor = colorForEffective(effective);
+  // Pill text needs more contrast than the canvas amber on a paper bg —
+  // use the deeper "text" amber when the status is impacted.
+  const pillTextColor =
+    effective === "impacted" ? impactedTextColor(isDark) : accentColor;
+  const pillBorderColor =
+    effective === "impacted" ? impactedTextColor(isDark) : "divider";
   return (
     <Stack
       direction="row"
@@ -327,7 +572,7 @@ function FocusCard({
           width: "4px",
           height: "26px",
           borderRadius: "2px",
-          backgroundColor: changeStatusColors[status],
+          backgroundColor: accentColor,
           flex: "0 0 auto",
         }}
       />
@@ -367,15 +612,15 @@ function FocusCard({
           px: 0.875,
           py: "2px",
           borderRadius: "3px",
-          color: changeStatusColors[status],
+          color: pillTextColor,
           backgroundColor: "background.paper",
           border: "1px solid",
-          borderColor: "divider",
+          borderColor: pillBorderColor,
           textTransform: "capitalize",
           flex: "0 0 auto",
         }}
       >
-        {status}
+        {effective}
       </Box>
     </Stack>
   );
@@ -491,6 +736,8 @@ export function LineageTabContent({
   onCenterFocus,
   historyTrail,
   onJumpToHistory,
+  impactingNodeIds,
+  impactedNodeIds,
 }: LineageTabContentProps) {
   const { background } = useThemeColors();
 
@@ -499,6 +746,9 @@ export function LineageTabContent({
   const [queryDown, setQueryDown] = useState("");
   const [visibleUp, setVisibleUp] = useState(INITIAL_PAGE_SIZE);
   const [visibleDown, setVisibleDown] = useState(INITIAL_PAGE_SIZE);
+  // Per-side "only show impact" toggle, driven by the header chip.
+  const [onlyImpactUp, setOnlyImpactUp] = useState(false);
+  const [onlyImpactDown, setOnlyImpactDown] = useState(false);
 
   // Reset state when the focused node changes. node.id is intentionally
   // the trigger — the effect doesn't *use* it, only watches it.
@@ -508,6 +758,8 @@ export function LineageTabContent({
     setQueryDown("");
     setVisibleUp(INITIAL_PAGE_SIZE);
     setVisibleDown(INITIAL_PAGE_SIZE);
+    setOnlyImpactUp(false);
+    setOnlyImpactDown(false);
   }, [node.id]);
 
   const parentIds = useMemo(
@@ -528,10 +780,36 @@ export function LineageTabContent({
     [childIds, queryDown, nodesById],
   );
 
+  // Skip marks if the focus isn't itself in the impact chain — it has no
+  // neighbors to "impact" or "be impacted by".
+  const impactActive =
+    (impactingNodeIds?.size ?? 0) > 0 || (impactedNodeIds?.size ?? 0) > 0;
+  const focusInImpact =
+    impactActive &&
+    ((impactingNodeIds?.has(node.id) ?? false) ||
+      (impactedNodeIds?.has(node.id) ?? false));
+
+  const isImpactedNeighbor = (neighborId: string, dir: Direction): boolean => {
+    if (!focusInImpact) return false;
+    const set = dir === "up" ? impactingNodeIds : impactedNodeIds;
+    return set?.has(neighborId) ?? false;
+  };
+
+  const upImpactCount = focusInImpact
+    ? parentIds.filter((id) => impactingNodeIds?.has(id)).length
+    : 0;
+  const downImpactCount = focusInImpact
+    ? childIds.filter((id) => impactedNodeIds?.has(id)).length
+    : 0;
+
   const renderDirection = (direction: Direction) => {
     const isUp = direction === "up";
     const allDirect = isUp ? parentIds : childIds;
-    const filtered = isUp ? filteredParentIds : filteredChildIds;
+    const baseFiltered = isUp ? filteredParentIds : filteredChildIds;
+    const onlyImpact = isUp ? onlyImpactUp : onlyImpactDown;
+    const filtered = onlyImpact
+      ? baseFiltered.filter((id) => isImpactedNeighbor(id, direction))
+      : baseFiltered;
     const query = isUp ? queryUp : queryDown;
     const setQuery = isUp ? setQueryUp : setQueryDown;
     const visible = isUp ? visibleUp : visibleDown;
@@ -565,6 +843,9 @@ export function LineageTabContent({
               key={`${direction}-${id}`}
               name={getDisplayName(id, nodesById)}
               status={getChangeStatus(nodesById?.[id])}
+              direction={direction}
+              decorateAsImpacted={isImpactedNeighbor(id, direction)}
+              dotImpacted={impactedNodeIds?.has(id) ?? false}
               onClick={onNavigate ? () => onNavigate(id) : undefined}
             />
           ))
@@ -652,12 +933,34 @@ export function LineageTabContent({
 
       {/* Scrollable body */}
       <Box sx={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
-        <SectionHeader direction="up" directCount={parentIds.length} />
+        <SectionHeader
+          direction="up"
+          directCount={parentIds.length}
+          impactCount={upImpactCount}
+          onlyImpact={onlyImpactUp}
+          onToggleOnlyImpact={() => {
+            setOnlyImpactUp((v) => !v);
+            setVisibleUp(INITIAL_PAGE_SIZE);
+          }}
+        />
         {renderDirection("up")}
 
-        <FocusCard node={node} onCenterFocus={onCenterFocus} />
+        <FocusCard
+          node={node}
+          onCenterFocus={onCenterFocus}
+          cllImpacted={impactedNodeIds?.has(node.id) ?? false}
+        />
 
-        <SectionHeader direction="down" directCount={childIds.length} />
+        <SectionHeader
+          direction="down"
+          directCount={childIds.length}
+          impactCount={downImpactCount}
+          onlyImpact={onlyImpactDown}
+          onToggleOnlyImpact={() => {
+            setOnlyImpactDown((v) => !v);
+            setVisibleDown(INITIAL_PAGE_SIZE);
+          }}
+        />
         {renderDirection("down")}
       </Box>
     </Box>

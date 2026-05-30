@@ -9,9 +9,8 @@ import {
 } from "./fixtures";
 
 const meta: Meta<typeof ValueDiffResultView> = {
-  title: "Visualizations/ValueDiff/ValueDiffResultView",
+  title: "Diffs/Results/ValueDiff/ValueDiffResultView",
   component: ValueDiffResultView,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {

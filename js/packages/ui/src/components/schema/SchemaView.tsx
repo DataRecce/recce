@@ -1,5 +1,6 @@
 import MuiAlert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
 import "./style.css";
 import type {
   CellClickedEvent,
@@ -9,6 +10,7 @@ import type {
 } from "ag-grid-community";
 import {
   forwardRef,
+  type ReactNode,
   Ref,
   useCallback,
   useEffect,
@@ -72,9 +74,14 @@ interface SchemaViewProps {
   enableScreenshot?: boolean;
   showMenu?: boolean;
   /** Per-column change status from breaking change analysis */
-  columnChanges?: Record<string, "added" | "removed" | "modified"> | null;
+  columnChanges?: Record<
+    string,
+    "added" | "removed" | "modified" | "unknown"
+  > | null;
   /** Callback when user clicks a definition-changed badge to view SQL diff */
   onViewCode?: () => void;
+  /** Optional action element rendered next to the legend (e.g. add-to-checklist button) */
+  headerAction?: ReactNode;
 }
 
 function PrivateSingleEnvSchemaView(
@@ -216,6 +223,7 @@ export function PrivateSchemaView(
     showMenu = true,
     columnChanges,
     onViewCode,
+    headerAction,
   }: SchemaViewProps,
   ref: Ref<DataGridHandle>,
 ) {
@@ -352,9 +360,10 @@ export function PrivateSchemaView(
     } else if (
       row.baseType !== row.currentType ||
       row.reordered === true ||
-      row.definitionChanged === true
+      row.definitionChanged === true ||
+      row.changeUnknown === true
     ) {
-      // Any change (structural or definition-only) gets the changed row background
+      // Any change (structural, definition-only, or unknown) gets the changed row background
       className = "row-changed";
     } else if (row.isImpacted) {
       className = "row-impacted";
@@ -396,7 +405,18 @@ export function PrivateSchemaView(
         <></>
       )}
 
-      <SchemaLegend />
+      <Stack
+        direction="row"
+        sx={{
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 1,
+          pr: 1,
+        }}
+      >
+        <SchemaLegend />
+        {headerAction}
+      </Stack>
       {rows.length > 0 && (
         <ScreenshotDataGrid
           style={{

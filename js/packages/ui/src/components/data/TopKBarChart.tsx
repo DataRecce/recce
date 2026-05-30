@@ -18,7 +18,11 @@ import {
 } from "chart.js";
 import { Fragment, memo, useMemo } from "react";
 import { Bar } from "react-chartjs-2";
-import { getChartBarColors, getChartThemeColors } from "./HistogramChart";
+import { getChartBarColors, getChartThemeColors } from "../../theme";
+import {
+  formatAsAbbreviatedNumber,
+  formatIntervalMinMax,
+} from "../../utils/formatters";
 
 /** Rendered bar geometry — Chart.js plugin API types this as Element but bar datasets provide these fields at runtime */
 interface RenderedBarGeometry {
@@ -103,26 +107,6 @@ export interface TopKSummaryListProps {
   theme?: "light" | "dark";
   /** Optional CSS class */
   className?: string;
-}
-
-/**
- * Format number as abbreviated (K, M, B, T)
- */
-function formatAbbreviated(value: number): string {
-  if (value >= 1e12) return `${(value / 1e12).toFixed(1)}T`;
-  if (value >= 1e9) return `${(value / 1e9).toFixed(1)}B`;
-  if (value >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
-  if (value >= 1e3) return `${(value / 1e3).toFixed(1)}K`;
-  return String(value);
-}
-
-/**
- * Format as percentage
- */
-function formatPercent(value: number): string {
-  if (value > 0 && value <= 0.001) return "<0.1%";
-  if (value < 1 && value >= 0.999) return ">99.9%";
-  return `${(value * 100).toFixed(1)}%`;
 }
 
 /**
@@ -317,7 +301,7 @@ function TopKSummaryListComponent({
                   whiteSpace: "nowrap",
                 }}
               >
-                {formatAbbreviated(item.count)}
+                {formatAsAbbreviatedNumber(item.count)}
               </Typography>
             </Tooltip>
             <Typography
@@ -327,7 +311,7 @@ function TopKSummaryListComponent({
                 width: "4em",
               }}
             >
-              {formatPercent(item.count / data.valids)}
+              {formatIntervalMinMax(item.count / data.valids)}
             </Typography>
           </Box>
           <Divider />
@@ -495,7 +479,7 @@ function TopKBarChartComponent({
               const total =
                 context.dataset.label === "Base" ? baseTotal : currentTotal;
               const count = Math.round(proportion * total);
-              return `${context.dataset.label}: ${formatAbbreviated(count)} (${formatPercent(proportion)})`;
+              return `${context.dataset.label}: ${formatAsAbbreviatedNumber(count)} (${formatIntervalMinMax(proportion)})`;
             },
           },
         },
@@ -529,8 +513,8 @@ function TopKBarChartComponent({
           const count = Math.round(proportion * total);
 
           const barWidth = x - base;
-          const countText = formatAbbreviated(count);
-          const pctText = formatPercent(proportion);
+          const countText = formatAsAbbreviatedNumber(count);
+          const pctText = formatIntervalMinMax(proportion) ?? "";
           const countWidth = ctx.measureText(countText).width;
           const fitsInside = countWidth + 2 * pad < barWidth;
 

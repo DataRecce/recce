@@ -58,7 +58,12 @@ function buildArgs(opts: {
   changeStatusByName?: Record<string, "added" | "removed" | "modified">;
   focusChangeStatus?: "added" | "removed" | "modified";
   historyTrail?: string[];
-}): Pick<LineageTabContentProps, "node" | "nodesById" | "historyTrail"> {
+  impactingNodeIds?: string[];
+  impactedNodeIds?: string[];
+}): Pick<
+  LineageTabContentProps,
+  "node" | "nodesById" | "historyTrail" | "impactingNodeIds" | "impactedNodeIds"
+> {
   const parents = opts.parents ?? [];
   const children = opts.children ?? [];
   const allIds = Array.from(new Set([...parents, ...children, opts.focusId]));
@@ -76,6 +81,12 @@ function buildArgs(opts: {
     node,
     nodesById,
     historyTrail: opts.historyTrail,
+    impactingNodeIds: opts.impactingNodeIds
+      ? new Set(opts.impactingNodeIds)
+      : undefined,
+    impactedNodeIds: opts.impactedNodeIds
+      ? new Set(opts.impactedNodeIds)
+      : undefined,
   };
 }
 
@@ -84,9 +95,8 @@ function buildArgs(opts: {
 // =============================================================================
 
 const meta: Meta<typeof LineageTabContent> = {
-  title: "Lineage/LineageTabContent",
+  title: "Lineage/NodeView/LineageTab",
   component: LineageTabContent,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {
@@ -129,6 +139,16 @@ const meta: Meta<typeof LineageTabContent> = {
     onJumpToHistory: {
       description:
         "Called with the history index when the breadcrumb's previous-step is clicked.",
+    },
+    impactingNodeIds: {
+      description:
+        "Nodes that propagate impact downward (own breaking/partial_breaking change OR receives upstream impact). Used to mark the upstream rail.",
+      control: "object",
+    },
+    impactedNodeIds: {
+      description:
+        "Nodes whose data is impacted by upstream changes (CLL `impacted = true`). Used to mark the downstream rail.",
+      control: "object",
     },
   },
 };
@@ -251,5 +271,111 @@ export const LeafNode: Story = {
 export const Isolated: Story = {
   args: {
     ...buildArgs({ focusId: "scratch_model" }),
+  },
+};
+
+// =============================================================================
+// Impact Analysis Marks
+// =============================================================================
+
+/**
+ * Impact Analysis active. `stg_payments` is non_breaking modified, so it
+ * stays out of `impactingNodeIds` and is unmarked. All three children
+ * receive the focus's breaking change and are marked.
+ */
+export const ImpactAnalysisActive: Story = {
+  args: {
+    ...buildArgs({
+      focusId: "customers",
+      parents: ["stg_customers", "stg_orders", "stg_payments"],
+      children: [
+        "customer_order_pattern",
+        "customer_segments",
+        "mart_customers_daily",
+      ],
+      focusChangeStatus: "modified",
+      changeStatusByName: {
+        stg_payments: "modified",
+        customer_segments: "modified",
+      },
+      impactingNodeIds: ["customers"],
+      impactedNodeIds: [
+        "customers",
+        "customer_order_pattern",
+        "customer_segments",
+        "mart_customers_daily",
+      ],
+    }),
+  },
+};
+
+/**
+ * partial_breaking upstream — `stg_orders` is in `impactingNodeIds` but not
+ * in `impactedNodeIds` (its own `cll.impacted = false`), and the upstream
+ * rail still marks it as "Impacts this model".
+ */
+export const ImpactAnalysisPartialBreaking: Story = {
+  args: {
+    ...buildArgs({
+      focusId: "int_order_throughput_by_hour",
+      parents: ["stg_orders"],
+      children: [],
+      changeStatusByName: { stg_orders: "modified" },
+      impactingNodeIds: ["stg_orders"],
+      impactedNodeIds: ["int_order_throughput_by_hour"],
+    }),
+  },
+};
+
+/**
+ * Stress test for "12 of 15 impacted" density. The pale tint stays calm
+ * across many marked rows, so the unimpacted minority (audit / archive /
+ * temp_debug) reads as the standout group.
+ */
+export const ImpactAnalysisDense: Story = {
+  args: {
+    ...buildArgs({
+      focusId: "customers",
+      parents: ["stg_payments"],
+      children: [
+        "mart_customers_daily",
+        "mart_customers_weekly",
+        "mart_customers_yearly",
+        "mart_retention",
+        "mart_ltv",
+        "mart_churn",
+        "mart_activation",
+        "mart_cohorts",
+        "customer_segments",
+        "customer_segments4",
+        "customer_order_pattern",
+        "rfm_scores",
+        "audit_customers",
+        "archive_customers",
+        "temp_debug_customers",
+      ],
+      focusChangeStatus: "modified",
+      changeStatusByName: {
+        stg_payments: "modified",
+        mart_ltv: "added",
+        customer_segments: "modified",
+      },
+      impactingNodeIds: ["customers", "mart_ltv"],
+      impactedNodeIds: [
+        "customers",
+        "mart_customers_daily",
+        "mart_customers_weekly",
+        "mart_customers_yearly",
+        "mart_retention",
+        "mart_ltv",
+        "mart_churn",
+        "mart_activation",
+        "mart_cohorts",
+        "customer_segments",
+        "customer_segments4",
+        "customer_order_pattern",
+        "rfm_scores",
+      ],
+    }),
   },
 };

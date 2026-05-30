@@ -45,8 +45,7 @@ import lineageData from "./jaffle-shop-expand-lineage.json";
  */
 
 const meta: Meta = {
-  title: "Lineage/CLL Experience",
-  tags: ["autodocs"],
+  title: "Lineage/LineageCanvas/CllExperience",
   parameters: {
     docs: {
       description: {

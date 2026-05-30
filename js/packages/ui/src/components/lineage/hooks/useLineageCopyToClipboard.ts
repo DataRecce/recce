@@ -17,7 +17,6 @@ export const useLineageCopyToClipboard = () => {
   const { successToast, failToast } = useClipBoardToast();
 
   return useCopyToClipboard({
-    renderLibrary: "html-to-image",
     imageType: "png",
     shadowEffect: true,
     backgroundColor: isDark ? colors.neutral[900] : colors.neutral[50],
