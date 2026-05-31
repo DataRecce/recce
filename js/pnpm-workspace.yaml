@@ -40,6 +40,7 @@ overrides:
   'minimatch@>=10.0.0 <10.2.3': '>=10.2.3'
   'rollup@>=4.0.0 <4.59.0': '>=4.59.0'
   '@amplitude/unified': 1.1.9
+  'posthog-js': ^1.372.1
   lodash-es: '>=4.18.1'
   '@xmldom/xmldom@<0.8.12': '>=0.8.12'
   '@xmldom/xmldom@>=0.9.0 <0.9.9': '>=0.9.9'
@@ -67,3 +68,7 @@ allowBuilds:
   '@parcel/watcher': false
   '@sentry/cli': false
   esbuild: false
+  # posthog-js transitive deps: postinstall scripts emit banners only,
+  # no runtime native artifact we use (mirrors recce-cloud-infra protobufjs: false).
+  core-js: false
+  protobufjs: false
