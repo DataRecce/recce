@@ -35,12 +35,14 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 const mockPosthogInit = vi.fn();
 const mockPosthogIdentify = vi.fn();
 const mockPosthogCapture = vi.fn();
+const mockPosthogRegister = vi.fn();
 
 vi.mock("posthog-js", () => ({
   default: {
     init: mockPosthogInit,
     identify: mockPosthogIdentify,
     capture: mockPosthogCapture,
+    register: mockPosthogRegister,
   },
 }));
 
@@ -89,6 +91,7 @@ async function importTrackFresh() {
       init: mockPosthogInit,
       identify: mockPosthogIdentify,
       capture: mockPosthogCapture,
+      register: mockPosthogRegister,
     },
   }));
   vi.doMock("@amplitude/unified", () => ({
@@ -164,6 +167,13 @@ describe("trackInit() — PostHog initialization", () => {
   test("calls posthog.identify with the recce_user_id cookie value (distinct_id wiring)", async () => {
     await importInitialized();
     expect(mockPosthogIdentify).toHaveBeenCalledWith(RECCE_USER_ID);
+  });
+
+  test("registers event_source as a super-property so autocapture events are tagged", async () => {
+    await importInitialized();
+    expect(mockPosthogRegister).toHaveBeenCalledWith({
+      event_source: EVENT_SOURCE,
+    });
   });
 
   test("honors NEXT_PUBLIC_POSTHOG_API_KEY override when present", async () => {
@@ -461,14 +471,14 @@ describe("dual-emit — environment_config flatten", () => {
 // ============================================================================
 
 describe("dual-emit — onboarding wrappers (oss_onboarding_ prefix)", () => {
-  test("trackOssShareButtonClicked emits oss_onboarding_oss_share_button_clicked with {authed}", async () => {
+  test("trackOssShareButtonClicked emits oss_onboarding_share_button_clicked with {authed}", async () => {
     const mod = await importInitialized();
     mockAmplitudeTrack.mockClear();
     mod.trackOssShareButtonClicked({ authed: true });
 
     expect(mockAmplitudeTrack).toHaveBeenCalledTimes(1);
     expect(mockPosthogCapture).toHaveBeenCalledWith(
-      "oss_onboarding_oss_share_button_clicked",
+      "oss_onboarding_share_button_clicked",
       { authed: true, event_source: EVENT_SOURCE },
     );
   });

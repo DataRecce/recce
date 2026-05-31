@@ -94,6 +94,10 @@ export function trackInit() {
         defaults: "2025-11-30", // pin posthog-js config defaults (matches cloud FE)
       });
       posthog.identify(userId); // D6: distinct_id = recce_user_id cookie value
+      // Super-property so EVERY event — including autocapture ($pageview,
+      // $autocapture, $pageleave) — carries event_source, keeping the shared
+      // PostHog project segmentable by surface (oss-web / cloud-web / oss-cli).
+      posthog.register({ event_source: EVENT_SOURCE });
       posthogInitialized = true;
     } catch (e) {
       console.error(e);
@@ -332,7 +336,7 @@ export function isExploreAction(type: string): type is ExploreActionType {
 // the cloud onboarding_* funnel while sharing the same PostHog project.
 export function trackOssShareButtonClicked({ authed }: { authed: boolean }) {
   track("[CLI Onboarding] oss_share_button_clicked", { authed });
-  capturePosthog("oss_onboarding_oss_share_button_clicked", { authed });
+  capturePosthog("oss_onboarding_share_button_clicked", { authed });
 }
 
 export function trackSignupRedirectInitiated() {
