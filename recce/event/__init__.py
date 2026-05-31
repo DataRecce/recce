@@ -10,10 +10,11 @@ from typing import Dict
 
 import sentry_sdk
 
-from recce import get_runner, get_version, is_ci_env, is_recce_cloud_instance
+import recce
+import recce.git
+from recce import get_version, is_ci_env, is_recce_cloud_instance
 from recce import yaml as pyml
 from recce.event.collector import Collector
-from recce.git import current_branch, hosting_repo
 from recce.github import (
     get_github_codespace_available_at,
     get_github_codespace_info,
@@ -29,6 +30,15 @@ RECCE_USER_EVENT_PATH = os.path.join(RECCE_USER_HOME, ".unsend_events.json")
 __version__ = get_version()
 _collector = Collector()
 user_profile_lock = threading.Lock()
+
+# Amplitude event_type -> PostHog event name. Names not listed pass through
+# unchanged (command / api_event / load_state / codespace_instance). Bracketed
+# Amplitude names are flattened to snake_case; event_source="oss-cli"
+# disambiguates against the Cloud project (P4 design / D-event-map).
+_PH_EVENT_MAP = {
+    "[Experiment] single_environment": "single_environment_cli",
+    "Connect OSS to Cloud": "oss_connect_to_cloud_cli",
+}
 
 
 def init():
@@ -151,7 +161,17 @@ def update_user_profile(update_values):
 
 
 def flush_events(command=None):
+    # Amplitude flush (unchanged).
     _collector.send_events()
+
+    # PostHog flush — mirror recce_cloud shutdown(); primary flush hook for the
+    # short-lived CLI (atexit registered in _get_client is the safety net).
+    try:
+        from recce.event.posthog_telemetry import shutdown as _ph_shutdown
+
+        _ph_shutdown()
+    except Exception:
+        pass
 
 
 def should_log_event():
@@ -176,15 +196,15 @@ def log_event(prop, event_type, **kwargs):
     if should_log_event() is False:
         return
 
-    repo = hosting_repo()
+    repo = recce.git.hosting_repo()
     if repo is not None:
         prop["repository"] = sha256(repo.encode()).hexdigest()
 
-    branch = current_branch()
+    branch = recce.git.current_branch()
     if branch is not None:
         prop["branch"] = sha256(branch.encode()).hexdigest()
 
-    runner = get_runner()
+    runner = recce.get_runner()
     if runner is not None:
         prop["runner_type"] = runner
 
@@ -195,7 +215,24 @@ def log_event(prop, event_type, **kwargs):
         **prop,
     )
 
+    # Amplitude path (unchanged).
     _collector.log_event(payload, event_type)
+
+    # PostHog mirror (dual-write). The should_log_event() gate above guards both
+    # paths identically (D5). PostHog reuses the SAME hashed repository/branch
+    # values already in payload. The **kwargs (e.g. params=ctx.params) are
+    # intentionally NOT forwarded — they can carry unhashed paths.
+    if not event_type.startswith("[Performance] "):
+        # [Performance] events are emitted to PostHog explicitly as a single
+        # 'performance' event (D9) by log_performance — skip the generic
+        # passthrough here to avoid a double-fire.
+        try:
+            from recce.event.posthog_telemetry import track as _ph_track
+
+            _ph_event = _PH_EVENT_MAP.get(event_type, event_type)
+            _ph_track(_ph_event, dict(payload))
+        except Exception:
+            pass
 
 
 def log_api_event(endpoint_name, prop):
@@ -253,18 +290,45 @@ def log_codespaces_events(command):
     if codespace_created_at is None:
         created_at = datetime.fromisoformat(codespace.get("created_at"))
         prop["state"] = "created"
+        # Amplitude direct emit (unchanged) — bypasses the log_event gate.
         _collector.log_event(prop, "codespace_instance", event_triggered_at=created_at, user_properties=user_prop)
+        # PostHog mirror — this path does NOT go through log_event's gate, so
+        # re-gate with should_log_event() and flatten user_prop + event time.
+        if should_log_event():
+            _ph_codespace(prop, user_prop, created_at)
         update_user_profile({"codespace_created_at": codespace.get("created_at")})
 
     # Codespace available event, send multiple times as start/stop it
     available_at = get_github_codespace_available_at(codespace)
     if available_at and available_at.isoformat() != load_user_profile().get("codespace_available_at"):
         prop["state"] = "available"
+        # Amplitude direct emit (unchanged).
         _collector.log_event(prop, "codespace_instance", event_triggered_at=available_at, user_properties=user_prop)
+        # PostHog mirror (re-gated).
+        if should_log_event():
+            _ph_codespace(prop, user_prop, available_at)
         update_user_profile({"codespace_available_at": available_at.isoformat()})
 
     # Codespace instance event should be flushed immediately
     _collector.send_events()
+
+
+def _ph_codespace(prop, user_prop, event_triggered_at):
+    # PostHog has no user_properties bucket — flatten user_prop + the event time
+    # (ISO-8601 string) onto the event props.
+    try:
+        from recce.event.posthog_telemetry import track as _ph_track
+
+        _ph_track(
+            "codespace_instance",
+            {
+                **prop,
+                **user_prop,
+                "event_triggered_at": event_triggered_at.isoformat(),
+            },
+        )
+    except Exception:
+        pass
 
 
 def log_single_env_event():
@@ -277,8 +341,22 @@ def log_single_env_event():
 
 def log_performance(feature_name: str, metrics: Dict):
     prop = metrics
+    # Amplitude builds a dynamic '[Performance] {feature_name}' event type (unchanged).
     log_event(prop, f"[Performance] {feature_name}")
     _collector.schedule_flush()
+
+    # PostHog (D9): a SINGLE 'performance' event with a `feature` property +
+    # flattened metrics. The generic _PH_EVENT_MAP can't synthesize `feature`
+    # from the interpolated name, so emit explicitly here. This path's Amplitude
+    # emit went through log_event's gate; re-gate the PostHog emit too so it
+    # no-ops exactly when log_event would have.
+    if should_log_event():
+        try:
+            from recce.event.posthog_telemetry import track as _ph_track
+
+            _ph_track("performance", {"feature": feature_name, **metrics})
+        except Exception:
+            pass
 
 
 def log_connected_to_cloud():
