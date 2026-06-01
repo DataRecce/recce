@@ -191,8 +191,11 @@ export interface ProfileDistributionParams {
  * Paired-histogram payload for a continuous (numeric or datetime) column.
  *
  * Each env carries its OWN edge array, built from its OWN quantiles:
- * ``base_bin_edges`` / ``current_bin_edges`` each hold 12 edges, paired with
- * ``base_density`` / ``current_density`` of 11 entries each. The two edge
+ * ``base_bin_edges`` / ``current_bin_edges`` hold up to ``NUM_BINS + 1`` edges
+ * in the full-quantile case, but a tied/degenerate column collapses adjacent
+ * quantiles and yields fewer — edge counts are NOT fixed, so never index a
+ * hard-coded position. The only invariant is per-env
+ * ``density.length === edges.length - 1``. The two edge
  * arrays intentionally do NOT line up — the backend renders each env on its
  * own quantile spans (``density = (1/NUM_BINS)/span``), the only assumption-
  * free rendering of percentile-only data. The frontend overlays the two
@@ -220,7 +223,9 @@ export interface ProfileDistributionHistogramPayload {
  * Categorical top-K payload, **counts mode** — emitted by adapters whose
  * sketch exposes per-value counts (Snowflake / BigQuery / … in Stage D).
  *
- * ``values`` is the union of the two envs' top-K, in current-then-base order.
+ * ``values`` is the union of the two envs' top-K, base-first then current-only
+ * (the same fair merge the ranks variant uses — interleaved before the ``k``
+ * cap so neither env's divergent values are dropped).
  * ``base_counts`` / ``current_counts`` are aligned onto ``values`` (same
  * length, ``null`` in the slots where that env didn't have the value in its
  * top-K — Stage C renders those as gap-on-absent). The column-wide

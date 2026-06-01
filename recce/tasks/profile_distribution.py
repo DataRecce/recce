@@ -403,10 +403,14 @@ def _build_histogram_payload(
     quantiles (see :func:`_env_edges_and_density`). The two staircases are
     rendered overlaid on a shared value axis by Stage C but their edges
     deliberately do NOT line up — this is the equal-area, percentile-only
-    rendering locked in PR #1398. ``base_bin_edges`` and ``current_bin_edges``
-    each hold ``NUM_BINS + 1`` values; the paired density arrays hold
-    ``NUM_BINS`` each (one per bin). An env with no data yields empty arrays
-    for that side while keeping the ``kind`` tag.
+    rendering locked in PR #1398. In the full-quantile case ``base_bin_edges``
+    and ``current_bin_edges`` hold ``NUM_BINS + 1`` values, but a tied or
+    degenerate column collapses adjacent quantiles onto the same value and so
+    yields fewer edges (see :func:`_env_edges_and_density`). The only invariant
+    the consumer may rely on is ``len(density) == len(edges) - 1`` per env;
+    edge counts are NOT fixed and must not be indexed at a hard-coded position.
+    An env with no data yields empty arrays for that side while keeping the
+    ``kind`` tag.
     """
     base_edges, base_density = _env_edges_and_density(quantile_values_base, base_min, base_max)
     current_edges, current_density = _env_edges_and_density(quantile_values_current, current_min, current_max)
@@ -422,6 +426,59 @@ def _build_histogram_payload(
     }
 
 
+def _merge_topk_union(
+    base_values: List[Any],
+    current_values: List[Any],
+    k: int,
+) -> List[Any]:
+    """Fairly merge two envs' top-K value lists onto one ``k``-slot axis.
+
+    Each env's list is already SQL-capped at ``k`` (``approx_top_k(col, k)``).
+    A naive "base, then current, then ``[:k]``" union drops **every**
+    current-only value whenever base alone fills the ``k`` slots — so a
+    high-cardinality column whose top-K diverges between envs renders current's
+    new values as entirely absent, defeating the comparison. To avoid that we:
+
+    1. **Interleave** the two lists round-robin, base taking the first slot of
+       each pair, de-duplicating as we go. This guarantees both envs are
+       represented before anything is dropped.
+    2. **Truncate** the interleaved list to ``k`` — so *both* lists get
+       trimmed proportionally rather than one starving the other.
+    3. **Re-sort** the survivors base-rank-first, with current-only values
+       trailing in current-rank order — the rendered cell shows base's values
+       on the left and current's new arrivals clustered on the right.
+
+    Example (``k=6``)::
+
+        base=[A,B,C,D,E], current=[A,B,X,Y,Z]
+        interleave+dedup -> [A,B,C,X,D,Y,E,Z]
+        truncate to 6    -> [A,B,C,X,D,Y]
+        reorder base-1st -> [A,B,C,D,X,Y]
+    """
+    base = base_values or []
+    current = current_values or []
+
+    interleaved: List[Any] = []
+    seen: set = set()
+    for i in range(max(len(base), len(current))):
+        if i < len(base) and base[i] not in seen:
+            seen.add(base[i])
+            interleaved.append(base[i])
+        if i < len(current) and current[i] not in seen:
+            seen.add(current[i])
+            interleaved.append(current[i])
+
+    survivors = set(interleaved[:k])
+
+    # Base members in base-rank order first, then current-only members in
+    # current-rank order. (``survivors`` is a set, so membership is the cap;
+    # the source lists supply the ordering.)
+    base_first = [v for v in base if v in survivors]
+    base_seen = set(base_first)
+    current_only = [v for v in current if v in survivors and v not in base_seen]
+    return base_first + current_only
+
+
 def _build_topk_ranks_payload(
     base_values: List[Any],
     current_values: List[Any],
@@ -433,19 +490,15 @@ def _build_topk_ranks_payload(
     The cell can't size bars by proportion, so it sizes them by rank
     position. Slot order is **base-first**: base's top-K in base-rank order,
     then values present only in current's top-K appended on the right (in
-    current-rank order). ``base_ranks`` / ``current_ranks`` carry each value's
-    1-indexed rank within that env, ``None`` where it isn't in that env's
-    top-K. This is the wire shape Stage C's discrete cell consumes directly
-    (see DRC-3390's 2026-05-29 contract correction).
+    current-rank order). The union is built by {@link _merge_topk_union}, which
+    interleaves both envs *before* the ``k`` cap so current-only top values
+    survive even when base alone fills the slots. ``base_ranks`` /
+    ``current_ranks`` carry each value's 1-indexed rank within that env,
+    ``None`` where it isn't in that env's top-K. This is the wire shape Stage
+    C's discrete cell consumes directly (see DRC-3390's 2026-05-29 contract
+    correction).
     """
-    seen: Dict[Any, int] = {}
-    for v in base_values or []:
-        if v not in seen:
-            seen[v] = len(seen)
-    for v in current_values or []:
-        if v not in seen:
-            seen[v] = len(seen)
-    union = list(seen.keys())[:k]
+    union = _merge_topk_union(base_values, current_values, k)
 
     base_index = {v: i for i, v in enumerate(base_values or [])}
     curr_index = {v: i for i, v in enumerate(current_values or [])}
@@ -489,16 +542,10 @@ def _build_topk_payload(
     if base_counts is None and current_counts is None:
         return _build_topk_ranks_payload(base_values, current_values, k)
 
-    # Union of value sets, preserving order from current-then-base (mirrors
-    # the prototype's "what's important now" frame).
-    seen: Dict[Any, int] = {}
-    for v in current_values or []:
-        if v not in seen:
-            seen[v] = len(seen)
-    for v in base_values or []:
-        if v not in seen:
-            seen[v] = len(seen)
-    union = list(seen.keys())[:k]
+    # Same fair base-first merge as the ranks path (see _merge_topk_union):
+    # interleave both envs before the ``k`` cap so neither env's divergent
+    # values are starved out, then order base-first / current-only-right.
+    union = _merge_topk_union(base_values, current_values, k)
 
     base_index = {v: i for i, v in enumerate(base_values or [])}
     curr_index = {v: i for i, v in enumerate(current_values or [])}
@@ -601,14 +648,38 @@ class ProfileDistributionTask(Task):
         with dbt_adapter.connection_named("query"):
             self.connection = dbt_adapter.get_thread_connection()
 
+            # ``get_columns`` raises a descriptive ``RecceException`` when the
+            # relation is absent. A model that exists in only ONE env (newly
+            # added → no base; deleted → no current) is expected, so we tolerate
+            # a single-side failure and profile the side that resolved. But if
+            # BOTH sides raise we have nothing to profile AND the cause is an
+            # error, not a column-less model — surface it rather than emitting a
+            # false-quiet ``ok``/empty payload that looks identical to success.
+            base_err: Optional[Exception] = None
+            curr_err: Optional[Exception] = None
             try:
                 base_cols = dbt_adapter.get_columns(self.params.model, base=True)
-            except Exception:
+            except Exception as e:
                 base_cols = []
+                base_err = e
+                logger.warning(
+                    "profile_distribution: base schema introspection failed for %s: %s",
+                    self.params.model,
+                    e,
+                )
             try:
                 curr_cols = dbt_adapter.get_columns(self.params.model, base=False)
-            except Exception:
+            except Exception as e:
                 curr_cols = []
+                curr_err = e
+                logger.warning(
+                    "profile_distribution: current schema introspection failed for %s: %s",
+                    self.params.model,
+                    e,
+                )
+            if base_err is not None and curr_err is not None:
+                # Prefer the current-env error as the surfaced cause.
+                raise curr_err
 
             # Use current env as the source-of-truth column list; fall back
             # to base if current is empty.

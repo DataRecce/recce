@@ -34,9 +34,12 @@ from recce.tasks import ProfileDistributionTask
 from recce.tasks.profile_distribution import (
     NUM_BINS,
     _build_histogram_payload,
+    _build_topk_payload,
+    _build_topk_ranks_payload,
     _env_edges_and_density,
     _fallback_cache,
     _get_cache,
+    _merge_topk_union,
     classify_column_type,
     parse_topk_result,
     pick_strategy,
@@ -146,6 +149,91 @@ def test_histogram_payload_identical_inputs_match():
     )
     assert payload["base_bin_edges"] == payload["current_bin_edges"]
     assert payload["base_density"] == payload["current_density"]
+
+
+# ---------------------------------------------------------------------------
+# Top-K union merge — base/current divergence (the truncation regression)
+# ---------------------------------------------------------------------------
+
+
+def test_merge_topk_union_diverging_lists_keep_both_envs():
+    """The core regression: when both envs fill ``k`` with divergent values,
+    the merge must keep current-only values instead of letting base starve
+    them out. Mirrors the docstring worked example."""
+    base = ["A", "B", "C", "D", "E"]
+    current = ["A", "B", "X", "Y", "Z"]
+
+    union = _merge_topk_union(base, current, k=6)
+
+    # Both envs are represented; current-only X/Y survived the cap.
+    assert union == ["A", "B", "C", "D", "X", "Y"]
+    # Base members cluster on the left, current-only trails on the right.
+    assert union.index("X") > union.index("D")
+    assert union.index("X") < union.index("Y")  # current-only kept in current order
+
+
+def test_merge_topk_union_base_first_when_base_fills_k():
+    """Even when base alone could fill every slot, the interleave reserves
+    room for current's divergent values — the exact case the old base-first
+    ``[:k]`` slice dropped entirely."""
+    base = [f"b{i}" for i in range(12)]
+    current = [f"c{i}" for i in range(12)]
+
+    union = _merge_topk_union(base, current, k=12)
+
+    assert len(union) == 12
+    # Old behaviour returned all 12 base values; the fair merge must include
+    # at least one current-only value.
+    assert any(v.startswith("c") for v in union)
+    assert any(v.startswith("b") for v in union)
+
+
+def test_build_topk_ranks_payload_diverging_keeps_current_ranks():
+    """Regression for profile_distribution.py union truncation: current-only
+    top values must get a non-``None`` ``current_ranks`` entry, not vanish."""
+    base = ["A", "B", "C", "D", "E"]
+    current = ["A", "B", "X", "Y", "Z"]
+
+    payload = _build_topk_ranks_payload(base, current, k=6)
+
+    assert payload["kind"] == "topk"
+    assert payload["mode"] == "ranks"
+    assert payload["values"] == ["A", "B", "C", "D", "X", "Y"]
+    # X is current's 3rd value (1-indexed rank 3) and absent from base.
+    x_idx = payload["values"].index("X")
+    assert payload["current_ranks"][x_idx] == 3
+    assert payload["base_ranks"][x_idx] is None
+    # A is shared: rank 1 in both.
+    a_idx = payload["values"].index("A")
+    assert payload["base_ranks"][a_idx] == 1
+    assert payload["current_ranks"][a_idx] == 1
+    assert payload["trimmed"] is False  # neither side hit k=6
+
+
+def test_build_topk_ranks_payload_empty_is_degenerate_slot():
+    """The cap-degenerate path emits empty arrays while keeping the shape."""
+    payload = _build_topk_ranks_payload([], [], k=12)
+    assert payload["values"] == []
+    assert payload["base_ranks"] == []
+    assert payload["current_ranks"] == []
+
+
+def test_build_topk_payload_counts_uses_same_base_first_merge():
+    """Counts mode (Stage D adapters) must align onto the same fair, base-first
+    union as the ranks path — not the old current-first ordering."""
+    base = ["A", "B", "C", "D", "E"]
+    current = ["A", "B", "X", "Y", "Z"]
+    base_counts = [50, 40, 30, 20, 10]
+    current_counts = [55, 45, 35, 25, 15]
+
+    payload = _build_topk_payload(base, base_counts, current, current_counts, k=6)
+
+    assert payload["kind"] == "topk"
+    assert payload["values"] == ["A", "B", "C", "D", "X", "Y"]
+    # X is current-only → base slot is a gap, current slot carries its count.
+    x_idx = payload["values"].index("X")
+    assert payload["base_counts"][x_idx] is None
+    assert payload["current_counts"][x_idx] == 35
 
 
 # ---------------------------------------------------------------------------
