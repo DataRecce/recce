@@ -146,14 +146,14 @@ class TestSingleEnvDualWrite:
 
         log_single_env_event()
 
-        # Amplitude keeps the bracketed name; PostHog renames to 'single_environment_cli'.
+        # Amplitude keeps the bracketed name; PostHog renames to 'single_environment'.
         amp_event_type = collector.log_event.call_args.args[1]
         assert amp_event_type == "[Experiment] single_environment"
 
         ph = _ph_calls(ph_track)
         assert len(ph) == 1
         event, props = ph[0]
-        assert event == "single_environment_cli"
+        assert event == "single_environment"
         assert props["action"] == "launch_server"
 
 
@@ -174,7 +174,7 @@ class TestConnectedToCloudDualWrite:
         ph = _ph_calls(ph_track)
         assert len(ph) == 1
         event, props = ph[0]
-        assert event == "oss_connect_to_cloud_cli"
+        assert event == "oss_connect_to_cloud"
         assert props["action"] == "connected_to_cloud"
 
 
