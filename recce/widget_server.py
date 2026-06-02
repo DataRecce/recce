@@ -141,7 +141,13 @@ class SchemaDiffInput(BaseModel):
 def _read_widget_html(name: str) -> str:
     """Read widget HTML from recce/data/mcp/{name}.html, returning an error stub if missing."""
     try:
-        ref = importlib.resources.files("recce.data.mcp") / f"{name}.html"
+        # Anchor on the `recce` package (a regular package — always importable)
+        # and traverse to data/mcp/, rather than importing `recce.data.mcp` as a
+        # namespace package. Namespace-package resolution can differ between an
+        # editable/source checkout and an installed wheel; anchoring on `recce`
+        # + filesystem traversal works in both, so a `pip install recce` user
+        # reliably gets the widgets.
+        ref = importlib.resources.files("recce") / "data" / "mcp" / f"{name}.html"
         return ref.read_text(encoding="utf-8")
     except Exception as e:
         # Broad except: importlib can raise OSError / PermissionError /
