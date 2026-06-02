@@ -465,7 +465,7 @@ const DefaultExportMenu = memo(
                 await csvExport.copySelectedRows?.();
                 handleClose();
               }}
-              disabled={disableExport}
+              disabled={disableExport} // intentionally omits canExportCSV — selection copy is independent of the full-result export gate
             >
               <ListItemIcon>
                 <PiSelectionPlus />

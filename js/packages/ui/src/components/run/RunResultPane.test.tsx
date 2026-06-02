@@ -12,7 +12,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
-import { afterEach, beforeEach, describe, expect, it, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { Run } from "../../api";
 import { RunResultPane } from "./RunResultPane";
 
@@ -140,7 +140,7 @@ describe("RunResultPane sticky-cancel gating", () => {
     expect(headerText).not.toMatch(/Running・/);
   });
 
-  it("invokes copySelectedRows from the export menu", async () => {
+  test("invokes copySelectedRows from the export menu", async () => {
     const copySelectedRows = vi.fn().mockResolvedValue(undefined);
     renderWithProviders(
       <RunResultPane
@@ -167,7 +167,7 @@ describe("RunResultPane sticky-cancel gating", () => {
     expect(copySelectedRows).toHaveBeenCalledOnce();
   });
 
-  it("omits Copy Selected Rows when no handler is provided", async () => {
+  test("omits Copy Selected Rows when no handler is provided", async () => {
     renderWithProviders(
       <RunResultPane
         runId="run-1"
