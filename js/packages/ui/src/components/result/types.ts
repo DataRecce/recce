@@ -51,6 +51,12 @@ export interface ResultViewConfig<
     run: TRun,
     viewOptions?: TViewOptions,
   ) => ReactNode | null;
+  /**
+   * When true, enables AG Grid community multi-row selection (checkbox column)
+   * on the grid so users can copy a collection of rows. Default false. Only the
+   * query result views set this today (DRC-3622).
+   */
+  enableRowSelection?: boolean;
 }
 
 /**
