@@ -58,19 +58,3 @@ export function isSchemaChanged(
 
   return false;
 }
-
-/**
- * True when a node has a change that isn't attributable to any specific
- * column — i.e. the node changed (`change` is set) but breaking/impact
- * analysis pinned it to zero columns (DRC-3390 Stage C). Under the new-CLL
- * experience this is the signal to profile *every* column inline rather than
- * just the changed subset.
- *
- * Typed structurally so it accepts the `change` field from both
- * `LineageGraphNode` and `NodeViewNodeData` without coupling to either.
- */
-export function isWholeModelChange(change?: {
-  columns?: Record<string, unknown> | null;
-}): boolean {
-  return !!change && Object.keys(change.columns ?? {}).length === 0;
-}

@@ -252,5 +252,4 @@ export {
   formatTimestamp,
   formatTimeToNow,
   isSchemaChanged,
-  isWholeModelChange,
 } from "./utils";

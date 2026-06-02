@@ -142,7 +142,7 @@ export {
   formatNumber,
 } from "./formatters";
 export { type MergeStatus, mergeKeys, mergeKeysWithStatus } from "./mergeKeys";
-export { isSchemaChanged, isWholeModelChange } from "./schemaDiff";
+export { isSchemaChanged } from "./schemaDiff";
 export {
   dataFrameToRowObjects,
   getCaseInsensitive,

@@ -18,7 +18,6 @@ import { IoClose } from "react-icons/io5";
 import type { NodeData } from "../../api/info";
 import { DisableTooltipMessages } from "../../constants";
 import { useThemeColors } from "../../hooks";
-import { isWholeModelChange } from "../../utils/schemaDiff";
 import type { ChangeCategory } from "./nodes";
 import { TreatmentChip } from "./TreatmentChip";
 import { getTitleRowTooltip, pickTitleChip } from "./wholeModelTreatment";
@@ -79,12 +78,6 @@ export interface SchemaViewProps {
    * "Add schema diff to checklist" button). Diff mode only.
    */
   headerAction?: ReactNode;
-  /**
-   * True when the node has a model-wide change not attributable to specific
-   * columns. Under new-CLL the inline distribution profiles every column for
-   * a whole-model change, vs only the changed columns otherwise (DRC-3390).
-   */
-  wholeModelChange?: boolean;
 }
 
 /**
@@ -865,7 +858,6 @@ export function NodeView<TNode extends NodeViewNodeData>({
                         base={base}
                         current={current}
                         columnChanges={node.data.change?.columns}
-                        wholeModelChange={isWholeModelChange(node.data.change)}
                         onViewCode={() => setTabValue(1)}
                         headerAction={
                           showAddSchemaDiff ? (

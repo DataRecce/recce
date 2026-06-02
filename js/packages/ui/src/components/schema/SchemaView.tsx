@@ -30,7 +30,6 @@ import type {
   SchemaDiffRow,
   SchemaRow,
 } from "../../lib/dataGrid/generators/toSchemaDataGrid";
-import { selectChangedColumns } from "../../lib/dataGrid/generators/toSchemaDataGrid";
 import {
   type DataGridHandle,
   EmptyRowsRenderer,
@@ -86,13 +85,6 @@ interface SchemaViewProps {
   onViewCode?: () => void;
   /** Optional action element rendered next to the legend (e.g. add-to-checklist button) */
   headerAction?: ReactNode;
-  /**
-   * True when the node has a model-wide change not attributable to specific
-   * columns (DRC-3390 Stage C). Under the new-CLL experience the inline
-   * distribution scopes to changed columns; a whole-model change instead
-   * profiles every column. Ignored when new-CLL is off.
-   */
-  wholeModelChange?: boolean;
 }
 
 function PrivateSingleEnvSchemaView(
@@ -235,7 +227,6 @@ export function PrivateSchemaView(
     columnChanges,
     onViewCode,
     headerAction,
-    wholeModelChange,
   }: SchemaViewProps,
   ref: Ref<DataGridHandle>,
 ) {
@@ -271,21 +262,32 @@ export function PrivateSchemaView(
   }, [current, base]);
   const nodeId = current?.id ?? base?.id;
 
+  // Whole-model change: read the lineage's canonical set directly (the same
+  // signal that paints the changed title chip/stripe), exactly as we consult
+  // `impactedColumnIds` above — no bespoke per-view recomputation. With a
+  // whole-model change and no scoped columns we profile every column.
+  const wholeModelChange = newCllExperience
+    ? (lineageViewContext?.wholeModelChangedNodeIds?.has(nodeId ?? "") ?? false)
+    : false;
+
   // DRC-3390 Stage C: scope the inline distribution to *changed* columns under
   // the new-CLL experience (perf: don't profile every column of a model when
-  // only a few diverged). A whole-model change still profiles all columns;
-  // legacy (non-new-CLL) keeps profiling all. Changed-column data relies on
-  // breaking/impact analysis, so column scoping only kicks in once that's run.
+  // only a few diverged). The scope is the union of the same two signals the
+  // grid already colors from — `columnChanges` (this node's own added/removed/
+  // modified columns) and `impactedColumns` (columns impacted downstream). No
+  // re-deriving change status from base/current. A whole-model change profiles
+  // all columns (handled below); legacy (non-new-CLL) keeps profiling all.
   const changedColumns = useMemo(() => {
     if (!newCllExperience) return undefined;
-    return selectChangedColumns({
-      base: base?.columns,
-      current: current?.columns,
-      columnChanges,
-      impactedColumns,
-      nodeId,
-    });
-  }, [newCllExperience, base, current, columnChanges, impactedColumns, nodeId]);
+    const names = new Set<string>(Object.keys(columnChanges ?? {}));
+    if (impactedColumns && nodeId) {
+      const prefix = `${nodeId}_`;
+      for (const id of impactedColumns) {
+        if (id.startsWith(prefix)) names.add(id.slice(prefix.length));
+      }
+    }
+    return [...names];
+  }, [newCllExperience, columnChanges, impactedColumns, nodeId]);
 
   // Under new-CLL scoping we profile only the changed columns by default;
   // "Profile all columns" widens the *same* run to every column. The wider
@@ -302,7 +304,7 @@ export function PrivateSchemaView(
     profileAllColumns || !hasChangedScope ? undefined : changedColumns;
   const profileEnabled = !newCllExperience
     ? true // legacy: always (still gated on the inline_profile flag in the hook)
-    : hasChangedScope || wholeModelChange === true || profileAllColumns;
+    : hasChangedScope || wholeModelChange || profileAllColumns;
 
   // True when the run already covers every column, so there is nothing left to
   // expand into (the "Profile all columns" button hides in this case).

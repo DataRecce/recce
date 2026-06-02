@@ -32,8 +32,6 @@ vi.mock("@datarecce/ui/api", async () => {
 });
 
 vi.mock("@datarecce/ui/utils", () => ({
-  isWholeModelChange: (change?: { columns?: Record<string, unknown> | null }) =>
-    !!change && Object.keys(change.columns ?? {}).length === 0,
   mergeKeysWithStatus: vi.fn((baseKeys, currentKeys) => {
     const result: Record<string, "added" | "removed" | undefined> = {};
     for (const key of baseKeys) {

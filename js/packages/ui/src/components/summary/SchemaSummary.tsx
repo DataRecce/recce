@@ -9,7 +9,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { getModelInfo, isWholeModelChange } from "../..";
+import { getModelInfo } from "../..";
 import type { LineageGraph, LineageGraphNode } from "../../contexts";
 import { useApiConfig } from "../../hooks";
 import { NodeTag, RowCountDiffTag } from "../lineage";
@@ -79,7 +79,6 @@ function SchemaDiffCard({ node, ...props }: SchemaDiffCardProps) {
                   : undefined
               }
               columnChanges={node.data.change?.columns}
-              wholeModelChange={isWholeModelChange(node.data.change)}
             />
           )}
         </Box>

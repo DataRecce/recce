@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import React, { forwardRef, useMemo, useState } from "react";
 import type { IconType } from "react-icons";
 import type { LineageGraphNode } from "../..";
-import { getModelInfo, HSplit, isWholeModelChange } from "../..";
+import { getModelInfo, HSplit } from "../..";
 import { type Check, cacheKeys, select } from "../../api";
 import { useLineageGraphContext } from "../../contexts";
 import { useApiConfig, useIsDark } from "../../hooks";
@@ -279,7 +279,6 @@ export function PrivateSchemaDiffView(
               : undefined
           }
           columnChanges={node.data.change?.columns}
-          wholeModelChange={isWholeModelChange(node.data.change)}
           enableScreenshot={true}
           showMenu={false}
           ref={ref}
