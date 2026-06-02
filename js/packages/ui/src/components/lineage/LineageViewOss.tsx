@@ -118,6 +118,7 @@ import { toReactFlow } from "./lineage";
 import { NodeViewOss as NodeView } from "./NodeViewOss";
 import type { NodeChangeStatus } from "./nodes/LineageNode";
 import { patchLineageFromCll } from "./patchLineageDiffFromCll";
+import { shouldCloseOrphanedRunResult } from "./runResultVisibility";
 import SetupConnectionBanner from "./SetupConnectionBannerOss";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
 import {
@@ -1011,18 +1012,12 @@ export function PrivateLineageView(
       !!focusedNodeId || !!run,
     );
 
-    // Close the run result view if the run result node is not in the new nodes
-    if (
-      run &&
-      (isTopKDiffRun(run) ||
-        isProfileDiffRun(run) ||
-        isHistogramDiffRun(run) ||
-        isValueDiffRun(run) ||
-        isValueDiffDetailRun(run))
-    ) {
-      if (run.params?.model && !findNodeByName(run.params.model)) {
-        closeRunResult();
-      }
+    // Close the run result view if its model node is not in the new nodes —
+    // but NOT while the graph is still building (empty node set), so a run
+    // result deep-linked open before the first layout is not slammed shut
+    // (DRC-3532 race). See shouldCloseOrphanedRunResult.
+    if (shouldCloseOrphanedRunResult(run, nodes)) {
+      closeRunResult();
     }
 
     if (fitView) {
