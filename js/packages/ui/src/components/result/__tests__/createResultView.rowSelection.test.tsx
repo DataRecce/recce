@@ -34,4 +34,18 @@ describe("createResultView enableRowSelection", () => {
       enableClickSelection: false,
     });
   });
+
+  it("does not pass rowSelection when enableRowSelection is absent", () => {
+    const PlainView = createResultView({
+      displayName: "PlainView",
+      typeGuard: (_run: unknown): _run is { v: number } => true,
+      expectedRunType: "test",
+      screenshotWrapper: "grid",
+      transformData: () => ({ columns: [{ field: "v" }], rows: [{ v: 1 }] }),
+    });
+    gridProps.mockClear();
+    render(<PlainView ref={createRef()} run={{ v: 1 }} />);
+    const props = gridProps.mock.calls.at(-1)?.[0];
+    expect(props.rowSelection).toBeUndefined();
+  });
 });
