@@ -298,10 +298,6 @@ export interface LineageViewContextType {
   wholeModelImpactedNodeIds: Set<string>;
   /** Set change analysis mode on/off */
   setChangeAnalysisMode: (active: boolean) => void;
-  /** DRC-3087: whether the unit-test coverage overlay is active on the lineage. */
-  unitTestOverlay: boolean;
-  /** DRC-3087: toggle the unit-test coverage overlay. */
-  setUnitTestOverlay: (active: boolean) => void;
 
   // Actions
   /** Run row count on selected nodes */

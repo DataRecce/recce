@@ -300,7 +300,6 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
     impactedNodeIds,
     newCllExperience,
     wholeModelImpact,
-    unitTestOverlay,
   } = lineageViewCtx;
   const isImpacted = newCllExperience ? impactedNodeIds.has(id) : false;
   const { isWholeModelChanged, isWholeModelImpacted } = pickWholeModelFlags(
@@ -360,11 +359,9 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
         changeStatus: nodeChangeStatus,
         resourceType,
         materialized: data.materialized,
-        // DRC-3087: unit-test coverage roll-up for the node cue/overlay.
+        // DRC-3087: unit-test coverage roll-up for the node cue.
         unitTestSummary: data.unitTestSummary,
       }}
-      // DRC-3087: unit-test coverage overlay
-      unitTestOverlay={unitTestOverlay}
       // New CLL experience props
       newCllExperience={newCllExperience}
       isImpacted={isImpacted}

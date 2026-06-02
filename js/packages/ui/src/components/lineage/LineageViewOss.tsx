@@ -83,7 +83,6 @@ import React, {
   useState,
 } from "react";
 import { FiCopy } from "react-icons/fi";
-import { VscBeaker } from "react-icons/vsc";
 import { HttpError } from "../../lib/fetchClient";
 import { colors } from "../../theme";
 import { LineageViewNotification } from "../notifications";
@@ -297,8 +296,6 @@ export function PrivateLineageView(
 
   const [cll, setCll] = useState<ColumnLineageData | undefined>(undefined);
   const [changeAnalysisMode, setChangeAnalysisMode] = useState(false);
-  // DRC-3087: unit-test coverage overlay toggle.
-  const [unitTestOverlay, setUnitTestOverlay] = useState(false);
   // Ref mirror of changeAnalysisMode for reading inside useLayoutEffect
   // without adding it as a dependency (avoids re-running layout on toggle).
   const changeAnalysisModeRef = useRef(false);
@@ -1263,8 +1260,6 @@ export function PrivateLineageView(
     newCllExperience,
     wholeModelImpact,
     setChangeAnalysisMode,
-    unitTestOverlay,
-    setUnitTestOverlay,
     getNodeAction: (nodeId: string) => {
       return multiNodeAction.actionState.actions[nodeId];
     },
@@ -1548,43 +1543,6 @@ export function PrivateLineageView(
             <Panel position="top-left">
               <Stack spacing="5px">
                 <ColumnLevelLineageControlOss action={actionGetCll} />
-                {/* DRC-3087: unit-test coverage overlay toggle */}
-                <Box
-                  component="button"
-                  type="button"
-                  onClick={() => setUnitTestOverlay(!unitTestOverlay)}
-                  title="Toggle unit test coverage overlay"
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    cursor: "pointer",
-                    border: "1px solid",
-                    borderColor: unitTestOverlay
-                      ? colors.brand[400]
-                      : isDark
-                        ? colors.neutral[600]
-                        : colors.neutral[300],
-                    borderRadius: "6px",
-                    px: "10px",
-                    py: "5px",
-                    fontSize: "0.78rem",
-                    fontWeight: 500,
-                    color: unitTestOverlay
-                      ? "#fff"
-                      : isDark
-                        ? colors.neutral[200]
-                        : colors.neutral[700],
-                    backgroundColor: unitTestOverlay
-                      ? colors.brand[500]
-                      : isDark
-                        ? colors.neutral[800]
-                        : "#fff",
-                  }}
-                >
-                  <Box component={VscBeaker} sx={{ fontSize: "0.95rem" }} />
-                  Tests
-                </Box>
                 {nodes.length == 0 && (
                   <Typography
                     sx={{ fontSize: "1.25rem", color: "grey", opacity: 0.5 }}
