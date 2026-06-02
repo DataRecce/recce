@@ -48,7 +48,10 @@ export interface InlineProfileDistributionCellProps {
   columnType?: string;
   /**
    * Envelope-level row totals — the denominator for counts-mode proportions.
-   * Unused in ranks mode (the DuckDB Stage B path), so optional.
+   * Unused in ranks mode (the DuckDB Stage B path that ships today), so
+   * optional. NOT speculative: Stage D's full adapters (Snowflake/BigQuery
+   * top-K return value+count pairs) emit counts mode, so this is threaded now
+   * to match the single `run.ts` payload contract rather than retrofitted then.
    */
   baseTotal?: number;
   currentTotal?: number;
@@ -142,9 +145,13 @@ function toDiscreteData(
       trimmed: p.trimmed,
     };
   }
-  // Counts mode (Stage D adapters). A per-slot `null` means the value is
-  // absent from that env's top-K — coerce to 0 so the bar simply doesn't
-  // render (gap-on-absent), which is exactly the cell's 0-height behavior.
+  // Counts mode. Stage B (DuckDB) only emits ranks, so this branch is inert
+  // today — but it's a known future need, not speculation: Stage D's full
+  // adapters (Snowflake/BigQuery top-K return value+count pairs) emit counts,
+  // and the cell conforms to the whole `run.ts` payload contract now so Stage D
+  // is a backend-only change. A per-slot `null` means the value is absent from
+  // that env's top-K — coerce to 0 so the bar simply doesn't render
+  // (gap-on-absent), which is exactly the cell's 0-height behavior.
   return {
     mode: "counts",
     values: p.values,

@@ -12,10 +12,6 @@ export {
 } from "./HistogramChart";
 // Paired histograms for inline profile distribution (DRC-3390)
 export {
-  InlineProfileDistributionCell,
-  type InlineProfileDistributionCellProps,
-} from "./InlineProfileDistributionCell";
-export {
   PairedHistogramContinuous,
   type PairedHistogramContinuousData,
   type PairedHistogramContinuousProps,

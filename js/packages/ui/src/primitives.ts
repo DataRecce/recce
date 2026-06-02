@@ -302,14 +302,8 @@ export {
  * bar chart for continuous columns. `PairedHistogramDiscrete` renders a
  * top-K paired bar chart with gap-on-absent semantics for categorical
  * columns. `ProfileDistributionUnsupportedBanner` surfaces the once-per-task
- * "adapter doesn't support this feature" envelope. `InlineProfileDistributionCell`
- * is the Stage C schema-grid container that selects the right leaf cell and
- * owns the loading / error / empty / per-column-failure states.
+ * "adapter doesn't support this feature" envelope.
  */
-export {
-  InlineProfileDistributionCell,
-  type InlineProfileDistributionCellProps,
-} from "./components/data/InlineProfileDistributionCell";
 export {
   PairedHistogramContinuous,
   type PairedHistogramContinuousData,
