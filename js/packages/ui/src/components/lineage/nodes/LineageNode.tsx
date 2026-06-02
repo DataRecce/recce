@@ -36,10 +36,9 @@ import {
 } from "react";
 import { DIM_FILTER } from "../config/zoomConstants";
 import {
-  getIconForChangeStatus,
   getIconForMaterialization,
   getIconForResourceType,
-  getStyleForImpacted,
+  getNodeChangeStyle,
 } from "../styles";
 import { TreatmentChip } from "../TreatmentChip";
 import { getTitleRowTooltip, pickGraphBadge } from "../wholeModelTreatment";
@@ -351,19 +350,17 @@ function LineageNodeComponent({
   const showColumns = columnCount > 0;
   const hasAction = selectMode === "action_result" && actionTag;
 
-  // Get icons and colors — impacted only when not already changed
-  const isUnchanged = !changeStatus || changeStatus === "unchanged";
+  // Get icons and colors — impacted only when not already changed. This is the
+  // node's authoritative accent color; the MiniMap copies it via the same
+  // helper so the two stay in lockstep (DRC-3250).
   const {
     icon: IconChangeStatus,
     color: colorChangeStatus,
     backgroundColor: backgroundColorChangeStatus,
-  } = newCllExperience && isImpacted && isUnchanged
-    ? getStyleForImpacted(isDark)
-    : getIconForChangeStatus(
-        changeStatus,
-        isDark,
-        newCllExperience ? "cll" : "default",
-      );
+  } = getNodeChangeStyle(
+    { changeStatus, isImpacted, newCllExperience },
+    isDark,
+  );
   const { icon: ResourceIcon } =
     resourceType === "model" && materialized
       ? getIconForMaterialization(materialized)
