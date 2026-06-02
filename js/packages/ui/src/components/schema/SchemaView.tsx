@@ -266,9 +266,8 @@ export function PrivateSchemaView(
   // signal that paints the changed title chip/stripe), exactly as we consult
   // `impactedColumnIds` above — no bespoke per-view recomputation. With a
   // whole-model change and no scoped columns we profile every column.
-  const wholeModelChange = newCllExperience
-    ? (lineageViewContext?.wholeModelChangedNodeIds?.has(nodeId ?? "") ?? false)
-    : false;
+  const wholeModelChange =
+    lineageViewContext?.wholeModelChangedNodeIds?.has(nodeId ?? "") ?? false;
 
   // DRC-3390 Stage C: scope the inline distribution to *changed* columns under
   // the new-CLL experience (perf: don't profile every column of a model when
@@ -276,7 +275,7 @@ export function PrivateSchemaView(
   // grid already colors from — `columnChanges` (this node's own added/removed/
   // modified columns) and `impactedColumns` (columns impacted downstream). No
   // re-deriving change status from base/current. A whole-model change profiles
-  // all columns (handled below); legacy (non-new-CLL) keeps profiling all.
+  // all columns (handled below).
   const changedColumns = useMemo(() => {
     if (!newCllExperience) return undefined;
     const names = new Set<string>(Object.keys(columnChanges ?? {}));
@@ -295,16 +294,19 @@ export function PrivateSchemaView(
   // on the exact column set — DRC-3630), but the hook keeps the prior
   // histograms on screen via `placeholderData` while the wider query loads, so
   // it never visually goes backwards.
-  const hasChangedScope = newCllExperience && (changedColumns?.length ?? 0) > 0;
+  // changedColumns is undefined when the feature is off, so length 0 here.
+  const hasChangedScope = (changedColumns?.length ?? 0) > 0;
 
-  // Columns to profile: the changed subset under scoping, widened to every
-  // column (undefined) once the user opts in — or always every column for
-  // legacy / whole-model change.
+  // Columns to profile: the changed subset by default, widened to every column
+  // (undefined) on a whole-model change or once the user opts into all.
   const scopedColumns =
     profileAllColumns || !hasChangedScope ? undefined : changedColumns;
-  const profileEnabled = !newCllExperience
-    ? true // legacy: always (still gated on the inline_profile flag in the hook)
-    : hasChangedScope || wholeModelChange || profileAllColumns;
+
+  // Inline distribution is a new-CLL-only feature — the single master gate
+  // lives here (the hook additionally self-gates on the inline_profile flag).
+  const profileEnabled =
+    newCllExperience &&
+    (hasChangedScope || wholeModelChange || profileAllColumns);
 
   // True when the run already covers every column, so there is nothing left to
   // expand into (the "Profile all columns" button hides in this case).
