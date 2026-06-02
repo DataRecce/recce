@@ -1,5 +1,6 @@
 import MuiAlert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import "./style.css";
 import type {
@@ -241,10 +242,16 @@ export function PrivateSchemaView(
   const lineageViewContext = useLineageViewContext();
   const { data: serverFlags } = useRecceServerFlag();
   const newCllExperience = serverFlags?.new_cll_experience ?? false;
+  const inlineProfile = serverFlags?.inline_profile ?? false;
   const [gridApi, setGridApi] = useState<GridApi<SchemaDiffRow> | null>(null);
   const [cllRunningMap, setCllRunningMap] = useState<Map<string, boolean>>(
     new Map(),
   );
+
+  // DRC-3390: per-model opt-in to profile *every* column rather than just the
+  // changed ones. Ephemeral UI state — resets when navigating to another node
+  // so the perf-friendly changed-columns default is restored each time.
+  const [profileAllColumns, setProfileAllColumns] = useState(false);
 
   // Use the frozen impacted column set from impact analysis so sidebar
   // highlights stay stable when navigating between models/columns.
@@ -280,33 +287,73 @@ export function PrivateSchemaView(
     });
   }, [newCllExperience, base, current, columnChanges, impactedColumns, nodeId]);
 
-  // undefined => profile all columns; [] never sent (see enabled gate).
-  const distributionColumns =
-    changedColumns && changedColumns.length > 0 ? changedColumns : undefined;
-  const distributionEnabled = !newCllExperience
+  // When new-CLL scoping is active we profile only the changed columns by
+  // default. Keep this "primary" run scoped to a *stable* column set so its
+  // result (and the backend's per-subset cache) survives when the user later
+  // asks for all columns — at which point we fetch only the *complement* and
+  // never re-profile a column that already has a histogram.
+  const hasChangedScope = newCllExperience && (changedColumns?.length ?? 0) > 0;
+
+  // Primary run: the changed subset under scoping; otherwise every column
+  // (legacy, whole-model change, or new-CLL with nothing changed + opt-in).
+  const primaryColumns = hasChangedScope ? changedColumns : undefined;
+  const primaryEnabled = !newCllExperience
     ? true // legacy: always (still gated on the inline_profile flag in the hook)
-    : (changedColumns?.length ?? 0) > 0 || wholeModelChange === true;
+    : hasChangedScope || wholeModelChange === true || profileAllColumns;
+
+  // True when the primary run already covers every column, so there is nothing
+  // left to expand into (the "Profile all columns" button hides in this case).
+  const profilingAll =
+    profileAllColumns || (primaryColumns === undefined && primaryEnabled);
 
   // The hook also self-gates on the `inline_profile` server flag — a no-op
   // (status "disabled") when it's off.
   const distribution = useInlineProfileDistribution({
     model: profileNode?.name,
     nodeId,
-    columns: distributionColumns,
-    enabled: distributionEnabled,
+    columns: primaryColumns,
+    enabled: primaryEnabled,
   });
+
+  // Complement run: only once the user opts into all columns *and* the primary
+  // run is scoped to a subset. Requests just the columns the primary skipped,
+  // so the warehouse never re-profiles a column that already has a histogram.
+  const restColumns = useMemo(() => {
+    if (!profileAllColumns || !hasChangedScope) return undefined;
+    const changedSet = new Set(changedColumns);
+    const allNames = new Set<string>([
+      ...Object.keys(base?.columns ?? {}),
+      ...Object.keys(current?.columns ?? {}),
+    ]);
+    return [...allNames].filter((name) => !changedSet.has(name));
+  }, [profileAllColumns, hasChangedScope, changedColumns, base, current]);
+
+  const distributionRest = useInlineProfileDistribution({
+    model: profileNode?.name,
+    nodeId,
+    columns: restColumns,
+    enabled: (restColumns?.length ?? 0) > 0,
+  });
+
+  // Reset the all-columns opt-in when switching nodes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset is keyed on nodeId only
+  useEffect(() => {
+    setProfileAllColumns(false);
+  }, [nodeId]);
 
   // Thread distribution data into the grid only while loading or on success;
   // "unsupported" shows a banner instead, "error"/"disabled" render nothing.
+  // Merge the complement run's payloads on top so the already-profiled
+  // changed-column cells stay rendered while the rest stream in.
   const distributionData: SchemaDistributionData | undefined = useMemo(() => {
     if (distribution.status !== "ok" && distribution.status !== "loading") {
       return undefined;
     }
     return {
-      payloads: distribution.columns,
-      baseTotal: distribution.baseTotal,
-      currentTotal: distribution.currentTotal,
-      isLoading: distribution.isLoading,
+      payloads: { ...distribution.columns, ...distributionRest.columns },
+      baseTotal: distribution.baseTotal || distributionRest.baseTotal,
+      currentTotal: distribution.currentTotal || distributionRest.currentTotal,
+      isLoading: distribution.isLoading || distributionRest.isLoading,
       hasError: false,
     };
   }, [
@@ -315,6 +362,10 @@ export function PrivateSchemaView(
     distribution.baseTotal,
     distribution.currentTotal,
     distribution.isLoading,
+    distributionRest.columns,
+    distributionRest.baseTotal,
+    distributionRest.currentTotal,
+    distributionRest.isLoading,
   ]);
 
   const { columns, rows } = useMemo(() => {
@@ -485,7 +536,31 @@ export function PrivateSchemaView(
         }}
       >
         <SchemaLegend />
-        {headerAction}
+        <Stack direction="row" sx={{ alignItems: "center", gap: 1 }}>
+          {newCllExperience &&
+            inlineProfile &&
+            profileNode &&
+            !profilingAll && (
+              <Button
+                size="small"
+                variant="text"
+                onClick={() => {
+                  setProfileAllColumns(true);
+                }}
+                sx={{
+                  textTransform: "none",
+                  fontSize: "0.7rem",
+                  py: 0.25,
+                  px: 1,
+                  minWidth: 0,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Profile all columns
+              </Button>
+            )}
+          {headerAction}
+        </Stack>
       </Stack>
       {distribution.status === "unsupported" && (
         <Box sx={{ px: 1, pb: 0.5 }}>
