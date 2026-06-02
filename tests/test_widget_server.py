@@ -2218,9 +2218,7 @@ def _make_lineage_dataframe(node_count: int) -> dict:
     for i in range(node_count):
         change_status = "modified" if i == 0 else None
         impacted = i == 0
-        nodes_data.append(
-            (i, f"model.recce.node_{i}", f"node_{i}", "model", "table", change_status, impacted)
-        )
+        nodes_data.append((i, f"model.recce.node_{i}", f"node_{i}", "model", "table", change_status, impacted))
 
     edge_cols = [
         {"key": "from", "name": "from", "type": "integer"},
@@ -2245,7 +2243,11 @@ async def test_lineage_diff_returns_calltoolresult_with_pydantic_shape():
     from mcp.types import CallToolResult
 
     import recce.widget_server as ws
-    from recce.widget_server import MAX_INLINE_NODES, LineageDiffInput, LineageDiffOutput
+    from recce.widget_server import (
+        MAX_INLINE_NODES,
+        LineageDiffInput,
+        LineageDiffOutput,
+    )
 
     # ── Under-cap branch (3 nodes, 2 edges) ──────────────────────────
     mock_server = MagicMock()
