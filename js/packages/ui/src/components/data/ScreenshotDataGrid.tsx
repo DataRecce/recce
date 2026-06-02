@@ -312,6 +312,11 @@ function _ScreenshotDataGrid<TData = DataGridRow>(
         suppressCellFocus={true}
         suppressRowHoverHighlight={false}
         animateRows={false}
+        // Native browser text selection so users can highlight a cell value and
+        // Ctrl/Cmd+C it. ensureDomOrder keeps selection order correct + a11y-safe.
+        // Community-only path; AG Grid's own clipboard module is Enterprise.
+        enableCellTextSelection={true}
+        ensureDomOrder={true}
         rowClass={rowClassName}
         noRowsOverlayComponent={noRowsOverlayComponent}
         onGridReady={(event) => {
