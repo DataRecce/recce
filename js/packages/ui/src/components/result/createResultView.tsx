@@ -3,6 +3,7 @@
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import { amber } from "@mui/material/colors";
+import type { RowSelectionOptions } from "ag-grid-community";
 import { forwardRef, type ReactNode, type Ref, useMemo } from "react";
 import { PiWarning } from "react-icons/pi";
 
@@ -19,6 +20,18 @@ import type {
   ResultViewRef,
   WarningStyle,
 } from "./types";
+
+/**
+ * Community multi-row selection via a checkbox column. Checkbox-only
+ * (enableClickSelection: false) so row selection never conflicts with the
+ * native cell text selection enabled in ScreenshotDataGrid.
+ */
+const GRID_ROW_SELECTION: RowSelectionOptions = {
+  mode: "multiRow",
+  checkboxes: true,
+  headerCheckbox: true,
+  enableClickSelection: false,
+};
 
 /**
  * Renders a single warning with amber styling (icon + text).
@@ -156,6 +169,7 @@ export function createResultView<
     transformData,
     emptyState = "No data",
     conditionalEmptyState,
+    enableRowSelection,
   } = config;
 
   function ResultViewInner(
@@ -289,6 +303,7 @@ export function createResultView<
               ),
             }}
             defaultColumnOptions={data.defaultColumnOptions}
+            rowSelection={enableRowSelection ? GRID_ROW_SELECTION : undefined}
           />
           {data.footer}
         </Box>
