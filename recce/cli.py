@@ -3211,8 +3211,13 @@ def mcp_config_install(project_dir, claude_config, yes, dry_run):
     # ------------------------------------------------------------------
     # Backup existing config
     # ------------------------------------------------------------------
+    # Skip if a backup already exists: a re-run would otherwise clobber the
+    # pristine pre-recce original with the already-modified config, making the
+    # documented "restore from .recce.bak" undo path useless.
     backup_path = config_path.with_suffix(config_path.suffix + ".recce.bak")
-    shutil.copy2(str(config_path), str(backup_path))
+    backup_created = not backup_path.exists()
+    if backup_created:
+        shutil.copy2(str(config_path), str(backup_path))
 
     # ------------------------------------------------------------------
     # Merge entries and write
@@ -3225,7 +3230,10 @@ def mcp_config_install(project_dir, claude_config, yes, dry_run):
     # ------------------------------------------------------------------
     keys_written = ", ".join(new_entries.keys())
     console.print(f"\n[green]✓[/green] Wrote {len(new_entries)} MCP server entries ({keys_written}) to {config_path}")
-    console.print(f"[green]✓[/green] Backup saved to {backup_path}")
+    if backup_created:
+        console.print(f"[green]✓[/green] Backup saved to {backup_path}")
+    else:
+        console.print(f"[green]✓[/green] Existing backup preserved at {backup_path}")
     console.print(
         "\nNext steps:\n"
         "  1. Cmd+Q to fully quit Claude Desktop "

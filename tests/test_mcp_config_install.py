@@ -228,6 +228,33 @@ def test_install_backup_created(tmp_path, monkeypatch):
     assert backup_content == {"mcpServers": {}}, "Backup content does not match original config"
 
 
+def test_install_backup_preserves_pristine_original_on_rerun(tmp_path, monkeypatch):
+    """Re-running install must NOT clobber the .recce.bak with the already-modified
+    config. The backup must keep the pristine pre-recce original so 'undo' is reliable."""
+    monkeypatch.setattr(sys, "platform", "darwin")
+
+    project_dir = _make_dbt_project(tmp_path / "my_project")
+    config_file = tmp_path / "claude_desktop_config.json"
+    # Pristine original: a user's third-party server, no recce entries.
+    pristine = {"mcpServers": {"other-server": {"command": "/usr/local/bin/other", "args": ["start"], "env": {}}}}
+    config_file.write_text(json.dumps(pristine, indent=2))
+
+    runner = CliRunner()
+    args = ["--project-dir", str(project_dir), "--config", str(config_file), "--yes"]
+
+    r1 = runner.invoke(mcp_config_install, args)
+    assert r1.exit_code == 0, f"first run failed: {r1.output}\n{r1.exception}"
+
+    # Second run: config_file already carries recce entries now.
+    r2 = runner.invoke(mcp_config_install, args)
+    assert r2.exit_code == 0, f"second run failed: {r2.output}\n{r2.exception}"
+
+    backup_path = config_file.with_suffix(config_file.suffix + ".recce.bak")
+    backup_content = json.loads(backup_path.read_text())
+    assert backup_content == pristine, "Backup was clobbered with the modified config; pristine original lost"
+    assert "recce" not in backup_content["mcpServers"], "Backup must not contain recce entries"
+
+
 def test_install_python_fallback_uses_cli_module(tmp_path, monkeypatch):
     """When no recce executable is on PATH, fallback command must be runnable."""
     monkeypatch.setattr(sys, "platform", "darwin")
