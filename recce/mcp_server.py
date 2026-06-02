@@ -76,7 +76,7 @@ DEFAULT_CLOUD_REQUEST_TIMEOUT = 30
 
 def _widgets_enabled() -> bool:
     """Read RECCE_MCP_WIDGETS env at call time (not import time) so tests can monkeypatch."""
-    return os.environ.get("RECCE_MCP_WIDGETS", "").strip() in ("1", "true", "True")
+    return os.environ.get("RECCE_MCP_WIDGETS", "").strip().lower() in ("1", "true")
 
 
 class InstanceSpawningError(RuntimeError):

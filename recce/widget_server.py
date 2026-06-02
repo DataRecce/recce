@@ -143,8 +143,15 @@ def _read_widget_html(name: str) -> str:
     try:
         ref = importlib.resources.files("recce.data.mcp") / f"{name}.html"
         return ref.read_text(encoding="utf-8")
-    except (FileNotFoundError, TypeError, ModuleNotFoundError):
-        return f"<html><body>Widget asset missing: {name}.html. Run pnpm run build.</body></html>"
+    except Exception as e:
+        # Broad except: importlib can raise OSError / PermissionError /
+        # UnicodeDecodeError beyond the file-missing case. Log it so a packaging
+        # defect (a built/installed recce that dropped recce/data/mcp/*.html) is
+        # visible in server logs, not only when a human opens the rendered widget.
+        # These are tracked SOURCE files, so a miss here means a broken
+        # install/package — not a forgotten frontend build.
+        logger.error("Failed to load widget asset %s.html: %s", name, e)
+        return f"<html><body>Widget asset missing: {name}.html (broken recce install/package).</body></html>"
 
 
 # ---------------------------------------------------------------------------
@@ -2511,7 +2518,10 @@ def run_widget_server(**kwargs) -> None:
     """
     global _recce_server
 
-    if kwargs.get("cloud") or kwargs.get("session"):
+    # `--session` binds to the dest `cloud_session` (see recce mcp-server CLI);
+    # check both that and a bare `session` key so the guard fires regardless of
+    # how the kwarg was supplied.
+    if kwargs.get("cloud") or kwargs.get("cloud_session") or kwargs.get("session"):
         raise ValueError(
             "recce mcp-widget-server does not support cloud/session mode in iter 1 "
             "— use recce mcp-server for cloud sessions"
