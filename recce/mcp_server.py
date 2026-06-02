@@ -71,6 +71,8 @@ WIDGET_TOOLS = {
     "lineage_diff",
 }
 
+DEFAULT_CLOUD_REQUEST_TIMEOUT = 30
+
 
 def _widgets_enabled() -> bool:
     """Read RECCE_MCP_WIDGETS env at call time (not import time) so tests can monkeypatch."""
@@ -120,6 +122,7 @@ class CloudBackend:
             **kwargs.pop("headers", {}),
             "Authorization": f"Bearer {self.api_token}",
         }
+        kwargs.setdefault("timeout", DEFAULT_CLOUD_REQUEST_TIMEOUT)
         response = await asyncio.to_thread(requests.request, method, url, headers=headers, **kwargs)
         if response.status_code == 405:
             raise InstanceSpawningError()
@@ -2307,7 +2310,22 @@ class RecceMCPServer:
             project_dir = arguments.get("project_dir")
             target_path = arguments.get("target_path", "target")
             target_base_path = arguments.get("target_base_path", "target-base")
-            cache_key = (project_dir, target_path, target_base_path)
+
+            # Check artifact presence on every local switch. A long-lived MCP
+            # can start in single-env mode, then the user may generate
+            # target-base/ and call set_backend(local) again with identical
+            # args. The cache key must include the effective base selection so
+            # that stale single-env contexts are not reused.
+            base_path = Path(project_dir or "./").joinpath(target_base_path)
+            target_dir = Path(project_dir or "./").joinpath(target_path)
+            effective_base = target_base_path
+            single_env = False
+            if target_dir.is_dir() and not base_path.is_dir():
+                effective_base = target_path
+                single_env = True
+            else:
+                single_env = not base_path.is_dir()
+            cache_key = (project_dir, target_path, target_base_path, effective_base, single_env)
 
             if self.context is None or self._local_cache_key != cache_key:
                 # Reset the global so RecceContext.load runs fresh against new params.
@@ -2315,17 +2333,10 @@ class RecceMCPServer:
 
                 _core.recce_context = None
 
-                # Mirror CLI single-env fallback: if target/ exists but target-base/
-                # doesn't, point both envs at target/ so load_context() doesn't fail
-                # on a missing base manifest.
-                base_path = Path(project_dir or "./").joinpath(target_base_path)
-                target_dir = Path(project_dir or "./").joinpath(target_path)
-                effective_base = target_base_path
-                if target_dir.is_dir() and not base_path.is_dir():
-                    effective_base = target_path
-                    self.single_env = True
-                else:
-                    self.single_env = not base_path.is_dir()
+                # Mirror CLI single-env fallback: if target/ exists but
+                # target-base/ doesn't, point both envs at target/ so
+                # load_context() doesn't fail on a missing base manifest.
+                self.single_env = single_env
 
                 load_kwargs = {
                     "target_path": target_path,

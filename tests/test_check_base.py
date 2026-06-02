@@ -98,16 +98,33 @@ def test_status_stale_time(old_manifest_dir):
 
 
 def test_status_stale_sha(fresh_manifest_dir):
-    """SHA in manifest differs from current HEAD → stale_sha, message contains 'stale'."""
+    """SHA checking is opt-in: without expected_base_sha, a base-branch SHA
+    that differs from feature-branch HEAD is still fresh.
+
+    In normal Recce usage, target-base artifacts are generated from the base
+    branch, so DBT_GIT_SHA is expected to differ from current feature HEAD.
+    """
     different_sha = "9999999deadbeef0000000000000000000000000"
     with patch("recce.git.current_commit_hash", return_value=different_sha):
         result = check_base_freshness(
             target_base_path=str(fresh_manifest_dir),
             freshness_threshold_hours=48.0,
         )
+    assert result["status"] == "fresh"
+    assert result["recommendation"] == "reuse"
+
+
+def test_status_stale_sha_when_expected_base_sha_mismatch(fresh_manifest_dir):
+    """When an expected base SHA is provided, mismatch → stale_sha."""
+    expected_base_sha = "9999999deadbeef0000000000000000000000000"
+    result = check_base_freshness(
+        target_base_path=str(fresh_manifest_dir),
+        freshness_threshold_hours=48.0,
+        expected_base_sha=expected_base_sha,
+    )
     assert result["status"] == "stale_sha"
     assert result["recommendation"] == "docs_generate"
-    assert "stale" in result["message"].lower()
+    assert result["expected_base_sha"] == expected_base_sha
 
 
 def test_status_missing(tmp_path):

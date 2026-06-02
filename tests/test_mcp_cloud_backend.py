@@ -46,6 +46,16 @@ async def test_cloud_backend_spawns_instance_without_inner_api_path(cloud_reques
 
 
 @pytest.mark.asyncio
+async def test_cloud_backend_requests_use_timeout(cloud_requests):
+    """Cloud proxy calls must not hang forever on stalled endpoints."""
+    cloud_requests.return_value = MockResponse(204)
+
+    await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    assert cloud_requests.call_args.kwargs["timeout"] == 30
+
+
+@pytest.mark.asyncio
 async def test_cloud_backend_uses_session_proxy_paths_without_inner_api_segment(cloud_requests):
     cloud_requests.side_effect = [
         MockResponse(204),
@@ -734,6 +744,50 @@ async def test_set_backend_local_keeps_dual_env_when_base_dir_present():
     assert result["single_env"] is False
     # target_base_path preserved (no fallback to target_path)
     assert mock_load.call_args.kwargs["target_base_path"] == "target-base"
+
+
+@pytest.mark.asyncio
+async def test_set_backend_local_reloads_when_base_dir_appears():
+    """single-env cached context must be replaced once target-base/ appears."""
+    single_env_context = MagicMock()
+    single_env_context.adapter_type = "dbt"
+    dual_env_context = MagicMock()
+    dual_env_context.adapter_type = "dbt"
+
+    server = RecceMCPServer()
+
+    with (
+        patch("recce.mcp_server.load_context", side_effect=[single_env_context, dual_env_context]) as mock_load,
+        patch("recce.mcp_server.Path") as mock_path,
+    ):
+        base_missing = MagicMock()
+        base_missing.is_dir.return_value = False
+        target_present_1 = MagicMock()
+        target_present_1.is_dir.return_value = True
+        base_present = MagicMock()
+        base_present.is_dir.return_value = True
+        target_present_2 = MagicMock()
+        target_present_2.is_dir.return_value = True
+        mock_path.return_value.joinpath.side_effect = [
+            base_missing,
+            target_present_1,
+            base_present,
+            target_present_2,
+        ]
+
+        first = await server._tool_set_backend(
+            {"mode": "local", "project_dir": "/proj", "target_path": "target", "target_base_path": "target-base"}
+        )
+        second = await server._tool_set_backend(
+            {"mode": "local", "project_dir": "/proj", "target_path": "target", "target_base_path": "target-base"}
+        )
+
+    assert first["single_env"] is True
+    assert second["single_env"] is False
+    assert server.context is dual_env_context
+    assert mock_load.call_count == 2
+    assert mock_load.call_args_list[0].kwargs["target_base_path"] == "target"
+    assert mock_load.call_args_list[1].kwargs["target_base_path"] == "target-base"
 
 
 @pytest.mark.asyncio

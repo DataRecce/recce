@@ -9,6 +9,7 @@ Covers:
 """
 
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -225,3 +226,32 @@ def test_install_backup_created(tmp_path, monkeypatch):
     # Backup content matches original (pre-write snapshot)
     backup_content = json.loads(backup_path.read_text())
     assert backup_content == {"mcpServers": {}}, "Backup content does not match original config"
+
+
+def test_install_python_fallback_uses_cli_module(tmp_path, monkeypatch):
+    """When no recce executable is on PATH, fallback command must be runnable."""
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(shutil, "which", lambda _: None)
+
+    project_dir = _make_dbt_project(tmp_path / "my_project")
+    config_file = tmp_path / "claude_desktop_config.json"
+    _make_config(config_file)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        mcp_config_install,
+        [
+            "--project-dir",
+            str(project_dir),
+            "--config",
+            str(config_file),
+            "--yes",
+        ],
+    )
+
+    assert result.exit_code == 0, f"Unexpected exit: {result.output}\n{result.exception}"
+    written = json.loads(config_file.read_text())
+    servers = written["mcpServers"]
+    assert servers["recce"]["command"] == sys.executable
+    assert servers["recce"]["args"][:2] == ["-m", "recce.cli"]
+    assert servers["recce-widgets"]["args"][:2] == ["-m", "recce.cli"]

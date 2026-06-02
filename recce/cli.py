@@ -3154,9 +3154,10 @@ def mcp_config_install(project_dir, claude_config, yes, dry_run):
     # ------------------------------------------------------------------
     recce_bin = shutil.which("recce")
     if not recce_bin:
-        # Fallback: use the current Python executable with -m recce
+        # Fallback: use the current Python executable with the CLI module.
+        # The package has no recce.__main__, so `python -m recce` is not runnable.
         recce_bin = sys.executable
-        recce_base_args_prefix = ["-m", "recce"]
+        recce_base_args_prefix = ["-m", "recce.cli"]
     else:
         recce_base_args_prefix = []
 
@@ -3342,6 +3343,7 @@ def resolve_target_base_path(
 def check_base_freshness(
     target_base_path: str = "target-base",
     freshness_threshold_hours: float = 48.0,
+    expected_base_sha: str | None = None,
 ) -> dict:
     """
     Check whether the base artifacts in target_base_path are fresh.
@@ -3352,7 +3354,8 @@ def check_base_freshness(
         message: human-readable explanation
         artifact_age_hours: float or None
         base_sha: str or None  (DBT_GIT_SHA from manifest metadata)
-        current_sha: str or None  (current HEAD SHA)
+        current_sha: str or None  (reserved for legacy callers)
+        expected_base_sha: str or None
         threshold_hours: float
     """
     import json
@@ -3369,6 +3372,7 @@ def check_base_freshness(
         "artifact_age_hours": None,
         "base_sha": None,
         "current_sha": None,
+        "expected_base_sha": expected_base_sha,
         "threshold_hours": freshness_threshold_hours,
     }
 
@@ -3399,24 +3403,23 @@ def check_base_freshness(
         )
         return result
 
-    # SHA-based freshness check (best-effort: skip if field absent or git unavailable)
+    # SHA-based freshness check is opt-in. In normal Recce usage, target-base
+    # artifacts are generated from the base branch, so DBT_GIT_SHA is expected
+    # to differ from the current feature-branch HEAD. Only compare when the
+    # caller provides the expected base SHA explicitly.
     try:
         with open(manifest_path) as f:
             manifest_data = json.load(f)
         base_sha = manifest_data.get("metadata", {}).get("env", {}).get("DBT_GIT_SHA")
         result["base_sha"] = base_sha
 
-        if base_sha is not None:
-            from recce.git import current_commit_hash
-
-            current_sha = current_commit_hash()
-            result["current_sha"] = current_sha
-            if current_sha and base_sha != current_sha:
+        if base_sha is not None and expected_base_sha:
+            if base_sha != expected_base_sha:
                 result["status"] = "stale_sha"
                 result["recommendation"] = "docs_generate"
                 result["message"] = (
                     f"Base artifacts are stale (generated at {base_sha[:7]}, "
-                    f"current HEAD: {current_sha[:7]}). "
+                    f"expected base: {expected_base_sha[:7]}). "
                     f"Run: dbt docs generate --target-path {target_base_path}"
                 )
                 return result
