@@ -50,6 +50,7 @@ import {
   PiDownloadSimple,
   PiImage,
   PiRepeat,
+  PiSelectionPlus,
   PiTable,
 } from "react-icons/pi";
 import YAML from "yaml";
@@ -88,6 +89,8 @@ export interface CSVExportProps {
   downloadAsTSV?: () => void;
   /** Download data as Excel file */
   downloadAsExcel?: () => void;
+  /** Copy the grid's currently selected rows as TSV to the clipboard */
+  copySelectedRows?: () => Promise<void>;
 }
 
 /**
@@ -456,6 +459,20 @@ const DefaultExportMenu = memo(
             </ListItemIcon>
             <ListItemText>Copy as CSV</ListItemText>
           </MenuItem>
+          {csvExport?.copySelectedRows && (
+            <MenuItem
+              onClick={async () => {
+                await csvExport.copySelectedRows?.();
+                handleClose();
+              }}
+              disabled={disableExport}
+            >
+              <ListItemIcon>
+                <PiSelectionPlus />
+              </ListItemIcon>
+              <ListItemText>Copy Selected Rows</ListItemText>
+            </MenuItem>
+          )}
           <MenuItem
             onClick={() => handleDownload(() => csvExport?.downloadAsCSV())}
             disabled={disableExport || !csvExport?.canExportCSV}
