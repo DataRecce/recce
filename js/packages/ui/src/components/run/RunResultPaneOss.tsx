@@ -192,7 +192,7 @@ export const PrivateLoadableRunView = ({
       });
       trackCopyToClipboard({
         type: run?.type ?? "unknown",
-        from: "run",
+        from: "run-selection",
       });
     } catch (error) {
       console.error("Failed to copy selected rows:", error);

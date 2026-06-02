@@ -184,7 +184,7 @@ export function trackStateAction(props: StateActionProps) {
 }
 
 interface CopyToClipboardProps {
-  from: "run" | "check" | "lineage_view";
+  from: "run" | "run-selection" | "check" | "lineage_view";
   type: string;
 }
 
