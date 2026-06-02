@@ -5,6 +5,8 @@ import type {
   CatalogMetadata,
   GitInfo,
   ManifestMetadata,
+  NodeUnitTest,
+  NodeUnitTestSummary,
   PullRequestInfo,
   SQLMeshInfo,
   StateMetadata,
@@ -44,6 +46,9 @@ export type LineageGraphNode = Node<
       category: "breaking" | "non_breaking" | "partial_breaking" | "unknown";
       columns?: Record<string, "added" | "removed" | "modified" | "unknown">;
     };
+    // DRC-3087: dbt unit tests on this model + passing roll-up.
+    unitTests?: NodeUnitTest[];
+    unitTestSummary?: NodeUnitTestSummary;
     parents: Record<string, LineageGraphEdge>;
     children: Record<string, LineageGraphEdge>;
   },
@@ -293,6 +298,10 @@ export interface LineageViewContextType {
   wholeModelImpactedNodeIds: Set<string>;
   /** Set change analysis mode on/off */
   setChangeAnalysisMode: (active: boolean) => void;
+  /** DRC-3087: whether the unit-test coverage overlay is active on the lineage. */
+  unitTestOverlay: boolean;
+  /** DRC-3087: toggle the unit-test coverage overlay. */
+  setUnitTestOverlay: (active: boolean) => void;
 
   // Actions
   /** Run row count on selected nodes */

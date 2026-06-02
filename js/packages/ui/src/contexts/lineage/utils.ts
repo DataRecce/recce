@@ -124,6 +124,9 @@ export function buildLineageGraph(
         materialized: merged.materialized,
         changeStatus: coerceCllChangeStatus(merged.change_status),
         change: merged.change ?? undefined,
+        // DRC-3087: unit test coverage (server-merged from base+current).
+        unitTests: merged.unit_tests,
+        unitTestSummary: merged.unit_test_summary,
         parents: {},
         children: {},
       },

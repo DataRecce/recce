@@ -727,6 +727,27 @@ class DbtAdapter(BaseAdapter):
         )
         return self._get_lineage_diff_cached(cache_key)
 
+    def _load_unit_test_run_status(self) -> dict:
+        """Map unit_test unique_id -> status (pass/fail/error/skipped) from the
+        current target's run_results.json. Empty when the file is absent (DRC-3087)."""
+        target_path = getattr(self, "target_path", None)
+        if not target_path:
+            return {}
+        path = os.path.join(target_path, "run_results.json")
+        if not os.path.exists(path):
+            return {}
+        try:
+            with open(path) as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            return {}
+        status = {}
+        for result in data.get("results", []):
+            uid = result.get("unique_id", "")
+            if uid.startswith("unit_test."):
+                status[uid] = result.get("status")
+        return status
+
     @lru_cache(maxsize=2)
     def get_lineage_cached(self, base: Optional[bool] = False, cache_key=0):
         if base is False:
@@ -801,6 +822,27 @@ class DbtAdapter(BaseAdapter):
                 nodes[unique_id]["columns"] = columns
                 if primary_key:
                     nodes[unique_id]["primary_key"] = primary_key
+
+        # DRC-3087: attach dbt unit tests (1.8+) to their tested model node.
+        # The current env also carries each test's pass/fail from run_results.json.
+        unit_tests = manifest_dict.get("unit_tests", {})
+        if unit_tests:
+            run_status = {} if base else self._load_unit_test_run_status()
+            for ut in unit_tests.values():
+                model_id = next(
+                    (n for n in ut.get("depends_on", {}).get("nodes", []) if n.startswith("model.")),
+                    None,
+                )
+                if model_id is None or model_id not in nodes:
+                    continue
+                spec = {
+                    "name": ut["name"],
+                    "unique_id": ut["unique_id"],
+                    "checksum": ut.get("checksum"),
+                }
+                if not base:
+                    spec["status"] = run_status.get(ut["unique_id"])
+                nodes[model_id].setdefault("unit_test_specs", []).append(spec)
 
         for source in manifest_dict["sources"].values():
             unique_id = source["unique_id"]

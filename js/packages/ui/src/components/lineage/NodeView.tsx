@@ -15,11 +15,16 @@ import {
   useState,
 } from "react";
 import { IoClose } from "react-icons/io5";
-import type { NodeData } from "../../api/info";
+import type {
+  NodeData,
+  NodeUnitTest,
+  NodeUnitTestSummary,
+} from "../../api/info";
 import { DisableTooltipMessages } from "../../constants";
 import { useThemeColors } from "../../hooks";
 import type { ChangeCategory } from "./nodes";
 import { TreatmentChip } from "./TreatmentChip";
+import { UnitTestsView } from "./UnitTestsView";
 import { getTitleRowTooltip, pickTitleChip } from "./wholeModelTreatment";
 
 // =============================================================================
@@ -42,6 +47,9 @@ export interface NodeViewNodeData {
       category: string;
       columns?: Record<string, "added" | "removed" | "modified" | "unknown">;
     };
+    // DRC-3087: dbt unit tests on this model + passing roll-up.
+    unitTests?: NodeUnitTest[];
+    unitTestSummary?: NodeUnitTestSummary;
   };
 }
 
@@ -624,6 +632,18 @@ export function NodeView<TNode extends NodeViewNodeData>({
   // though raw_code is identical — acceptable since the node IS modified.
   const hasCodeChanges = !isSingleEnv && node.data.changeStatus === "modified";
 
+  // DRC-3087: unit-test coverage section. Gated on dual-env (the +/-/~ diff
+  // markers are meaningless without a base manifest). When present it sits
+  // between Code and Lineage, shifting the Lineage tab index to 3.
+  const unitTests: NodeUnitTest[] = node.data.unitTests ?? [];
+  const unitTestSummary: NodeUnitTestSummary | undefined =
+    node.data.unitTestSummary;
+  const hasUnitTests = !isSingleEnv && unitTests.length > 0;
+  const hasFailingTests = unitTests.some(
+    (t) => t.status === "fail" || t.status === "error",
+  );
+  const lineageTabIndex = hasUnitTests ? 3 : 2;
+
   const isModelSeedOrSnapshot =
     node.data.resourceType === "model" ||
     node.data.resourceType === "seed" ||
@@ -842,6 +862,34 @@ export function NodeView<TNode extends NodeViewNodeData>({
                 </Box>
               }
             />
+            {hasUnitTests && (
+              <Tab
+                label={
+                  <Box
+                    component="span"
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.75,
+                    }}
+                  >
+                    Unit Tests
+                    {hasFailingTests && (
+                      <Box
+                        component="span"
+                        sx={{
+                          color: "error.main",
+                          fontSize: "0.5rem",
+                          lineHeight: 1,
+                        }}
+                      >
+                        ●
+                      </Box>
+                    )}
+                  </Box>
+                }
+              />
+            )}
             {lineageTabContent && <Tab label="Lineage" />}
           </Tabs>
 
@@ -876,8 +924,18 @@ export function NodeView<TNode extends NodeViewNodeData>({
                 {NodeSqlView && <NodeSqlView node={node} />}
               </Box>
             </TabPanel>
-            {lineageTabContent && (
+            {hasUnitTests && (
               <TabPanel value={tabValue} index={2}>
+                <Box sx={{ overflowY: "auto", height: "100%" }}>
+                  <UnitTestsView
+                    unitTests={unitTests}
+                    summary={unitTestSummary}
+                  />
+                </Box>
+              </TabPanel>
+            )}
+            {lineageTabContent && (
+              <TabPanel value={tabValue} index={lineageTabIndex}>
                 <Box sx={{ height: "100%" }}>{lineageTabContent}</Box>
               </TabPanel>
             )}

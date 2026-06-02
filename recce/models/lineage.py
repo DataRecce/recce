@@ -9,7 +9,51 @@ from recce.models.types import (
     MergedEdge,
     MergedLineage,
     MergedNode,
+    MergedUnitTest,
+    UnitTestSummary,
 )
+
+
+def _merge_unit_tests(
+    base_specs: list[dict], curr_specs: list[dict]
+) -> tuple[list[MergedUnitTest], UnitTestSummary | None]:
+    """Merge a model's base + current unit-test specs into wire-format tests.
+
+    diff_status is derived per test name: added/removed by presence, changed when
+    the manifest checksum differs, else unchanged. The passing summary covers only
+    the current env's tests (removed tests no longer run).
+    """
+    base_by_name = {s["name"]: s for s in base_specs}
+    curr_by_name = {s["name"]: s for s in curr_specs}
+
+    tests: list[MergedUnitTest] = []
+    for name in sorted(set(base_by_name) | set(curr_by_name)):
+        base_spec = base_by_name.get(name)
+        curr_spec = curr_by_name.get(name)
+        if curr_spec and not base_spec:
+            diff_status = "added"
+        elif base_spec and not curr_spec:
+            diff_status = "removed"
+        elif base_spec and curr_spec and base_spec.get("checksum") != curr_spec.get("checksum"):
+            diff_status = "changed"
+        else:
+            diff_status = "unchanged"
+        spec = curr_spec or base_spec
+        tests.append(
+            MergedUnitTest(
+                name=name,
+                unique_id=spec["unique_id"],
+                status=(curr_spec or {}).get("status"),
+                diff_status=diff_status,
+            )
+        )
+
+    total = len(curr_specs)
+    summary = None
+    if total:
+        passed = sum(1 for s in curr_specs if s.get("status") == "pass")
+        summary = UnitTestSummary(total=total, passed=passed, pct=round(100 * passed / total))
+    return tests, summary
 
 
 def build_merged_lineage(lineage_diff: LineageDiff) -> MergedLineage:
@@ -45,6 +89,14 @@ def build_merged_lineage(lineage_diff: LineageDiff) -> MergedLineage:
         if node_diff:
             merged.change_status = node_diff.change_status
             merged.change = node_diff.change
+
+        # DRC-3087: merge unit tests from base + current into the node.
+        base_specs = (base_node or {}).get("unit_test_specs") or []
+        curr_specs = (current_node or {}).get("unit_test_specs") or []
+        if base_specs or curr_specs:
+            unit_tests, summary = _merge_unit_tests(base_specs, curr_specs)
+            merged.unit_tests = unit_tests
+            merged.unit_test_summary = summary
 
         nodes[node_id] = merged
 

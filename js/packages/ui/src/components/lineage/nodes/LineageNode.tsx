@@ -34,6 +34,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { VscBeaker } from "react-icons/vsc";
 import { DIM_FILTER } from "../config/zoomConstants";
 import {
   getIconForMaterialization,
@@ -96,6 +97,8 @@ export interface LineageNodeData extends Record<string, unknown> {
     type?: string;
     changeStatus?: NodeChangeStatus;
   }>;
+  /** DRC-3087: unit-test coverage roll-up for the node cue/overlay. */
+  unitTestSummary?: { total: number; passed: number; pct: number };
 }
 
 /**
@@ -158,6 +161,10 @@ export interface LineageNodeProps {
   isWholeModelImpacted?: boolean;
   /** Whether the `--whole-model-impact` server flag is on. When false, no per-column badges render and the "Model-Wide Change / Column Change / Additive Change" text labels are shown instead. */
   wholeModelImpact?: boolean;
+
+  /** DRC-3087: whether the unit-test coverage overlay is active. Emphasizes the
+   * coverage chip and dims models that have no unit tests. */
+  unitTestOverlay?: boolean;
 
   // === Callbacks ===
   /** Callback when node is clicked */
@@ -303,6 +310,7 @@ function LineageNodeComponent({
   isWholeModelChanged = false,
   isWholeModelImpacted = false,
   wholeModelImpact = false,
+  unitTestOverlay = false,
   // Callbacks
   onNodeClick,
   onNodeDoubleClick,
@@ -435,6 +443,11 @@ function LineageNodeComponent({
 
   // Filter for dimming
   const nodeFilter = (() => {
+    // DRC-3087: in the unit-test overlay, dim models that have no unit tests
+    // so coverage gaps stand out.
+    if (unitTestOverlay) {
+      return data.unitTestSummary ? "none" : DIM_FILTER;
+    }
     if (newCllExperience) {
       return "none"; // Never dim in new CLL experience
     }
@@ -466,6 +479,15 @@ function LineageNodeComponent({
     changeCategory,
   };
   const wholeModelBadge = pickGraphBadge(treatmentInputs, isDark);
+
+  // DRC-3087: coverage chip color keys off the passing percentage.
+  const unitTestCueColor = data.unitTestSummary
+    ? data.unitTestSummary.pct === 100
+      ? "#2e7d32"
+      : data.unitTestSummary.pct === 0
+        ? "#c62828"
+        : "#ed6c02"
+    : undefined;
 
   // Shared with NodeView via getTitleRowTooltip — keep the hover text in
   // sync across the canvas card and the sidebar.
@@ -648,6 +670,34 @@ function LineageNodeComponent({
               {changeStatus && IconChangeStatus && (
                 <Box sx={{ color: changeStatusIconColor }}>
                   <IconChangeStatus aria-hidden="true" />
+                </Box>
+              )}
+
+              {/* DRC-3087: unit-test coverage cue — subtle by default,
+                  emphasized when the Tests overlay is on. Shows % passing. */}
+              {unitTestCueColor && data.unitTestSummary && (
+                <Box
+                  title={`${data.unitTestSummary.passed} of ${data.unitTestSummary.total} unit tests passing`}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "3px",
+                    flexShrink: 0,
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    borderRadius: "8px",
+                    border: `1px solid ${unitTestCueColor}`,
+                    fontSize: unitTestOverlay ? "0.72rem" : "0.6rem",
+                    px: unitTestOverlay ? "6px" : "5px",
+                    py: unitTestOverlay ? "3px" : "2px",
+                    color: unitTestOverlay ? "#fff" : unitTestCueColor,
+                    backgroundColor: unitTestOverlay
+                      ? unitTestCueColor
+                      : "transparent",
+                  }}
+                >
+                  <Box component={VscBeaker} sx={{ fontSize: "0.85em" }} />
+                  {data.unitTestSummary.pct}%
                 </Box>
               )}
             </Box>

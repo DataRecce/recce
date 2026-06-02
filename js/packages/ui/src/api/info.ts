@@ -67,6 +67,25 @@ export interface SQLMeshInfo {
 export type CatalogMetadata = ArtifactMetadata;
 
 /**
+ * A dbt unit test attached to its model (DRC-3087).
+ * `status` is the current run's result (absent for removed tests / no run_results).
+ * `diff_status` compares base vs current manifests.
+ */
+export interface NodeUnitTest {
+  name: string;
+  unique_id: string;
+  status?: "pass" | "fail" | "error" | "skipped";
+  diff_status: "added" | "removed" | "changed" | "unchanged";
+}
+
+/** Roll-up of a model's current-env unit tests (DRC-3087). */
+export interface NodeUnitTestSummary {
+  total: number;
+  passed: number;
+  pct: number;
+}
+
+/**
  * Merged node from server-side lineage merge (DRC-3258).
  * Contains unified metadata from base+current with baked-in diff.
  */
@@ -83,6 +102,9 @@ export interface MergedNodeData {
     category: "breaking" | "non_breaking" | "partial_breaking" | "unknown";
     columns?: Record<string, "added" | "removed" | "modified" | "unknown">;
   };
+  // DRC-3087: dbt unit tests on this model + passing roll-up.
+  unit_tests?: NodeUnitTest[];
+  unit_test_summary?: NodeUnitTestSummary;
 }
 
 /**

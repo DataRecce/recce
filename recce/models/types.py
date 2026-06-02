@@ -163,6 +163,28 @@ class LineageDiff(BaseModel):
     diff: dict[str, NodeDiff]
 
 
+class MergedUnitTest(BaseModel):
+    """A dbt unit test attached to its tested model (DRC-3087).
+
+    diff_status compares base vs current manifests (added/removed/changed/unchanged);
+    status is the current run's pass/fail and is None for removed tests or when no
+    run_results.json is available.
+    """
+
+    name: str
+    unique_id: str
+    status: Literal["pass", "fail", "error", "skipped"] | None = None
+    diff_status: Literal["added", "removed", "changed", "unchanged"]
+
+
+class UnitTestSummary(BaseModel):
+    """Roll-up of the current env's unit tests for a model (DRC-3087)."""
+
+    total: int
+    passed: int
+    pct: int  # percent passing, 0-100
+
+
 class MergedNode(BaseModel):
     """A single node in the merged lineage wire-format response.
 
@@ -180,6 +202,9 @@ class MergedNode(BaseModel):
     source_name: str | None = None
     change_status: ChangeStatus | None = None
     change: NodeChange | None = None
+    # DRC-3087: dbt unit tests on this model + a passing roll-up.
+    unit_tests: list[MergedUnitTest] | None = None
+    unit_test_summary: UnitTestSummary | None = None
 
     model_config = ConfigDict(
         populate_by_name=True,
