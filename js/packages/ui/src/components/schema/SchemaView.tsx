@@ -18,7 +18,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import type { NodeData, ProfileDistributionColumnPayload } from "../../api";
+import type { NodeData } from "../../api";
 import {
   useLineageGraphContext,
   useLineageViewContext,
@@ -287,52 +287,34 @@ export function PrivateSchemaView(
     });
   }, [newCllExperience, base, current, columnChanges, impactedColumns, nodeId]);
 
-  // When new-CLL scoping is active we profile only the changed columns by
-  // default. Keep this "primary" run scoped to a *stable* column set so its
-  // result (and the backend's per-subset cache) survives when the user later
-  // asks for all columns — at which point we fetch only the *complement* and
-  // never re-profile a column that already has a histogram.
+  // Under new-CLL scoping we profile only the changed columns by default;
+  // "Profile all columns" widens the *same* run to every column. The wider
+  // request re-profiles the already-shown columns (the backend cache is keyed
+  // on the exact column set — DRC-3630), but the hook keeps the prior
+  // histograms on screen via `placeholderData` while the wider query loads, so
+  // it never visually goes backwards.
   const hasChangedScope = newCllExperience && (changedColumns?.length ?? 0) > 0;
 
-  // Primary run: the changed subset under scoping; otherwise every column
-  // (legacy, whole-model change, or new-CLL with nothing changed + opt-in).
-  const primaryColumns = hasChangedScope ? changedColumns : undefined;
-  const primaryEnabled = !newCllExperience
+  // Columns to profile: the changed subset under scoping, widened to every
+  // column (undefined) once the user opts in — or always every column for
+  // legacy / whole-model change.
+  const scopedColumns =
+    profileAllColumns || !hasChangedScope ? undefined : changedColumns;
+  const profileEnabled = !newCllExperience
     ? true // legacy: always (still gated on the inline_profile flag in the hook)
     : hasChangedScope || wholeModelChange === true || profileAllColumns;
 
-  // True when the primary run already covers every column, so there is nothing
-  // left to expand into (the "Profile all columns" button hides in this case).
-  const profilingAll =
-    profileAllColumns || (primaryColumns === undefined && primaryEnabled);
+  // True when the run already covers every column, so there is nothing left to
+  // expand into (the "Profile all columns" button hides in this case).
+  const profilingAll = scopedColumns === undefined && profileEnabled;
 
   // The hook also self-gates on the `inline_profile` server flag — a no-op
   // (status "disabled") when it's off.
   const distribution = useInlineProfileDistribution({
     model: profileNode?.name,
     nodeId,
-    columns: primaryColumns,
-    enabled: primaryEnabled,
-  });
-
-  // Complement run: only once the user opts into all columns *and* the primary
-  // run is scoped to a subset. Requests just the columns the primary skipped,
-  // so the warehouse never re-profiles a column that already has a histogram.
-  const restColumns = useMemo(() => {
-    if (!profileAllColumns || !hasChangedScope) return undefined;
-    const changedSet = new Set(changedColumns);
-    const allNames = new Set<string>([
-      ...Object.keys(base?.columns ?? {}),
-      ...Object.keys(current?.columns ?? {}),
-    ]);
-    return [...allNames].filter((name) => !changedSet.has(name));
-  }, [profileAllColumns, hasChangedScope, changedColumns, base, current]);
-
-  const distributionRest = useInlineProfileDistribution({
-    model: profileNode?.name,
-    nodeId,
-    columns: restColumns,
-    enabled: (restColumns?.length ?? 0) > 0,
+    columns: scopedColumns,
+    enabled: profileEnabled,
   });
 
   // Reset the all-columns opt-in when switching nodes.
@@ -344,10 +326,7 @@ export function PrivateSchemaView(
   // Thread distribution data into the grid. "disabled"/"unsupported" render no
   // column (unsupported shows a banner instead); "loading"/"ok"/"error" keep
   // the column so cells can show a pending dot, a histogram, or a "failed to
-  // read" error icon respectively. The complement run's payloads merge on top
-  // so already-profiled changed-column cells stay rendered while the rest
-  // stream in; if *only* the complement run fails, just its columns are marked
-  // as per-column failures while the changed columns keep their histograms.
+  // read" error icon respectively.
   const distributionData: SchemaDistributionData | undefined = useMemo(() => {
     if (
       distribution.status === "disabled" ||
@@ -355,21 +334,11 @@ export function PrivateSchemaView(
     ) {
       return undefined;
     }
-    const restFailures: Record<string, ProfileDistributionColumnPayload> = {};
-    if (distributionRest.status === "error") {
-      for (const name of restColumns ?? []) {
-        restFailures[name] = { kind: null };
-      }
-    }
     return {
-      payloads: {
-        ...distribution.columns,
-        ...distributionRest.columns,
-        ...restFailures,
-      },
-      baseTotal: distribution.baseTotal || distributionRest.baseTotal,
-      currentTotal: distribution.currentTotal || distributionRest.currentTotal,
-      isLoading: distribution.isLoading || distributionRest.isLoading,
+      payloads: distribution.columns,
+      baseTotal: distribution.baseTotal,
+      currentTotal: distribution.currentTotal,
+      isLoading: distribution.isLoading,
       hasError: distribution.status === "error",
     };
   }, [
@@ -378,12 +347,6 @@ export function PrivateSchemaView(
     distribution.baseTotal,
     distribution.currentTotal,
     distribution.isLoading,
-    distributionRest.status,
-    distributionRest.columns,
-    distributionRest.baseTotal,
-    distributionRest.currentTotal,
-    distributionRest.isLoading,
-    restColumns,
   ]);
 
   const { columns, rows } = useMemo(() => {
