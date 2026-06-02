@@ -10,8 +10,6 @@
  * - Registry extension patterns work correctly
  */
 
-import type { RunType } from "../../../api";
-import { RUN_TYPES } from "../../../api";
 import {
   createBoundFindByRunType,
   createRunTypeRegistry,
@@ -21,6 +19,13 @@ import {
   type RunTypeConfig,
   type RunTypeRegistry,
 } from "../registry";
+
+// The registered run types are exactly the keys of the registry (aliased here
+// as defaultRunTypeConfig) — derive the iteration list from it so the test
+// can't drift from the registry.
+const REGISTERED_RUN_TYPES = Object.keys(
+  defaultRunTypeConfig,
+) as (keyof typeof defaultRunTypeConfig)[];
 
 // ============================================================================
 // Test Fixtures
@@ -39,13 +44,13 @@ CustomIcon.displayName = "CustomIcon";
 describe("registry", () => {
   describe("defaultRunTypeConfig", () => {
     it("contains entries for all run types", () => {
-      for (const runType of RUN_TYPES) {
+      for (const runType of REGISTERED_RUN_TYPES) {
         expect(defaultRunTypeConfig[runType]).toBeDefined();
       }
     });
 
     it("all entries have title and icon", () => {
-      for (const runType of RUN_TYPES) {
+      for (const runType of REGISTERED_RUN_TYPES) {
         const entry = defaultRunTypeConfig[runType];
         expect(entry.title).toBeTruthy();
         expect(typeof entry.title).toBe("string");
@@ -78,7 +83,7 @@ describe("registry", () => {
     it("returns a complete registry with defaults", () => {
       const registry = createRunTypeRegistry({});
 
-      for (const runType of RUN_TYPES) {
+      for (const runType of REGISTERED_RUN_TYPES) {
         expect(registry[runType]).toBeDefined();
         expect(registry[runType].title).toBe(
           defaultRunTypeConfig[runType].title,
@@ -134,7 +139,7 @@ describe("registry", () => {
       } as Record<string, Partial<RunTypeConfig>>);
 
       // Should still have all valid types
-      for (const runType of RUN_TYPES) {
+      for (const runType of REGISTERED_RUN_TYPES) {
         expect(registry[runType]).toBeDefined();
       }
     });
@@ -142,7 +147,7 @@ describe("registry", () => {
 
   describe("findByRunType", () => {
     it("returns correct entry for each run type", () => {
-      for (const runType of RUN_TYPES) {
+      for (const runType of REGISTERED_RUN_TYPES) {
         const entry = findByRunType(runType);
         expect(entry).toBe(defaultRunTypeConfig[runType]);
       }
