@@ -69,6 +69,7 @@ from ...models.types import (
 from ...tasks import (
     HistogramDiffTask,
     ProfileDiffTask,
+    ProfileDistributionTask,
     QueryBaseTask,
     QueryDiffTask,
     QueryTask,
@@ -93,6 +94,10 @@ dbt_supported_registry: Dict[RunType, Type[Task]] = {
     RunType.ROW_COUNT_DIFF: RowCountDiffTask,
     RunType.TOP_K_DIFF: TopKDiffTask,
     RunType.HISTOGRAM_DIFF: HistogramDiffTask,
+    # Stage B (DRC-3390). DuckDB-only backend; the strategy router returns
+    # a ``{status: "unsupported"}`` envelope for every other adapter. The
+    # frontend gates the task call on the ``inline_profile`` server flag.
+    RunType.PROFILE_DISTRIBUTION: ProfileDistributionTask,
 }
 
 # Reference: https://github.com/AltimateAI/vscode-dbt-power-user/blob/master/dbt_core_integration.py
