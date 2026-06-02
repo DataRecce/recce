@@ -490,11 +490,15 @@ function LineageNodeComponent({
     : undefined;
 
   // Shared with NodeView via getTitleRowTooltip — keep the hover text in
-  // sync across the canvas card and the sidebar.
+  // sync across the canvas card and the sidebar. DRC-3087 appends unit-test
+  // coverage to the existing tooltip (reformatting can come later).
   const titleRowTooltip = getTitleRowTooltip(
     { name: label, resourceType, materialized },
     treatmentInputs,
   );
+  const titleRowTooltipWithTests = data.unitTestSummary
+    ? `${titleRowTooltip} - ${data.unitTestSummary.passed}/${data.unitTestSummary.total} tests passing`
+    : titleRowTooltip;
 
   // When --whole-model-impact is on, the COLUMN / ADD graph badge and the
   // NodeView title chip + stripe carry the signal — suppress the text
@@ -635,7 +639,7 @@ function LineageNodeComponent({
           }}
         >
           {/* Title row — single tooltip covers name + badge + status icons */}
-          <Tooltip title={titleRowTooltip} placement="top">
+          <Tooltip title={titleRowTooltipWithTests} placement="top">
             <Box
               sx={{
                 display: "flex",
@@ -677,7 +681,6 @@ function LineageNodeComponent({
                   emphasized when the Tests overlay is on. Shows % passing. */}
               {unitTestCueColor && data.unitTestSummary && (
                 <Box
-                  title={`${data.unitTestSummary.passed} of ${data.unitTestSummary.total} unit tests passing`}
                   sx={{
                     display: "flex",
                     alignItems: "center",
@@ -697,7 +700,7 @@ function LineageNodeComponent({
                   }}
                 >
                   <Box component={VscBeaker} sx={{ fontSize: "0.85em" }} />
-                  {data.unitTestSummary.pct}%
+                  {data.unitTestSummary.passed}/{data.unitTestSummary.total}
                 </Box>
               )}
             </Box>
