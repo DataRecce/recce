@@ -210,7 +210,7 @@
     function escapeHtml(s) {
       return String(s)
         .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
     }
 
     function modeBadge(mode) {
@@ -314,7 +314,7 @@
       if (data.pull_request && data.pull_request.title) {
         const pr = data.pull_request;
         const prLink = pr.url
-          ? `<a href="${escapeHtml(pr.url)}" target="_blank">${escapeHtml(pr.title)}</a>`
+          ? `<a href="${escapeHtml(pr.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(pr.title)}</a>`
           : escapeHtml(pr.title);
         rows.push(`
           <div class="kv-label">Pull request</div>

@@ -274,7 +274,7 @@
     function escapeHtml(s) {
       return String(s ?? "")
         .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
     }
 
     // Shorten a node ID like "model.jaffle_shop.customers" → "customers"
