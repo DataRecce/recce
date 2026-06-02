@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   type ProfileDistributionColumnPayload,
   type ProfileDistributionResult,
@@ -21,6 +21,14 @@ import { useApiConfig } from "./useApiConfig";
  * run. When on, it submits one `profile_distribution` run per node, polls it
  * to completion, narrows the {@link ProfileDistributionResult} envelope, and
  * emits a single Amplitude timing event when the run settles.
+ *
+ * Polling follows the project's `useRun` pattern: a *submit* query fires the
+ * run once per (node, columns) key, then a *poll* query does a single
+ * `waitRun` long-poll per fetch and lets React Query's `refetchInterval`
+ * re-poll until the run leaves `Running`. There is no internal poll loop, so
+ * unmounting stops the polling immediately (at most one in-flight long-poll
+ * is left to resolve and be discarded) rather than spinning until the run
+ * happens to finish.
  *
  * The run is keyed by `nodeId` so React Query memoizes it across re-renders
  * and remounts (e.g. toggling between schema tabs) — re-opening the same node
@@ -96,56 +104,82 @@ export function useInlineProfileDistribution(
 
   const queryEnabled = flagEnabled && enabled && !!model;
 
-  // Track-once guard: emit the Amplitude timing event a single time per
-  // resolved run, not on every re-render that re-reads the cached query.
-  const trackedRunRef = useRef<string | null>(null);
+  // Cache config shared by the submit + poll queries. The key is only
+  // (nodeId, columns); it does NOT encode the manifest/run version, so a
+  // re-run of the underlying diff is NOT auto-invalidated here. Staleness is
+  // bounded by `gcTime` (5 min) and, in practice, by base/current being fixed
+  // for a review session. Re-key on a manifest token if that changes.
+  const keySuffix = columns?.join(",") ?? "*";
+  const sharedCacheOpts = {
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 5 * 60 * 1000,
+    retry: false,
+    refetchOnWindowFocus: false,
+  } as const;
 
-  const {
-    data: run,
-    error: queryError,
-    isFetching,
-  } = useQuery<Run, Error>({
-    queryKey: ["profile_distribution", nodeId, columns?.join(",") ?? "*"],
+  // Wall-clock start, captured when the submit fires so the timing event can
+  // measure submit→resolved across the (separate) poll query.
+  const submitStartRef = useRef<number>(0);
+
+  // Stage 1 — submit the run exactly once per (node, columns) key. Returns
+  // the run_id that the poll query keys off of.
+  const { data: runId, error: submitError } = useQuery<string, Error>({
+    queryKey: ["profile_distribution_submit", nodeId, keySuffix],
     queryFn: async () => {
-      const startedAt =
+      submitStartRef.current =
         typeof performance !== "undefined" ? performance.now() : 0;
       const submitted = await submitProfileDistribution(
         { model: model as string, columns },
         { nowait: true, trackProps: { source: "schema_view" } },
         apiClient,
       );
-      let resolved = await waitRun(submitted.run_id, 2, apiClient);
-      while (
-        resolved.status === "Running" &&
-        !resolved.result &&
-        !resolved.error
-      ) {
-        resolved = await waitRun(submitted.run_id, 2, apiClient);
-      }
-
-      // Emit timing once, here in the queryFn so it fires exactly per fetch.
-      if (trackedRunRef.current !== resolved.run_id) {
-        trackedRunRef.current = resolved.run_id;
-        const totalWallMs =
-          typeof performance !== "undefined"
-            ? Math.round(performance.now() - startedAt)
-            : 0;
-        emitTiming(resolved, totalWallMs);
-      }
-      return resolved;
+      return submitted.run_id;
     },
     enabled: queryEnabled,
-    // The result is stable for a given (model, manifest) — don't re-poll on
-    // window focus or remount. Schema re-runs invalidate via the query key.
-    staleTime: Number.POSITIVE_INFINITY,
-    gcTime: 5 * 60 * 1000,
-    retry: false,
-    refetchOnWindowFocus: false,
+    ...sharedCacheOpts,
+  });
+
+  // Stage 2 — poll the submitted run. One `waitRun` long-poll per fetch;
+  // `refetchInterval` re-polls (mirroring `useRun`) until the run is terminal,
+  // then returns false to stop. No internal loop ⇒ unmount halts polling.
+  const {
+    data: run,
+    error: queryError,
+    isFetching,
+  } = useQuery<Run, Error>({
+    queryKey: ["profile_distribution_run", runId ?? ""],
+    queryFn: async () => (await waitRun(runId as string, 2, apiClient)) as Run,
+    enabled: queryEnabled && !!runId,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      const running =
+        !data || (data.status === "Running" && !data.result && !data.error);
+      return running ? 50 : false;
+    },
+    ...sharedCacheOpts,
   });
 
   // Surface a run-level `error` field (task failed) as a hook error even
   // though the query itself resolved successfully.
   const runError = run?.error ? new Error(run.error) : undefined;
+
+  // Track-once guard: emit the Amplitude timing event a single time per
+  // resolved run, when it first reaches a terminal state.
+  const trackedRunRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!run) return;
+    const normalizedStatus = run.status?.toLowerCase();
+    const terminal =
+      !!(run.result || run.error) ||
+      (!!normalizedStatus && normalizedStatus !== "running");
+    if (!terminal || trackedRunRef.current === run.run_id) return;
+    trackedRunRef.current = run.run_id;
+    const totalWallMs =
+      typeof performance !== "undefined"
+        ? Math.round(performance.now() - submitStartRef.current)
+        : 0;
+    emitTiming(run, totalWallMs);
+  }, [run]);
 
   return useMemo<UseInlineProfileDistributionResult>(() => {
     if (!queryEnabled) {
@@ -158,7 +192,7 @@ export function useInlineProfileDistribution(
       };
     }
 
-    const error = queryError ?? runError ?? undefined;
+    const error = submitError ?? queryError ?? runError ?? undefined;
     if (error) {
       return {
         status: "error",
@@ -203,7 +237,7 @@ export function useInlineProfileDistribution(
       baseTotal: result.base_total,
       currentTotal: result.current_total,
     };
-  }, [queryEnabled, queryError, runError, run, isFetching]);
+  }, [queryEnabled, submitError, queryError, runError, run, isFetching]);
 }
 
 /** Map a resolved run to the Amplitude timing payload and emit it. */

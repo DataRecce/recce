@@ -1,5 +1,6 @@
 "use client";
 
+import { VscError } from "react-icons/vsc";
 import type {
   ProfileDistributionColumnPayload,
   ProfileDistributionHistogramPayload,
@@ -81,6 +82,31 @@ function formatEpochSeconds(sec: number): string {
   });
 }
 
+/**
+ * A muted "failed to read" marker for the run-level and per-column error
+ * states. An error icon (deliberately quiet so one bad column doesn't shout
+ * next to healthy cells) whose `title` tooltip specifies what failed on hover.
+ */
+function DistributionErrorIcon({
+  title,
+  testId,
+}: {
+  title: string;
+  testId: string;
+}) {
+  return (
+    <span
+      className="schema-distribution-error"
+      title={title}
+      role="img"
+      aria-label={title}
+      data-testid={testId}
+    >
+      <VscError aria-hidden />
+    </span>
+  );
+}
+
 /** Display string for a heterogeneous categorical value. */
 function formatDiscreteValue(v: unknown): string {
   if (v === null || v === undefined) return "(null)";
@@ -152,13 +178,10 @@ export function InlineProfileDistributionCell({
 
   if (hasError) {
     return (
-      <span
-        className="schema-distribution-error"
-        title="Could not load distribution"
-        data-testid="inline-distribution-error"
-      >
-        —
-      </span>
+      <DistributionErrorIcon
+        title="Failed to read distribution"
+        testId="inline-distribution-error"
+      />
     );
   }
 
@@ -167,13 +190,10 @@ export function InlineProfileDistributionCell({
 
   if (payload.kind === null) {
     return (
-      <span
-        className="schema-distribution-error"
-        title="Distribution unavailable for this column"
-        data-testid="inline-distribution-column-failure"
-      >
-        —
-      </span>
+      <DistributionErrorIcon
+        title="Failed to read distribution for this column"
+        testId="inline-distribution-column-failure"
+      />
     );
   }
 

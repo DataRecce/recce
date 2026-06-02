@@ -18,7 +18,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import type { NodeData } from "../../api";
+import type { NodeData, ProfileDistributionColumnPayload } from "../../api";
 import {
   useLineageGraphContext,
   useLineageViewContext,
@@ -341,20 +341,36 @@ export function PrivateSchemaView(
     setProfileAllColumns(false);
   }, [nodeId]);
 
-  // Thread distribution data into the grid only while loading or on success;
-  // "unsupported" shows a banner instead, "error"/"disabled" render nothing.
-  // Merge the complement run's payloads on top so the already-profiled
-  // changed-column cells stay rendered while the rest stream in.
+  // Thread distribution data into the grid. "disabled"/"unsupported" render no
+  // column (unsupported shows a banner instead); "loading"/"ok"/"error" keep
+  // the column so cells can show a pending dot, a histogram, or a "failed to
+  // read" error icon respectively. The complement run's payloads merge on top
+  // so already-profiled changed-column cells stay rendered while the rest
+  // stream in; if *only* the complement run fails, just its columns are marked
+  // as per-column failures while the changed columns keep their histograms.
   const distributionData: SchemaDistributionData | undefined = useMemo(() => {
-    if (distribution.status !== "ok" && distribution.status !== "loading") {
+    if (
+      distribution.status === "disabled" ||
+      distribution.status === "unsupported"
+    ) {
       return undefined;
     }
+    const restFailures: Record<string, ProfileDistributionColumnPayload> = {};
+    if (distributionRest.status === "error") {
+      for (const name of restColumns ?? []) {
+        restFailures[name] = { kind: null };
+      }
+    }
     return {
-      payloads: { ...distribution.columns, ...distributionRest.columns },
+      payloads: {
+        ...distribution.columns,
+        ...distributionRest.columns,
+        ...restFailures,
+      },
       baseTotal: distribution.baseTotal || distributionRest.baseTotal,
       currentTotal: distribution.currentTotal || distributionRest.currentTotal,
       isLoading: distribution.isLoading || distributionRest.isLoading,
-      hasError: false,
+      hasError: distribution.status === "error",
     };
   }, [
     distribution.status,
@@ -362,10 +378,12 @@ export function PrivateSchemaView(
     distribution.baseTotal,
     distribution.currentTotal,
     distribution.isLoading,
+    distributionRest.status,
     distributionRest.columns,
     distributionRest.baseTotal,
     distributionRest.currentTotal,
     distributionRest.isLoading,
+    restColumns,
   ]);
 
   const { columns, rows } = useMemo(() => {

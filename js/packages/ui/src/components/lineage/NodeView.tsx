@@ -18,6 +18,7 @@ import { IoClose } from "react-icons/io5";
 import type { NodeData } from "../../api/info";
 import { DisableTooltipMessages } from "../../constants";
 import { useThemeColors } from "../../hooks";
+import { isWholeModelChange } from "../../utils/schemaDiff";
 import type { ChangeCategory } from "./nodes";
 import { TreatmentChip } from "./TreatmentChip";
 import { getTitleRowTooltip, pickTitleChip } from "./wholeModelTreatment";
@@ -864,11 +865,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
                         base={base}
                         current={current}
                         columnChanges={node.data.change?.columns}
-                        wholeModelChange={
-                          !!node.data.change &&
-                          Object.keys(node.data.change.columns ?? {}).length ===
-                            0
-                        }
+                        wholeModelChange={isWholeModelChange(node.data.change)}
                         onViewCode={() => setTabValue(1)}
                         headerAction={
                           showAddSchemaDiff ? (

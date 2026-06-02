@@ -60,9 +60,15 @@ describe("InlineProfileDistributionCell", () => {
     expect(queryByRole("img")).not.toBeInTheDocument();
   });
 
-  it("renders an error marker on run-level error", () => {
+  it("renders a failed-to-read error icon with a specifying tooltip on run-level error", () => {
     const { getByTestId } = render(<InlineProfileDistributionCell hasError />);
-    expect(getByTestId("inline-distribution-error")).toBeInTheDocument();
+    const marker = getByTestId("inline-distribution-error");
+    expect(marker).toBeInTheDocument();
+    // Tooltip (and aria-label) spell out what failed, not a bare dash.
+    expect(marker).toHaveAttribute("title", "Failed to read distribution");
+    expect(marker).toHaveAttribute("aria-label", "Failed to read distribution");
+    // An actual icon, not a text glyph.
+    expect(marker.querySelector("svg")).toBeInTheDocument();
   });
 
   it("renders nothing when there is no payload", () => {
@@ -70,13 +76,17 @@ describe("InlineProfileDistributionCell", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("renders a per-column failure marker for a null payload", () => {
+  it("renders a per-column failure icon with a column-scoped tooltip for a null payload", () => {
     const { getByTestId } = render(
       <InlineProfileDistributionCell payload={{ kind: null }} />,
     );
-    expect(
-      getByTestId("inline-distribution-column-failure"),
-    ).toBeInTheDocument();
+    const marker = getByTestId("inline-distribution-column-failure");
+    expect(marker).toBeInTheDocument();
+    expect(marker).toHaveAttribute(
+      "title",
+      "Failed to read distribution for this column",
+    );
+    expect(marker.querySelector("svg")).toBeInTheDocument();
   });
 
   it("renders the continuous cell for a histogram payload", () => {
