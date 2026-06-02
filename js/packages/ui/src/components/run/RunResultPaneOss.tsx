@@ -40,6 +40,9 @@ import {
 } from "../../hooks";
 import { trackCopyToClipboard } from "../../lib/api/track";
 import { isHttpError } from "../../lib/fetchClient";
+import { copyToClipboard } from "../../utils";
+import { buildSelectedRowsTSV } from "../../utils/grid/buildSelectedRowsTSV";
+import type { DataGridHandle } from "../data/ScreenshotDataGrid";
 import { LearnHowLink, RecceNotification } from "../onboarding-guide";
 import { DualSqlEditor, SqlEditor } from "../query";
 import { toaster } from "../ui/Toaster";
@@ -159,6 +162,49 @@ export const PrivateLoadableRunView = ({
     viewOptions: viewOptions as Record<string, unknown>,
   });
 
+  // True only for run types whose grid has row selection enabled (query views).
+  const supportsRowCopy =
+    !!run?.type && ["query", "query_base", "query_diff"].includes(run.type);
+
+  // Copy the grid's currently selected rows as TSV. Reads the live grid API
+  // from the shared screenshot/result ref (DataGridHandle.api) at click time,
+  // so no selection state has to be threaded through the component tree.
+  const copySelectedRows = useCallback(async () => {
+    const api = (ref.current as DataGridHandle | null)?.api;
+    if (!api) return;
+    const tsv = buildSelectedRowsTSV(api);
+    if (!tsv) {
+      toaster.create({
+        title: "No rows selected",
+        description: "Select rows with the checkboxes, then copy.",
+        type: "info",
+        duration: 3000,
+      });
+      return;
+    }
+    try {
+      await copyToClipboard(tsv);
+      toaster.create({
+        title: "Copied to clipboard",
+        description: "Selected rows copied — paste into any spreadsheet",
+        type: "success",
+        duration: 2000,
+      });
+      trackCopyToClipboard({
+        type: run?.type ?? "unknown",
+        from: "run",
+      });
+    } catch (error) {
+      console.error("Failed to copy selected rows:", error);
+      toaster.create({
+        title: "Copy failed",
+        description: "Failed to copy to clipboard",
+        type: "error",
+        duration: 3000,
+      });
+    }
+  }, [ref, run?.type]);
+
   // Rerun handler
   const handleRerun = useCallback(() => {
     if (run) {
@@ -239,7 +285,10 @@ export const PrivateLoadableRunView = ({
       onCopyAsImage={handleCopyAsImage}
       onCopyMouseEnter={onMouseEnter}
       onCopyMouseLeave={onMouseLeave}
-      csvExport={csvExport}
+      csvExport={{
+        ...csvExport,
+        copySelectedRows: supportsRowCopy ? copySelectedRows : undefined,
+      }}
       // Checklist handlers
       onGoToCheck={handleGoToCheck}
       onAddToChecklist={handleAddToChecklist}
