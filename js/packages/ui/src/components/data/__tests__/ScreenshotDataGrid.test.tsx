@@ -1,6 +1,6 @@
 // js/packages/ui/src/components/data/__tests__/ScreenshotDataGrid.test.tsx
 import { render } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Capture the props AG Grid receives.
 const agGridProps = vi.fn();
@@ -31,6 +31,10 @@ vi.mock("../agGridTheme", () => ({
 import { ScreenshotDataGrid } from "../ScreenshotDataGrid";
 
 describe("ScreenshotDataGrid grid options", () => {
+  beforeEach(() => {
+    agGridProps.mockClear();
+  });
+
   it("enables native cell text selection by default", () => {
     render(<ScreenshotDataGrid columnDefs={[]} rowData={[]} />);
     const props = agGridProps.mock.calls[0][0];
