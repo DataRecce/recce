@@ -141,6 +141,7 @@ describe("RunResultPane sticky-cancel gating", () => {
   });
 
   test("invokes copySelectedRows from the export menu", async () => {
+    const user = userEvent.setup();
     const copySelectedRows = vi.fn().mockResolvedValue(undefined);
     renderWithProviders(
       <RunResultPane
@@ -158,16 +159,15 @@ describe("RunResultPane sticky-cancel gating", () => {
         onCopyAsImage={vi.fn().mockResolvedValue(undefined)}
       />,
     );
-    await userEvent.click(
-      screen.getByRole("button", { name: /export|share/i }),
-    );
-    await userEvent.click(
+    await user.click(screen.getByRole("button", { name: /export|share/i }));
+    await user.click(
       screen.getByRole("menuitem", { name: /copy selected rows/i }),
     );
     expect(copySelectedRows).toHaveBeenCalledOnce();
   });
 
   test("omits Copy Selected Rows when no handler is provided", async () => {
+    const user = userEvent.setup();
     renderWithProviders(
       <RunResultPane
         runId="run-1"
@@ -182,9 +182,7 @@ describe("RunResultPane sticky-cancel gating", () => {
         onCopyAsImage={vi.fn().mockResolvedValue(undefined)}
       />,
     );
-    await userEvent.click(
-      screen.getByRole("button", { name: /export|share/i }),
-    );
+    await user.click(screen.getByRole("button", { name: /export|share/i }));
     expect(
       screen.queryByRole("menuitem", { name: /copy selected rows/i }),
     ).toBeNull();
