@@ -94,6 +94,55 @@ export interface SingleEnvSchemaDataGridResult {
 // ============================================================================
 
 /**
+ * Selects the columns of a node that are *changed* — for scoping the inline
+ * paired-distribution run to just what diverged, rather than every column
+ * (DRC-3390 Stage C, gated on the new-CLL experience).
+ *
+ * A column counts as changed when it is added (current-only), removed
+ * (base-only), type-changed, flagged by breaking-change analysis
+ * (``columnChanges``), or impacted downstream via the CLL parent_map
+ * (``impactedColumns``, keyed ``${nodeId}_${name}``). Pure reorders are NOT
+ * a data change and are excluded.
+ *
+ * Returns the changed column names. An empty result means "no per-column
+ * change found" — the caller decides whether that's a whole-model change
+ * (profile all) or nothing to do.
+ */
+export function selectChangedColumns(args: {
+  base?: NodeData["columns"];
+  current?: NodeData["columns"];
+  columnChanges?: Record<
+    string,
+    "added" | "removed" | "modified" | "unknown"
+  > | null;
+  impactedColumns?: Set<string>;
+  nodeId?: string;
+}): string[] {
+  const baseCols = args.base ?? {};
+  const currentCols = args.current ?? {};
+  const names = new Set<string>([
+    ...Object.keys(baseCols),
+    ...Object.keys(currentCols),
+  ]);
+
+  const changed: string[] = [];
+  for (const name of names) {
+    const inBase = baseCols[name] != null;
+    const inCurrent = currentCols[name] != null;
+    const typeChanged =
+      inBase && inCurrent && baseCols[name]?.type !== currentCols[name]?.type;
+    const flagged = args.columnChanges?.[name] != null;
+    const impacted =
+      args.nodeId != null &&
+      (args.impactedColumns?.has(`${args.nodeId}_${name}`) ?? false);
+    if (!inBase || !inCurrent || typeChanged || flagged || impacted) {
+      changed.push(name);
+    }
+  }
+  return changed;
+}
+
+/**
  * Merges base and current column schemas into a diff structure
  */
 export function mergeColumns(

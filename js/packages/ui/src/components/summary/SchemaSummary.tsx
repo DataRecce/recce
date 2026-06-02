@@ -79,6 +79,10 @@ function SchemaDiffCard({ node, ...props }: SchemaDiffCardProps) {
                   : undefined
               }
               columnChanges={node.data.change?.columns}
+              wholeModelChange={
+                !!node.data.change &&
+                Object.keys(node.data.change.columns ?? {}).length === 0
+              }
             />
           )}
         </Box>

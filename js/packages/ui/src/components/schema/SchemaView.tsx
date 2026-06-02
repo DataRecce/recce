@@ -29,6 +29,7 @@ import type {
   SchemaDiffRow,
   SchemaRow,
 } from "../../lib/dataGrid/generators/toSchemaDataGrid";
+import { selectChangedColumns } from "../../lib/dataGrid/generators/toSchemaDataGrid";
 import {
   type DataGridHandle,
   EmptyRowsRenderer,
@@ -84,6 +85,13 @@ interface SchemaViewProps {
   onViewCode?: () => void;
   /** Optional action element rendered next to the legend (e.g. add-to-checklist button) */
   headerAction?: ReactNode;
+  /**
+   * True when the node has a model-wide change not attributable to specific
+   * columns (DRC-3390 Stage C). Under the new-CLL experience the inline
+   * distribution scopes to changed columns; a whole-model change instead
+   * profiles every column. Ignored when new-CLL is off.
+   */
+  wholeModelChange?: boolean;
 }
 
 function PrivateSingleEnvSchemaView(
@@ -226,6 +234,7 @@ export function PrivateSchemaView(
     columnChanges,
     onViewCode,
     headerAction,
+    wholeModelChange,
   }: SchemaViewProps,
   ref: Ref<DataGridHandle>,
 ) {
@@ -255,11 +264,36 @@ export function PrivateSchemaView(
   }, [current, base]);
   const nodeId = current?.id ?? base?.id;
 
-  // DRC-3390 Stage C: inline paired distributions. The hook self-gates on the
-  // `inline_profile` server flag — a no-op (status "disabled") when it's off.
+  // DRC-3390 Stage C: scope the inline distribution to *changed* columns under
+  // the new-CLL experience (perf: don't profile every column of a model when
+  // only a few diverged). A whole-model change still profiles all columns;
+  // legacy (non-new-CLL) keeps profiling all. Changed-column data relies on
+  // breaking/impact analysis, so column scoping only kicks in once that's run.
+  const changedColumns = useMemo(() => {
+    if (!newCllExperience) return undefined;
+    return selectChangedColumns({
+      base: base?.columns,
+      current: current?.columns,
+      columnChanges,
+      impactedColumns,
+      nodeId,
+    });
+  }, [newCllExperience, base, current, columnChanges, impactedColumns, nodeId]);
+
+  // undefined => profile all columns; [] never sent (see enabled gate).
+  const distributionColumns =
+    changedColumns && changedColumns.length > 0 ? changedColumns : undefined;
+  const distributionEnabled = !newCllExperience
+    ? true // legacy: always (still gated on the inline_profile flag in the hook)
+    : (changedColumns?.length ?? 0) > 0 || wholeModelChange === true;
+
+  // The hook also self-gates on the `inline_profile` server flag — a no-op
+  // (status "disabled") when it's off.
   const distribution = useInlineProfileDistribution({
     model: profileNode?.name,
     nodeId,
+    columns: distributionColumns,
+    enabled: distributionEnabled,
   });
 
   // Thread distribution data into the grid only while loading or on success;

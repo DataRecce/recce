@@ -78,6 +78,12 @@ export interface SchemaViewProps {
    * "Add schema diff to checklist" button). Diff mode only.
    */
   headerAction?: ReactNode;
+  /**
+   * True when the node has a model-wide change not attributable to specific
+   * columns. Under new-CLL the inline distribution profiles every column for
+   * a whole-model change, vs only the changed columns otherwise (DRC-3390).
+   */
+  wholeModelChange?: boolean;
 }
 
 /**
@@ -858,6 +864,11 @@ export function NodeView<TNode extends NodeViewNodeData>({
                         base={base}
                         current={current}
                         columnChanges={node.data.change?.columns}
+                        wholeModelChange={
+                          !!node.data.change &&
+                          Object.keys(node.data.change.columns ?? {}).length ===
+                            0
+                        }
                         onViewCode={() => setTabValue(1)}
                         headerAction={
                           showAddSchemaDiff ? (

@@ -279,6 +279,10 @@ export function PrivateSchemaDiffView(
               : undefined
           }
           columnChanges={node.data.change?.columns}
+          wholeModelChange={
+            !!node.data.change &&
+            Object.keys(node.data.change.columns ?? {}).length === 0
+          }
           enableScreenshot={true}
           showMenu={false}
           ref={ref}
