@@ -9,6 +9,14 @@ export interface RecceServerFlags {
   disable_cll_cache: boolean;
   impact_at_startup: boolean;
   new_cll_experience: boolean;
+  /** Whole-model impact highlighting. Implies new_cll_experience. */
+  whole_model_impact: boolean;
+  /**
+   * Inline paired-distribution profiles in the schema view (DRC-3390 Stage B).
+   * When false (the default), Stage C's hook short-circuits and no
+   * ``profile_distribution`` runs are submitted from the UI.
+   */
+  inline_profile: boolean;
 }
 
 /**

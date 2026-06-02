@@ -24,9 +24,8 @@ const STANDARD_GRID_STYLE = {
 } as const;
 
 const meta: Meta<typeof ScreenshotDataGrid> = {
-  title: "Visualizations/Data/ScreenshotDataGrid",
+  title: "Diffs/Results/DataGrid/ScreenshotDataGrid",
   component: ScreenshotDataGrid,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {

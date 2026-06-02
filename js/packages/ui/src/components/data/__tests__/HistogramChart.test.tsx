@@ -12,11 +12,8 @@
 
 import { render } from "@testing-library/react";
 import { vi } from "vitest";
-import {
-  getChartBarColors,
-  getChartThemeColors,
-  HistogramChart,
-} from "../HistogramChart";
+import { getChartBarColors, getChartThemeColors } from "../../../theme";
+import { HistogramChart } from "../HistogramChart";
 
 // Mock Chart.js to avoid canvas rendering issues in tests
 vi.mock("react-chartjs-2", () => ({

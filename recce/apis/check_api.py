@@ -14,7 +14,7 @@ from recce.apis.cloud_utils import log_cloud_exception
 from recce.apis.run_func import submit_run
 from recce.core import default_context
 from recce.event import log_api_event
-from recce.exceptions import RecceException
+from recce.exceptions import DuckDBExternalAccessBlocked, RecceException
 from recce.models import Check, CheckDAO, Run, RunDAO, RunType
 from recce.util.recce_cloud import RecceCloudException
 
@@ -179,7 +179,10 @@ async def run_check_handler(check_id: UUID, input: RunCheckIn):
     if input.nowait:
         return run
     else:
-        run.result = await future
+        try:
+            run.result = await future
+        except DuckDBExternalAccessBlocked as e:
+            raise HTTPException(status_code=400, detail=str(e))
         return run
 
 

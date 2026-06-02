@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const STORY_URL = "/iframe.html?id=timeline-timelineevent";
+const STORY_URL = "/iframe.html?id=checks-timelineevent";
 
 test.describe("TimelineEvent visual", () => {
   test.describe("state change events", () => {

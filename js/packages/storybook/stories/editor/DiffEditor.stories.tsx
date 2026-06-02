@@ -2,9 +2,8 @@ import { DiffEditor } from "@datarecce/ui/primitives";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 const meta: Meta<typeof DiffEditor> = {
-  title: "Editor/DiffEditor",
+  title: "Diffs/Results/SqlEditor/DiffEditor",
   component: DiffEditor,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {

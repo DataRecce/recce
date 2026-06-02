@@ -14,6 +14,11 @@ import {
 } from "chart.js";
 import { memo, useMemo } from "react";
 import { Chart } from "react-chartjs-2";
+import { getChartBarColors, getChartThemeColors } from "../../theme";
+import {
+  formatAsAbbreviatedNumber,
+  formatIntervalMinMax,
+} from "../../utils/formatters";
 
 // Register Chart.js modules once
 ChartJS.register(
@@ -25,74 +30,6 @@ ChartJS.register(
   Legend,
   Tooltip,
 );
-
-/**
- * Theme-aware colors for charts
- */
-export interface ChartThemeColors {
-  gridColor: string;
-  textColor: string;
-  borderColor: string;
-  tooltipBackgroundColor: string;
-  tooltipTextColor: string;
-  /** Text color for labels drawn inside bars (must contrast with pastel bar fills) */
-  barLabelColor: string;
-  /** Subdued text color for secondary labels like percentages */
-  secondaryTextColor: string;
-}
-
-/**
- * Bar colors for base/current comparison
- */
-export interface ChartBarColors {
-  current: string;
-  base: string;
-  currentWithAlpha: string;
-  baseWithAlpha: string;
-}
-
-// Light mode colors
-const CURRENT_BAR_COLOR = "#63B3ED";
-const BASE_BAR_COLOR = "#F6AD55";
-const CURRENT_BAR_COLOR_WITH_ALPHA = `${CURRENT_BAR_COLOR}A5`;
-const BASE_BAR_COLOR_WITH_ALPHA = `${BASE_BAR_COLOR}A5`;
-
-// Dark mode colors
-const CURRENT_BAR_COLOR_DARK = "#90CDF4";
-const BASE_BAR_COLOR_DARK = "#FBD38D";
-const CURRENT_BAR_COLOR_DARK_WITH_ALPHA = `${CURRENT_BAR_COLOR_DARK}A5`;
-const BASE_BAR_COLOR_DARK_WITH_ALPHA = `${BASE_BAR_COLOR_DARK}A5`;
-
-/**
- * Get theme-aware colors for charts
- */
-export function getChartThemeColors(isDark: boolean): ChartThemeColors {
-  return {
-    gridColor: isDark ? "#4b5563" : "#d1d5db",
-    textColor: isDark ? "#e5e7eb" : "#374151",
-    borderColor: isDark ? "#6b7280" : "#9ca3af",
-    tooltipBackgroundColor: isDark ? "#1f2937" : "#ffffff",
-    tooltipTextColor: isDark ? "#e5e7eb" : "#111827",
-    barLabelColor: isDark ? "#ffffff" : "#1f2937",
-    secondaryTextColor: isDark ? "#e5e7eb" : "#6b7280",
-  };
-}
-
-/**
- * Get theme-aware bar colors
- */
-export function getChartBarColors(isDark: boolean): ChartBarColors {
-  return {
-    current: isDark ? CURRENT_BAR_COLOR_DARK : CURRENT_BAR_COLOR,
-    base: isDark ? BASE_BAR_COLOR_DARK : BASE_BAR_COLOR,
-    currentWithAlpha: isDark
-      ? CURRENT_BAR_COLOR_DARK_WITH_ALPHA
-      : CURRENT_BAR_COLOR_WITH_ALPHA,
-    baseWithAlpha: isDark
-      ? BASE_BAR_COLOR_DARK_WITH_ALPHA
-      : BASE_BAR_COLOR_WITH_ALPHA,
-  };
-}
 
 /**
  * Histogram dataset for a single environment
@@ -142,54 +79,12 @@ export interface HistogramChartProps {
 }
 
 /**
- * Format number as abbreviated (K, M, B, T)
- */
-function formatAbbreviatedNumber(input: number | string): string {
-  if (typeof input !== "number") return String(input);
-
-  const absValue = Math.abs(input);
-  const trillion = 1e12;
-  const billion = 1e9;
-  const million = 1e6;
-  const thousand = 1e3;
-
-  if (absValue >= trillion) {
-    return `${(input / trillion).toFixed(1)}T`;
-  }
-  if (absValue >= billion) {
-    return `${(input / billion).toFixed(1)}B`;
-  }
-  if (absValue >= million) {
-    return `${(input / million).toFixed(1)}M`;
-  }
-  if (absValue >= thousand) {
-    return `${(input / thousand).toFixed(1)}K`;
-  }
-  if (absValue >= 1) {
-    return input.toFixed(2);
-  }
-  if (absValue >= 0.01) {
-    return input.toFixed(3);
-  }
-  return input.toExponential(2);
-}
-
-/**
  * Format bin range display
  */
 function formatBinRange(binEdges: number[], index: number): string {
   const start = binEdges[index];
   const end = binEdges[index + 1];
-  return `${formatAbbreviatedNumber(start)} - ${formatAbbreviatedNumber(end)}`;
-}
-
-/**
- * Format percentage display
- */
-function formatPercentage(value: number): string {
-  if (value > 0 && value <= 0.001) return "<0.1%";
-  if (value < 1 && value >= 0.999) return ">99.9%";
-  return `${(value * 100).toFixed(1)}%`;
+  return `${formatAsAbbreviatedNumber(start)} - ${formatAsAbbreviatedNumber(end)}`;
 }
 
 /**
@@ -343,7 +238,7 @@ function HistogramChartComponent({
                 datasetIndex === 0 ? currentData.counts : baseData.counts;
               const count = counts[dataIndex];
               const percent =
-                samples > 0 ? formatPercentage(count / samples) : "";
+                samples > 0 ? formatIntervalMinMax(count / samples) : "";
               return `${dataset.label}: ${count}${percent ? ` (${percent})` : ""}`;
             },
           },
@@ -388,7 +283,7 @@ function HistogramChartComponent({
             maxTicksLimit: 8,
             color: themeColors.textColor,
             callback(val) {
-              return formatAbbreviatedNumber(val as number);
+              return formatAsAbbreviatedNumber(val as number);
             },
           },
           beginAtZero: true,

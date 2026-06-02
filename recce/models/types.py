@@ -23,6 +23,7 @@ class RunType(Enum):
     LINEAGE_DIFF = "lineage_diff"
     TOP_K_DIFF = "top_k_diff"
     HISTOGRAM_DIFF = "histogram_diff"
+    PROFILE_DISTRIBUTION = "profile_distribution"
 
     def __str__(self):
         return self.value
@@ -136,6 +137,7 @@ ChangeStatus = Literal[
     "added",
     "removed",
     "modified",
+    "unknown",
 ]
 ChangeCategory = Literal[
     "breaking",

@@ -9,6 +9,15 @@
 For detailed documentation beyond AGENTS.md essentials:
 
 → `docs/KNOWLEDGE_BASE.md` - Architecture, code patterns, frontend structure, testing, debugging
+→ `js/CLAUDE.md` - Frontend-specific instructions (pnpm, Biome, @datarecce/ui, style conventions)
+
+## Package Manager & Tooling
+
+- **Frontend (from `js/`):** this monorepo uses **pnpm** — never npm or npx. Run `cd js && pnpm install`, `cd js && pnpm test`, `cd js && pnpm lint`. There is no root `package.json`; pnpm commands from the repo root will fail.
+- **Python (from repo root):** linting and formatting are **Black + isort + flake8**, driven by the Makefile — `make format`, `make check`, `make flake8`. Pre-commit hooks (`.pre-commit-config.yaml`) enforce the same. There is no Ruff configuration in this repo.
+- **Integration tests** require dbt artifacts at `integration_tests/dbt/target/manifest.json` and `integration_tests/dbt/target-base/manifest.json`. `make test` (unit tests) runs without external services.
+
+For frontend-specific tooling details (Node version via `nave`, Biome, Vitest, pnpm v11 quirks), see `js/CLAUDE.md`.
 
 ## Claude-Specific Notes
 
@@ -24,6 +33,12 @@ Use gitignored directories for temporary working documents:
 - `docs/tasks/` - Task lists and tracking
 - `docs/summaries/` - Status reports and progress updates
 
+## Git Workflow
+
+- Always `git fetch` and merge/rebase from updated `main` BEFORE starting work on a feature branch or addressing PR review comments.
+- When creating PR bodies with multi-line content, write to a temp file and pass `--body-file` instead of using heredocs (avoids quoting issues).
+- Verify the correct base branch before opening a PR (especially for extensions/multi-branch repos).
+
 ## Dependency Update Workflow
 
 When asked to "update deps" or "check for updates":
@@ -31,22 +46,10 @@ When asked to "update deps" or "check for updates":
 **Prerequisites:** `brew install dependabot` + Docker running
 
 0. **Scan:** `make deps-check` (runs Dependabot locally, outputs `deps-python.yml` and `deps-frontend.yml`)
-1. **Audit:** `cd js && pnpm audit && pnpm outdated`
+1. **Audit:** Frontend — see `js/CLAUDE.md` for `pnpm audit && pnpm outdated` workflow and overrides list. Python — `make deps-check-python`.
 2. **Present:** Group by SECURITY/MAJOR/MINOR with numbered list
-3. **Apply:** Update root `js/package.json`; add `pnpm.overrides` for shared packages
-4. **Verify:** `pnpm install && pnpm lint && pnpm type:check && pnpm test && pnpm build`
-
-Packages requiring overrides (exist in multiple package.json): @emotion/react, @mui/material, @tanstack/react-query, @xyflow/react, axios, date-fns, lodash, tailwindcss, typescript, vitest
-
-## Publishing @datarecce/ui
-
-When asked to "publish ui" or "release ui package":
-
-1. **Node version:** Use `nave use $(cat js/.nvmrc)` for all commands
-2. **Version check:** Compare local vs published (`npm view @datarecce/ui version`)
-3. **Verify:** Run all quality checks from `js/` directory
-4. **Publish:** `cd js/packages/ui && npm publish --access public`
-5. **Confirm:** `npm view @datarecce/ui version`
+3. **Apply:** Frontend updates per `js/CLAUDE.md`; Python updates via `pyproject.toml`.
+4. **Verify:** Run all quality checks (`make test` for Python; `cd js && pnpm install && pnpm lint && pnpm type:check && pnpm test && pnpm run build` for frontend).
 
 ## Commit and PR Workflow
 
@@ -56,6 +59,12 @@ When asked to "publish ui" or "release ui package":
 - PR checklist (tests, DCO)
 - Type, description, linked issues
 - Reviewer notes, user-facing changes
+
+## PR Review Response Workflow
+
+- When fetching PR review comments via GitHub API, always use `--paginate` (gh) or paginate manually — PRs frequently have >30 comments.
+- Use the correct GitHub API endpoint for replying to review comments: `POST /repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies`.
+- For each review comment: validate the concern first, fix only real issues, run tests, commit, push, then reply individually.
 
 ## MCP Tool Response Contracts
 
@@ -85,8 +94,7 @@ Origin: PR #1342 review (DRC-3307).
 
 ## Frontend Style Conventions
 
-- **Storybook imports:** Never import from `ui/src` internal paths (e.g., `../../../ui/src/...`). Always use `@datarecce/ui/components` or other `@datarecce/ui` package exports. This keeps the package boundary intact.
-- **CSS color format:** Use space-separated `rgb()` syntax: `rgb(255 173 21)`, `rgb(0 0 0 / 0.45)`. Do not use comma-separated legacy format (`rgba(0, 0, 0, 0.45)`).
+See `js/CLAUDE.md` for frontend conventions (Storybook imports, CSS color format, rem vs px, shell vs shared code).
 
 ## Individual Preferences
 

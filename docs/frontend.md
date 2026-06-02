@@ -1,5 +1,7 @@
 # Frontend Structure
 
+> For frontend tooling specifics (pnpm commands, Biome, Vitest, `@datarecce/ui` publishing, pnpm v11 `strictDepBuilds`/`allowBuilds`, and style conventions), see **[`js/CLAUDE.md`](../js/CLAUDE.md)**. This document focuses on monorepo structure, package boundaries, and the build pipeline.
+
 ## Monorepo Layout
 
 ```
@@ -72,28 +74,6 @@ Test-only directory:
    - Build script moves files to `recce/data/`
 3. **Backend Serving**: FastAPI serves `recce/data/` at runtime
 
-## Node Version Management
+## Tooling
 
-Required version specified in `js/.nvmrc`.
-
-```bash
-# Option 1: nave (preferred)
-nave auto pnpm install
-
-# Option 2: nvm
-nvm use
-pnpm install
-```
-
-## Package Manager
-
-**pnpm ONLY** - Do not use npm or yarn.
-
-```bash
-pnpm install     # Install dependencies
-pnpm dev         # Development server
-pnpm build       # Production build
-pnpm lint:fix    # Lint and auto-fix
-pnpm type:check  # TypeScript checking
-pnpm test        # Run tests
-```
+Node version, package manager (pnpm), Biome, Vitest, and the canonical command list live in **[`js/CLAUDE.md`](../js/CLAUDE.md)**. This doc deliberately does not duplicate them.

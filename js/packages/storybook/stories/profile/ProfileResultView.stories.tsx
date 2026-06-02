@@ -13,9 +13,8 @@ import {
 // ============================================
 
 const meta: Meta<typeof ProfileResultView> = {
-  title: "Visualizations/Profile/ProfileResultView",
+  title: "Diffs/Results/Profile/ProfileResultView",
   component: ProfileResultView,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {

@@ -25,10 +25,14 @@ export function patchLineageFromCll(
     }
 
     // Build column change map from CLL node's columns
-    let columns: Record<string, "added" | "removed" | "modified"> | undefined;
+    let columns:
+      | Record<string, "added" | "removed" | "modified" | "unknown">
+      | undefined;
     if (cllNode.columns) {
-      const columnChanges: Record<string, "added" | "removed" | "modified"> =
-        {};
+      const columnChanges: Record<
+        string,
+        "added" | "removed" | "modified" | "unknown"
+      > = {};
       let hasChanges = false;
       for (const col of Object.values(cllNode.columns)) {
         if (col.change_status) {

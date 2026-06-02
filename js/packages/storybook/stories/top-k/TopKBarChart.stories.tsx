@@ -4,9 +4,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { createTopKDataset, topKWithSpecialValues } from "../data/fixtures";
 
 const meta: Meta<typeof TopKBarChart> = {
-  title: "Visualizations/Top-K/TopKBarChart",
+  title: "Diffs/Charts/TopKBarChart",
   component: TopKBarChart,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {

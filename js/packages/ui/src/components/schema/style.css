@@ -37,6 +37,8 @@
   --schema-badge-added-fg: rgb(22 110 40);
   --schema-badge-removed-bg: rgb(248 81 73 / 0.2);
   --schema-badge-removed-fg: rgb(180 40 35);
+  --schema-badge-unknown-bg: rgb(0 0 0 / 0.08);
+  --schema-badge-unknown-fg: rgb(0 0 0 / 0.6);
   --schema-color-impacted: rgb(255 243 200);
   --schema-color-impacted-hover: rgb(255 237 175);
   --schema-color-impacted-active: rgb(255 229 145);
@@ -66,6 +68,8 @@
   --schema-badge-added-fg: rgb(80 200 100);
   --schema-badge-removed-bg: rgb(248 81 73 / 0.2);
   --schema-badge-removed-fg: rgb(255 120 115);
+  --schema-badge-unknown-bg: rgb(255 255 255 / 0.12);
+  --schema-badge-unknown-fg: rgb(255 255 255 / 0.65);
   --schema-color-impacted: rgb(60 52 28);
   --schema-color-impacted-hover: rgb(75 65 33);
   --schema-color-impacted-active: rgb(90 78 38);
@@ -98,8 +102,8 @@
   --schema-color-impacted: rgb(50 44 24);
   --schema-color-impacted-hover: rgb(60 52 28);
   --schema-color-impacted-active: rgb(70 61 32);
-  --schema-color-impacted-accent: rgb(180 83 9);
-  --schema-badge-impacted-bg: rgb(180 83 9 / 0.25);
+  --schema-color-impacted-accent: rgb(252 211 77);
+  --schema-badge-impacted-bg: rgb(252 211 77 / 0.18);
   --schema-badge-impacted-fg: rgb(252 211 77);
 }
 
@@ -243,6 +247,11 @@
 .schema-change-badge-impacted {
   background-color: var(--schema-badge-impacted-bg);
   color: var(--schema-badge-impacted-fg);
+}
+
+.schema-change-badge-unknown {
+  background-color: var(--schema-badge-unknown-bg);
+  color: var(--schema-badge-unknown-fg);
 }
 
 /* Index change styling for reordered columns */

@@ -37,7 +37,8 @@ function isRowChanged(row: SchemaDiffRow): boolean {
   return (
     row.baseType !== row.currentType ||
     row.reordered === true ||
-    row.definitionChanged === true
+    row.definitionChanged === true ||
+    row.changeUnknown === true
   );
 }
 

@@ -4,9 +4,8 @@ import { fn } from "storybook/test";
 import { createTopKDiffRun, topKResultManyValues } from "./fixtures";
 
 const meta: Meta<typeof TopKDiffResultView> = {
-  title: "Visualizations/Top-K/TopKDiffResultView",
+  title: "Diffs/Results/TopK/TopKDiffResultView",
   component: TopKDiffResultView,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {

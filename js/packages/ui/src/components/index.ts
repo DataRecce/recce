@@ -52,8 +52,18 @@ export type {
   LineageCanvasProps,
   LineageViewProps,
   LineageViewRef,
+  StalenessBannerProps,
+  StalenessBannerVariant,
+  StalenessMessageVariant,
+  StalenessToastAdapter,
 } from "./lineage";
-export { LineageCanvas, LineagePageOss, LineageView } from "./lineage";
+export {
+  FirstTimePopover,
+  LineageCanvas,
+  LineagePageOss,
+  LineageView,
+  StalenessBanner,
+} from "./lineage";
 // Notification components
 export type { NotificationProps } from "./notifications";
 export { LineageViewNotification } from "./notifications";

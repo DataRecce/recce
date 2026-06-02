@@ -7,7 +7,7 @@ export interface NodeColumnData {
   name: string;
   type: string;
   transformation_type?: string;
-  change_status?: "added" | "removed" | "modified";
+  change_status?: "added" | "removed" | "modified" | "unknown";
   not_null?: boolean;
   unique?: boolean;
 }
@@ -78,10 +78,10 @@ export interface MergedNodeData {
   materialized?: string;
   tags?: string[];
   source_name?: string;
-  change_status?: "added" | "removed" | "modified";
+  change_status?: "added" | "removed" | "modified" | "unknown";
   change?: {
     category: "breaking" | "non_breaking" | "partial_breaking" | "unknown";
-    columns?: Record<string, "added" | "removed" | "modified">;
+    columns?: Record<string, "added" | "removed" | "modified" | "unknown">;
   };
 }
 

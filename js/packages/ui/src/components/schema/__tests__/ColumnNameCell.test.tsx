@@ -347,6 +347,91 @@ describe("ColumnNameCell", () => {
     });
   });
 
+  describe("changeUnknown badge", () => {
+    const changeUnknownRow = createMockRow({ changeUnknown: true });
+
+    test("renders ? badge when changeUnknown is true", () => {
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={changeUnknownRow}
+          showMenu={false}
+        />,
+      );
+
+      const badge = screen.getByText("?");
+      expect(badge).toBeInTheDocument();
+      expect(badge).toHaveClass("schema-change-badge-unknown");
+    });
+
+    test("does not render ? badge when changeUnknown is falsy", () => {
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={createMockRow()}
+          showMenu={false}
+        />,
+      );
+
+      expect(screen.queryByText("?")).not.toBeInTheDocument();
+    });
+
+    test("does not render ? badge alongside a structural change", () => {
+      // Structural change (type changed) takes precedence — the unknown
+      // badge is suppressed so the user sees the loudest signal only.
+      const structuralAndUnknownRow = createMockRow({
+        baseType: "INT",
+        currentType: "VARCHAR",
+        changeUnknown: true,
+      });
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={structuralAndUnknownRow}
+          showMenu={false}
+        />,
+      );
+
+      expect(screen.getByText("~")).toBeInTheDocument();
+      expect(screen.queryByText("?")).not.toBeInTheDocument();
+    });
+
+    test("does not render ! impacted badge when changeUnknown is true", () => {
+      const impactedAndUnknownRow = createMockRow({
+        changeUnknown: true,
+      });
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={impactedAndUnknownRow}
+          isImpacted={true}
+          showMenu={false}
+        />,
+      );
+
+      expect(screen.queryByText("!")).not.toBeInTheDocument();
+      expect(screen.getByText("?")).toBeInTheDocument();
+    });
+
+    test("? badge has tooltip with unknown status text", async () => {
+      const user = userEvent.setup();
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={changeUnknownRow}
+          showMenu={false}
+        />,
+      );
+
+      const badge = screen.getByText("?");
+      await user.hover(badge);
+      const tooltip = await screen.findByRole("tooltip");
+      expect(tooltip).toHaveTextContent(
+        "Change status unknown — analyzer couldn't resolve column dependencies",
+      );
+    });
+  });
+
   describe("DataTypeIcon rendering", () => {
     test("renders DataTypeIcon for unchanged column", () => {
       renderWithMui(

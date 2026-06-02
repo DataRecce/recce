@@ -21,6 +21,7 @@ dependencies = [
     "jinja2",
     "rich>=12.0.0",
     "sentry-sdk>=2.44.0",
+    "posthog>=3.0.0",
     "watchdog",
     "websockets",
     "py-markdown-table",

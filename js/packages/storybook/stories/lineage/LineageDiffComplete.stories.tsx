@@ -41,9 +41,8 @@ import lineageData from "./jaffle-shop-expand-lineage.json";
  */
 
 const meta: Meta<typeof LineageCanvas> = {
-  title: "Lineage/Complete Lineage Diff",
+  title: "Lineage/LineageCanvas/ScaleTests/LineageDiffComplete",
   component: LineageCanvas,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {

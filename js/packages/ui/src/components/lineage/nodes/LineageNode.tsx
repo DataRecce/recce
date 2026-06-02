@@ -36,12 +36,12 @@ import {
 } from "react";
 import { DIM_FILTER } from "../config/zoomConstants";
 import {
-  formatNodeTooltip,
-  getIconForChangeStatus,
   getIconForMaterialization,
   getIconForResourceType,
-  getStyleForImpacted,
+  getNodeChangeStyle,
 } from "../styles";
+import { TreatmentChip } from "../TreatmentChip";
+import { getTitleRowTooltip, pickGraphBadge } from "../wholeModelTreatment";
 
 // =============================================================================
 // TYPES
@@ -152,6 +152,12 @@ export interface LineageNodeProps {
   newCllExperience?: boolean;
   /** Whether this node is impacted by CLL analysis */
   isImpacted?: boolean;
+  /** This model itself has a whole-model change. Suppresses the graph badge (the signal lives on NodeView's title chip + stripe) and the change-category text label. */
+  isWholeModelChanged?: boolean;
+  /** This model is downstream of (impacted by) a whole-model change. Suppresses the graph badge (the signal lives on NodeView's title chip + stripe) and the change-category text label. Precedence is enforced internally: `isWholeModelChanged` outranks this flag. */
+  isWholeModelImpacted?: boolean;
+  /** Whether the `--whole-model-impact` server flag is on. When false, no per-column badges render and the "Model-Wide Change / Column Change / Additive Change" text labels are shown instead. */
+  wholeModelImpact?: boolean;
 
   // === Callbacks ===
   /** Callback when node is clicked */
@@ -169,9 +175,9 @@ export interface LineageNodeProps {
 // =============================================================================
 
 const CHANGE_CATEGORY_LABELS: Record<ChangeCategory, string> = {
-  breaking: "Breaking",
-  non_breaking: "Non Breaking",
-  partial_breaking: "Partial Breaking",
+  breaking: "Model-Wide Change",
+  non_breaking: "Additive Change",
+  partial_breaking: "Column Change",
   unknown: "Unknown",
 };
 
@@ -203,21 +209,9 @@ const KebabIcon = () => (
 // =============================================================================
 
 /**
- * Node title with tooltip
+ * Node title (name) — tooltip lives on the parent title row, not here.
  */
-function NodeTitle({
-  name,
-  color,
-  resourceType,
-  materialized,
-}: {
-  name: string;
-  color: string;
-  resourceType?: string;
-  materialized?: string;
-}) {
-  const tooltipTitle = formatNodeTooltip(name, resourceType, materialized);
-
+function NodeTitle({ name, color }: { name: string; color: string }) {
   return (
     <Box
       sx={{
@@ -228,9 +222,7 @@ function NodeTitle({
         whiteSpace: "nowrap",
       }}
     >
-      <Tooltip title={tooltipTitle} placement="top">
-        <span>{name}</span>
-      </Tooltip>
+      <span>{name}</span>
     </Box>
   );
 }
@@ -308,6 +300,9 @@ function LineageNodeComponent({
   // New CLL experience props (fall back to data for ReactFlow passthrough)
   newCllExperience: newCllExperienceProp,
   isImpacted: isImpactedProp,
+  isWholeModelChanged = false,
+  isWholeModelImpacted = false,
+  wholeModelImpact = false,
   // Callbacks
   onNodeClick,
   onNodeDoubleClick,
@@ -355,19 +350,17 @@ function LineageNodeComponent({
   const showColumns = columnCount > 0;
   const hasAction = selectMode === "action_result" && actionTag;
 
-  // Get icons and colors — impacted only when not already changed
-  const isUnchanged = !changeStatus || changeStatus === "unchanged";
+  // Get icons and colors — impacted only when not already changed. This is the
+  // node's authoritative accent color; the MiniMap copies it via the same
+  // helper so the two stay in lockstep (DRC-3250).
   const {
     icon: IconChangeStatus,
     color: colorChangeStatus,
     backgroundColor: backgroundColorChangeStatus,
-  } = newCllExperience && isImpacted && isUnchanged
-    ? getStyleForImpacted(isDark)
-    : getIconForChangeStatus(
-        changeStatus,
-        isDark,
-        newCllExperience ? "cll" : "default",
-      );
+  } = getNodeChangeStyle(
+    { changeStatus, isImpacted, newCllExperience },
+    isDark,
+  );
   const { icon: ResourceIcon } =
     resourceType === "model" && materialized
       ? getIconForMaterialization(materialized)
@@ -464,6 +457,32 @@ function LineageNodeComponent({
     e.stopPropagation();
     onContextMenu?.(e, id);
   };
+
+  const treatmentInputs = {
+    wholeModelImpact,
+    isWholeModelChanged,
+    isWholeModelImpacted,
+    isImpacted,
+    changeCategory,
+  };
+  const wholeModelBadge = pickGraphBadge(treatmentInputs, isDark);
+
+  // Shared with NodeView via getTitleRowTooltip — keep the hover text in
+  // sync across the canvas card and the sidebar.
+  const titleRowTooltip = getTitleRowTooltip(
+    { name: label, resourceType, materialized },
+    treatmentInputs,
+  );
+
+  // When --whole-model-impact is on, the COLUMN / ADD graph badge and the
+  // NodeView title chip + stripe carry the signal — suppress the text
+  // label except for "unknown", which has no badge equivalent.
+  const changeCategoryLabel =
+    showChangeAnalysis &&
+    changeCategory &&
+    (!wholeModelImpact || changeCategory === "unknown")
+      ? CHANGE_CATEGORY_LABELS[changeCategory]
+      : null;
 
   return (
     <Box
@@ -593,39 +612,46 @@ function LineageNodeComponent({
             flexDirection: "column",
           }}
         >
-          {/* Title row */}
-          <Box
-            sx={{
-              display: "flex",
-              width: "100%",
-              textAlign: "left",
-              fontWeight: 600,
-              flex: 1,
-              p: 0.5,
-              gap: "5px",
-              alignItems: "center",
-              visibility: showContent ? "inherit" : "hidden",
-            }}
-          >
-            <NodeTitle
-              name={label}
-              color={titleColor}
-              resourceType={resourceType}
-              materialized={materialized}
-            />
+          {/* Title row — single tooltip covers name + badge + status icons */}
+          <Tooltip title={titleRowTooltip} placement="top">
+            <Box
+              sx={{
+                display: "flex",
+                width: "100%",
+                textAlign: "left",
+                fontWeight: 600,
+                flex: 1,
+                p: 0.5,
+                gap: "5px",
+                alignItems: "center",
+                visibility: showContent ? "inherit" : "hidden",
+              }}
+            >
+              <NodeTitle name={label} color={titleColor} />
 
-            {/* Descriptor + status — always visible */}
-            {ResourceIcon && (
-              <Box sx={{ fontSize: 16, color: iconColor }}>
-                <ResourceIcon aria-hidden="true" />
-              </Box>
-            )}
-            {changeStatus && IconChangeStatus && (
-              <Box sx={{ color: changeStatusIconColor }}>
-                <IconChangeStatus aria-hidden="true" />
-              </Box>
-            )}
-          </Box>
+              {wholeModelBadge && (
+                <TreatmentChip
+                  tokens={wholeModelBadge.tokens}
+                  testId={wholeModelBadge.testId}
+                  ariaLabel={wholeModelBadge.ariaLabel}
+                >
+                  {wholeModelBadge.text}
+                </TreatmentChip>
+              )}
+
+              {/* Descriptor + status — always visible */}
+              {ResourceIcon && (
+                <Box sx={{ fontSize: 16, color: iconColor }}>
+                  <ResourceIcon aria-hidden="true" />
+                </Box>
+              )}
+              {changeStatus && IconChangeStatus && (
+                <Box sx={{ color: changeStatusIconColor }}>
+                  <IconChangeStatus aria-hidden="true" />
+                </Box>
+              )}
+            </Box>
+          </Tooltip>
 
           {/* Bottom row - action tags, change analysis, or runs aggregated */}
           <Box
@@ -644,7 +670,7 @@ function LineageNodeComponent({
                   <Box sx={{ flexGrow: 1 }} />
                   {actionTag}
                 </>
-              ) : showChangeAnalysis && changeCategory ? (
+              ) : changeCategoryLabel ? (
                 <Typography
                   sx={{
                     height: 20,
@@ -654,7 +680,7 @@ function LineageNodeComponent({
                     fontWeight: 600,
                   }}
                 >
-                  {CHANGE_CATEGORY_LABELS[changeCategory]}
+                  {changeCategoryLabel}
                 </Typography>
               ) : selectMode !== "action_result" && runsAggregatedTag ? (
                 runsAggregatedTag

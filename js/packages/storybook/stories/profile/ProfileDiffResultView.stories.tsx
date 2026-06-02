@@ -12,9 +12,8 @@ import {
 // ============================================
 
 const meta: Meta<typeof ProfileDiffResultView> = {
-  title: "Visualizations/Profile/ProfileDiffResultView",
+  title: "Diffs/Results/Profile/ProfileDiffResultView",
   component: ProfileDiffResultView,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {

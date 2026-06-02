@@ -25,7 +25,11 @@ from typing import (
 )
 
 from recce.event import log_performance
-from recce.exceptions import RecceException
+from recce.exceptions import (
+    DuckDBExternalAccessBlocked,
+    RecceException,
+    is_duckdb_external_access_blocked,
+)
 from recce.util.cll import CLLPerformanceTracking, cll, get_cll_cache
 from recce.util.lineage import (
     build_column_key,
@@ -65,6 +69,7 @@ from ...models.types import (
 from ...tasks import (
     HistogramDiffTask,
     ProfileDiffTask,
+    ProfileDistributionTask,
     QueryBaseTask,
     QueryDiffTask,
     QueryTask,
@@ -89,6 +94,10 @@ dbt_supported_registry: Dict[RunType, Type[Task]] = {
     RunType.ROW_COUNT_DIFF: RowCountDiffTask,
     RunType.TOP_K_DIFF: TopKDiffTask,
     RunType.HISTOGRAM_DIFF: HistogramDiffTask,
+    # Stage B (DRC-3390). DuckDB-only backend; the strategy router returns
+    # a ``{status: "unsupported"}`` envelope for every other adapter. The
+    # frontend gates the task call on the ``inline_profile`` server flag.
+    RunType.PROFILE_DISTRIBUTION: ProfileDistributionTask,
 }
 
 # Reference: https://github.com/AltimateAI/vscode-dbt-power-user/blob/master/dbt_core_integration.py
@@ -310,6 +319,8 @@ class DbtAdapter(BaseAdapter):
     # Review mode
     review_mode: bool = False
 
+    duckdb_external_access: bool = False
+
     # Watch the artifact change
     artifacts_observer = Observer()
     artifacts_files = []
@@ -382,6 +393,7 @@ class DbtAdapter(BaseAdapter):
                 adapter=adapter,
                 review_mode=review,
                 base_path=target_base_path,
+                duckdb_external_access=kwargs.get("duckdb_external_access", False),
             )
         except DbtProjectError as e:
             raise e
@@ -389,6 +401,11 @@ class DbtAdapter(BaseAdapter):
         # Load the artifacts from the state file or dbt target and dbt base directory
         if not no_artifacts and not review:
             dbt_adapter.load_artifacts()
+
+        # Must run after load_artifacts so dbt-duckdb finishes its own
+        # connection setup (incl. profiles.yml `attach:` blocks) first.
+        dbt_adapter._disable_duckdb_external_access()
+
         return dbt_adapter
 
     def print_lineage_info(self):
@@ -663,10 +680,15 @@ class DbtAdapter(BaseAdapter):
         fetch: bool = False,
         limit: Optional[int] = None,
     ) -> Tuple[any, agate.Table]:
-        if dbt_version < dbt_version.parse("v1.6"):
-            return self.adapter.execute(sql, auto_begin=auto_begin, fetch=fetch)
+        try:
+            if dbt_version < dbt_version.parse("v1.6"):
+                return self.adapter.execute(sql, auto_begin=auto_begin, fetch=fetch)
 
-        return self.adapter.execute(sql, auto_begin=auto_begin, fetch=fetch, limit=limit)
+            return self.adapter.execute(sql, auto_begin=auto_begin, fetch=fetch, limit=limit)
+        except Exception as e:
+            if is_duckdb_external_access_blocked(e):
+                raise DuckDBExternalAccessBlocked(str(e)) from e
+            raise
 
     def build_parent_map(self, nodes: Dict, base: Optional[bool] = False) -> Dict[str, List[str]]:
         manifest = self.curr_manifest if base is False else self.base_manifest
@@ -2152,6 +2174,20 @@ class DbtAdapter(BaseAdapter):
             raise Exception(
                 "No enough dbt artifacts in the state file. Please use the latest recce to generate the recce state"
             )
+
+    def _disable_duckdb_external_access(self) -> None:
+        # Inject into credentials.settings (not a one-time SET): dbt-duckdb
+        # applies settings on every new cursor, so per-thread connections in
+        # the FastAPI worker pool stay restricted.
+        if self.duckdb_external_access:
+            return
+        target_type = self.runtime_config.credentials.type if self.runtime_config else None
+        if target_type != "duckdb":
+            return
+        creds = self.runtime_config.credentials
+        if creds.settings is None:
+            creds.settings = {}
+        creds.settings["enable_external_access"] = "false"
 
     @contextmanager
     def connection_named(self, name: str) -> Iterator[None]:

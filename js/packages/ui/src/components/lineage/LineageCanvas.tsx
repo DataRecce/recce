@@ -24,7 +24,7 @@ import {
 import { LineageColumnNode } from "./columns";
 import { LineageEdge, type LineageEdgeData } from "./edges";
 import { LineageNode, type LineageNodeData } from "./nodes";
-import { cllChangeStatusColors } from "./styles";
+import { getNodeChangeStyle } from "./styles";
 
 export interface LineageCanvasProps {
   /** Nodes to display */
@@ -155,8 +155,17 @@ export function LineageCanvas({
         {showMiniMap && (
           <MiniMap
             nodeColor={(node) => {
+              // Copy the node card's accent color from the shared source of
+              // truth so the minimap can't drift from the canvas. Impact lives
+              // on `node.data` in this stack (the OSS stack reads it from
+              // context instead), so impacted-but-unchanged nodes are amber
+              // here too (DRC-3250). Mirrors LineageNode's resolution.
               const data = node.data as LineageNodeData;
-              return cllChangeStatusColors[data.changeStatus ?? "unchanged"];
+              return getNodeChangeStyle({
+                changeStatus: data.changeStatus,
+                isImpacted: data.isImpacted,
+                newCllExperience: data.newCllExperience,
+              }).color;
             }}
           />
         )}

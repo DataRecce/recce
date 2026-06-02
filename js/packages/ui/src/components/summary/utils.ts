@@ -135,7 +135,7 @@ export function calculateChangeSummary(
       for (const status of Object.values(columnChanges)) {
         if (status === "added") col_added++;
         else if (status === "removed") col_removed++;
-        else if (status === "modified") col_changed++;
+        else if (status === "modified" || status === "unknown") col_changed++;
       }
     }
   });

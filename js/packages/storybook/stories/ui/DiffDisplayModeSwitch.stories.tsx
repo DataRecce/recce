@@ -7,9 +7,8 @@ import { useState } from "react";
 import { expect, fn, userEvent, within } from "storybook/test";
 
 const meta: Meta<typeof DiffDisplayModeSwitch> = {
-  title: "UI/DiffDisplayModeSwitch",
+  title: "Primitives/DiffDisplayModeSwitch",
   component: DiffDisplayModeSwitch,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {

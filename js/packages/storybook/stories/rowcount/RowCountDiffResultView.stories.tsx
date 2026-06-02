@@ -8,9 +8,8 @@ import { createRowCountDiffRun, rowCountDiffWithChanges } from "./fixtures";
 // ============================================
 
 const meta: Meta<typeof RowCountDiffResultView> = {
-  title: "Visualizations/RowCount/RowCountDiffResultView",
+  title: "Diffs/Results/RowCount/RowCountDiffResultView",
   component: RowCountDiffResultView,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {

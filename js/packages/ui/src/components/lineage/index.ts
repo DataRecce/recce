@@ -12,6 +12,11 @@ export * from "./config";
 export * from "./contextmenu";
 export * from "./controls";
 export * from "./edges";
+// First-time popover for the snapshot-base staleness intro
+export {
+  FirstTimePopover,
+  type FirstTimePopoverProps,
+} from "./FirstTimePopover";
 export { GraphNode as GraphNodeOss, type GraphNodeProps } from "./GraphNodeOss";
 export * from "./hooks";
 // Composed components for rendering lineage graphs
@@ -78,6 +83,14 @@ export {
   BaseEnvironmentSetupNotification,
   type BaseEnvironmentSetupNotificationProps,
 } from "./SingleEnvironmentQueryView";
+// Snapshot-base staleness banner (shared between OSS strip + cloud floating card)
+export {
+  StalenessBanner,
+  type StalenessBannerProps,
+  type StalenessBannerVariant,
+  type StalenessMessageVariant,
+  type StalenessToastAdapter,
+} from "./StalenessBanner";
 export * from "./states";
 // Style utilities
 export * from "./styles";

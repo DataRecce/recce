@@ -1212,6 +1212,29 @@ def diff(
     help="Enable the new column-level lineage visual experience.",
     envvar="RECCE_NEW_CLL_EXPERIENCE",
 )
+@click.option(
+    "--whole-model-impact",
+    is_flag=True,
+    help="Highlight models downstream of a whole-model change. Implies --new-cll-experience.",
+    envvar="RECCE_WHOLE_MODEL_IMPACT",
+)
+@click.option(
+    "--inline-profile",
+    is_flag=True,
+    help="Enable inline paired-distribution profiles in the schema view (DRC-3390).",
+    envvar="RECCE_INLINE_PROFILE",
+)
+@click.option(
+    "--duckdb-external-access",
+    is_flag=True,
+    default=False,
+    help=(
+        "Allow recce's DuckDB session to access external state "
+        "(local files via read_csv/COPY TO, HTTP via httpfs/ATTACH, "
+        "and INSTALL/LOAD of extensions). Default: blocked. "
+        "Only enable if you trust every user who can reach this server."
+    ),
+)
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -1260,6 +1283,10 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
 
     RecceConfig(config_file=kwargs.get("config"))
 
+    kwargs["duckdb_external_access"] = kwargs.get("duckdb_external_access", False) or bool(
+        RecceConfig().get("duckdb_external_access", False)
+    )
+
     # Initialize startup performance tracking
     from recce.util.startup_perf import StartupPerfTracker, set_startup_tracker
 
@@ -1281,6 +1308,8 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
         "disable_cll_cache": True,
         "impact_at_startup": False,
         "new_cll_experience": False,
+        "whole_model_impact": False,
+        "inline_profile": False,
     }
     console = Console()
 
@@ -1333,6 +1362,13 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
 
     if kwargs.get("new_cll_experience", False):
         flag["new_cll_experience"] = True
+
+    if kwargs.get("whole_model_impact", False):
+        flag["whole_model_impact"] = True
+        flag["new_cll_experience"] = True
+
+    if kwargs.get("inline_profile", False):
+        flag["inline_profile"] = True
 
     # Create state loader using shared function
     from recce.util.startup_perf import get_startup_tracker
@@ -1481,6 +1517,9 @@ def run(output, **kwargs):
 
     # Initialize Recce Config
     RecceConfig(config_file=kwargs.get("config"))
+
+    # Only `recce server` restricts DuckDB external access by default.
+    kwargs.setdefault("duckdb_external_access", True)
 
     patch_derived_args(kwargs)
     # Remove share_url from kwargs to avoid affecting state loader creation

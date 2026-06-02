@@ -2,6 +2,9 @@
 
 // Check primitives - pure presentation components
 
+// Lineage diff view for check results
+export type { LineageDiffViewOptions } from "../../api/lineagecheck";
+export type { LineageViewRef } from "../lineage/LineageView";
 export {
   type CheckAction,
   CheckActions,
@@ -41,14 +44,6 @@ export {
 export { CheckListOss } from "./CheckListOss";
 export { CheckPageContentOss } from "./CheckPageContentOss";
 export { CheckPageLoadingOss } from "./CheckPageLoadingOss";
-
-// Lineage diff view for check results
-export {
-  LineageDiffView,
-  type LineageDiffViewOptions,
-  type LineageDiffViewProps,
-  type LineageViewRef,
-} from "./LineageDiffView";
 export {
   LineageDiffViewOss,
   type LineageDiffViewProps as LineageDiffViewOssProps,
