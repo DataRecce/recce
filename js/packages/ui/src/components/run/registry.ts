@@ -211,14 +211,24 @@ export const registry: RunRegistry = {
  * @returns The registry entry for the run type
  *
  * @example
+ * A run type with no registry entry (e.g. the backend-only
+ * `profile_distribution`, DRC-3390) returns `undefined` — callers passing a
+ * dynamic `RunType` must handle that. Literal registered keys keep their
+ * precise entry type via the overload.
+ *
+ * @example
  * ```ts
  * const entry = findByRunType("query");
  * console.log(entry.title); // "Query"
  * console.log(entry.icon); // TbSql
  * ```
  */
-export function findByRunType<T extends RunType>(runType: T): RunRegistry[T] {
-  return registry[runType];
+export function findByRunType<T extends keyof RunRegistry>(
+  runType: T,
+): RunRegistry[T];
+export function findByRunType(runType: RunType): RegistryEntry | undefined;
+export function findByRunType(runType: RunType): RegistryEntry | undefined {
+  return (registry as Partial<Record<RunType, RegistryEntry>>)[runType];
 }
 
 // ============================================================================
@@ -279,6 +289,6 @@ export function createRunTypeRegistry(
  */
 export function createBoundFindByRunType(
   reg: RunRegistry,
-): <T extends RunType>(runType: T) => RunRegistry[T] {
-  return <T extends RunType>(runType: T) => reg[runType];
+): <T extends keyof RunRegistry>(runType: T) => RunRegistry[T] {
+  return <T extends keyof RunRegistry>(runType: T) => reg[runType];
 }
