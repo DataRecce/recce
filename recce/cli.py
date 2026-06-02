@@ -3103,7 +3103,7 @@ def mcp_config_install(project_dir, claude_config, yes, dry_run):
     # ------------------------------------------------------------------
     # Validate project dir
     # ------------------------------------------------------------------
-    project_dir_path = Path(project_dir).resolve()
+    project_dir_path = Path(project_dir).expanduser().resolve()
     if not project_dir_path.exists():
         console.print(
             f"[[red]Error[/red]] Project directory not found: {project_dir_path}\n"
@@ -3123,7 +3123,7 @@ def mcp_config_install(project_dir, claude_config, yes, dry_run):
     # Resolve Claude Desktop config path
     # ------------------------------------------------------------------
     if claude_config:
-        config_path = Path(claude_config).resolve()
+        config_path = Path(claude_config).expanduser().resolve()
     else:
         config_path = Path.home() / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json"
 
@@ -3220,10 +3220,28 @@ def mcp_config_install(project_dir, claude_config, yes, dry_run):
         shutil.copy2(str(config_path), str(backup_path))
 
     # ------------------------------------------------------------------
-    # Merge entries and write
+    # Merge entries and write (atomically)
     # ------------------------------------------------------------------
     existing_config["mcpServers"].update(new_entries)
-    config_path.write_text(json.dumps(existing_config, indent=2), encoding="utf-8")
+    # Write to a temp file in the same directory, then os.replace() for an atomic
+    # swap. A crash mid-write leaves the existing config untouched rather than a
+    # truncated/corrupt claude_desktop_config.json.
+    tmp_path = config_path.with_suffix(config_path.suffix + ".recce.tmp")
+    try:
+        tmp_path.write_text(json.dumps(existing_config, indent=2), encoding="utf-8")
+        os.replace(str(tmp_path), str(config_path))
+    except OSError as e:
+        # Best-effort cleanup of the temp file; the existing config is intact.
+        try:
+            if tmp_path.exists():
+                tmp_path.unlink()
+        except OSError:
+            pass
+        console.print(
+            f"[[red]Error[/red]] Failed to write config: {e}\n"
+            f"Your existing config was left unchanged (a backup is at {backup_path})."
+        )
+        exit(1)
 
     # ------------------------------------------------------------------
     # Success message
