@@ -50,7 +50,7 @@ recce/
       histogram_diff.html    # Phase C tier-4: hand-rolled SVG bar chart (base vs current bins)
       profile_diff.html      # Phase C tier-4: per-column profile card grid (count/null/distinct/min/max/avg/median)
 tests/
-  test_widget_server.py      # 28 tests covering WIDGET_TOOLS coordination + widget server.
+  test_widget_server.py      # 35 tests covering WIDGET_TOOLS coordination + widget server.
 docs/
   mcp-widgets.md             # This file.
 ```
@@ -369,12 +369,12 @@ directly. Always use Pydantic models for widget tool outputs.
   Wrapping it raises `ValueError: a coroutine was expected, got None` (fixed in
   Day 1 cycle 1; see commit `bb6f1261`).
 
-- **`recce/data/` is gitignored as build output.** Widget HTML files use a
-  per-extension allowlist in `.gitignore` to escape the broad `recce/data`
-  ignore rule. The allowlist currently covers `*.html`. If you add new file
-  types (`.css`, `.svg`, `.js`) under `recce/data/mcp/`, check `.gitignore`
-  and add an allowlist entry if needed; otherwise `git add` will silently skip
-  your file.
+- **`recce/data/` is gitignored as build output.** `.gitignore` ignores the
+  directory contents (`recce/data/**`) and then re-includes the source subdir
+  via negation (`!recce/data/mcp/`, `!recce/data/mcp/**`). Any file type you add
+  under `recce/data/mcp/` (`.css`, `.svg`, `.js`, …) is tracked automatically —
+  no per-extension allowlist to maintain. Files placed elsewhere under
+  `recce/data/` remain ignored as build output.
 
 - **In stdio transport mode, stdout is JSON-RPC.** Any `print()` or
   `logging.info()` output written to stdout will corrupt the MCP framing.

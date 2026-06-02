@@ -6,6 +6,8 @@ Covers:
 - Validates --project-dir (must contain dbt_project.yml)
 - Dry-run mode does not write to disk
 - Backup file is created before writing
+- Backup preserves the pristine pre-recce original on re-run (not clobbered)
+- Falls back to `python -m recce.cli` when the `recce` binary is not on PATH
 """
 
 import json
