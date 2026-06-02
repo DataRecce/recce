@@ -21,6 +21,15 @@ from pydantic import BaseModel, Field
 mcp = FastMCP("recce-widgets")
 
 # Forward ref — initialized in run_widget_server() to avoid eager import at module load.
+#
+# TODO(DRC-3526 follow-up): the widget tools below delegate directly to
+# _recce_server._tool_*(), bypassing RecceMCPServer's central @server.call_tool
+# handler (recce/mcp_server.py). That handler is where DRC-2754 error
+# classification + Sentry "mcp.expected_error" metrics live, so expected DB errors
+# (table_not_found / permission_denied) are not downgraded/telemetried for the 15
+# widget tools. Errors still surface (FastMCP wraps them) — this is deferred POC
+# debt; route delegates through a shared classify/telemetry wrapper when the
+# two-server architecture is consolidated.
 _recce_server: Optional[Any] = None
 
 logger = logging.getLogger(__name__)
@@ -290,6 +299,11 @@ async def schema_diff(args: SchemaDiffInput) -> CallToolResult:
         exclude=args.exclude,
         packages=args.packages if args.packages is not None else None,
     )
+    # TODO(DRC-3526 follow-up): SchemaDiffOutput has no `warning` field and this
+    # handler does not surface a single-env notice, unlike the other diff tools.
+    # In single-env mode the widget renders an empty "No models found" state that
+    # reads as a clean diff when there is simply no base to compare against. Add a
+    # `warning` field + single-env notice.
     output = SchemaDiffOutput(
         models={node_id: SchemaChange(**m) for node_id, m in rich_result.items()},
     )

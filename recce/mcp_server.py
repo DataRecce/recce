@@ -1928,6 +1928,13 @@ class RecceMCPServer:
                     # Intersect both sides, mirroring ValueDiffTask; drifted columns are
                     # already reported via schema_changes (Step 2b). get_model(base=True)
                     # manages its own warehouse connection for the base-side introspection.
+                    # TODO(DRC-3526 follow-up): this drift fix is covered by a mock
+                    # test (asserts drifted columns never reach the generated SQL) +
+                    # a manual Snowflake A/B, but has no real-adapter e2e. Add a
+                    # DuckDB e2e fixture with a PK where `current` has a column absent
+                    # in `base`; assert value_diff runs over the common non-PK columns
+                    # and does not raise a binder error. Mocks cannot catch the
+                    # missing-warehouse-connection class of bug.
                     base_model_info = self.context.adapter.get_model(node_id, base=True)
                     common_cols = set(columns_info) & set(base_model_info.get("columns", {}))
 
