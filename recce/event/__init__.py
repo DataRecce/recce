@@ -36,8 +36,8 @@ user_profile_lock = threading.Lock()
 # Amplitude names are flattened to snake_case; event_source="oss-cli"
 # disambiguates against the Cloud project (P4 design / D-event-map).
 _PH_EVENT_MAP = {
-    "[Experiment] single_environment": "single_environment_cli",
-    "Connect OSS to Cloud": "oss_connect_to_cloud_cli",
+    "[Experiment] single_environment": "single_environment",
+    "Connect OSS to Cloud": "oss_connect_to_cloud",
 }
 
 
