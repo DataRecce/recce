@@ -253,4 +253,31 @@ describe("useInlineProfileDistribution", () => {
       expect.objectContaining({ status: "error" }),
     );
   });
+
+  it("surfaces a resolved run that carries a task-level error field", async () => {
+    flagOn();
+    // The run resolves (no throw) but the task failed — the rare synchronous
+    // path where the server returns a completed run with an `error` field.
+    mockSubmit.mockResolvedValue({
+      run_id: "r3",
+      type: "profile_distribution",
+      status: "Finished",
+      error: 'relation "orders" does not exist',
+    });
+
+    const { result } = renderHook(
+      () => useInlineProfileDistribution({ model: "orders" }),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("error"));
+    expect(result.current.error?.message).toContain("does not exist");
+    // No throw, so this path is NOT a transport failure — Sentry stays quiet.
+    expect(mockCapture).not.toHaveBeenCalled();
+    // emitTiming still fires a single error timing event off the run.error field.
+    expect(mockTrack).toHaveBeenCalledTimes(1);
+    expect(mockTrack).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "error" }),
+    );
+  });
 });

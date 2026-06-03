@@ -116,7 +116,12 @@ export function useInlineProfileDistribution(
   // auto-invalidated here. Staleness is bounded by `gcTime` (5 min) and, in
   // practice, by base/current being fixed for a review session. Re-key on a
   // manifest token if that changes.
-  const keySuffix = columns?.join(",") ?? "*";
+  //
+  // `JSON.stringify` (not `join(",")`) so the per-column segments stay
+  // unambiguous: `["a,b"]` and `["a","b"]` must map to different cache keys —
+  // a comma is a legal character inside a quoted SQL identifier even if dbt
+  // names rarely contain one. `*` is the all-columns sentinel.
+  const keySuffix = columns ? JSON.stringify(columns) : "*";
 
   const {
     data: run,

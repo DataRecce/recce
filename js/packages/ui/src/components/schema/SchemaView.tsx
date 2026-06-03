@@ -38,6 +38,7 @@ import {
 import { ProfileDistributionUnsupportedBanner } from "../data/ProfileDistributionUnsupportedBanner";
 import { createDataGridFromData } from "../ui/dataGrid";
 import type { SchemaDistributionData } from "../ui/dataGrid/schemaCells";
+import { selectInlineProfileScope } from "./selectInlineProfileScope";
 
 export function SchemaLegend() {
   return (
@@ -270,47 +271,33 @@ export function PrivateSchemaView(
     lineageViewContext?.wholeModelChangedNodeIds?.has(nodeId ?? "") ?? false;
 
   // DRC-3390 Stage C: scope the inline distribution to *changed* columns under
-  // the new-CLL experience (perf: don't profile every column of a model when
-  // only a few diverged). The scope is the union of the same two signals the
-  // grid already colors from — `columnChanges` (this node's own added/removed/
-  // modified columns) and `impactedColumns` (columns impacted downstream). No
-  // re-deriving change status from base/current. A whole-model change profiles
-  // all columns (handled below).
-  const changedColumns = useMemo(() => {
-    if (!newCllExperience) return undefined;
-    const names = new Set<string>(Object.keys(columnChanges ?? {}));
-    if (impactedColumns && nodeId) {
-      const prefix = `${nodeId}_`;
-      for (const id of impactedColumns) {
-        if (id.startsWith(prefix)) names.add(id.slice(prefix.length));
-      }
-    }
-    return [...names];
-  }, [newCllExperience, columnChanges, impactedColumns, nodeId]);
-
-  // Under new-CLL scoping we profile only the changed columns by default;
-  // "Profile all columns" widens the *same* run to every column. The wider
-  // request re-profiles the already-shown columns (the backend cache is keyed
-  // on the exact column set — DRC-3630), but the hook keeps the prior
-  // histograms on screen via `placeholderData` while the wider query loads, so
-  // it never visually goes backwards.
-  // changedColumns is undefined when the feature is off, so length 0 here.
-  const hasChangedScope = (changedColumns?.length ?? 0) > 0;
-
-  // Columns to profile: the changed subset by default, widened to every column
-  // (undefined) on a whole-model change or once the user opts into all.
-  const scopedColumns =
-    profileAllColumns || !hasChangedScope ? undefined : changedColumns;
-
-  // Inline distribution is a new-CLL-only feature — the single master gate
-  // lives here (the hook additionally self-gates on the inline_profile flag).
-  const profileEnabled =
-    newCllExperience &&
-    (hasChangedScope || wholeModelChange || profileAllColumns);
-
-  // True when the run already covers every column, so there is nothing left to
-  // expand into (the "Profile all columns" button hides in this case).
-  const profilingAll = scopedColumns === undefined && profileEnabled;
+  // the new-CLL experience. The pure decision (which columns to profile,
+  // whether to profile at all, whether the run already covers everything) is
+  // factored into `selectInlineProfileScope` so the wiring is unit-tested
+  // without mounting the whole view. "Profile all columns" widens the *same*
+  // run to every column; the wider request re-profiles the already-shown
+  // columns (the backend cache is keyed on the exact column set — DRC-3630),
+  // but the hook keeps the prior histograms on screen via `placeholderData`
+  // while the wider query loads, so it never visually goes backwards.
+  const { scopedColumns, profileEnabled, profilingAll } = useMemo(
+    () =>
+      selectInlineProfileScope({
+        newCllExperience,
+        columnChanges,
+        impactedColumns,
+        nodeId,
+        wholeModelChange,
+        profileAllColumns,
+      }),
+    [
+      newCllExperience,
+      columnChanges,
+      impactedColumns,
+      nodeId,
+      wholeModelChange,
+      profileAllColumns,
+    ],
+  );
 
   // The hook also self-gates on the `inline_profile` server flag — a no-op
   // (status "disabled") when it's off.
