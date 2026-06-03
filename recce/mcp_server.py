@@ -178,7 +178,17 @@ class CloudBackend:
             "runs",
             json={"type": run_type, "params": params, "nowait": False},
         )
-        return run.get("result", run)
+        result = run.get("result", run)
+        # DRC-3532: surface run_id alongside the result so the summary agent can
+        # cite the exact run inline via {{run:<run_id>}} markers. Additive
+        # (option i): existing result fields are preserved. Only added when the
+        # response actually carries a run_id and the result is a dict, so
+        # run-less responses and non-dict results are left untouched (the agent
+        # must never synthesize a run_id it was not given).
+        run_id = run.get("run_id")
+        if run_id is not None and isinstance(result, dict):
+            result = {**result, "run_id": str(run_id)}
+        return result
 
     async def _tool_list_checks(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         checks = await self._request("GET", "checks")
