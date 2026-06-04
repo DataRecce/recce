@@ -9,6 +9,7 @@ import {
 } from "../api";
 import { useRecceServerFlag } from "../contexts";
 import { trackProfileDistribution } from "../lib/api/track";
+import { isHttpError } from "../lib/fetchClient";
 import { useApiConfig } from "./useApiConfig";
 
 /**
@@ -29,9 +30,10 @@ import { useApiConfig } from "./useApiConfig";
  * hand-rolled submit/poll loop. CAVEAT: the OSS fetch client sets no request
  * timeout (`useApiConfig.ts`), so a slow remote-warehouse adapter would hold
  * this request open with no client-side abort — there is NO timeout error or
- * Sentry capture for that case today (tracked separately). Transport errors
- * that do occur (network failure, non-2xx) surface as the hook's `error` state
- * and a Sentry capture via the queryFn's catch.
+ * Sentry capture for that case today (tracked separately). Errors that do occur
+ * surface as the hook's `error` state via the queryFn's catch; transport/server
+ * faults (network failure, 5xx) are also captured to Sentry, while 4xx
+ * client/config errors are surfaced but not reported (they are not faults).
  *
  * The run is keyed by `nodeId` so React Query memoizes it across re-renders
  * and remounts (e.g. toggling between schema tabs) — re-opening the same node
@@ -113,6 +115,16 @@ const elapsedMs = (startMs: number): number =>
     ? Math.round(performance.now() - startMs)
     : 0;
 
+/**
+ * A 4xx is a client/config error (bad params, external access blocked, …): the
+ * user should see it as the hook's error state, but it is not a fault worth
+ * alerting on and would drown the transport-fault signal in Sentry. Network
+ * failures, 5xx, and client timeouts (wrapped as `HttpError` status 0) are NOT
+ * client errors and stay reportable.
+ */
+const isClientError = (err: unknown): boolean =>
+  isHttpError(err) && err.status >= 400 && err.status < 500;
+
 export function useInlineProfileDistribution(
   options: UseInlineProfileDistributionOptions,
 ): UseInlineProfileDistributionResult {
@@ -156,19 +168,22 @@ export function useInlineProfileDistribution(
         emitTiming(resolved, elapsedMs(start));
         return resolved;
       } catch (err) {
-        // Transport-level failure: network, HTTP 5xx, or a client timeout on
-        // a slow run (the fetch client wraps `AbortSignal.timeout` as an
-        // `HttpError` with status 0). Emit the error timing, flag it in Sentry
-        // so timeouts are visible, then rethrow for React Query's error state.
+        // Always emit the error timing for analytics, then rethrow for React
+        // Query's error state. Report only genuine transport/server faults to
+        // Sentry — network failures, HTTP 5xx, and client timeouts (wrapped as
+        // an `HttpError` with status 0). A 4xx is a client/config error that
+        // the user sees as the error state but should not page anyone.
         trackProfileDistribution({
           status: "error",
           total_wall_ms: elapsedMs(start),
           column_count: 0,
           error_count: 0,
         });
-        captureException(err, {
-          tags: { feature: "inline_profile_distribution" },
-        });
+        if (!isClientError(err)) {
+          captureException(err, {
+            tags: { feature: "inline_profile_distribution" },
+          });
+        }
         throw err;
       }
     },

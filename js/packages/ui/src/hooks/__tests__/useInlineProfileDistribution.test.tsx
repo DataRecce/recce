@@ -39,6 +39,7 @@ vi.mock("@sentry/react", () => ({
   captureException: (...args: unknown[]) => mockCapture(...args),
 }));
 
+import { HttpError } from "../../lib/fetchClient";
 import { useInlineProfileDistribution } from "../useInlineProfileDistribution";
 
 const createWrapper = () => {
@@ -312,6 +313,32 @@ describe("useInlineProfileDistribution", () => {
       }),
     );
     // And a single error timing event is emitted.
+    expect(mockTrack).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "error" }),
+    );
+  });
+
+  it("surfaces a 4xx client error without reporting it to Sentry", async () => {
+    flagOn();
+    // A 4xx (bad params, external-access blocked, …) is a client/config error,
+    // not a transport fault — the user must see it, but it must not page anyone.
+    const badRequest = new HttpError(
+      400,
+      { detail: "bad params" },
+      "Bad Request",
+    );
+    mockSubmit.mockRejectedValue(badRequest);
+
+    const { result } = renderHook(
+      () => useInlineProfileDistribution({ model: "orders" }),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("error"));
+    expect(result.current.error).toBe(badRequest);
+    // Surfaced to the user, but NOT captured to Sentry.
+    expect(mockCapture).not.toHaveBeenCalled();
+    // The error timing event still fires.
     expect(mockTrack).toHaveBeenCalledWith(
       expect.objectContaining({ status: "error" }),
     );
