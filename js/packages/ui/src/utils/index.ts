@@ -3,6 +3,7 @@
  * @description Utility functions for data manipulation and formatting
  */
 
+export { cllColumnId, isColumnImpacted } from "./cllColumnId";
 // CSV utilities
 export {
   type CSVData,

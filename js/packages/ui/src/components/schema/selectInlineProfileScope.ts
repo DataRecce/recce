@@ -10,6 +10,8 @@
  * `profilingAll` into the "Profile all columns" button gate.
  */
 
+import { isColumnImpacted } from "../../utils";
+
 /** Per-column change status as supplied by breaking change analysis. */
 export type ColumnChangeStatus = "added" | "removed" | "modified" | "unknown";
 
@@ -86,11 +88,12 @@ export function selectInlineProfileScope({
 
   const names = new Set<string>(Object.keys(columnChanges ?? {}));
   // Attribute impacted ids to this node by exact `<nodeId>_<column>` membership
-  // over the node's own columns — never by prefix-stripping the global set,
-  // which would mis-attribute a sibling model's columns (DRC-3390 review #1).
+  // over the node's own columns (shared with the grid's isImpacted painting) —
+  // never by prefix-stripping the global set, which would mis-attribute a
+  // sibling model's columns (DRC-3390 review #1; identity cleanup: DRC-3646).
   if (impactedColumns && nodeId && nodeColumnNames) {
     for (const name of nodeColumnNames) {
-      if (impactedColumns.has(`${nodeId}_${name}`)) names.add(name);
+      if (isColumnImpacted(nodeId, name, impactedColumns)) names.add(name);
     }
   }
   const changedColumns = [...names];

@@ -20,7 +20,7 @@ import {
   renderIndexCell,
   type SchemaDistributionData,
 } from "../../../components/ui/dataGrid/schemaCells";
-import { mergeKeysWithStatus } from "../../../utils";
+import { isColumnImpacted, mergeKeysWithStatus } from "../../../utils";
 
 // ============================================================================
 // Types
@@ -237,11 +237,10 @@ export function toSchemaDataGrid(
     }
   }
 
-  // Mark columns that trace upstream to a changed column via CLL parent_map
-  if (impactedColumns && nodeId) {
+  // Mark columns that trace upstream to a changed column via CLL parent_map.
+  if (nodeId && impactedColumns) {
     for (const row of rows) {
-      const columnId = `${nodeId}_${row.name}`;
-      if (impactedColumns.has(columnId)) {
+      if (isColumnImpacted(nodeId, row.name, impactedColumns)) {
         row.isImpacted = true;
       }
     }
