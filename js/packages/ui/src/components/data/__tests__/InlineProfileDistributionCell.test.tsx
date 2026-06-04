@@ -42,9 +42,13 @@ const topkRanks: ProfileDistributionTopKRanksPayload = {
   trimmed: false,
 };
 
+// Counts-mode wire shape as the backend actually emits it: `mode` is ABSENT
+// (the contract is `mode?: "counts"`, "absent or counts"). The cell must route
+// this to the counts branch via the `mode === "ranks"` discriminant's
+// fall-through. The `null` base slot exercises the gap-on-absent `?? 0`
+// coercion.
 const topkCounts: ProfileDistributionTopKPayload = {
   kind: "topk",
-  mode: "counts",
   values: ["US", "GB", "DE"],
   base_counts: [50, 30, null],
   current_counts: [40, 35, 10],
@@ -146,10 +150,37 @@ describe("InlineProfileDistributionCell", () => {
     expect(getByRole("img")).toHaveAttribute("aria-label", DISCRETE_ARIA_LABEL);
   });
 
-  it("renders the discrete cell for a topk counts payload", () => {
-    const { getByRole } = render(
+  it("routes a mode-absent counts payload to the discrete cell and coerces null slots", () => {
+    // Backend counts payloads have no `mode` field; the cell must NOT mistake
+    // them for ranks. Asserting the tooltips also pins two things a bare
+    // aria-label check missed: proportions use the column-wide base/current
+    // totals as the denominator, and a `null` count is coerced to 0 (0.0%),
+    // not NaN or a crash.
+    const { getByRole, container } = render(
       <InlineProfileDistributionCell
         payload={topkCounts}
+        baseTotal={80}
+        currentTotal={85}
+      />,
+    );
+    expect(getByRole("img")).toHaveAttribute("aria-label", DISCRETE_ARIA_LABEL);
+    const titles = Array.from(container.querySelectorAll("title")).map(
+      (t) => t.textContent ?? "",
+    );
+    // US: base 50/80 = 62.5%, current 40/85 = 47.1%.
+    expect(titles.some((t) => t.includes("base: 62.5%"))).toBe(true);
+    // DE: base count is null -> coerced to 0 (0.0%); current 10/85 = 11.8%.
+    expect(
+      titles.some(
+        (t) => t.includes("base: 0.0%") && t.includes("current: 11.8%"),
+      ),
+    ).toBe(true);
+  });
+
+  it('also routes an explicit mode:"counts" payload to the discrete cell', () => {
+    const { getByRole } = render(
+      <InlineProfileDistributionCell
+        payload={{ ...topkCounts, mode: "counts" }}
         baseTotal={80}
         currentTotal={85}
       />,
