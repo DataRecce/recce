@@ -527,6 +527,7 @@ export function PrivateSchemaView(
           {newCllExperience &&
             inlineProfile &&
             profileNode &&
+            distribution.status !== "unsupported" &&
             !profilingAll && (
               <Button
                 size="small"

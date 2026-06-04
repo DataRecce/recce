@@ -254,11 +254,22 @@ export function computeContinuousLayout(
   // renders the side that has data, mirroring the discrete cell's
   // gap-on-absent behavior rather than blanking in a way that reads as "failed"
   // (the backend emits empty edges/density for the absent side).
+  // A side is valid only when its lengths line up AND every value is finite —
+  // a single NaN/Infinity edge from a corrupt payload would otherwise pass the
+  // length check, poison the min/max range, and silently route to the
+  // degenerate uniform-slot fallback (a plausible-looking but meaningless
+  // chart). Treat any non-finite value as malformed and blank the cell.
+  const allFinite = (xs: number[]): boolean => xs.every(Number.isFinite);
   const baseValid =
-    baseDensity.length > 0 && baseBinEdges.length === baseDensity.length + 1;
+    baseDensity.length > 0 &&
+    baseBinEdges.length === baseDensity.length + 1 &&
+    allFinite(baseBinEdges) &&
+    allFinite(baseDensity);
   const currValid =
     currentDensity.length > 0 &&
-    currentBinEdges.length === currentDensity.length + 1;
+    currentBinEdges.length === currentDensity.length + 1 &&
+    allFinite(currentBinEdges) &&
+    allFinite(currentDensity);
   // A side is legitimately "absent" (one-sided column — added/removed) only
   // when BOTH its arrays are empty. A non-empty side whose edge/density lengths
   // don't line up is malformed: treat that as corrupt and blank the whole cell

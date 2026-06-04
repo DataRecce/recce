@@ -84,6 +84,19 @@ export interface UseInlineProfileDistributionResult {
 
 const EMPTY_COLUMNS: Record<string, ProfileDistributionColumnPayload> = {};
 
+/**
+ * The single seam where an untyped {@link Run} is narrowed to the distribution
+ * result. Kept in one place so the unchecked cast can't silently drift between
+ * its two callers (the result memo and the timing emitter).
+ */
+function readDistributionResult(
+  run: Run | undefined,
+): ProfileDistributionResult | undefined {
+  return run?.type === "profile_distribution"
+    ? (run.result as ProfileDistributionResult | undefined)
+    : undefined;
+}
+
 /** Count per-column payloads that came back as a `kind: null` failure. */
 function countColumnFailures(
   columns: Record<string, ProfileDistributionColumnPayload>,
@@ -203,10 +216,7 @@ export function useInlineProfileDistribution(
       };
     }
 
-    const result =
-      run?.type === "profile_distribution"
-        ? (run.result as ProfileDistributionResult | undefined)
-        : undefined;
+    const result = readDistributionResult(run);
 
     if (!result) {
       return {
@@ -250,10 +260,7 @@ function emitTiming(run: Run, totalWallMs: number): void {
     });
     return;
   }
-  const result =
-    run.type === "profile_distribution"
-      ? (run.result as ProfileDistributionResult | undefined)
-      : undefined;
+  const result = readDistributionResult(run);
   if (!result || result.status === "unsupported") {
     trackProfileDistribution({
       status: "unsupported",

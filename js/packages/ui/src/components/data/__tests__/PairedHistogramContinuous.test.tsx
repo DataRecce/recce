@@ -166,6 +166,30 @@ describe("PairedHistogramContinuous", () => {
     expect(container.querySelector("svg")).toBeInTheDocument();
   });
 
+  it("blanks the cell when an edge is non-finite rather than rendering fake uniform bins", () => {
+    // A single NaN/Infinity edge from a corrupt payload passes the length
+    // check, poisons the min/max range (totalSpan = NaN), and would otherwise
+    // route to the degenerate uniform-slot fallback — drawing a plausible but
+    // meaningless chart. Treat it as malformed and blank instead.
+    const poisoned: PairedHistogramContinuousData = {
+      baseBinEdges: [0, Number.NaN, 10],
+      baseDensity: [0.5, 0.5],
+      currentBinEdges: [0, 5, 10],
+      currentDensity: [0.5, 0.5],
+      baseTotal: 100,
+      currentTotal: 100,
+    };
+    const layout = computeContinuousLayout(poisoned, 140);
+    expect(layout.bins).toEqual([]);
+
+    const infinite: PairedHistogramContinuousData = {
+      ...poisoned,
+      baseBinEdges: [0, 5, 10],
+      currentBinEdges: [0, 5, Number.POSITIVE_INFINITY],
+    };
+    expect(computeContinuousLayout(infinite, 140).bins).toEqual([]);
+  });
+
   it("handles a zero-span payload (degenerate column) by falling back to uniform widths", () => {
     const collapsed: PairedHistogramContinuousData = {
       baseBinEdges: [5, 5, 5],

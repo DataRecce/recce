@@ -119,10 +119,14 @@ export function formatTimeOfDay(secondsSinceMidnight: number): string {
 export function formatEpochSeconds(sec: number): string {
   const d = new Date(sec * 1000);
   if (Number.isNaN(d.getTime())) return String(sec);
+  // Render in UTC: the backend's epoch() cast emits UTC-based seconds, so a
+  // local-timezone render would shift day-boundary edges to the wrong calendar
+  // day (e.g. UTC midnight showing as the previous day west of UTC).
   return d.toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
     day: "numeric",
+    timeZone: "UTC",
   });
 }
 
