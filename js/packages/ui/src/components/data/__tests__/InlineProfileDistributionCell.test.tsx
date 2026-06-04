@@ -76,6 +76,46 @@ describe("InlineProfileDistributionCell", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it("renders a faint not-profiled dash when the column was outside a scoped run", () => {
+    const { getByTestId } = render(
+      <InlineProfileDistributionCell notProfiled />,
+    );
+    const marker = getByTestId("inline-distribution-not-profiled");
+    expect(marker).toBeInTheDocument();
+    // A quiet text glyph, not an error icon.
+    expect(marker.querySelector("svg")).not.toBeInTheDocument();
+    // Decorative for assistive tech (would otherwise repeat on every unprofiled
+    // column), with a hover tooltip explaining the why for sighted users.
+    expect(marker).toHaveAttribute("aria-hidden", "true");
+    expect(marker).toHaveAttribute(
+      "title",
+      "Not profiled — only changed columns are shown",
+    );
+  });
+
+  it("prefers loading and error states over the not-profiled dash", () => {
+    const loading = render(
+      <InlineProfileDistributionCell notProfiled isLoading />,
+    );
+    expect(
+      loading.getByTestId("inline-distribution-pending"),
+    ).toBeInTheDocument();
+    expect(
+      loading.queryByTestId("inline-distribution-not-profiled"),
+    ).not.toBeInTheDocument();
+    loading.unmount();
+
+    const errored = render(
+      <InlineProfileDistributionCell notProfiled hasError />,
+    );
+    expect(
+      errored.getByTestId("inline-distribution-error"),
+    ).toBeInTheDocument();
+    expect(
+      errored.queryByTestId("inline-distribution-not-profiled"),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders a per-column failure icon with a column-scoped tooltip for a null payload", () => {
     const { getByTestId } = render(
       <InlineProfileDistributionCell payload={{ kind: null }} />,

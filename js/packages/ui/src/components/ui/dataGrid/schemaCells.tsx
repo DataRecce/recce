@@ -119,6 +119,7 @@ export function createDistributionCellRenderer(
         currentTotal={distribution.currentTotal}
         isLoading={distribution.isLoading && !payload && inScope}
         hasError={distribution.hasError && inScope}
+        notProfiled={!inScope}
       />
     );
   };

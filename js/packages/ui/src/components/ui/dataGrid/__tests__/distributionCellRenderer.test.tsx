@@ -139,19 +139,22 @@ describe("createDistributionCellRenderer", () => {
     expect(screen.getByTestId("inline-distribution-error")).toBeInTheDocument();
   });
 
-  test("leaves a column blank (no error icon) when it was outside the scoped run", () => {
+  test("marks a column 'not profiled' (no error icon) when it was outside the scoped run", () => {
     // The run failed, but it only ever requested `amount`; `quantity` was never
-    // part of the run, so it must stay blank rather than look broken.
+    // part of the run, so it shows the faint not-profiled dash, not an error.
     const renderer = createDistributionCellRenderer(
       distribution({ payloads: {}, hasError: true, scopedColumns: ["amount"] }),
     );
-    const { container } = render(
-      <>{renderer(params(row({ name: "quantity" })))}</>,
-    );
-    expect(container).toBeEmptyDOMElement();
+    render(<>{renderer(params(row({ name: "quantity" })))}</>);
+    expect(
+      screen.getByTestId("inline-distribution-not-profiled"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("inline-distribution-error"),
+    ).not.toBeInTheDocument();
   });
 
-  test("does not show a pending dot on a column outside the scoped run", () => {
+  test("shows the not-profiled dash, not a pending dot, on a column outside the scoped run", () => {
     const renderer = createDistributionCellRenderer(
       distribution({
         payloads: {},
@@ -159,10 +162,13 @@ describe("createDistributionCellRenderer", () => {
         scopedColumns: ["amount"],
       }),
     );
-    const { container } = render(
-      <>{renderer(params(row({ name: "quantity" })))}</>,
-    );
-    expect(container).toBeEmptyDOMElement();
+    render(<>{renderer(params(row({ name: "quantity" })))}</>);
+    expect(
+      screen.getByTestId("inline-distribution-not-profiled"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("inline-distribution-pending"),
+    ).not.toBeInTheDocument();
   });
 
   test("falls back to baseType for a removed column so datetime edges still format as dates", () => {

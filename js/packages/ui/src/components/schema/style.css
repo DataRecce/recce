@@ -308,3 +308,16 @@
   font-size: 0.9rem;
   line-height: 1;
 }
+
+/* Out-of-scope marker — a faint dash for columns a scoped run did not request
+ * (only changed columns are profiled). Quieter than the error icon so it reads
+ * as "intentionally not profiled", not a failure. */
+.schema-distribution-not-profiled {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--schema-color-muted);
+  opacity: 0.5;
+  font-size: 0.8rem;
+  line-height: 1;
+}

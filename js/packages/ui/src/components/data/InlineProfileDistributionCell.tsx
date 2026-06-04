@@ -32,11 +32,12 @@ import {
  * State machine (first match wins):
  *   1. `isLoading`            → pending dot
  *   2. `hasError`             → run-level error glyph
- *   3. no payload             → blank (column has no distribution data)
- *   4. `kind: null`           → per-column failure glyph
- *   5. `kind: "histogram"`    → {@link PairedHistogramContinuous}
- *   6. `kind: "topk"` + ranks → {@link PairedHistogramDiscrete} (ranks mode)
- *   7. `kind: "topk"` + counts→ {@link PairedHistogramDiscrete} (counts mode)
+ *   3. no payload + notProfiled → "not profiled" dash (column outside a scoped run)
+ *   4. no payload             → blank (column has no distribution data)
+ *   5. `kind: null`           → per-column failure glyph
+ *   6. `kind: "histogram"`    → {@link PairedHistogramContinuous}
+ *   7. `kind: "topk"` + ranks → {@link PairedHistogramDiscrete} (ranks mode)
+ *   8. `kind: "topk"` + counts→ {@link PairedHistogramDiscrete} (counts mode)
  */
 
 export interface InlineProfileDistributionCellProps {
@@ -61,6 +62,13 @@ export interface InlineProfileDistributionCellProps {
   isLoading?: boolean;
   /** True when the whole run failed (distinct from a per-column failure). */
   hasError?: boolean;
+  /**
+   * True when this column was outside a scoped run — never requested, so it has
+   * no data by design. Renders a faint dash so the empty cell reads as
+   * "intentionally not profiled" rather than broken. Ignored once a payload,
+   * loading, or error state applies.
+   */
+  notProfiled?: boolean;
   className?: string;
 }
 
@@ -113,6 +121,27 @@ function DistributionErrorIcon({
       data-testid={testId}
     >
       <VscError aria-hidden />
+    </span>
+  );
+}
+
+/**
+ * Out-of-scope marker: this column was not part of a scoped run, so it has no
+ * data by design. A faint dash, quieter than the error icon, so the cell reads
+ * as "intentionally not profiled" rather than a failure. Decorative
+ * (`aria-hidden`): an out-of-scope cell already reads as empty to assistive
+ * tech, and announcing "not profiled" on every unprofiled column would be
+ * noise. The mouse-hover tooltip explains the why for sighted users.
+ */
+function DistributionNotProfiled() {
+  return (
+    <span
+      className="schema-distribution-not-profiled"
+      title="Not profiled — only changed columns are shown"
+      aria-hidden
+      data-testid="inline-distribution-not-profiled"
+    >
+      {"–"}
     </span>
   );
 }
@@ -177,6 +206,7 @@ export function InlineProfileDistributionCell({
   currentTotal = 0,
   isLoading = false,
   hasError = false,
+  notProfiled = false,
   className,
 }: InlineProfileDistributionCellProps) {
   if (isLoading) {
@@ -199,8 +229,10 @@ export function InlineProfileDistributionCell({
     );
   }
 
-  // No payload for this column: render nothing (blank cell), never fake data.
-  if (!payload) return null;
+  // No payload for this column. A column outside a scoped run was never
+  // requested, so show a faint "not profiled" dash; otherwise render nothing
+  // (blank cell), never fake data.
+  if (!payload) return notProfiled ? <DistributionNotProfiled /> : null;
 
   if (payload.kind === null) {
     return (
