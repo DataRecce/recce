@@ -241,9 +241,13 @@ export function PrivateSchemaView(
   );
 
   // DRC-3390: per-model opt-in to profile *every* column rather than just the
-  // changed ones. Ephemeral UI state — resets when navigating to another node
-  // so the perf-friendly changed-columns default is restored each time.
-  const [profileAllColumns, setProfileAllColumns] = useState(false);
+  // changed ones. Keyed by the node id it was enabled for (not a bare boolean +
+  // reset-in-effect) so switching nodes restores the changed-columns default on
+  // the SAME render — the view isn't remounted per node, so a reset effect left
+  // one stale render that fired a spurious all-columns run before it landed.
+  const [profileAllColumnsNodeId, setProfileAllColumnsNodeId] = useState<
+    string | null
+  >(null);
 
   // Use the frozen impacted column set from impact analysis so sidebar
   // highlights stay stable when navigating between models/columns.
@@ -263,10 +267,25 @@ export function PrivateSchemaView(
   }, [current, base]);
   const nodeId = current?.id ?? base?.id;
 
+  // This node's own column names (base ∪ current), used to attribute impacted
+  // ids to this node by exact `<nodeId>_<column>` membership in the scoping
+  // logic rather than fragile prefix-stripping.
+  const nodeColumnNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const name of Object.keys(base?.columns ?? {})) names.add(name);
+    for (const name of Object.keys(current?.columns ?? {})) names.add(name);
+    return names;
+  }, [base, current]);
+
+  // Derived (not stored): the opt-in only applies to the node it was enabled
+  // for, so navigating away clears it within the same render — no stale frame.
+  const profileAllColumns =
+    profileAllColumnsNodeId != null && profileAllColumnsNodeId === nodeId;
+
   // Whole-model change: read the lineage's canonical set directly (the same
   // signal that paints the changed title chip/stripe), exactly as we consult
-  // `impactedColumnIds` above — no bespoke per-view recomputation. With a
-  // whole-model change and no scoped columns we profile every column.
+  // `impactedColumnIds` above — no bespoke per-view recomputation. A whole-model
+  // change profiles every column (the change isn't pinned to specific columns).
   const wholeModelChange =
     lineageViewContext?.wholeModelChangedNodeIds?.has(nodeId ?? "") ?? false;
 
@@ -286,6 +305,7 @@ export function PrivateSchemaView(
         columnChanges,
         impactedColumns,
         nodeId,
+        nodeColumnNames,
         wholeModelChange,
         profileAllColumns,
       }),
@@ -294,6 +314,7 @@ export function PrivateSchemaView(
       columnChanges,
       impactedColumns,
       nodeId,
+      nodeColumnNames,
       wholeModelChange,
       profileAllColumns,
     ],
@@ -307,12 +328,6 @@ export function PrivateSchemaView(
     columns: scopedColumns,
     enabled: profileEnabled,
   });
-
-  // Reset the all-columns opt-in when switching nodes.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset is keyed on nodeId only
-  useEffect(() => {
-    setProfileAllColumns(false);
-  }, [nodeId]);
 
   // Thread distribution data into the grid. "disabled"/"unsupported" render no
   // column (unsupported shows a banner instead); "loading"/"ok"/"error" keep
@@ -517,7 +532,7 @@ export function PrivateSchemaView(
                 size="small"
                 variant="text"
                 onClick={() => {
-                  setProfileAllColumns(true);
+                  setProfileAllColumnsNodeId(nodeId ?? null);
                 }}
                 sx={{
                   textTransform: "none",

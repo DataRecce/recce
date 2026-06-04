@@ -20,8 +20,17 @@ export interface InlineProfileScopeInput {
   columnChanges?: Record<string, ColumnChangeStatus> | null;
   /** Frozen impacted-column ids (`<nodeId>_<column>`) from impact analysis. */
   impactedColumns?: ReadonlySet<string>;
-  /** The node's `unique_id`, used to strip the prefix off `impactedColumns`. */
+  /** The node's `unique_id`, used to build `<nodeId>_<column>` ids. */
   nodeId?: string;
+  /**
+   * This node's own column names (base ∪ current). Impacted ids are attributed
+   * to this node by exact `<nodeId>_<column>` membership against these names —
+   * NOT by prefix-stripping, which mis-fires whenever one node id is a prefix
+   * of another (`model.shop.orders` would otherwise absorb a column of
+   * `model.shop.orders_summary`, since CLL ids are an underscore-joined
+   * `{node_id}_{column_name}` with no unambiguous boundary).
+   */
+  nodeColumnNames?: ReadonlySet<string>;
   /** True when the whole model changed (profile every column). */
   wholeModelChange: boolean;
   /** User opted into profiling every column via the button. */
@@ -62,6 +71,7 @@ export function selectInlineProfileScope({
   columnChanges,
   impactedColumns,
   nodeId,
+  nodeColumnNames,
   wholeModelChange,
   profileAllColumns,
 }: InlineProfileScopeInput): InlineProfileScope {
@@ -75,10 +85,12 @@ export function selectInlineProfileScope({
   }
 
   const names = new Set<string>(Object.keys(columnChanges ?? {}));
-  if (impactedColumns && nodeId) {
-    const prefix = `${nodeId}_`;
-    for (const id of impactedColumns) {
-      if (id.startsWith(prefix)) names.add(id.slice(prefix.length));
+  // Attribute impacted ids to this node by exact `<nodeId>_<column>` membership
+  // over the node's own columns — never by prefix-stripping the global set,
+  // which would mis-attribute a sibling model's columns (DRC-3390 review #1).
+  if (impactedColumns && nodeId && nodeColumnNames) {
+    for (const name of nodeColumnNames) {
+      if (impactedColumns.has(`${nodeId}_${name}`)) names.add(name);
     }
   }
   const changedColumns = [...names];
@@ -86,8 +98,13 @@ export function selectInlineProfileScope({
   // changedColumns is always an array here (feature on), so length 0 == empty.
   const hasChangedScope = changedColumns.length > 0;
 
+  // A whole-model change widens to every column: the change isn't pinned to
+  // specific columns, so any column's *values* may have shifted even when its
+  // definition is untouched, and the changed-column subset would under-cover.
   const scopedColumns =
-    profileAllColumns || !hasChangedScope ? undefined : changedColumns;
+    profileAllColumns || wholeModelChange || !hasChangedScope
+      ? undefined
+      : changedColumns;
 
   const profileEnabled =
     hasChangedScope || wholeModelChange || profileAllColumns;

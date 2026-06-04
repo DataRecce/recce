@@ -294,6 +294,10 @@ export {
   type HistogramDataset,
   type HistogramDataType,
 } from "./components/data/HistogramChart";
+export {
+  InlineProfileDistributionCell,
+  type InlineProfileDistributionCellProps,
+} from "./components/data/InlineProfileDistributionCell";
 /**
  * Paired-histogram cells for inline profile-distribution rendering (DRC-3390).
  *

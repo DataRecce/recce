@@ -143,6 +143,54 @@ describe("InlineProfileDistributionCell", () => {
     expect(titles.some((t) => t.includes("2021"))).toBe(true);
   });
 
+  it("formats TIME histogram edges as HH:MM:SS clock times, not dates", () => {
+    // The backend's epoch() cast emits seconds-since-midnight for TIME, so the
+    // tooltip must read as a clock time — never the bogus "Jan 1, 1970" a
+    // calendar-date formatter would produce (DRC-3390 review note 1).
+    const timeHistogram: ProfileDistributionHistogramPayload = {
+      ...histogram,
+      // 00:00:00, 01:00:00, 02:00:00, ... (whole hours past midnight)
+      base_bin_edges: histogram.base_bin_edges.map((_, i) => i * 3600),
+      current_bin_edges: histogram.current_bin_edges.map((_, i) => i * 3600),
+    };
+    const { container } = render(
+      <InlineProfileDistributionCell
+        payload={timeHistogram}
+        columnType="time"
+      />,
+    );
+    const titles = Array.from(container.querySelectorAll("title")).map(
+      (t) => t.textContent ?? "",
+    );
+    // A clock time appears; the 1970 epoch-date never does.
+    expect(titles.some((t) => /\d{2}:\d{2}:\d{2}/.test(t))).toBe(true);
+    expect(titles.some((t) => t.includes("1970"))).toBe(false);
+  });
+
+  it("still date-formats TIMESTAMP (not treated as time-of-day)", () => {
+    // `timestamp` contains the substring "time" but must NOT be read as a clock
+    // time — its edges are real epoch seconds.
+    const datetimeHistogram: ProfileDistributionHistogramPayload = {
+      ...histogram,
+      base_bin_edges: histogram.base_bin_edges.map(
+        (_, i) => 1609459200 + i * 86400,
+      ),
+      current_bin_edges: histogram.current_bin_edges.map(
+        (_, i) => 1609459200 + i * 86400,
+      ),
+    };
+    const { container } = render(
+      <InlineProfileDistributionCell
+        payload={datetimeHistogram}
+        columnType="timestamp without time zone"
+      />,
+    );
+    const titles = Array.from(container.querySelectorAll("title")).map(
+      (t) => t.textContent ?? "",
+    );
+    expect(titles.some((t) => t.includes("2021"))).toBe(true);
+  });
+
   it("renders an empty frame (no bars) for a degenerate empty topk slot", () => {
     const emptyRanks: ProfileDistributionTopKRanksPayload = {
       kind: "topk",

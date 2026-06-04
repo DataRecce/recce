@@ -188,6 +188,7 @@ export interface ProfileDistributionProps {
 
 export function trackProfileDistribution(props: ProfileDistributionProps) {
   track("[Web] profile_distribution", props);
+  capturePosthog("profile_distribution", props);
 }
 
 interface ShareStateProps {

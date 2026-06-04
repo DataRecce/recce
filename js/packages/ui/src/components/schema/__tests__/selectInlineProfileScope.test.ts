@@ -50,10 +50,11 @@ describe("selectInlineProfileScope", () => {
     expect(scope.profilingAll).toBe(false);
   });
 
-  it("unions own changes with downstream-impacted columns, stripping the node prefix", () => {
+  it("unions own changes with this node's downstream-impacted columns", () => {
     const scope = selectInlineProfileScope({
       ...base,
       columnChanges: { amount: "modified" },
+      nodeColumnNames: new Set(["amount", "total"]),
       impactedColumns: new Set([
         "model.shop.orders_total", // this node, contributes `total`
         "model.shop.orders_amount", // duplicate of the own-change, deduped
@@ -64,13 +65,43 @@ describe("selectInlineProfileScope", () => {
     expect(scope.scopedColumns?.sort()).toEqual(["amount", "total"]);
   });
 
-  it("ignores impacted columns when nodeId is missing (no prefix to strip)", () => {
+  it("does not absorb a sibling model's columns when one node id prefixes another", () => {
+    // `model.shop.orders_summary` is a sibling whose id starts with this
+    // node's id + "_". Its impacted column must NOT be attributed here.
+    const scope = selectInlineProfileScope({
+      ...base,
+      nodeId: "model.shop.orders",
+      columnChanges: { amount: "modified" },
+      nodeColumnNames: new Set(["amount", "total"]), // no `summary_total`
+      impactedColumns: new Set([
+        "model.shop.orders_total", // this node, contributes `total`
+        "model.shop.orders_summary_total", // sibling's column, must be ignored
+      ]),
+    });
+    expect(scope.changedColumns?.sort()).toEqual(["amount", "total"]);
+    expect(scope.scopedColumns?.sort()).toEqual(["amount", "total"]);
+  });
+
+  it("ignores impacted columns when nodeId is missing (cannot attribute)", () => {
     const scope = selectInlineProfileScope({
       ...base,
       nodeId: undefined,
       columnChanges: { amount: "modified" },
+      nodeColumnNames: new Set(["amount", "total"]),
       impactedColumns: new Set(["model.shop.orders_total"]),
     });
+    expect(scope.changedColumns).toEqual(["amount"]);
+  });
+
+  it("ignores impacted columns when the node's column names are unknown", () => {
+    const scope = selectInlineProfileScope({
+      ...base,
+      columnChanges: { amount: "modified" },
+      nodeColumnNames: undefined,
+      impactedColumns: new Set(["model.shop.orders_total"]),
+    });
+    // Without the node's own column list we cannot safely attribute ids, so we
+    // fall back to own changes only rather than risk a bogus column.
     expect(scope.changedColumns).toEqual(["amount"]);
   });
 
@@ -82,7 +113,7 @@ describe("selectInlineProfileScope", () => {
     expect(scope.profilingAll).toBe(false);
   });
 
-  it("profiles every column on a whole-model change (no scoped subset)", () => {
+  it("profiles every column on a whole-model change (no changed subset)", () => {
     const scope = selectInlineProfileScope({
       ...base,
       wholeModelChange: true,
@@ -91,6 +122,21 @@ describe("selectInlineProfileScope", () => {
     expect(scope.scopedColumns).toBeUndefined();
     expect(scope.profileEnabled).toBe(true);
     expect(scope.profilingAll).toBe(true);
+  });
+
+  it("widens to every column on a whole-model change even when columns also changed", () => {
+    // The common case: a breaking SQL edit that also adds/modifies a column.
+    // The change isn't pinned to those columns, so we profile all — the
+    // changed subset must NOT cap the scope.
+    const scope = selectInlineProfileScope({
+      ...base,
+      wholeModelChange: true,
+      columnChanges: { amount: "modified", status: "added" },
+    });
+    expect(scope.changedColumns?.sort()).toEqual(["amount", "status"]);
+    expect(scope.scopedColumns).toBeUndefined(); // all columns, not the subset
+    expect(scope.profileEnabled).toBe(true);
+    expect(scope.profilingAll).toBe(true); // nothing left to expand into
   });
 
   it("widens a scoped run to every column once the user opts into all", () => {

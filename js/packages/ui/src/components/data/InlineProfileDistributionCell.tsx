@@ -42,8 +42,9 @@ export interface InlineProfileDistributionCellProps {
   /** The per-column payload from the run result, or undefined when none. */
   payload?: ProfileDistributionColumnPayload;
   /**
-   * The column's dbt type, used only to decide whether continuous histogram
-   * edges should be formatted as dates (datetime columns emit epoch seconds).
+   * The column's dbt type, used only to format continuous histogram edges:
+   * calendar dates for date/timestamp/datetime (edges are epoch seconds), or
+   * `HH:MM:SS` clock times for `TIME` (edges are seconds-since-midnight).
    */
   columnType?: string;
   /**
@@ -62,15 +63,31 @@ export interface InlineProfileDistributionCellProps {
   className?: string;
 }
 
-/** dbt types whose histogram edges are epoch seconds (see DRC-3504). */
+/**
+ * Calendar-date types whose histogram edges are seconds since the Unix epoch
+ * (see DRC-3504). Bare `TIME` is deliberately excluded — its edges are
+ * seconds-since-midnight, not an epoch, and is handled by `isTimeOfDayType`.
+ */
 function isDatetimeType(type?: string): boolean {
   if (!type) return false;
   const t = type.toLowerCase();
   return (
-    t.includes("timestamp") ||
-    t.includes("datetime") ||
-    t.includes("date") ||
-    t.includes("time")
+    t.includes("timestamp") || t.includes("datetime") || t.includes("date")
+  );
+}
+
+/**
+ * Time-of-day types (`TIME`, `TIME WITH/WITHOUT TIME ZONE`). The backend's
+ * `epoch()` cast emits **seconds-since-midnight** (0–86399) for these, so the
+ * edges must be read as a clock time, not a calendar date — otherwise every
+ * tooltip collapses to "Jan 1, 1970" (DRC-3390 review note 1). Matches `time`
+ * but not `timestamp`/`datetime`, which carry real epoch seconds.
+ */
+function isTimeOfDayType(type?: string): boolean {
+  if (!type) return false;
+  const t = type.toLowerCase();
+  return (
+    t.includes("time") && !t.includes("timestamp") && !t.includes("datetime")
   );
 }
 
@@ -83,6 +100,17 @@ function formatEpochSeconds(sec: number): string {
     month: "short",
     day: "numeric",
   });
+}
+
+/** Format a seconds-since-midnight edge as a `HH:MM:SS` clock time. */
+function formatSecondsOfDay(sec: number): string {
+  if (!Number.isFinite(sec)) return String(sec);
+  const total = Math.floor(sec);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const h = Math.floor(total / 3600) % 24;
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
 }
 
 /**
@@ -205,9 +233,11 @@ export function InlineProfileDistributionCell({
   }
 
   if (payload.kind === "histogram") {
-    const formatValue = isDatetimeType(columnType)
-      ? formatEpochSeconds
-      : undefined;
+    const formatValue = isTimeOfDayType(columnType)
+      ? formatSecondsOfDay
+      : isDatetimeType(columnType)
+        ? formatEpochSeconds
+        : undefined;
     return (
       <PairedHistogramContinuous
         data={toContinuousData(payload)}

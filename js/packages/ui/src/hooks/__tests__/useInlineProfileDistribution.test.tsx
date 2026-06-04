@@ -229,6 +229,69 @@ describe("useInlineProfileDistribution", () => {
     expect(result.current.columns.a).toBeDefined();
   });
 
+  it("drops the prior node's histograms when navigating to a different node", async () => {
+    flagOn();
+    const histogram = {
+      kind: "histogram" as const,
+      base_bin_edges: [0, 1],
+      current_bin_edges: [0, 1],
+      base_density: [1],
+      current_density: [1],
+      base_total: 1,
+      current_total: 1,
+    };
+    const okRun = (runId: string, columns: Record<string, unknown>) => ({
+      run_id: runId,
+      type: "profile_distribution",
+      status: "Finished",
+      result: {
+        status: "ok",
+        strategy: "approx_all",
+        base_total: 1,
+        current_total: 1,
+        columns,
+      },
+    });
+
+    // The first node resolves immediately; the second node's run is held
+    // pending so we can observe the placeholder window during navigation.
+    let resolveNext: (() => void) | undefined;
+    mockSubmit
+      .mockResolvedValueOnce(okRun("r1", { a: histogram }))
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveNext = () => resolve(okRun("r2", { z: histogram }));
+          }),
+      );
+
+    const { result, rerender } = renderHook(
+      (props: { nodeId: string }) =>
+        useInlineProfileDistribution({ model: "orders", nodeId: props.nodeId }),
+      {
+        wrapper: createWrapper(),
+        initialProps: { nodeId: "model.shop.orders" },
+      },
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("ok"));
+    expect(result.current.columns.a).toBeDefined();
+
+    // Navigate to a different node (new query key) whose run is still in
+    // flight. The placeholder is scoped to the same nodeId, so the previous
+    // node's histogram must NOT bleed through — the grid blanks to pending.
+    rerender({ nodeId: "model.shop.customers" });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(true));
+    expect(result.current.columns.a).toBeUndefined();
+
+    // The new node's own column streams in on resolve; the old one never
+    // reappears.
+    resolveNext?.();
+    await waitFor(() => expect(result.current.columns.z).toBeDefined());
+    expect(result.current.columns.a).toBeUndefined();
+  });
+
   it("reports a transport failure to Sentry and surfaces the error state", async () => {
     flagOn();
     const boom = new Error("Request timed out");
