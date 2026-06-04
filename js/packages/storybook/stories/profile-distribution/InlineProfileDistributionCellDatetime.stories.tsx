@@ -5,7 +5,7 @@ import { continuousEventTime, continuousStable } from "./fixtures";
 import { SchemaContainerMock, SchemaRowMock } from "./SchemaRowMock";
 
 /**
- * Continuous tooltip formatting by column type (DRC-3390 review note 1).
+ * Continuous tooltip formatting by column type.
  *
  * The backend wraps datetime columns in an `epoch()` cast before binning, but
  * the numeric edges mean different things per type:

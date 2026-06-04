@@ -1,8 +1,8 @@
 /**
  * @file selectInlineProfileScope.ts
- * @description DRC-3390 Stage C — pure scoping logic for the inline paired
- * distribution in the schema view, extracted from `SchemaView` so the wiring
- * is unit-testable in isolation (no React, no lineage context).
+ * @description Pure scoping logic for the inline paired distribution in the
+ * schema view, extracted from `SchemaView` so the wiring is unit-testable in
+ * isolation (no React, no lineage context).
  *
  * Given the change signals for a node and the user's "Profile all columns"
  * opt-in, it decides which columns to profile and whether to profile at all.
@@ -90,7 +90,7 @@ export function selectInlineProfileScope({
   // Attribute impacted ids to this node by exact `<nodeId>_<column>` membership
   // over the node's own columns (shared with the grid's isImpacted painting) —
   // never by prefix-stripping the global set, which would mis-attribute a
-  // sibling model's columns (DRC-3390 review #1; identity cleanup: DRC-3646).
+  // sibling model's columns.
   if (impactedColumns && nodeId && nodeColumnNames) {
     for (const name of nodeColumnNames) {
       if (isColumnImpacted(nodeId, name, impactedColumns)) names.add(name);
@@ -105,11 +105,11 @@ export function selectInlineProfileScope({
   // specific columns, so any column's *values* may have shifted even when its
   // definition is untouched, and the changed-column subset would under-cover.
   //
-  // COST NOTE (intended for Stage D — DRC-3631): combined with the run firing
-  // on node-open, this means opening a whole-model-changed node profiles ALL
-  // columns with no count cap. Cheap on the DuckDB-only Stage B path; against a
-  // wide warehouse model this is an unbounded scan triggered by navigation. An
-  // adapter-cost guard / column cap is deferred to the Stage D adapter work.
+  // COST NOTE: combined with the run firing on node-open, opening a
+  // whole-model-changed node profiles ALL columns with no count cap. Cheap on
+  // the in-process DuckDB path; against a wide warehouse model this is an
+  // unbounded scan triggered by navigation. A column cap / adapter-cost guard
+  // is deferred to the warehouse-adapter work (tracked separately).
   const scopedColumns =
     profileAllColumns || wholeModelChange || !hasChangedScope
       ? undefined

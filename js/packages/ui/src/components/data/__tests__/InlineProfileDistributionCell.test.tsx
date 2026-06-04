@@ -1,8 +1,8 @@
 /**
  * @file InlineProfileDistributionCell.test.tsx
- * @description Tests for the Stage C schema-grid cell container (DRC-3390).
- * Covers the state machine: loading / error / empty / per-column failure /
- * histogram / topk (ranks + counts).
+ * @description Tests for the schema-grid cell container. Covers the state
+ * machine: loading / error / empty / per-column failure / histogram /
+ * topk (ranks + counts).
  */
 
 import { render } from "@testing-library/react";
@@ -146,7 +146,7 @@ describe("InlineProfileDistributionCell", () => {
   it("formats TIME histogram edges as HH:MM:SS clock times, not dates", () => {
     // The backend's epoch() cast emits seconds-since-midnight for TIME, so the
     // tooltip must read as a clock time — never the bogus "Jan 1, 1970" a
-    // calendar-date formatter would produce (DRC-3390 review note 1).
+    // calendar-date formatter would produce.
     const timeHistogram: ProfileDistributionHistogramPayload = {
       ...histogram,
       // 00:00:00, 01:00:00, 02:00:00, ... (whole hours past midnight)

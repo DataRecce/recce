@@ -1,8 +1,7 @@
 /**
  * @file cllColumnId.test.ts
- * @description The CLL column-id grammar + safe membership (DRC-3390 review #1,
- * DRC-3646). Shared by the schema grid's isImpacted painting and the inline
- * profile-distribution scope.
+ * @description The CLL column-id grammar + safe membership, shared by the
+ * schema grid's isImpacted painting and the inline profile-distribution scope.
  */
 
 import { describe, expect, it } from "vitest";

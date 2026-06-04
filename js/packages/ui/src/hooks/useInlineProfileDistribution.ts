@@ -13,7 +13,7 @@ import { useApiConfig } from "./useApiConfig";
 
 /**
  * @file useInlineProfileDistribution.ts
- * @description DRC-3390 Stage C — fire-and-parse hook for inline paired
+ * @description Fire-and-parse hook for inline paired
  * distributions in the schema view.
  *
  * Gated end-to-end on the `inline_profile` server flag: when the flag is off
@@ -29,7 +29,7 @@ import { useApiConfig } from "./useApiConfig";
  * hand-rolled submit/poll loop. CAVEAT: the OSS fetch client sets no request
  * timeout (`useApiConfig.ts`), so a slow remote-warehouse adapter would hold
  * this request open with no client-side abort — there is NO timeout error or
- * Sentry capture for that case today (tracked in DRC-3629). Transport errors
+ * Sentry capture for that case today (tracked separately). Transport errors
  * that do occur (network failure, non-2xx) surface as the hook's `error` state
  * and a Sentry capture via the queryFn's catch.
  *

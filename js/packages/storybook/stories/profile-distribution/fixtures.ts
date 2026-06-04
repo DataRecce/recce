@@ -28,11 +28,11 @@
 // The top-K (counts) and result types below are deliberately Storybook-LOCAL
 // and DIVERGE from the canonical `run.ts` contract: the fixtures bundle
 // envelope-level `base_total`/`current_total` onto the counts payload for
-// Stage-A display convenience, whereas the wire contract puts those on the
+// display convenience here, whereas the wire contract puts those on the
 // `ProfileDistributionOkResult` envelope and types counts as `(number|null)[]`.
 // Do NOT copy these shapes into production — use the `@datarecce/ui/api` types.
 // (Fully canonicalizing the counts fixtures means moving totals to the envelope
-// across the Stage-A discrete stories; deferred — storybook-only, no prod impact.)
+// across the discrete stories; deferred — storybook-only, no prod impact.)
 
 import type { ProfileDistributionHistogramPayload } from "@datarecce/ui/api";
 
@@ -183,7 +183,7 @@ export const continuousAddedOnly = continuousFromProportions(
  * backend's `epoch()` cast emits for `TIME` (distinct from the Unix-epoch
  * seconds a TIMESTAMP/DATE emits). An activity bump around midday. Used to
  * exercise the `HH:MM:SS` clock-time tooltip path (vs the calendar-date path
- * a TIMESTAMP takes) — see DRC-3390 review note 1.
+ * a TIMESTAMP takes).
  */
 const HOUR = 3600;
 const timeOfDayEdges = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22].map(

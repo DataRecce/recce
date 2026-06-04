@@ -240,8 +240,8 @@ export function PrivateSchemaView(
     new Map(),
   );
 
-  // DRC-3390: per-model opt-in to profile *every* column rather than just the
-  // changed ones. Keyed by the node id it was enabled for (not a bare boolean +
+  // Per-model opt-in to profile *every* column rather than just the changed
+  // ones. Keyed by the node id it was enabled for (not a bare boolean +
   // reset-in-effect) so switching nodes restores the changed-columns default on
   // the SAME render — the view isn't remounted per node, so a reset effect left
   // one stale render that fired a spurious all-columns run before it landed.

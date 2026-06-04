@@ -19,10 +19,10 @@ import {
 
 /**
  * @file InlineProfileDistributionCell.tsx
- * @description DRC-3390 Stage C — the schema-grid cell container that turns a
- * single column's {@link ProfileDistributionColumnPayload} into the right
- * Stage A paired-histogram leaf, and renders the loading / error / empty /
- * per-column-failure states around it.
+ * @description The schema-grid cell container that turns a single column's
+ * {@link ProfileDistributionColumnPayload} into the right paired-histogram
+ * leaf, and renders the loading / error / empty / per-column-failure states
+ * around it.
  *
  * This is the one place the snake_case wire payload is mapped to the
  * camelCase cell props, and the only place that has to know the column's dbt
@@ -50,10 +50,10 @@ export interface InlineProfileDistributionCellProps {
   columnType?: string;
   /**
    * Envelope-level row totals — the denominator for counts-mode proportions.
-   * Unused in ranks mode (the DuckDB Stage B path that ships today), so
-   * optional. NOT speculative: Stage D's full adapters (Snowflake/BigQuery
-   * top-K return value+count pairs) emit counts mode, so this is threaded now
-   * to match the single `run.ts` payload contract rather than retrofitted then.
+   * Unused in ranks mode (the DuckDB path that ships today), so optional. NOT
+   * speculative: full warehouse adapters (Snowflake/BigQuery top-K return
+   * value+count pairs) emit counts mode, so this is threaded now to match the
+   * single `run.ts` payload contract rather than retrofitted later.
    */
   baseTotal?: number;
   currentTotal?: number;
@@ -65,9 +65,9 @@ export interface InlineProfileDistributionCellProps {
 }
 
 /**
- * Calendar-date types whose histogram edges are seconds since the Unix epoch
- * (see DRC-3504). Bare `TIME` is deliberately excluded — its edges are
- * seconds-since-midnight, not an epoch, and is handled by `isTimeOfDayType`.
+ * Calendar-date types whose histogram edges are seconds since the Unix epoch.
+ * Bare `TIME` is deliberately excluded — its edges are seconds-since-midnight,
+ * not an epoch, and is handled by `isTimeOfDayType`.
  */
 function isDatetimeType(type?: string): boolean {
   if (!type) return false;
@@ -81,8 +81,8 @@ function isDatetimeType(type?: string): boolean {
  * Time-of-day types (`TIME`, `TIME WITH/WITHOUT TIME ZONE`). The backend's
  * `epoch()` cast emits **seconds-since-midnight** (0–86399) for these, so the
  * edges must be read as a clock time, not a calendar date — otherwise every
- * tooltip collapses to "Jan 1, 1970" (DRC-3390 review note 1). Matches `time`
- * but not `timestamp`/`datetime`, which carry real epoch seconds.
+ * tooltip collapses to "Jan 1, 1970". Matches `time` but not
+ * `timestamp`/`datetime`, which carry real epoch seconds.
  */
 function isTimeOfDayType(type?: string): boolean {
   if (!type) return false;
@@ -152,12 +152,12 @@ function toDiscreteData(
       trimmed: p.trimmed,
     };
   }
-  // Counts mode. Stage B (DuckDB) only emits ranks, so this branch is inert
-  // today — but it's a known future need, not speculation: Stage D's full
+  // Counts mode. The DuckDB path only emits ranks, so this branch is inert
+  // today — but it's a known future need, not speculation: full warehouse
   // adapters (Snowflake/BigQuery top-K return value+count pairs) emit counts,
-  // and the cell conforms to the whole `run.ts` payload contract now so Stage D
-  // is a backend-only change. A per-slot `null` means the value is absent from
-  // that env's top-K — coerce to 0 so the bar simply doesn't render
+  // and the cell conforms to the whole `run.ts` payload contract now so adding
+  // them is a backend-only change. A per-slot `null` means the value is absent
+  // from that env's top-K — coerce to 0 so the bar simply doesn't render
   // (gap-on-absent), which is exactly the cell's 0-height behavior.
   return {
     mode: "counts",

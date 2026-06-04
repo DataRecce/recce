@@ -1,9 +1,9 @@
 /**
  * @file formatTime.test.ts
  * @description Covers `formatTimeOfDay` — the wall-clock formatter for
- * seconds-since-midnight (DRC-3390 review note 1). Its contract differs from
- * `formatDuration("compact")`: clock times always show two-digit hours, never
- * drop the hours component, and wrap at 24h.
+ * seconds-since-midnight. Its contract differs from `formatDuration("compact")`:
+ * clock times always show two-digit hours, never drop the hours component, and
+ * wrap at 24h.
  */
 
 import { describe, expect, it } from "vitest";
