@@ -18,20 +18,23 @@
  */
 
 // ----------------------------------------------------------------------
-// Inline payload-shape types (frozen Stage B contract; Storybook-only)
+// Payload-shape types (Storybook-only)
 // ----------------------------------------------------------------------
+//
+// Continuous histogram fixtures use the CANONICAL
+// `ProfileDistributionHistogramPayload` from `@datarecce/ui/api` — that's the
+// shape the production cell consumes, so it must not drift.
+//
+// The top-K (counts) and result types below are deliberately Storybook-LOCAL
+// and DIVERGE from the canonical `run.ts` contract: the fixtures bundle
+// envelope-level `base_total`/`current_total` onto the counts payload for
+// Stage-A display convenience, whereas the wire contract puts those on the
+// `ProfileDistributionOkResult` envelope and types counts as `(number|null)[]`.
+// Do NOT copy these shapes into production — use the `@datarecce/ui/api` types.
+// (Fully canonicalizing the counts fixtures means moving totals to the envelope
+// across the Stage-A discrete stories; deferred — storybook-only, no prod impact.)
 
-interface ProfileDistributionHistogramPayload {
-  kind: "histogram";
-  /** Per-env quantile edges — base and current bin on their own edges, so
-   * each side stays constant-area (see PR #1398). They generally differ. */
-  base_bin_edges: number[];
-  current_bin_edges: number[];
-  base_density: number[];
-  current_density: number[];
-  base_total: number;
-  current_total: number;
-}
+import type { ProfileDistributionHistogramPayload } from "@datarecce/ui/api";
 
 interface ProfileDistributionTopKPayload {
   kind: "topk";
