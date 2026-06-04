@@ -20,6 +20,14 @@ export function cllColumnId(nodeId: string, column: string): string {
  * Whether `column` of `nodeId` is in an impacted-column set — exact membership
  * over a column name we already know belongs to the node, never prefix-stripping
  * the global set.
+ *
+ * Caller contract: `column` MUST be a real column of `nodeId`. The helper cannot
+ * disambiguate the underscore boundary on its own — `orders` + `summary_total`
+ * and `orders_summary` + `total` both build `orders_summary_total` — so a query
+ * for a column the node doesn't have can collide with a sibling's. Callers
+ * iterate the node's own columns (the schema grid's merged rows, the profile
+ * scope's `nodeColumnNames`), so this never arises in practice. The lossless
+ * fix is typed identity (DRC-3646).
  */
 export function isColumnImpacted(
   nodeId: string,

@@ -16,10 +16,14 @@ describe("cllColumnId", () => {
   });
 });
 
+// These cover the helper's exact-membership contract. The boundary-collision
+// limitation it documents (a sibling's id can collide) is NOT asserted here on
+// purpose — callers only ever pass columns the node genuinely has, and that
+// end-to-end safety is proven in selectInlineProfileScope.test.ts.
 describe("isColumnImpacted", () => {
   const impacted = new Set([
     "model.shop.orders_amount",
-    "model.shop.orders_summary_total", // a SIBLING model's column
+    "model.shop.orders_summary_total", // belongs to the sibling orders_summary
   ]);
 
   it("is true for a known column whose id is in the set", () => {
@@ -34,22 +38,9 @@ describe("isColumnImpacted", () => {
     );
   });
 
-  it("resolves a column the node genuinely has", () => {
+  it("resolves a column the sibling node genuinely has", () => {
     expect(
       isColumnImpacted("model.shop.orders_summary", "total", impacted),
-    ).toBe(true);
-  });
-
-  it("cannot itself resolve the node/column boundary — that is the caller's job (DRC-3646)", () => {
-    // `orders` + `summary_total` and `orders_summary` + `total` BOTH stringify
-    // to `model.shop.orders_summary_total`, so the helper matches the
-    // pathological pair too. It is safe only because callers ask exclusively
-    // about columns the node actually has — `model.shop.orders` has no
-    // `summary_total` column, so selectInlineProfileScope never makes this
-    // query. The helper does honest exact-membership; it does not (and cannot)
-    // disambiguate the underscore boundary on its own.
-    expect(
-      isColumnImpacted("model.shop.orders", "summary_total", impacted),
     ).toBe(true);
   });
 
