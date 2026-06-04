@@ -26,11 +26,12 @@ import { useApiConfig } from "./useApiConfig";
  * runs the task and returns the completed run in the same response (see
  * `run_api.create_run_handler`). That's plenty for the DuckDB `approx_all`
  * path this ships, and lets the whole thing be one stock `useQuery` with no
- * hand-rolled submit/poll loop. If a slow remote-warehouse adapter ever lands
- * here it may hold the request open long enough to hit the client timeout;
- * those surface as the hook's `error` state AND a Sentry capture (the fetch
- * client wraps `AbortSignal.timeout` as `HttpError` status 0), so we'll see
- * them before deciding whether polling is worth rebuilding.
+ * hand-rolled submit/poll loop. CAVEAT: the OSS fetch client sets no request
+ * timeout (`useApiConfig.ts`), so a slow remote-warehouse adapter would hold
+ * this request open with no client-side abort — there is NO timeout error or
+ * Sentry capture for that case today (tracked in DRC-3629). Transport errors
+ * that do occur (network failure, non-2xx) surface as the hook's `error` state
+ * and a Sentry capture via the queryFn's catch.
  *
  * The run is keyed by `nodeId` so React Query memoizes it across re-renders
  * and remounts (e.g. toggling between schema tabs) — re-opening the same node

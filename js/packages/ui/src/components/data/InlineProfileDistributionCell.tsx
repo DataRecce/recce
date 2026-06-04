@@ -7,7 +7,7 @@ import type {
   ProfileDistributionTopKPayload,
   ProfileDistributionTopKRanksPayload,
 } from "../../api";
-import { formatTimeOfDay } from "../../utils";
+import { formatEpochSeconds, formatTimeOfDay } from "../../utils";
 import {
   PairedHistogramContinuous,
   type PairedHistogramContinuousData,
@@ -90,17 +90,6 @@ function isTimeOfDayType(type?: string): boolean {
   return (
     t.includes("time") && !t.includes("timestamp") && !t.includes("datetime")
   );
-}
-
-/** Format an epoch-seconds edge as a short calendar date for tooltips. */
-function formatEpochSeconds(sec: number): string {
-  const d = new Date(sec * 1000);
-  if (Number.isNaN(d.getTime())) return String(sec);
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
 }
 
 /**

@@ -104,6 +104,12 @@ export function selectInlineProfileScope({
   // A whole-model change widens to every column: the change isn't pinned to
   // specific columns, so any column's *values* may have shifted even when its
   // definition is untouched, and the changed-column subset would under-cover.
+  //
+  // COST NOTE (intended for Stage D — DRC-3631): combined with the run firing
+  // on node-open, this means opening a whole-model-changed node profiles ALL
+  // columns with no count cap. Cheap on the DuckDB-only Stage B path; against a
+  // wide warehouse model this is an unbounded scan triggered by navigation. An
+  // adapter-cost guard / column cap is deferred to the Stage D adapter work.
   const scopedColumns =
     profileAllColumns || wholeModelChange || !hasChangedScope
       ? undefined

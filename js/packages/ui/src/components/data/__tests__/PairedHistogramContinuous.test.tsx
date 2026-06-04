@@ -230,6 +230,40 @@ describe("PairedHistogramContinuous", () => {
     expect(layout.maxDensity).toBe(0);
   });
 
+  it("computeContinuousLayout: renders one-sided for an added column (no base data)", () => {
+    // The backend emits empty base edges/density for a column absent from base.
+    // The cell must still show the current-side distribution, not blank.
+    const addedOnly: PairedHistogramContinuousData = {
+      baseBinEdges: [],
+      baseDensity: [],
+      currentBinEdges: [0, 5, 10],
+      currentDensity: [0.1, 0.1],
+      baseTotal: 0,
+      currentTotal: 100,
+    };
+    const layout = computeContinuousLayout(addedOnly, 140);
+    expect(layout.bins.length).toBeGreaterThan(0);
+    expect(layout.bins.every((b) => b.baseDensity === 0)).toBe(true);
+    expect(layout.bins.some((b) => b.currentDensity > 0)).toBe(true);
+    expect(layout.minVal).toBe(0);
+    expect(layout.maxVal).toBe(10);
+  });
+
+  it("computeContinuousLayout: renders one-sided for a removed column (no current data)", () => {
+    const removedOnly: PairedHistogramContinuousData = {
+      baseBinEdges: [0, 5, 10],
+      baseDensity: [0.1, 0.1],
+      currentBinEdges: [],
+      currentDensity: [],
+      baseTotal: 100,
+      currentTotal: 0,
+    };
+    const layout = computeContinuousLayout(removedOnly, 140);
+    expect(layout.bins.length).toBeGreaterThan(0);
+    expect(layout.bins.every((b) => b.currentDensity === 0)).toBe(true);
+    expect(layout.bins.some((b) => b.baseDensity > 0)).toBe(true);
+  });
+
   it("accepts className prop", () => {
     const { container } = render(
       <PairedHistogramContinuous data={sampleData} className="my-chart" />,

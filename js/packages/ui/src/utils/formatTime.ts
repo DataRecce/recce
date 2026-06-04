@@ -99,9 +99,31 @@ export function formatTimeOfDay(secondsSinceMidnight: number): string {
   if (!Number.isFinite(secondsSinceMidnight)) {
     return String(secondsSinceMidnight);
   }
-  const { hours, minutes, seconds } = getTimeComponents(secondsSinceMidnight);
+  // Normalize into [0, 86400). Approximate-quantile sketches can emit an edge
+  // slightly below the empirical min (a small negative) or at/over 24h; wrap
+  // into a real clock time rather than render "-1:00:-5".
+  const normalized =
+    ((Math.floor(secondsSinceMidnight) % 86400) + 86400) % 86400;
+  const { hours, minutes, seconds } = getTimeComponents(normalized);
   const pad = (n: number) => n.toString().padStart(2, "0");
-  return `${pad(hours % 24)}:${pad(minutes)}:${pad(seconds)}`;
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+}
+
+/**
+ * Format an epoch-seconds value as a short calendar date for tooltips. Sibling
+ * of {@link formatTimeOfDay}: date/timestamp/datetime histogram edges arrive as
+ * Unix epoch seconds (→ calendar date), TIME edges as seconds-since-midnight
+ * (→ clock time). Both edge formatters live here so the datetime-formatting
+ * seam has one home.
+ */
+export function formatEpochSeconds(sec: number): string {
+  const d = new Date(sec * 1000);
+  if (Number.isNaN(d.getTime())) return String(sec);
+  return d.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 // ============================================================================

@@ -158,17 +158,17 @@ export const continuousStable = continuousFromProportions(
 );
 
 /**
- * Added column — base totals 0, all mass on current side. Renders as a
- * solid-blue chart (current dominates every bin). Base still carries valid
- * edges (the warehouse returns them even for an empty side); we reuse
- * current's edges so the merged grid stays clean with no base mass.
+ * Added column — exists in current only, no base. The backend emits EMPTY base
+ * edges/density for the absent side (not zero-density padded edges), so the
+ * cell renders the current side one-sided (gap-on-absent), the same way the
+ * discrete cell handles a value present in only one env.
  */
 const addedCurrentEdges = [
   0, 50, 100, 150, 200, 300, 400, 500, 700, 900, 1200, 1500,
 ];
 export const continuousAddedOnly = continuousFromProportions(
-  addedCurrentEdges,
-  Array(11).fill(0),
+  [],
+  [],
   addedCurrentEdges,
   [0.02, 0.08, 0.2, 0.3, 0.18, 0.1, 0.06, 0.03, 0.02, 0.008, 0.002],
   0,

@@ -31,6 +31,13 @@ describe("formatTimeOfDay", () => {
     expect(formatTimeOfDay(3600.9)).toBe("01:00:00"); // sub-second precision dropped
   });
 
+  it("normalizes slightly-negative sketch noise into a real clock time", () => {
+    // APPROX_PERCENTILE can emit an edge just below the empirical min; wrap it
+    // rather than render "-1:00:-5".
+    expect(formatTimeOfDay(-5)).toBe("23:59:55");
+    expect(formatTimeOfDay(-3600)).toBe("23:00:00");
+  });
+
   it("passes non-finite input through as a string", () => {
     expect(formatTimeOfDay(Number.NaN)).toBe("NaN");
     expect(formatTimeOfDay(Number.POSITIVE_INFINITY)).toBe("Infinity");
