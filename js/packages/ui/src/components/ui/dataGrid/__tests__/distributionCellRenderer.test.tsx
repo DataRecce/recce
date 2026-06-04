@@ -6,7 +6,9 @@
  * the wiring the grid depends on: per-column payload lookup, the
  * `isLoading && !payload` pending logic (the "Profile all columns" widening
  * keeps already-profiled columns on screen while new ones load), the run-level
- * error fan-out, and the `currentType ?? baseType` fallback for removed columns.
+ * pending/error state being confined to the columns the run actually requested
+ * (`scopedColumns`), and the `currentType ?? baseType` fallback for removed
+ * columns.
  */
 
 import { render, screen } from "@testing-library/react";
@@ -119,12 +121,48 @@ describe("createDistributionCellRenderer", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  test("surfaces a run-level error in every column's cell", () => {
+  test("surfaces a run-level error in every column's cell when the run covered all columns", () => {
+    // No scopedColumns => the run profiled every column, so a run-level failure
+    // belongs to all of them.
     const renderer = createDistributionCellRenderer(
       distribution({ payloads: {}, hasError: true }),
     );
     render(<>{renderer(params(row({ name: "amount" })))}</>);
     expect(screen.getByTestId("inline-distribution-error")).toBeInTheDocument();
+  });
+
+  test("shows a run-level error only on columns the scoped run requested", () => {
+    const renderer = createDistributionCellRenderer(
+      distribution({ payloads: {}, hasError: true, scopedColumns: ["amount"] }),
+    );
+    render(<>{renderer(params(row({ name: "amount" })))}</>);
+    expect(screen.getByTestId("inline-distribution-error")).toBeInTheDocument();
+  });
+
+  test("leaves a column blank (no error icon) when it was outside the scoped run", () => {
+    // The run failed, but it only ever requested `amount`; `quantity` was never
+    // part of the run, so it must stay blank rather than look broken.
+    const renderer = createDistributionCellRenderer(
+      distribution({ payloads: {}, hasError: true, scopedColumns: ["amount"] }),
+    );
+    const { container } = render(
+      <>{renderer(params(row({ name: "quantity" })))}</>,
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  test("does not show a pending dot on a column outside the scoped run", () => {
+    const renderer = createDistributionCellRenderer(
+      distribution({
+        payloads: {},
+        isLoading: true,
+        scopedColumns: ["amount"],
+      }),
+    );
+    const { container } = render(
+      <>{renderer(params(row({ name: "quantity" })))}</>,
+    );
+    expect(container).toBeEmptyDOMElement();
   });
 
   test("falls back to baseType for a removed column so datetime edges still format as dates", () => {

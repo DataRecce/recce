@@ -83,6 +83,13 @@ export interface SchemaDistributionData {
   isLoading: boolean;
   /** True when the run failed at the task level (not per-column). */
   hasError: boolean;
+  /**
+   * Column names the run actually requested. `undefined` means every column was
+   * profiled (whole-model change or "Profile all columns"). Columns outside this
+   * set were never part of the run, so the run-level pending/error state must not
+   * bleed onto them — they stay blank.
+   */
+  scopedColumns?: string[];
 }
 
 /**
@@ -94,18 +101,24 @@ export interface SchemaDistributionData {
 export function createDistributionCellRenderer(
   distribution: SchemaDistributionData,
 ): (params: ICellRendererParams<SchemaDiffRow>) => React.ReactNode {
+  // A scoped run only requested a subset of columns; the run-level pending/error
+  // state belongs only to those. `undefined` means the run covered every column.
+  const scoped = distribution.scopedColumns
+    ? new Set(distribution.scopedColumns)
+    : undefined;
   return (params) => {
     const row = params.data;
     if (!row) return null;
     const payload = distribution.payloads[row.name];
+    const inScope = !scoped || scoped.has(row.name);
     return (
       <InlineProfileDistributionCell
         payload={payload}
         columnType={row.currentType ?? row.baseType}
         baseTotal={distribution.baseTotal}
         currentTotal={distribution.currentTotal}
-        isLoading={distribution.isLoading && !payload}
-        hasError={distribution.hasError}
+        isLoading={distribution.isLoading && !payload && inScope}
+        hasError={distribution.hasError && inScope}
       />
     );
   };

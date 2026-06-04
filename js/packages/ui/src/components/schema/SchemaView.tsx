@@ -346,6 +346,7 @@ export function PrivateSchemaView(
       currentTotal: distribution.currentTotal,
       isLoading: distribution.isLoading,
       hasError: distribution.status === "error",
+      scopedColumns,
     };
   }, [
     distribution.status,
@@ -353,6 +354,7 @@ export function PrivateSchemaView(
     distribution.baseTotal,
     distribution.currentTotal,
     distribution.isLoading,
+    scopedColumns,
   ]);
 
   const { columns, rows } = useMemo(() => {
