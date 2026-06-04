@@ -7,6 +7,7 @@ import type {
   ProfileDistributionTopKPayload,
   ProfileDistributionTopKRanksPayload,
 } from "../../api";
+import { formatTimeOfDay } from "../../utils";
 import {
   PairedHistogramContinuous,
   type PairedHistogramContinuousData,
@@ -100,17 +101,6 @@ function formatEpochSeconds(sec: number): string {
     month: "short",
     day: "numeric",
   });
-}
-
-/** Format a seconds-since-midnight edge as a `HH:MM:SS` clock time. */
-function formatSecondsOfDay(sec: number): string {
-  if (!Number.isFinite(sec)) return String(sec);
-  const total = Math.floor(sec);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const h = Math.floor(total / 3600) % 24;
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  return `${pad(h)}:${pad(m)}:${pad(s)}`;
 }
 
 /**
@@ -234,7 +224,7 @@ export function InlineProfileDistributionCell({
 
   if (payload.kind === "histogram") {
     const formatValue = isTimeOfDayType(columnType)
-      ? formatSecondsOfDay
+      ? formatTimeOfDay
       : isDatetimeType(columnType)
         ? formatEpochSeconds
         : undefined;

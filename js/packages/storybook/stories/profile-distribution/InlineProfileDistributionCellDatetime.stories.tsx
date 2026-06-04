@@ -1,6 +1,7 @@
 import { InlineProfileDistributionCell } from "@datarecce/ui/primitives";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
+import { continuousEventTime, continuousStable } from "./fixtures";
 import { SchemaContainerMock, SchemaRowMock } from "./SchemaRowMock";
 
 /**
@@ -26,51 +27,10 @@ const meta: Meta<typeof InlineProfileDistributionCell> = {
 export default meta;
 type Story = StoryObj<typeof InlineProfileDistributionCell>;
 
-const HOUR = 3600;
-
-/** Per-bin proportions → constant-area densities for a fixed-span edge grid. */
-function densitiesFor(edges: number[], proportions: number[]): number[] {
-  return proportions.map((p, i) => {
-    const span = edges[i + 1] - edges[i];
-    return span > 0 ? p / span : 0;
-  });
-}
-
-// TIME column: edges are seconds-since-midnight (every two hours across the
-// day), with an activity bump around midday — the shape `epoch(TIME)` emits.
-const timeEdges = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22].map(
-  (h) => h * HOUR,
-);
-const timeProportions = [
-  0.01, 0.02, 0.04, 0.08, 0.13, 0.19, 0.18, 0.13, 0.1, 0.07, 0.05,
-];
-const currentTimeProportions = [
-  0.02, 0.03, 0.05, 0.09, 0.14, 0.18, 0.16, 0.12, 0.1, 0.07, 0.04,
-];
-const timeOfDayHistogram = {
-  kind: "histogram" as const,
-  base_bin_edges: timeEdges,
-  current_bin_edges: timeEdges,
-  base_density: densitiesFor(timeEdges, timeProportions),
-  current_density: densitiesFor(timeEdges, currentTimeProportions),
-  base_total: 5000,
-  current_total: 5200,
-};
-
-// TIMESTAMP column: edges are Unix-epoch seconds (one day apart from
-// 2021-01-01). `timestamp` contains the substring "time" but must NOT be read
-// as a clock time.
-const tsStart = 1609459200; // 2021-01-01T00:00:00Z
-const tsEdges = Array.from({ length: 12 }, (_, i) => tsStart + i * 86400);
-const timestampHistogram = {
-  kind: "histogram" as const,
-  base_bin_edges: tsEdges,
-  current_bin_edges: tsEdges,
-  base_density: densitiesFor(tsEdges, timeProportions),
-  current_density: densitiesFor(tsEdges, currentTimeProportions),
-  base_total: 5000,
-  current_total: 5200,
-};
+const tooltips = (canvasElement: HTMLElement) =>
+  Array.from(
+    within(canvasElement).getByRole("img").querySelectorAll("title"),
+  ).map((t) => t.textContent ?? "");
 
 export const TimeColumn: Story = {
   name: "TIME — clock-time tooltips",
@@ -84,7 +44,7 @@ export const TimeColumn: Story = {
         status="changed"
         distribution={
           <InlineProfileDistributionCell
-            payload={timeOfDayHistogram}
+            payload={continuousEventTime}
             columnType="time"
           />
         }
@@ -92,9 +52,7 @@ export const TimeColumn: Story = {
     </SchemaContainerMock>
   ),
   play: async ({ canvasElement }) => {
-    const titles = Array.from(
-      within(canvasElement).getByRole("img").querySelectorAll("title"),
-    ).map((t) => t.textContent ?? "");
+    const titles = tooltips(canvasElement);
     // Tooltips read as HH:MM:SS clock times, never the bogus 1970 epoch date.
     await expect(titles.some((t) => /\d{2}:\d{2}:\d{2}/.test(t))).toBe(true);
     await expect(titles.some((t) => t.includes("1970"))).toBe(false);
@@ -113,7 +71,7 @@ export const TimestampColumn: Story = {
         status="changed"
         distribution={
           <InlineProfileDistributionCell
-            payload={timestampHistogram}
+            payload={continuousStable}
             columnType="timestamp without time zone"
           />
         }
@@ -121,11 +79,9 @@ export const TimestampColumn: Story = {
     </SchemaContainerMock>
   ),
   play: async ({ canvasElement }) => {
-    const titles = Array.from(
-      within(canvasElement).getByRole("img").querySelectorAll("title"),
-    ).map((t) => t.textContent ?? "");
-    // A "timestamp" type still date-formats (contains the year), proving it is
+    const titles = tooltips(canvasElement);
+    // A "timestamp" type still date-formats (contains a year), proving it is
     // not mis-classified as a clock time.
-    await expect(titles.some((t) => t.includes("2021"))).toBe(true);
+    await expect(titles.some((t) => /\b20\d{2}\b/.test(t))).toBe(true);
   },
 };

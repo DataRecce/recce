@@ -132,6 +132,7 @@ export { extractSchemas } from "./envUtils";
 export { formatSelectColumns } from "./formatSelect";
 export {
   formatDuration,
+  formatTimeOfDay,
   formatTimestamp,
   formatTimeToNow,
   type TimeFormatStyle,

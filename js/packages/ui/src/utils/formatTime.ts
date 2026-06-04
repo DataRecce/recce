@@ -86,6 +86,24 @@ export function formatDuration(
   return formatVerbose(components);
 }
 
+/**
+ * Format seconds-since-midnight (0–86399) as a zero-padded `HH:MM:SS` wall-clock
+ * time. Distinct from {@link formatDuration}: a clock time always shows two
+ * digit hours and never drops the hours component (`00:05:30`, not `5:30`), and
+ * wraps at 24h. Used for `TIME`-column histogram edges, whose `epoch()` cast
+ * emits seconds-since-midnight rather than Unix-epoch seconds.
+ *
+ * @param secondsSinceMidnight - Seconds elapsed since 00:00:00
+ */
+export function formatTimeOfDay(secondsSinceMidnight: number): string {
+  if (!Number.isFinite(secondsSinceMidnight)) {
+    return String(secondsSinceMidnight);
+  }
+  const { hours, minutes, seconds } = getTimeComponents(secondsSinceMidnight);
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${pad(hours % 24)}:${pad(minutes)}:${pad(seconds)}`;
+}
+
 // ============================================================================
 // ISO Timestamp Utilities
 // ============================================================================
