@@ -264,3 +264,60 @@
 .schema-index-new {
   font-weight: 700;
 }
+
+/* Inline paired-distribution column (DRC-3390 Stage C). Strip ag-grid's
+ * default cell padding + line-height so the fixed-size paired-histogram SVG
+ * fills the cell horizontally and centers vertically. */
+.schema-column-profile-distribution {
+  padding: 0 4px !important;
+  line-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Per-column pending dot shown while the profile_distribution run is in
+ * flight. Small pulsing circle, no synthetic chart (never fake data). */
+.schema-distribution-pending {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--schema-color-muted);
+  animation: schema-distribution-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes schema-distribution-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+/* Per-column failure / run error marker — a muted "failed to read" error
+ * icon, deliberately quiet so a single bad column doesn't shout next to
+ * healthy cells. The icon scales to font-size (react-icons render at 1em). */
+.schema-distribution-error {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--schema-color-muted);
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+/* Out-of-scope marker — a faint dash for columns a scoped run did not request
+ * (only changed columns are profiled). Quieter than the error icon so it reads
+ * as "intentionally not profiled", not a failure. */
+.schema-distribution-not-profiled {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--schema-color-muted);
+  opacity: 0.5;
+  font-size: 0.8rem;
+  line-height: 1;
+}

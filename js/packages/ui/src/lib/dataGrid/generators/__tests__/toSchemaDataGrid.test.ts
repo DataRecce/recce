@@ -314,6 +314,42 @@ describe("toSchemaDataGrid - Row Generation", () => {
 
     expect(rows).toHaveLength(0);
   });
+
+  test("paints isImpacted by exact node-scoped membership (no sibling bleed)", () => {
+    const schemaDiff = mergeColumns(
+      createColumns({ total: "INT", status: "VARCHAR" }),
+      createColumns({ total: "INT", status: "VARCHAR" }),
+    );
+
+    const { rows } = toSchemaDataGrid(schemaDiff, {
+      nodeId: "model.shop.orders",
+      impactedColumns: new Set([
+        "model.shop.orders_total", // this node's column → impacted
+        "model.shop.orders_summary_total", // a SIBLING's column → must not leak
+      ]),
+    });
+
+    const total = rows.find((r) => r.name === "total");
+    const status = rows.find((r) => r.name === "status");
+    // `total` is impacted via its OWN id; `status` is not. The sibling id
+    // (orders_summary's column) marks nothing on this node — the grid tests
+    // membership over its own column names, never prefix-strips the set.
+    expect(total?.isImpacted).toBe(true);
+    expect(status?.isImpacted).toBeFalsy();
+  });
+
+  test("does not paint isImpacted when nodeId is absent", () => {
+    const schemaDiff = mergeColumns(
+      createColumns({ total: "INT" }),
+      createColumns({ total: "INT" }),
+    );
+
+    const { rows } = toSchemaDataGrid(schemaDiff, {
+      impactedColumns: new Set(["model.shop.orders_total"]),
+    });
+
+    expect(rows.find((r) => r.name === "total")?.isImpacted).toBeFalsy();
+  });
 });
 
 // ============================================================================

@@ -31,6 +31,17 @@ export default defineConfig({
         __dirname,
         "../ui/src/contexts/index.ts",
       ),
+      // These three must stay in sync with .storybook/main.ts — preview.tsx
+      // imports @datarecce/ui/theme, so omitting them breaks every story test.
+      "@datarecce/ui/advanced": path.resolve(
+        __dirname,
+        "../ui/src/advanced.ts",
+      ),
+      "@datarecce/ui/api": path.resolve(__dirname, "../ui/src/api.ts"),
+      "@datarecce/ui/theme": path.resolve(
+        __dirname,
+        "../ui/src/theme/index.ts",
+      ),
       "@datarecce/ui": path.resolve(__dirname, "../ui/src/index.ts"),
     },
   },

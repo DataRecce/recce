@@ -248,23 +248,47 @@ export function computeContinuousLayout(
 } {
   const { baseBinEdges, currentBinEdges, baseDensity, currentDensity } = data;
 
-  // Guard: each env must have N+1 edges for N bins. Both must be internally
-  // consistent and non-empty. If either is off, return an empty layout — the
-  // renderer falls back to an empty SVG above.
+  // Guard: each env must have N+1 edges for N bins and be internally
+  // consistent. Blank only when NEITHER side is usable. A one-sided column —
+  // an added column (no base data) or a removed one (no current data) — still
+  // renders the side that has data, mirroring the discrete cell's
+  // gap-on-absent behavior rather than blanking in a way that reads as "failed"
+  // (the backend emits empty edges/density for the absent side).
+  // A side is valid only when its lengths line up AND every value is finite —
+  // a single NaN/Infinity edge from a corrupt payload would otherwise pass the
+  // length check, poison the min/max range, and silently route to the
+  // degenerate uniform-slot fallback (a plausible-looking but meaningless
+  // chart). Treat any non-finite value as malformed and blank the cell.
+  const allFinite = (xs: number[]): boolean => xs.every(Number.isFinite);
   const baseValid =
-    baseDensity.length > 0 && baseBinEdges.length === baseDensity.length + 1;
+    baseDensity.length > 0 &&
+    baseBinEdges.length === baseDensity.length + 1 &&
+    allFinite(baseBinEdges) &&
+    allFinite(baseDensity);
   const currValid =
     currentDensity.length > 0 &&
-    currentBinEdges.length === currentDensity.length + 1;
-  if (!baseValid || !currValid) {
+    currentBinEdges.length === currentDensity.length + 1 &&
+    allFinite(currentBinEdges) &&
+    allFinite(currentDensity);
+  // A side is legitimately "absent" (one-sided column — added/removed) only
+  // when BOTH its arrays are empty. A non-empty side whose edge/density lengths
+  // don't line up is malformed: treat that as corrupt and blank the whole cell
+  // rather than render a half-trusted distribution.
+  const baseMalformed =
+    !baseValid && (baseBinEdges.length > 0 || baseDensity.length > 0);
+  const currMalformed =
+    !currValid && (currentBinEdges.length > 0 || currentDensity.length > 0);
+  if (baseMalformed || currMalformed || (!baseValid && !currValid)) {
     return { bins: [], maxDensity: 0, minVal: 0, maxVal: 0 };
   }
 
-  const minVal = Math.min(baseBinEdges[0], currentBinEdges[0]);
-  const maxVal = Math.max(
-    baseBinEdges[baseBinEdges.length - 1],
-    currentBinEdges[currentBinEdges.length - 1],
-  );
+  // Range + merged edge grid come only from the valid side(s).
+  const validEdges = [
+    ...(baseValid ? baseBinEdges : []),
+    ...(currValid ? currentBinEdges : []),
+  ];
+  const minVal = Math.min(...validEdges);
+  const maxVal = Math.max(...validEdges);
   const totalSpan = maxVal - minVal;
 
   const bins: ContinuousSegment[] = [];
@@ -288,9 +312,7 @@ export function computeContinuousLayout(
   } else {
     // Merge both edge sets into one ascending, de-duplicated breakpoint
     // array, then emit a segment between each consecutive pair.
-    const merged = Array.from(
-      new Set([...baseBinEdges, ...currentBinEdges]),
-    ).sort((a, b) => a - b);
+    const merged = Array.from(new Set(validEdges)).sort((a, b) => a - b);
     for (let i = 0; i < merged.length - 1; i += 1) {
       const lo = merged[i];
       const hi = merged[i + 1];
@@ -299,8 +321,10 @@ export function computeContinuousLayout(
       bins.push({
         x: ((lo - minVal) / totalSpan) * width,
         width: ((hi - lo) / totalSpan) * width,
-        baseDensity: densityAt(baseBinEdges, baseDensity, mid),
-        currentDensity: densityAt(currentBinEdges, currentDensity, mid),
+        baseDensity: baseValid ? densityAt(baseBinEdges, baseDensity, mid) : 0,
+        currentDensity: currValid
+          ? densityAt(currentBinEdges, currentDensity, mid)
+          : 0,
         lo,
         hi,
       });
