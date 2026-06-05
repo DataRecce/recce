@@ -35,6 +35,7 @@
 // across the discrete stories; deferred — storybook-only, no prod impact.)
 
 import type { ProfileDistributionHistogramPayload } from "@datarecce/ui/api";
+import type { PairedHistogramContinuousData } from "@datarecce/ui/primitives";
 
 interface ProfileDistributionTopKPayload {
   kind: "topk";
@@ -493,7 +494,13 @@ export const mixedTaskResult: ProfileDistributionResult = {
 // shape conversion, so the same five-line copy appeared a dozen times.
 // These adapters centralize it.
 
-export function toContinuousProps(p: ProfileDistributionHistogramPayload) {
+// Typed return so this mapper can't silently drift from the component's prop
+// shape — if `PairedHistogramContinuousData` gains/changes a field, TS flags
+// this here (and the production `toContinuousData` equivalent) rather than
+// letting the story pass a stale shape.
+export function toContinuousProps(
+  p: ProfileDistributionHistogramPayload,
+): PairedHistogramContinuousData {
   return {
     baseBinEdges: p.base_bin_edges,
     currentBinEdges: p.current_bin_edges,
