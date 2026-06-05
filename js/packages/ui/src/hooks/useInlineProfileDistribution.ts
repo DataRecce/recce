@@ -8,7 +8,7 @@ import {
   submitProfileDistribution,
 } from "../api";
 import { useRecceServerFlag } from "../contexts";
-import { trackProfileDistribution } from "../lib/api/track";
+import { EXPLORE_SOURCE, trackProfileDistribution } from "../lib/api/track";
 import { isHttpError } from "../lib/fetchClient";
 import { useApiConfig } from "./useApiConfig";
 
@@ -162,7 +162,7 @@ export function useInlineProfileDistribution(
         // in one response. One request, one resolved result — no poll loop.
         const resolved = (await submitProfileDistribution(
           { model: model as string, columns },
-          { trackProps: { source: "schema_view" } },
+          { trackProps: { source: EXPLORE_SOURCE.SCHEMA_VIEW } },
           apiClient,
         )) as Run;
         emitTiming(resolved, elapsedMs(start));

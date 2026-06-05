@@ -31,7 +31,8 @@ vi.mock("../../api", () => ({
   submitProfileDistribution: (...args: unknown[]) => mockSubmit(...args),
 }));
 
-vi.mock("../../lib/api/track", () => ({
+vi.mock("../../lib/api/track", async (importActual) => ({
+  ...(await importActual<typeof import("../../lib/api/track")>()),
   trackProfileDistribution: (...args: unknown[]) => mockTrack(...args),
 }));
 
