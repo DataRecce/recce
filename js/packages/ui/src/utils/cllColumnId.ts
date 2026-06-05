@@ -1,6 +1,9 @@
 /**
  * @file cllColumnId.ts
- * @description The one place the CLL column-id grammar is encoded.
+ * @description Canonical constructor + membership test for the CLL column-id
+ * grammar. New code should build and test ids through here rather than
+ * hand-rolling the string; some older lineage call sites still construct it
+ * inline (e.g. `components/lineage/lineage.ts`).
  *
  * Column-level-lineage ids are `{node_id}_{column_name}` (mirrors the backend's
  * `recce/util/lineage.py`). Because both halves can contain underscores and one
