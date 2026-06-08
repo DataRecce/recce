@@ -11,14 +11,29 @@ import {
   type LineageGraphNodes,
 } from "../../contexts/lineage/types";
 
+/** The run types whose result is bound to a specific model node. */
+type NodeBoundRun = Run & {
+  type:
+    | "top_k_diff"
+    | "profile_diff"
+    | "histogram_diff"
+    | "value_diff"
+    | "value_diff_detail";
+};
+
 /**
  * A run result whose content is bound to a specific model node. Profile /
  * value / top-k / histogram / value-detail diffs render inside that model's
  * NodeView, so they only make sense while the model is part of the rendered
  * lineage. (row_count / query / query_diff results are NOT node-bound — they
  * render in their own pane regardless of the visible nodes.)
+ *
+ * Typed as a type guard so callers narrow `run` to `NodeBoundRun` and can read
+ * `run.params?.model` without casting away the discriminated-union typing.
  */
-export function isNodeBoundRunResult(run: Run | undefined): boolean {
+export function isNodeBoundRunResult(
+  run: Run | undefined,
+): run is NodeBoundRun {
   return (
     !!run &&
     (isTopKDiffRun(run) ||
@@ -41,10 +56,8 @@ export function shouldCloseOrphanedRunResult(
   if (!isNodeBoundRunResult(run)) {
     return false;
   }
-  // `run` is a node-bound run (checked above) whose params carry a `model`. The
-  // Run union as a whole doesn't expose `model` (query runs lack it), so read it
-  // through a narrow shape rather than fighting the union type.
-  const model = (run?.params as { model?: string } | undefined)?.model;
+  // `run` is now narrowed to a node-bound run, whose params carry `model`.
+  const model = run.params?.model;
   if (!model) {
     return false;
   }
