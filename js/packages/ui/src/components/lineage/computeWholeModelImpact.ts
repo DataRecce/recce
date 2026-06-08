@@ -20,7 +20,7 @@ export interface WholeModelImpactSets {
 /**
  * BFS the lineage graph downstream from every node whose CLL
  * `change_category === "breaking"`. Cheap — runs only when the
- * `whole_model_impact` server flag is on.
+ * `new_cll_experience` server flag is on.
  */
 export function computeWholeModelImpact(
   lineageGraph: LineageGraph,
