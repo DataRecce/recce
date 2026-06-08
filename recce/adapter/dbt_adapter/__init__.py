@@ -58,11 +58,13 @@ from recce.adapter.base import BaseAdapter
 from recce.state import ArtifactsRoot
 
 from ...models import RunType
+from ...models.lineage import build_merged_lineage
 from ...models.types import (
     CllColumn,
     CllData,
     CllNode,
     LineageDiff,
+    MergedLineage,
     NodeChange,
     NodeDiff,
 )
@@ -726,6 +728,21 @@ class DbtAdapter(BaseAdapter):
             )
         )
         return self._get_lineage_diff_cached(cache_key)
+
+    def get_merged_lineage(self) -> MergedLineage:
+        cache_key = hash(
+            (
+                id(self.base_manifest),
+                id(self.base_catalog),
+                id(self.curr_manifest),
+                id(self.curr_catalog),
+            )
+        )
+        return self._get_merged_lineage_cached(cache_key)
+
+    @lru_cache(maxsize=1)
+    def _get_merged_lineage_cached(self, cache_key) -> MergedLineage:
+        return build_merged_lineage(self.get_lineage_diff())
 
     @lru_cache(maxsize=2)
     def get_lineage_cached(self, base: Optional[bool] = False, cache_key=0):
@@ -1996,6 +2013,7 @@ class DbtAdapter(BaseAdapter):
 
         # Any artifact change invalidates change analysis and full map
         self.get_change_analysis_cached.cache_clear()
+        self._get_merged_lineage_cached.cache_clear()
         self._full_cll_map = None
 
     def create_relation(self, model, base=False):

@@ -47,7 +47,6 @@ from .core import RecceContext, default_context, load_context
 from .event import get_recce_api_token, log_api_event, log_single_env_event
 from .exceptions import RecceException
 from .github import is_github_codespace
-from .models.lineage import build_merged_lineage
 from .models.types import CllData
 from .models.websocket import CloudUserContextMessage
 from .run import load_preset_checks
@@ -593,8 +592,7 @@ async def get_info():
         filename = None
 
     state_metadata = context.state_loader.state.metadata if context.state_loader.state else None
-    lineage_diff = context.get_lineage_diff()
-    merged_lineage = build_merged_lineage(lineage_diff)
+    merged_lineage = context.get_merged_lineage()
 
     try:
         info = {
