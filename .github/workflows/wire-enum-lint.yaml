@@ -5,6 +5,11 @@
 # inline allowlist marker `// wire-enum-ok` to an intentional legacy literal.
 name: Wire-Enum Lint
 
+# Minimal token scope: this workflow only checks out code and runs a read-only
+# diff script. Satisfies CodeQL "Workflow does not contain permissions".
+permissions:
+  contents: read
+
 on:
   pull_request:
     branches:
