@@ -1,0 +1,25 @@
+# DRC-3553: dual-vocabulary aliasing window guard.
+# Fails a PR that ADDS new legacy change-category wire-enum string literals
+# ("breaking" / "non_breaking" / "partial_breaking") under js/packages/ui/src/.
+# Use the v2 vocabulary (model_wide / column / additive) instead, or append the
+# inline allowlist marker `// wire-enum-ok` to an intentional legacy literal.
+name: Wire-Enum Lint
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "js/packages/ui/src/**"
+
+jobs:
+  wire-enum-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for new legacy change-category wire-enum literals
+        run: |
+          bash scripts/check_wire_enum_literals.sh "origin/${{ github.base_ref }}"
