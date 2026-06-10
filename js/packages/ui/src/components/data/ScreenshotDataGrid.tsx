@@ -166,11 +166,16 @@ function _ScreenshotDataGrid<TData = DataGridRow>(
   const gridApiRef = useRef<GridReadyEvent["api"] | null>(null);
 
   // Expose both API and DOM element through ref
+  // Use getters to ensure handle always returns the current (live) api, not a stale snapshot
   useImperativeHandle(
     ref,
     () => ({
-      api: gridApiRef.current,
-      element: containerRef.current,
+      get api() {
+        return gridApiRef.current;
+      },
+      get element() {
+        return containerRef.current;
+      },
     }),
     [],
   );
