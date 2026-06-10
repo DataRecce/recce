@@ -205,7 +205,7 @@ function _ScreenshotDataGrid<TData = DataGridRow>(
     return () => renderers.noRowsFallback;
   }, [renderers?.noRowsFallback]);
 
-  // Generate row ID from __rowKey if available
+  // Generate row ID from __rowKey, _index, or rowIndex if available
   const resolvedGetRowId = useMemo(() => {
     if (getRowId) return getRowId;
     return (params: GetRowIdParams<TData>) => {
@@ -213,9 +213,16 @@ function _ScreenshotDataGrid<TData = DataGridRow>(
       if (data?.__rowKey !== undefined) {
         return String(data.__rowKey);
       }
+      // Check for _index (from query result rows)
+      const indexField = (params.data as unknown as { _index?: number })
+        ?._index;
+      if (indexField !== undefined) {
+        return String(indexField);
+      }
       // Use rowIndex from the data or generate a random ID
-      const index = (params.data as unknown as { rowIndex?: number })?.rowIndex;
-      return String(index ?? Math.random());
+      const rowIndexField = (params.data as unknown as { rowIndex?: number })
+        ?.rowIndex;
+      return String(rowIndexField ?? Math.random());
     };
   }, [getRowId]);
 

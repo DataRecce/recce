@@ -53,4 +53,13 @@ describe("ScreenshotDataGrid grid options", () => {
     const props = agGridProps.mock.calls.at(-1)?.[0];
     expect(props.enableCellTextSelection).toBe(false);
   });
+
+  it("uses _index for stable row IDs in query results", () => {
+    render(<ScreenshotDataGrid columnDefs={[]} rowData={[]} />);
+    const props = agGridProps.mock.calls[0][0];
+    const getRowId = props.getRowId as (params: {
+      data: Record<string, unknown>;
+    }) => string;
+    expect(getRowId({ data: { _index: 42 } })).toBe("42");
+  });
 });
