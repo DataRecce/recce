@@ -205,17 +205,27 @@ function _ScreenshotDataGrid<TData = DataGridRow>(
     return () => renderers.noRowsFallback;
   }, [renderers?.noRowsFallback]);
 
-  // Generate row ID from __rowKey if available
+  // Generate row ID from __rowKey, _index, or rowIndex if available
   const resolvedGetRowId = useMemo(() => {
     if (getRowId) return getRowId;
     return (params: GetRowIdParams<TData>) => {
-      const data = params.data as DataGridRow;
+      const data = params.data as DataGridRow & {
+        _index?: number;
+        rowIndex?: number;
+      };
       if (data?.__rowKey !== undefined) {
         return String(data.__rowKey);
       }
-      // Use rowIndex from the data or generate a random ID
-      const index = (params.data as unknown as { rowIndex?: number })?.rowIndex;
-      return String(index ?? Math.random());
+      // Use _index (stable id for query results from dataFrameToRowObjects)
+      if (data?._index !== undefined) {
+        return String(data._index);
+      }
+      // Fall back to rowIndex from the data
+      if (data?.rowIndex !== undefined) {
+        return String(data.rowIndex);
+      }
+      // Last resort: generate a random ID
+      return String(Math.random());
     };
   }, [getRowId]);
 
