@@ -692,9 +692,12 @@ async def column_level_lineage_by_node(cll_input: CllIn, request: Request):
 
     # DRC-3553: opt-in v2 vocabulary. Default path keeps the legacy wire values
     # and the CllOutput response_model contract; only when Accept-Vocabulary: v2
-    # is set do we serialize manually and remap change_category to v2.
+    # is set do we serialize manually and remap change_category to v2. The
+    # manual model_dump() deliberately matches the default response_model
+    # serialization (no exclude_none) so the only difference between the two
+    # modes is the change_category labels.
     if wants_v2_vocabulary(request.headers):
-        payload = CllOutput(current=cll).model_dump(exclude_none=True)
+        payload = CllOutput(current=cll).model_dump()
         _maybe_v2_cll(payload["current"], request)
         return JSONResponse(content=jsonable_encoder(payload))
 

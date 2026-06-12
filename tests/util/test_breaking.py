@@ -1675,7 +1675,7 @@ class TestChangeCategoryVocabularyAliasing(unittest.TestCase):
     which is what these tests exercise.
     """
 
-    def test_parse_change_category_accepts_both_vocabularies(self):
+    def test_normalize_change_category_accepts_both_vocabularies(self):
         from recce.util.change_classifier import normalize_change_category
 
         # Each legacy label and its v2 alias normalize to the same canonical
@@ -1719,6 +1719,38 @@ class TestChangeCategoryVocabularyAliasing(unittest.TestCase):
         # Forward-compat: a label from a future vocabulary is returned unchanged
         # rather than hard-failing.
         self.assertEqual(normalize_change_category("some_future_label"), "some_future_label")
+
+    def test_wants_v2_vocabulary_header_detection(self):
+        from recce.util.change_classifier import wants_v2_vocabulary
+
+        self.assertFalse(wants_v2_vocabulary(None))
+        self.assertFalse(wants_v2_vocabulary({}))
+        self.assertTrue(wants_v2_vocabulary({"accept-vocabulary": "v2"}))
+        # Value matching is whitespace/case tolerant.
+        self.assertTrue(wants_v2_vocabulary({"accept-vocabulary": " V2 "}))
+        self.assertFalse(wants_v2_vocabulary({"accept-vocabulary": "v1"}))
+        self.assertFalse(wants_v2_vocabulary({"accept-vocabulary": ""}))
+
+    def test_translate_merged_lineage_to_v2(self):
+        from recce.util.change_classifier import translate_merged_lineage_to_v2
+
+        lineage = {
+            "nodes": {
+                "model.a": {"change_status": "modified", "change": {"category": "breaking"}},
+                "model.b": {"change_status": "added"},  # no change dict
+                "model.c": "not-a-dict",  # defensive: skipped, not raised on
+            },
+            "edges": [],
+        }
+        out = translate_merged_lineage_to_v2(lineage)
+        # In-place translation; same dict returned for convenience.
+        self.assertIs(out, lineage)
+        self.assertEqual(out["nodes"]["model.a"]["change"]["category"], "model_wide")
+        # change_status is a separate vocabulary and is left untouched.
+        self.assertEqual(out["nodes"]["model.a"]["change_status"], "modified")
+        self.assertNotIn("change", out["nodes"]["model.b"])
+        # Non-dict input passes through unchanged.
+        self.assertEqual(translate_merged_lineage_to_v2(["x"]), ["x"])
 
     def test_node_change_model_accepts_v2_input(self):
         from recce.models.types import NodeChange

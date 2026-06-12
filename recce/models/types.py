@@ -180,9 +180,12 @@ def normalize_change_category(value: str) -> str:
     Returns the legacy wire value so that, e.g.,
     ``normalize_change_category("breaking") == normalize_change_category("model_wide")``.
 
-    Unknown/unrecognized labels are returned unchanged so callers can decide
-    how strictly to validate (forward-compat: don't hard-fail on a label a
-    future vocabulary introduces).
+    Unknown/unrecognized labels are returned unchanged so DIRECT callers
+    (dict-level translators, parsers) can decide how strictly to validate
+    without hard-failing on a label a future vocabulary introduces. Note this
+    passthrough does NOT make Pydantic model boundaries forward-compatible:
+    fields typed as the ``ChangeCategory`` Literal (e.g. ``NodeChange.category``)
+    still reject unrecognized labels after normalization.
     """
     if value in CHANGE_CATEGORY_ALIASES:
         # Already a legacy value.
