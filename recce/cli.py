@@ -1221,7 +1221,7 @@ def diff(
 @click.option(
     "--inline-profile",
     is_flag=True,
-    help="Enable inline paired-distribution profiles in the schema view (DRC-3390).",
+    help="Enable inline paired-distribution profiles in the schema view. Implies --new-cll-experience.",
     envvar="RECCE_INLINE_PROFILE",
 )
 @click.option(
@@ -1369,6 +1369,7 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
 
     if kwargs.get("inline_profile", False):
         flag["inline_profile"] = True
+        flag["new_cll_experience"] = True
 
     # Create state loader using shared function
     from recce.util.startup_perf import get_startup_tracker

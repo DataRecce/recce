@@ -2,7 +2,8 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Callable, Literal, Optional, Set
 
-from recce.models.types import LineageDiff, NodeDiff
+from recce.models.lineage import build_merged_lineage
+from recce.models.types import LineageDiff, MergedLineage, NodeDiff
 from recce.state import ArtifactsRoot
 
 # from dbt.contracts.graph.nodes import ManifestNode
@@ -47,6 +48,17 @@ class BaseAdapter(ABC):
             current=current,
             diff=diff,
         )
+
+    def get_merged_lineage(self) -> MergedLineage:
+        """Return the wire-format merged lineage served by ``/api/info``.
+
+        Default implementation merges on every call. Adapters whose lineage
+        inputs are immutable between artifact refreshes (e.g. ``DbtAdapter``)
+        should override this with a cache keyed on artifact identity so the
+        O(nodes + edges) merge + Pydantic construction is not repeated on
+        every poll of ``/api/info`` (DRC-3326).
+        """
+        return build_merged_lineage(self.get_lineage_diff())
 
     @abstractmethod
     def select_nodes(

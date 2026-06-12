@@ -294,6 +294,10 @@ export {
   type HistogramDataset,
   type HistogramDataType,
 } from "./components/data/HistogramChart";
+export {
+  InlineProfileDistributionCell,
+  type InlineProfileDistributionCellProps,
+} from "./components/data/InlineProfileDistributionCell";
 /**
  * Paired-histogram cells for inline profile-distribution rendering (DRC-3390).
  *
@@ -302,8 +306,7 @@ export {
  * bar chart for continuous columns. `PairedHistogramDiscrete` renders a
  * top-K paired bar chart with gap-on-absent semantics for categorical
  * columns. `ProfileDistributionUnsupportedBanner` surfaces the once-per-task
- * "adapter doesn't support this feature" envelope. The schema-row
- * `InlineProfileDistributionCell` integration ships in Stage C.
+ * "adapter doesn't support this feature" envelope.
  */
 export {
   PairedHistogramContinuous,

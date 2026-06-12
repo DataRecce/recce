@@ -367,6 +367,29 @@ describe("dual-emit — non-onboarding wrappers", () => {
       event_source: EVENT_SOURCE,
     });
   });
+
+  test("trackProfileDistribution emits profile_distribution + event_source", async () => {
+    const mod = await importInitialized();
+    mockAmplitudeTrack.mockClear();
+    const props = {
+      status: "ok",
+      strategy: "approx_all",
+      total_wall_ms: 1234,
+      column_count: 7,
+      error_count: 0,
+      cache_hit: false,
+    } as const;
+    mod.trackProfileDistribution(props);
+
+    // Amplitude path still fires
+    expect(mockAmplitudeTrack).toHaveBeenCalledTimes(1);
+    // PostHog dual-emit with the flat name + exact props
+    expect(mockPosthogCapture).toHaveBeenCalledTimes(1);
+    expect(mockPosthogCapture).toHaveBeenCalledWith("profile_distribution", {
+      ...props,
+      event_source: EVENT_SOURCE,
+    });
+  });
 });
 
 // ============================================================================
