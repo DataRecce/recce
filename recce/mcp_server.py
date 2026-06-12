@@ -21,13 +21,16 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
+# DRC-3634: submit_run is the run-persistence entry point shared with the
+# recce server's run_router.  Local-mode ad-hoc diff tools import it to
+# persist Runs to the in-process RecceContext so the state exported to S3
+# at MCP-server shutdown carries the analysis runs.
+from recce.apis.run_func import submit_run as _submit_run_fn  # noqa: E402
 from recce.core import RecceContext, load_context
 from recce.exceptions import RecceException
 from recce.server import RecceServerMode
 from recce.tasks.dataframe import DataFrame
 from recce.tasks.histogram import HistogramDiffTask
-from recce.tasks.profile import ProfileDiffTask
-from recce.tasks.query import QueryDiffTask, QueryTask
 from recce.tasks.rowcount import (
     PERMISSION_DENIED_INDICATORS,
     SYNTAX_ERROR_INDICATORS,
@@ -35,7 +38,7 @@ from recce.tasks.rowcount import (
     RowCountDiffTask,
 )
 from recce.tasks.top_k import TopKDiffTask
-from recce.tasks.valuediff import ValueDiffDetailTask, ValueDiffTask
+from recce.tasks.valuediff import ValueDiffDetailTask
 from recce.util.recce_cloud import RECCE_CLOUD_API_HOST, RecceCloudException
 
 logger = logging.getLogger(__name__)
@@ -567,6 +570,58 @@ class RecceMCPServer:
         if self.single_env:
             return {**result, "_warning": SINGLE_ENV_WARNING}
         return result
+
+    async def _tool_run_backed_local(self, run_type: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute a run-backed diff tool in local mode (DRC-3634).
+
+        When an in-process ``RecceContext`` is available as ``default_context()``,
+        this method mirrors CloudBackend._tool_run_backed (commit 98670f9e): it
+        uses the same ``submit_run`` machinery as the recce server's run_router
+        so that the Run is persisted to ``default_context().runs`` and therefore
+        included in the S3-exported state the infra comment-builder reads.  The
+        returned dict carries ``run_id`` alongside the diff result.
+
+        When ``default_context()`` is None (e.g. the cloud-backend SSE path that
+        routes through the ``CloudBackend`` class instead), this method falls back
+        to a plain in-executor task execution and returns the result without a
+        ``run_id`` — identical to the pre-DRC-3634 behaviour.
+
+        The Run executes **once** via ``submit_run``'s thread-pool executor —
+        there is no double execution.
+        """
+        from recce.core import default_context
+
+        if default_context() is None:
+            # Fallback path: no in-process context, execute task directly.
+            from recce.apis.run_func import create_task
+            from recce.models.types import RunType
+
+            try:
+                run_type_enum = RunType(run_type)
+                task = create_task(run_type_enum, params)
+            except (ValueError, NotImplementedError):
+                raise ValueError(f"Run type '{run_type}' not supported in local mode")
+            raw_result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
+            if hasattr(raw_result, "model_dump"):
+                return raw_result.model_dump(mode="json")
+            return raw_result if isinstance(raw_result, dict) else {}
+
+        run, future = _submit_run_fn(run_type, params, triggered_by="recce_ai")
+        # Await the executor future so run.result is populated before we return.
+        await asyncio.wrap_future(future)
+        # Normalise run.result to a plain dict (tasks may return Pydantic models).
+        raw_result = run.result
+        if raw_result is None:
+            result: Dict[str, Any] = {}
+        elif isinstance(raw_result, dict):
+            result = raw_result
+        elif hasattr(raw_result, "model_dump"):
+            result = raw_result.model_dump(mode="json")
+        else:
+            result = {}
+        # Surface run_id alongside the result — matching CloudBackend shape:
+        # ``result = {**result, "run_id": str(run_id)}`` (commit 98670f9e).
+        return {**result, "run_id": str(run.run_id)}
 
     def _setup_handlers(self):
         """Register all tool handlers"""
@@ -1606,60 +1661,42 @@ class RecceMCPServer:
 
     async def _tool_row_count_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute row count diff task"""
-        task = RowCountDiffTask(params=arguments)
-
-        # Offload sync task to thread pool to avoid blocking the event loop
-        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
-
+        # DRC-3634: route through _tool_run_backed_local so the Run is persisted
+        # to the in-process context and the result carries run_id.
+        result = await self._tool_run_backed_local("row_count_diff", arguments)
         return self._maybe_add_single_env_warning(result)
 
     async def _tool_query(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a query"""
-        sql_template = arguments.get("sql_template")
+        # DRC-3634: route through _tool_run_backed_local so the Run is persisted
+        # to the in-process context and the result carries run_id.
+        # Map the `base` flag to the run_type used by the server run_router:
+        # QueryTask (is_base=False) → "query"; QueryBaseTask (is_base=True) → "query_base".
         is_base = arguments.get("base", False)
-
-        params = {"sql_template": sql_template}
-        task = QueryTask(params=params)
-        task.is_base = is_base
-
-        # Execute task
-        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
-
-        # Convert to dict if it's a model
-        if hasattr(result, "model_dump"):
-            return result.model_dump(mode="json")
-        return result
+        run_type = "query_base" if is_base else "query"
+        # params for QueryTask / QueryBaseTask accept {"sql_template": ...} only.
+        params = {"sql_template": arguments.get("sql_template")}
+        return await self._tool_run_backed_local(run_type, params)
 
     async def _tool_query_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute query diff task"""
-        task = QueryDiffTask(params=arguments)
-
-        # Execute task
-        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
-
-        # Convert to dict if it's a model
-        if hasattr(result, "model_dump"):
-            result = result.model_dump(mode="json")
+        # DRC-3634: route through _tool_run_backed_local so the Run is persisted
+        # to the in-process context and the result carries run_id.
+        result = await self._tool_run_backed_local("query_diff", arguments)
         return self._maybe_add_single_env_warning(result)
 
     async def _tool_profile_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute profile diff task"""
-        task = ProfileDiffTask(params=arguments)
-
-        # Execute task
-        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
-
-        # Convert to dict if it's a model
-        if hasattr(result, "model_dump"):
-            result = result.model_dump(mode="json")
+        # DRC-3634: route through _tool_run_backed_local so the Run is persisted
+        # to the in-process context and the result carries run_id.
+        result = await self._tool_run_backed_local("profile_diff", arguments)
         return self._maybe_add_single_env_warning(result)
 
     async def _tool_value_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute value diff task"""
-        task = ValueDiffTask(params=arguments)
-        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
-        if hasattr(result, "model_dump"):
-            result = result.model_dump(mode="json")
+        # DRC-3634: route through _tool_run_backed_local so the Run is persisted
+        # to the in-process context and the result carries run_id.
+        result = await self._tool_run_backed_local("value_diff", arguments)
         return self._maybe_add_single_env_warning(result)
 
     async def _tool_value_diff_detail(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
