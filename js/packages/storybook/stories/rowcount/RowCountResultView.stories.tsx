@@ -12,9 +12,8 @@ import {
 // ============================================
 
 const meta: Meta<typeof RowCountResultView> = {
-  title: "Visualizations/RowCount/RowCountResultView",
+  title: "Diffs/Results/RowCount/RowCountResultView",
   component: RowCountResultView,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {

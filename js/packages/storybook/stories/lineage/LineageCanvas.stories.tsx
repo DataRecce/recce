@@ -48,7 +48,6 @@ import {
 const meta: Meta<typeof LineageCanvas> = {
   title: "Lineage/LineageCanvas",
   component: LineageCanvas,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {
@@ -74,6 +73,10 @@ const meta: Meta<typeof LineageCanvas> = {
     onNodeDoubleClick: {
       description: "Callback when node is double-clicked",
       action: "nodeDoubleClicked",
+    },
+    onNodeContextMenu: {
+      description: "Callback when node kebab/context-menu is clicked",
+      action: "nodeContextMenu",
     },
     showMiniMap: {
       description: "Whether to show the minimap",

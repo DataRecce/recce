@@ -51,9 +51,9 @@ export interface UseModelColumnsReturn {
  * This hook resolves the lineage node by `model` name and fetches the model
  * detail (columns + primary_key) via TanStack Query. The query key
  * `["modelDetail", node.id]` and `staleTime` are deliberately aligned with
- * the `useQuery` calls in NodeViewOss / NodeSqlViewOss / SandboxViewOss /
- * SchemaDiffView / SchemaSummary so that all consumers share a single cache
- * entry and a single in-flight request per node (DRC-3343).
+ * the `useQuery` calls in NodeViewOss / NodeSqlViewOss / SchemaDiffView /
+ * SchemaSummary so that all consumers share a single cache entry and a
+ * single in-flight request per node (DRC-3343).
  *
  * @param model - The model name to fetch columns for
  * @param client - Axios instance for API calls (optional - will use context if not provided)
@@ -88,8 +88,8 @@ export function useModelColumns(
   const enabled = !!apiClient && !!node?.id;
 
   // Shares cache + in-flight request with NodeViewOss / NodeSqlViewOss /
-  // SandboxViewOss / SchemaDiffView / SchemaSummary, all of which use the
-  // same ["modelDetail", node.id] queryKey and staleTime.
+  // SchemaDiffView / SchemaSummary, all of which use the same
+  // ["modelDetail", node.id] queryKey and staleTime.
   const {
     data,
     isLoading: queryLoading,

@@ -93,6 +93,23 @@ function createModelInfoResponse(
 /**
  * MSW request handlers for Recce API endpoints
  */
+/**
+ * Mutable per-story overrides. A story sets these in its `beforeEach` and
+ * resets them on teardown (runtime `worker.use()` overrides are not honored in
+ * the Vitest+MSW setup, so the handlers read this shared state instead).
+ */
+export const mockServerFlags: Record<string, boolean> = {
+  single_env_onboarding: false,
+  show_relaunch_hint: false,
+  disable_cll_cache: false,
+  impact_at_startup: false,
+  new_cll_experience: false,
+  inline_profile: false,
+};
+
+/** When set, `POST /api/runs` returns this run (e.g. a profile_distribution result). */
+export const mockRunResult: { current: unknown } = { current: null };
+
 export const handlers = [
   // Handler for /api/models/:model endpoint
   // Used by useModelColumns hook when columns aren't available in context
@@ -111,6 +128,27 @@ export const handlers = [
     }
 
     return HttpResponse.json(response);
+  }),
+
+  // Handler for /api/flag endpoint
+  // Used by useRecceServerFlag (e.g. via SchemaView)
+  http.get("/api/flag", () => {
+    // The fetch client returns the parsed body as `.data`, and getServerFlag
+    // returns that — so the body IS the flags object (no `data` envelope).
+    return HttpResponse.json({ ...mockServerFlags });
+  }),
+
+  // Handler for POST /api/runs — returns the story-provided run (e.g. a
+  // profile_distribution result) when set, else a no-op unsupported envelope.
+  // Body is the Run directly (submitRun reads the parsed body as the run).
+  http.post("/api/runs", () => {
+    if (mockRunResult.current) {
+      return HttpResponse.json(mockRunResult.current);
+    }
+    return HttpResponse.json({
+      run_id: "noop",
+      result: { status: "unsupported", reason: "no mock run", columns: {} },
+    });
   }),
 
   // Handler for /api/info endpoint

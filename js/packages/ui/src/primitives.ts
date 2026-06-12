@@ -71,6 +71,13 @@ export { NodeTag, type NodeTagProps } from "./components/lineage/tags";
 // =============================================================================
 
 /**
+ * Lineage diff view supporting types for check results.
+ *
+ * @remarks
+ * Exports: LineageDiffViewOptions, LineageViewRef.
+ */
+export type { LineageDiffViewOptions } from "./api/lineagecheck";
+/**
  * Check action primitives for check-level actions.
  *
  * @remarks
@@ -143,20 +150,6 @@ export {
  * Exports: CheckList, CheckListProps.
  */
 export { CheckList, type CheckListProps } from "./components/check/CheckList";
-
-/**
- * Lineage diff view primitives for check results.
- *
- * @remarks
- * Exports: LineageDiffView, LineageDiffViewOptions, LineageDiffViewProps, LineageViewRef.
- */
-export {
-  LineageDiffView,
-  type LineageDiffViewOptions,
-  type LineageDiffViewProps,
-  type LineageViewRef,
-} from "./components/check/LineageDiffView";
-
 /**
  * Preset check template primitives.
  *
@@ -170,7 +163,6 @@ export {
   PresetCheckTemplateView,
   type PresetCheckTemplateViewProps,
 } from "./components/check/PresetCheckTemplateView";
-
 /**
  * Check timeline primitives.
  *
@@ -187,7 +179,6 @@ export {
   type TimelineEventProps,
   type TimelineEventType,
 } from "./components/check/timeline";
-
 /**
  * Check utility functions.
  *
@@ -201,6 +192,7 @@ export {
   formatSqlAsMarkdown,
   isDisabledByNoResult,
 } from "./components/check/utils";
+export type { LineageViewRef } from "./components/lineage/LineageView";
 
 // =============================================================================
 // RUN PRIMITIVES
@@ -297,15 +289,41 @@ export type {
  * HistogramDataType.
  */
 export {
-  type ChartBarColors,
-  type ChartThemeColors,
-  getChartBarColors,
-  getChartThemeColors,
   HistogramChart,
   type HistogramChartProps,
   type HistogramDataset,
   type HistogramDataType,
 } from "./components/data/HistogramChart";
+export {
+  InlineProfileDistributionCell,
+  type InlineProfileDistributionCellProps,
+} from "./components/data/InlineProfileDistributionCell";
+/**
+ * Paired-histogram cells for inline profile-distribution rendering (DRC-3390).
+ *
+ * @remarks
+ * `PairedHistogramContinuous` renders a quantile-bin, constant-area paired
+ * bar chart for continuous columns. `PairedHistogramDiscrete` renders a
+ * top-K paired bar chart with gap-on-absent semantics for categorical
+ * columns. `ProfileDistributionUnsupportedBanner` surfaces the once-per-task
+ * "adapter doesn't support this feature" envelope.
+ */
+export {
+  PairedHistogramContinuous,
+  type PairedHistogramContinuousData,
+  type PairedHistogramContinuousProps,
+} from "./components/data/PairedHistogramContinuous";
+export {
+  PairedHistogramDiscrete,
+  type PairedHistogramDiscreteCountsData,
+  type PairedHistogramDiscreteData,
+  type PairedHistogramDiscreteProps,
+  type PairedHistogramDiscreteRanksData,
+} from "./components/data/PairedHistogramDiscrete";
+export {
+  ProfileDistributionUnsupportedBanner,
+  type ProfileDistributionUnsupportedBannerProps,
+} from "./components/data/ProfileDistributionUnsupportedBanner";
 /**
  * Screenshot data grid primitives (AG Grid wrapper).
  *
@@ -327,7 +345,6 @@ export {
   ScreenshotDataGrid,
   type ScreenshotDataGridProps,
 } from "./components/data/ScreenshotDataGrid";
-
 /**
  * Top-K bar chart primitives (value distribution).
  *
@@ -340,6 +357,12 @@ export {
   type TopKDataset,
   type TopKItem,
 } from "./components/data/TopKBarChart";
+export {
+  type ChartBarColors,
+  type ChartThemeColors,
+  getChartBarColors,
+  getChartThemeColors,
+} from "./theme/chartTheme";
 
 // =============================================================================
 // SCHEMA PRIMITIVES

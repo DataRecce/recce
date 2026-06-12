@@ -154,6 +154,9 @@ export function RecceActionAdapter({ children }: RecceActionAdapterProps) {
         }
 
         const run = findByRunType(type as RunType);
+        if (!run) {
+          throw new Error(`Run type ${type} does not have a result view`);
+        }
         const RunResultView = run.RunResultView as
           | RegistryEntry["RunResultView"]
           | undefined;

@@ -92,13 +92,14 @@ import { ColumnLevelLineageControlOss } from "./ColumnLevelLineageControlOss";
 import { computeColumnLineage } from "./computeColumnLineage";
 import { computeImpactedColumns } from "./computeImpactedColumns";
 import { computeIsImpacted } from "./computeIsImpacted";
+import { computeWholeModelImpact } from "./computeWholeModelImpact";
 import {
   EXPLORE_MIN_ZOOM,
   edgeTypes,
   FIT_VIEW_PADDING,
-  getNodeColor,
   initialNodes,
   LEGIBLE_MIN_ZOOM,
+  makeGetNodeColor,
   nodeTypes,
 } from "./config";
 import {
@@ -117,6 +118,7 @@ import { toReactFlow } from "./lineage";
 import { NodeViewOss as NodeView } from "./NodeViewOss";
 import type { NodeChangeStatus } from "./nodes/LineageNode";
 import { patchLineageFromCll } from "./patchLineageDiffFromCll";
+import { shouldCloseOrphanedRunResult } from "./runResultVisibility";
 import SetupConnectionBanner from "./SetupConnectionBannerOss";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
 import {
@@ -138,7 +140,13 @@ export const MINIMAP_NODE_THRESHOLD = 500;
 function computeImpactedSets(
   lineageGraph: LineageGraph,
   cll: ColumnLineageData,
-): { nodeIds: Set<string>; columnIds: Set<string> } {
+  wholeModelImpact = false,
+): {
+  nodeIds: Set<string>;
+  columnIds: Set<string>;
+  wholeModelImpactedNodeIds?: Set<string>;
+  wholeModelChangedNodeIds?: Set<string>;
+} {
   const columnIds = computeImpactedColumns(cll);
   const nodeIds = new Set<string>();
   for (const nodeId of Object.keys(lineageGraph.nodes)) {
@@ -153,6 +161,16 @@ function computeImpactedSets(
     ) {
       nodeIds.add(nodeId);
     }
+  }
+  if (wholeModelImpact) {
+    const { wholeModelImpactedNodeIds, wholeModelChangedNodeIds } =
+      computeWholeModelImpact(lineageGraph, cll);
+    return {
+      nodeIds,
+      columnIds,
+      wholeModelImpactedNodeIds,
+      wholeModelChangedNodeIds,
+    };
   }
   return { nodeIds, columnIds };
 }
@@ -264,6 +282,7 @@ export function PrivateLineageView(
 
   const { data: serverFlags } = useRecceServerFlag();
   const newCllExperience = serverFlags?.new_cll_experience ?? false;
+  const wholeModelImpact = serverFlags?.whole_model_impact ?? false;
   const { runId, showRunId, closeRunResult, runAction, isRunResultOpen } =
     useRecceActionContext();
   const { run } = useRun(runId);
@@ -486,8 +505,18 @@ export function PrivateLineageView(
   const {
     impactedNodeIds,
     impactedColumnIds,
+    wholeModelImpactedNodeIds,
+    wholeModelChangedNodeIds,
     publish: publishImpactSets,
   } = usePublishedImpactSets();
+
+  // MiniMap node coloring. Mirror the canvas: in the new CLL experience,
+  // impacted-but-unchanged nodes are amber, so thread the impacted set through
+  // instead of coloring by change status alone (DRC-3250).
+  const minimapNodeColor = useMemo(
+    () => makeGetNodeColor({ impactedNodeIds, newCllExperience }),
+    [impactedNodeIds, newCllExperience],
+  );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only run when lineageGraph changes (initial load/refetch).
   useLayoutEffect(() => {
@@ -610,7 +639,11 @@ export function PrivateLineageView(
       // Compute impacted sets once; thread into ancestry to avoid redundant DFS.
       const impacted =
         newCllExperience && cll
-          ? computeImpactedSets(lineageGraph, cll)
+          ? computeImpactedSets(
+              lineageGraph,
+              cll,
+              serverFlags?.whole_model_impact ?? false,
+            )
           : undefined;
 
       const [nodes, edges, nodeColumnSetMap] = await toReactFlow(lineageGraph, {
@@ -938,7 +971,11 @@ export function PrivateLineageView(
 
     const impacted =
       newCllExperience && cll
-        ? computeImpactedSets(lineageGraph, cll)
+        ? computeImpactedSets(
+            lineageGraph,
+            cll,
+            serverFlags?.whole_model_impact ?? false,
+          )
         : undefined;
 
     const [newNodes, newEdges, newNodeColumnSetMap] = await toReactFlow(
@@ -975,18 +1012,12 @@ export function PrivateLineageView(
       !!focusedNodeId || !!run,
     );
 
-    // Close the run result view if the run result node is not in the new nodes
-    if (
-      run &&
-      (isTopKDiffRun(run) ||
-        isProfileDiffRun(run) ||
-        isHistogramDiffRun(run) ||
-        isValueDiffRun(run) ||
-        isValueDiffDetailRun(run))
-    ) {
-      if (run.params?.model && !findNodeByName(run.params.model)) {
-        closeRunResult();
-      }
+    // Close the run result view if its model node is not in the new nodes —
+    // but NOT while the graph is still building (empty node set), so a run
+    // result deep-linked open before the first layout is not slammed shut
+    // (DRC-3532 race). See shouldCloseOrphanedRunResult.
+    if (shouldCloseOrphanedRunResult(run, nodes)) {
+      closeRunResult();
     }
 
     if (fitView) {
@@ -1192,6 +1223,8 @@ export function PrivateLineageView(
     deselect,
     impactedNodeIds,
     impactedColumnIds,
+    wholeModelChangedNodeIds,
+    wholeModelImpactedNodeIds,
     isNodeHighlighted: (nodeId: string) => highlighted.has(nodeId),
     isNodeSelected: (nodeId: string) => selectedNodeIds.has(nodeId),
     isEdgeHighlighted: (source, target) => {
@@ -1220,6 +1253,7 @@ export function PrivateLineageView(
     },
     changeAnalysisMode,
     newCllExperience,
+    wholeModelImpact,
     setChangeAnalysisMode,
     getNodeAction: (nodeId: string) => {
       return multiNodeAction.actionState.actions[nodeId];
@@ -1515,7 +1549,7 @@ export function PrivateLineageView(
             </Panel>
             {nodes.length <= MINIMAP_NODE_THRESHOLD && (
               <MiniMap
-                nodeColor={getNodeColor}
+                nodeColor={minimapNodeColor}
                 nodeStrokeWidth={3}
                 zoomable
                 pannable

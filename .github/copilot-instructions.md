@@ -1,5 +1,7 @@
 # Recce Copilot Instructions
 
+> Claude Code and other agents using `CLAUDE.md` should also consult **[`js/CLAUDE.md`](../js/CLAUDE.md)** for frontend tooling specifics (pnpm commands, Biome, Vitest, `@datarecce/ui` publishing, pnpm v11 `strictDepBuilds`/`allowBuilds`, style conventions). This file remains the canonical Copilot context.
+
 ## Project Overview
 
 Recce is a data validation and review tool for dbt and SQLMesh projects. It's a Python/TypeScript monorepo providing CLI
@@ -84,7 +86,7 @@ below:
 
 ```bash
 cd js
-pnpm install  # Uses pnpm 10, NOT npm or yarn
+pnpm install  # Uses pnpm 11, NOT npm or yarn
 ```
 
 **Development Server:**
@@ -120,7 +122,7 @@ pnpm type:check    # TypeScript compiler
 
 - Changes not appearing in `recce server`: Run `cd js && pnpm run build` then restart server
 - `pnpm: command not found`: Install with `npm install -g corepack@latest && corepack enable`
-- Build fails: Check Node version is >=20 (`node --version`)
+- Build fails: Check Node version is >=24 (`node --version`)
 - Type errors: Run `pnpm type:check` to see full error messages
 - Biome lint failures: Run `pnpm lint:fix` for auto-fixable issues
 
@@ -216,7 +218,7 @@ recce/
 
 ```
 js/
-├── package.json        # pnpm 10, Node >=20, React 19, Next.js 16
+├── package.json        # pnpm 11, Node >=24, React 19, Next.js 16
 ├── tsconfig.json       # TypeScript config
 ├── next.config.js      # Next.js config (output: 'export')
 ├── app/                # OSS Next.js App Router shell (routes/layout only)

@@ -314,6 +314,42 @@ describe("toSchemaDataGrid - Row Generation", () => {
 
     expect(rows).toHaveLength(0);
   });
+
+  test("paints isImpacted by exact node-scoped membership (no sibling bleed)", () => {
+    const schemaDiff = mergeColumns(
+      createColumns({ total: "INT", status: "VARCHAR" }),
+      createColumns({ total: "INT", status: "VARCHAR" }),
+    );
+
+    const { rows } = toSchemaDataGrid(schemaDiff, {
+      nodeId: "model.shop.orders",
+      impactedColumns: new Set([
+        "model.shop.orders_total", // this node's column → impacted
+        "model.shop.orders_summary_total", // a SIBLING's column → must not leak
+      ]),
+    });
+
+    const total = rows.find((r) => r.name === "total");
+    const status = rows.find((r) => r.name === "status");
+    // `total` is impacted via its OWN id; `status` is not. The sibling id
+    // (orders_summary's column) marks nothing on this node — the grid tests
+    // membership over its own column names, never prefix-strips the set.
+    expect(total?.isImpacted).toBe(true);
+    expect(status?.isImpacted).toBeFalsy();
+  });
+
+  test("does not paint isImpacted when nodeId is absent", () => {
+    const schemaDiff = mergeColumns(
+      createColumns({ total: "INT" }),
+      createColumns({ total: "INT" }),
+    );
+
+    const { rows } = toSchemaDataGrid(schemaDiff, {
+      impactedColumns: new Set(["model.shop.orders_total"]),
+    });
+
+    expect(rows.find((r) => r.name === "total")?.isImpacted).toBeFalsy();
+  });
 });
 
 // ============================================================================
@@ -374,7 +410,7 @@ describe("toSchemaDataGrid - Options", () => {
     // When cellRenderer is present (node provided), ag-grid renders the
     // ColumnNameCell component. When cellRenderer is absent, ag-grid
     // renders this string directly — which is a bug. Always provide node.
-    expect(value).toBe("id|false|false");
+    expect(value).toBe("id|false|false|false");
   });
 
   test("accepts cllRunningMap option", () => {
@@ -814,6 +850,64 @@ describe("toSingleEnvDataGrid - Cell Classes", () => {
       const nameRow = rows.find((r) => r.name === "name");
       expect(nameRow?.reordered).toBe(false);
       expect(nameRow?.definitionChanged).toBe(true);
+    });
+
+    test("sets changeUnknown on non-reordered unknown columns", () => {
+      // DRC-3409: when the analyzer can't resolve a column's change status,
+      // it emits "unknown" and the grid must surface the indicator loudly.
+      const columns = createColumns({ id: "INT", name: "VARCHAR" });
+      const schemaDiff = mergeColumns(columns, columns);
+
+      const { rows } = toSchemaDataGrid(schemaDiff, {
+        columnChanges: { name: "unknown" },
+      });
+
+      const nameRow = rows.find((r) => r.name === "name");
+      expect(nameRow?.reordered).toBe(false);
+      expect(nameRow?.changeUnknown).toBe(true);
+      // unknown and definitionChanged are mutually exclusive
+      expect(nameRow?.definitionChanged).toBeUndefined();
+    });
+
+    test("does not set changeUnknown on reordered columns", () => {
+      const base = createColumns({ id: "INT", name: "VARCHAR", age: "INT" });
+      const current = createColumns({ id: "INT", age: "INT", name: "VARCHAR" });
+      const schemaDiff = mergeColumns(base, current);
+
+      const { rows } = toSchemaDataGrid(schemaDiff, {
+        columnChanges: { name: "unknown" },
+      });
+
+      const nameRow = rows.find((r) => r.name === "name");
+
+      // Reordered columns should NOT get changeUnknown even if server says "unknown"
+      expect(nameRow?.reordered).toBe(true);
+      expect(nameRow?.changeUnknown).toBeUndefined();
+    });
+
+    test("changeUnknown is included in valueGetter key for ag-grid change detection", () => {
+      const schemaDiff = mergeColumns(
+        createColumns({ id: "INT" }),
+        createColumns({ id: "INT" }),
+      );
+
+      const { columns } = toSchemaDataGrid(schemaDiff);
+
+      const nameColumn = columns[1] as unknown as {
+        valueGetter: (params: { data: unknown }) => string;
+      };
+      const value = nameColumn.valueGetter({
+        data: {
+          name: "id",
+          definitionChanged: false,
+          isImpacted: false,
+          changeUnknown: true,
+        },
+      });
+
+      // valueGetter is the cache key ag-grid uses to decide re-render;
+      // changeUnknown MUST participate so the ? badge appears when it flips.
+      expect(value).toBe("id|false|false|true");
     });
 
     test("handles schema with single column", () => {

@@ -86,6 +86,50 @@ export function formatDuration(
   return formatVerbose(components);
 }
 
+/**
+ * Format seconds-since-midnight (0–86399) as a zero-padded `HH:MM:SS` wall-clock
+ * time. Distinct from {@link formatDuration}: a clock time always shows two
+ * digit hours and never drops the hours component (`00:05:30`, not `5:30`), and
+ * wraps at 24h. Used for `TIME`-column histogram edges, whose `epoch()` cast
+ * emits seconds-since-midnight rather than Unix-epoch seconds.
+ *
+ * @param secondsSinceMidnight - Seconds elapsed since 00:00:00
+ */
+export function formatTimeOfDay(secondsSinceMidnight: number): string {
+  if (!Number.isFinite(secondsSinceMidnight)) {
+    return String(secondsSinceMidnight);
+  }
+  // Normalize into [0, 86400). Approximate-quantile sketches can emit an edge
+  // slightly below the empirical min (a small negative) or at/over 24h; wrap
+  // into a real clock time rather than render "-1:00:-5".
+  const normalized =
+    ((Math.floor(secondsSinceMidnight) % 86400) + 86400) % 86400;
+  const { hours, minutes, seconds } = getTimeComponents(normalized);
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+}
+
+/**
+ * Format an epoch-seconds value as a short calendar date for tooltips. Sibling
+ * of {@link formatTimeOfDay}: date/timestamp/datetime histogram edges arrive as
+ * Unix epoch seconds (→ calendar date), TIME edges as seconds-since-midnight
+ * (→ clock time). Both edge formatters live here so the datetime-formatting
+ * seam has one home.
+ */
+export function formatEpochSeconds(sec: number): string {
+  const d = new Date(sec * 1000);
+  if (Number.isNaN(d.getTime())) return String(sec);
+  // Render in UTC: the backend's epoch() cast emits UTC-based seconds, so a
+  // local-timezone render would shift day-boundary edges to the wrong calendar
+  // day (e.g. UTC midnight showing as the previous day west of UTC).
+  return d.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 // ============================================================================
 // ISO Timestamp Utilities
 // ============================================================================

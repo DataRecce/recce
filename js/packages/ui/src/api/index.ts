@@ -121,7 +121,7 @@ export type {
   TopKResult,
   TopKViewOptions,
 } from "./profile";
-export { submitProfileDiff } from "./profile";
+export { submitProfileDiff, submitProfileDistribution } from "./profile";
 // Row Count API
 export type {
   RowCount,
@@ -182,6 +182,15 @@ export type {
   ColumnType,
   DataFrame,
   LineageDiffParams,
+  ProfileDistributionColumnPayload,
+  ProfileDistributionHistogramPayload,
+  ProfileDistributionNullPayload,
+  ProfileDistributionOkResult,
+  ProfileDistributionParams,
+  ProfileDistributionResult,
+  ProfileDistributionTopKPayload,
+  ProfileDistributionTopKRanksPayload,
+  ProfileDistributionUnsupportedResult,
   RowData,
   RowDataTypes,
   RowObjectType,
@@ -202,7 +211,6 @@ export {
   isQueryRun,
   isRowCountDiffRun,
   isRowCountRun,
-  isSandboxRun,
   isSchemaDiffRun,
   isSimpleRun,
   isTopKDiffRun,

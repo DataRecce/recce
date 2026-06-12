@@ -15,7 +15,6 @@
 // Imports
 // ============================================================================
 
-import type { RunType } from "@datarecce/ui/api";
 import { findByRunType } from "@datarecce/ui/components/run";
 
 // ============================================================================
@@ -151,14 +150,6 @@ describe("registry", () => {
         expect(entry.RunForm).toBeDefined();
       });
 
-      it("returns correct entry for sandbox", () => {
-        const entry = findByRunType("sandbox");
-
-        expect(entry).toBeDefined();
-        expect(entry.title).toBe("Sandbox");
-        expect(entry.icon).toBeDefined();
-      });
-
       it("returns correct entry for simple", () => {
         const entry = findByRunType("simple");
 
@@ -174,7 +165,7 @@ describe("registry", () => {
 
     describe("icon consistency", () => {
       it("all run types have icons that are functions", () => {
-        const runTypes: RunType[] = [
+        const runTypes = [
           "lineage_diff",
           "schema_diff",
           "query",
@@ -188,9 +179,8 @@ describe("registry", () => {
           "value_diff_detail",
           "top_k_diff",
           "histogram_diff",
-          "sandbox",
           "simple",
-        ];
+        ] as const;
 
         for (const runType of runTypes) {
           const entry = findByRunType(runType);
@@ -205,7 +195,7 @@ describe("registry", () => {
 
     describe("title consistency", () => {
       it("all run types have non-empty string titles", () => {
-        const runTypes: RunType[] = [
+        const runTypes = [
           "lineage_diff",
           "schema_diff",
           "query",
@@ -219,9 +209,8 @@ describe("registry", () => {
           "value_diff_detail",
           "top_k_diff",
           "histogram_diff",
-          "sandbox",
           "simple",
-        ];
+        ] as const;
 
         for (const runType of runTypes) {
           const entry = findByRunType(runType);
@@ -247,7 +236,6 @@ describe("registry", () => {
         );
         expect(findByRunType("top_k_diff").title).toBe("Top-K Diff");
         expect(findByRunType("histogram_diff").title).toBe("Histogram Diff");
-        expect(findByRunType("sandbox").title).toBe("Sandbox");
         expect(findByRunType("simple").title).toBe("Simple");
       });
     });
@@ -292,10 +280,6 @@ describe("registry", () => {
 
       it("schema_diff does not have RunResultView", () => {
         expect(findByRunType("schema_diff").RunResultView).toBeUndefined();
-      });
-
-      it("sandbox does not have RunResultView", () => {
-        expect(findByRunType("sandbox").RunResultView).toBeUndefined();
       });
 
       it("simple does not have RunResultView", () => {
@@ -363,7 +347,7 @@ describe("registry", () => {
 
     describe("edge cases", () => {
       it("handles all valid run types without errors", () => {
-        const runTypes: RunType[] = [
+        const runTypes = [
           "lineage_diff",
           "schema_diff",
           "query",
@@ -377,9 +361,8 @@ describe("registry", () => {
           "value_diff_detail",
           "top_k_diff",
           "histogram_diff",
-          "sandbox",
           "simple",
-        ];
+        ] as const;
 
         for (const runType of runTypes) {
           expect(() => findByRunType(runType)).not.toThrow();

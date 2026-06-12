@@ -22,6 +22,7 @@ from fastapi import (
     UploadFile,
     WebSocket,
 )
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
@@ -47,11 +48,15 @@ from .core import RecceContext, default_context, load_context
 from .event import get_recce_api_token, log_api_event, log_single_env_event
 from .exceptions import RecceException
 from .github import is_github_codespace
-from .models.lineage import build_merged_lineage
 from .models.types import CllData
 from .models.websocket import CloudUserContextMessage
 from .run import load_preset_checks
 from .state import RecceShareStateManager, RecceStateLoader
+from .util.change_classifier import (
+    to_v2_change_category,
+    translate_merged_lineage_to_v2,
+    wants_v2_vocabulary,
+)
 from .util.startup_perf import track_timing
 from .websocket import (
     extract_cloud_user_from_headers,
@@ -572,8 +577,35 @@ async def mark_relaunch_hint_completed():
     app.state.flag["show_relaunch_hint"] = False
 
 
+def _maybe_v2_lineage(lineage: dict, request: Request) -> dict:
+    """Opt-in translate merged-lineage change categories to the v2 vocabulary.
+
+    DRC-3553: when the request carries ``Accept-Vocabulary: v2`` the emitted
+    change-category labels are mapped to the v2 vocabulary
+    (model_wide/column/additive); otherwise the legacy wire values are kept.
+    """
+    if wants_v2_vocabulary(request.headers):
+        return translate_merged_lineage_to_v2(lineage)
+    return lineage
+
+
+def _maybe_v2_cll(cll_payload: dict, request: Request) -> dict:
+    """Opt-in translate a serialized CllData dict's change categories to v2.
+
+    Touches every node's ``change_category`` field. Legacy otherwise.
+    """
+    if not wants_v2_vocabulary(request.headers):
+        return cll_payload
+    nodes = cll_payload.get("nodes")
+    if isinstance(nodes, dict):
+        for node in nodes.values():
+            if isinstance(node, dict) and node.get("change_category") is not None:
+                node["change_category"] = to_v2_change_category(node["change_category"])
+    return cll_payload
+
+
 @app.get("/api/info")
-async def get_info():
+async def get_info(request: Request):
     """
     Get the information of the current context.
     """
@@ -593,8 +625,7 @@ async def get_info():
         filename = None
 
     state_metadata = context.state_loader.state.metadata if context.state_loader.state else None
-    lineage_diff = context.get_lineage_diff()
-    merged_lineage = build_merged_lineage(lineage_diff)
+    merged_lineage = context.get_merged_lineage()
 
     try:
         info = {
@@ -603,7 +634,7 @@ async def get_info():
             "review_mode": context.review_mode,
             "git": state.git.to_dict() if state.git else None,
             "pull_request": state.pull_request.to_dict() if state.pull_request else None,
-            "lineage": merged_lineage.model_dump(exclude_none=True, by_alias=True),
+            "lineage": _maybe_v2_lineage(merged_lineage.model_dump(exclude_none=True, by_alias=True), request),
             "demo": bool(demo),
             "codespace": bool(is_codespace),
             "cloud_mode": context.state_loader.cloud_mode,
@@ -641,7 +672,7 @@ class CllOutput(BaseModel):
 
 
 @app.post("/api/cll", response_model=CllOutput)
-async def column_level_lineage_by_node(cll_input: CllIn):
+async def column_level_lineage_by_node(cll_input: CllIn, request: Request):
     from recce.adapter.dbt_adapter import DbtAdapter
 
     app_state: AppState = app.state
@@ -658,6 +689,17 @@ async def column_level_lineage_by_node(cll_input: CllIn):
         full_map=cll_input.full_map,
         disable_cll_cache=disable_cll_cache,
     )
+
+    # DRC-3553: opt-in v2 vocabulary. Default path keeps the legacy wire values
+    # and the CllOutput response_model contract; only when Accept-Vocabulary: v2
+    # is set do we serialize manually and remap change_category to v2. The
+    # manual model_dump() deliberately matches the default response_model
+    # serialization (no exclude_none) so the only difference between the two
+    # modes is the change_category labels.
+    if wants_v2_vocabulary(request.headers):
+        payload = CllOutput(current=cll).model_dump()
+        _maybe_v2_cll(payload["current"], request)
+        return JSONResponse(content=jsonable_encoder(payload))
 
     return CllOutput(current=cll)
 

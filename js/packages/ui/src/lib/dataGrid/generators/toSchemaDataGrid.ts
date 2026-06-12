@@ -14,11 +14,13 @@ import {
   type RowObjectType,
 } from "../../../api";
 import {
+  createDistributionCellRenderer,
   createSchemaColumnNameRenderer,
   createSingleEnvColumnNameRenderer,
   renderIndexCell,
+  type SchemaDistributionData,
 } from "../../../components/ui/dataGrid/schemaCells";
-import { mergeKeysWithStatus } from "../../../utils";
+import { isColumnImpacted, mergeKeysWithStatus } from "../../../utils";
 
 // ============================================================================
 // Types
@@ -33,6 +35,12 @@ export interface SchemaDiffRow extends RowObjectType {
   baseType?: string;
   /** True when the column's SQL definition changed but name/type stayed the same */
   definitionChanged?: boolean;
+  /**
+   * True when the analyzer couldn't determine the column's change status
+   * (e.g., CTE-internal column with missing parent schema). Mutually exclusive
+   * with definitionChanged.
+   */
+  changeUnknown?: boolean;
   /** True when the column traces upstream to a changed column via CLL parent_map */
   isImpacted?: boolean;
 }
@@ -53,13 +61,22 @@ export interface SchemaDataGridOptions {
   /** Whether to show the column action menu (default: true) */
   showMenu?: boolean;
   /** Per-column change status from breaking change analysis */
-  columnChanges?: Record<string, "added" | "removed" | "modified"> | null;
+  columnChanges?: Record<
+    string,
+    "added" | "removed" | "modified" | "unknown"
+  > | null;
   /** Callback when user clicks a definition-changed badge to view SQL diff */
   onViewCode?: () => void;
   /** Set of impacted column IDs from CLL parent_map walk (e.g. "model.jaffle_shop.orders_STATUS") */
   impactedColumns?: Set<string>;
   /** Node unique_id, used to build column IDs for impacted lookup */
   nodeId?: string;
+  /**
+   * Inline paired-distribution data (DRC-3390 Stage C). When present, a
+   * "Distribution" column is appended to the schema-diff grid. Omitted when
+   * the `inline_profile` flag is off or the adapter is unsupported.
+   */
+  distribution?: SchemaDistributionData;
 }
 
 export interface SchemaDataGridResult {
@@ -136,6 +153,7 @@ export function toSchemaDataGrid(
     onViewCode,
     impactedColumns,
     nodeId,
+    distribution,
   } = options;
 
   const columns: ColDef<SchemaDiffRow>[] = [
@@ -161,16 +179,32 @@ export function toSchemaDataGrid(
           )
         : undefined,
       cellClass: "schema-column",
-      // Include definitionChanged and isImpacted in the value so ag-grid
-      // re-renders the cell when the badge/background state changes
+      // Include definitionChanged, isImpacted, and changeUnknown in the value
+      // so ag-grid re-renders the cell when the badge/background state changes
       valueGetter: (params) => {
         const row = params.data;
         return row
-          ? `${row.name}|${row.definitionChanged ?? false}|${row.isImpacted ?? false}`
+          ? `${row.name}|${row.definitionChanged ?? false}|${row.isImpacted ?? false}|${row.changeUnknown ?? false}`
           : "";
       },
     },
   ];
+
+  // Inline paired-distribution column (DRC-3390 Stage C). Appended only when
+  // the caller threaded distribution data through (flag on + supported
+  // adapter). Not a real row field, so it keys off colId + a cellRenderer.
+  if (distribution) {
+    columns.push({
+      colId: "distribution",
+      headerName: "Distribution",
+      resizable: true,
+      sortable: false,
+      minWidth: 150,
+      width: 160,
+      cellRenderer: createDistributionCellRenderer(distribution),
+      cellClass: "schema-column schema-column-profile-distribution",
+    });
+  }
 
   const rows = Object.values(schemaDiff);
 
@@ -191,15 +225,22 @@ export function toSchemaDataGrid(
         !row.reordered
       ) {
         row.definitionChanged = true;
+      } else if (
+        changeStatus === "unknown" &&
+        !isAdded &&
+        !isRemoved &&
+        !isTypeChanged &&
+        !row.reordered
+      ) {
+        row.changeUnknown = true;
       }
     }
   }
 
-  // Mark columns that trace upstream to a changed column via CLL parent_map
-  if (impactedColumns && nodeId) {
+  // Mark columns that trace upstream to a changed column via CLL parent_map.
+  if (nodeId && impactedColumns) {
     for (const row of rows) {
-      const columnId = `${nodeId}_${row.name}`;
-      if (impactedColumns.has(columnId)) {
+      if (isColumnImpacted(nodeId, row.name, impactedColumns)) {
         row.isImpacted = true;
       }
     }

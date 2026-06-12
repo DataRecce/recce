@@ -78,6 +78,9 @@ class RecceContext:
     def get_lineage_diff(self) -> LineageDiff:
         return self.adapter.get_lineage_diff()
 
+    def get_merged_lineage(self):
+        return self.adapter.get_merged_lineage()
+
     def build_name_to_unique_id_index(self, excluded_types: Set = None) -> Dict[str, str]:
         name_to_unique_id = {}
         curr = self.get_lineage(base=False)

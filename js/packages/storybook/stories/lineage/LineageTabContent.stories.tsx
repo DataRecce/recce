@@ -95,9 +95,8 @@ function buildArgs(opts: {
 // =============================================================================
 
 const meta: Meta<typeof LineageTabContent> = {
-  title: "Lineage/LineageTabContent",
+  title: "Lineage/NodeView/LineageTab",
   component: LineageTabContent,
-  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {

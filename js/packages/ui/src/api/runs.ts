@@ -24,7 +24,7 @@ export type RunsAggregated = Record<
  */
 export interface SubmitRunTrackProps {
   breaking_change_analysis?: boolean;
-  source?: "lineage_model_node" | "lineage_column_node";
+  source?: "lineage_model_node" | "lineage_column_node" | "schema_view";
   [key: string]: unknown;
 }
 
@@ -111,7 +111,12 @@ export async function cancelRun(
   runId: string,
   client: ApiClient,
 ): Promise<void> {
-  await client.post(`/api/runs/${runId}/cancel`);
+  try {
+    await client.post(`/api/runs/${runId}/cancel`);
+  } catch {
+    // Fire-and-forget: the UI has already detached. Network failures
+    // here do not affect the user's ability to continue working.
+  }
 }
 
 /**

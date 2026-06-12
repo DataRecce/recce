@@ -50,6 +50,10 @@ export default defineConfig({
     // Amplitude packages contain Node.js-specific code (node:module)
     // and must be provided by the consuming application
     /^@amplitude\//,
+    // posthog-js is browser-safe but externalized (mirroring Amplitude) so the
+    // consuming application provides a single shared instance
+    "posthog-js",
+    /^posthog-js\//,
     // react-split uses split.js for resizable panes
     "react-split",
     "split.js",

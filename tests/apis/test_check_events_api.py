@@ -29,8 +29,21 @@ from recce.util.recce_cloud import RecceCloudException
 
 
 def run_async(coro):
-    """Helper to run async functions in sync tests."""
-    return asyncio.get_event_loop().run_until_complete(coro)
+    """Helper to run async functions in sync tests.
+
+    Uses an explicitly-created event loop instead of asyncio.get_event_loop().
+    On Python 3.11+ get_event_loop() raises ``RuntimeError: There is no current
+    event loop`` once a preceding pytest-asyncio test has closed the main-thread
+    loop, making this helper order-dependent. Creating and closing a fresh loop
+    keeps the helper self-contained and ordering-independent.
+    """
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(coro)
+    finally:
+        asyncio.set_event_loop(None)
+        loop.close()
 
 
 class TestIsCloudUser(unittest.TestCase):

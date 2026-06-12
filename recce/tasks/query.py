@@ -4,7 +4,7 @@ from typing import List, Optional, Tuple
 from pydantic import BaseModel
 
 from ..core import default_context
-from ..exceptions import RecceException
+from ..exceptions import DuckDBExternalAccessBlocked, RecceException
 from ..models import Check
 from .core import CheckValidator, Task, TaskResultDiffer
 from .dataframe import DataFrame
@@ -36,7 +36,6 @@ class QueryMixin:
 
         try:
             sql = dbt_adapter.generate_sql(sql_template, base)
-
             if limit is None:
                 _, result = dbt_adapter.execute(sql, fetch=True, auto_begin=True)
                 return result, False
@@ -67,6 +66,9 @@ class QueryMixin:
             if result.rows:
                 return int(result.rows[0][0])
             return None
+        except DuckDBExternalAccessBlocked:
+            # Surface to HTTP 400; other errors keep the swallow-as-None contract.
+            raise
         except Exception:
             return None
 

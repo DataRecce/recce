@@ -17,7 +17,7 @@
  * - Warning for limit exceeded (both views)
  * - Warning for invalid primary key (only non-Join view)
  * - "No change" state when changedOnly + no rows (only Join view)
- * - baseTitle/currentTitle for sandbox editor
+ * - baseTitle/currentTitle for preview-change runs (current_model set)
  */
 
 // ============================================================================

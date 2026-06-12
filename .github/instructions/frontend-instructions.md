@@ -4,6 +4,8 @@ applyTo: "js/**/*.ts,js/**/*.tsx,js/**/*.js,js/**/*.jsx,js/**/*.json,js/**/*.mjs
 
 # Frontend Build Instructions (js/ Directory)
 
+> This file is the **Copilot-targeted** frontend guide (scoped via `applyTo:` frontmatter). Claude Code and other agents using `CLAUDE.md` should consult **[`js/CLAUDE.md`](../../js/CLAUDE.md)** for the equivalent guidance — both should stay in sync on tooling specifics (pnpm v11, Biome, `@datarecce/ui` publishing, style conventions).
+
 ## Critical Frontend Build Requirements
 
 **MANDATORY BUILD PROCESS - Frontend changes are NOT visible until this is run:**
@@ -25,7 +27,7 @@ pnpm run build
 ## Package Manager - MUST use pnpm
 
 ```bash
-# CORRECT - Always use pnpm (version 10)
+# CORRECT - Always use pnpm (version 11)
 pnpm install
 pnpm dev
 pnpm run build
@@ -84,8 +86,8 @@ pnpm run clean
 
 ## Tech Stack
 
-- **Node.js >=20** - JavaScript runtime (required)
-- **pnpm 10** - Package manager (NOT npm or yarn)
+- **Node.js >=24** - JavaScript runtime (required)
+- **pnpm 11** - Package manager (NOT npm or yarn)
 - **Next.js 16** - React framework with App Router
 - **React 19.2** - UI library with new JSX transform
 - **React DOM 19.2** - React renderer
@@ -106,7 +108,7 @@ pnpm run clean
 
 ```
 js/
-├── package.json         # Dependencies (Node >=20 required)
+├── package.json         # Dependencies (Node >=24 required)
 ├── tsconfig.json        # TypeScript config
 ├── next.config.js       # Next.js config (output: 'export')
 ├── biome.json           # Biome linter & formatter config
@@ -127,8 +129,8 @@ js/
 ## Configuration Files
 
 **package.json:**
-- Requires Node.js >=20
-- Uses pnpm@10.26.x as package manager
+- Requires Node.js >=24
+- Uses pnpm@11.1.1 as package manager (pinned via Corepack)
 - Key scripts:
   - `dev`: Start development server with Turbopack
   - `build`: Clean, build Next.js, move to ../recce/data
@@ -223,7 +225,7 @@ pnpm test  # Watch mode
 
 **What it checks:**
 1. Node.js 24 setup
-2. pnpm 10 installation
+2. pnpm 11 installation
 3. Dependency install with frozen lockfile
 4. Biome linting (`pnpm lint`)
 5. Production build (`pnpm run build`)
@@ -266,7 +268,7 @@ make deps-check
 
 **Error: Build fails with Node version error**
 - **Cause:** Node.js version too old
-- **Fix:** Upgrade to Node.js 20 or later (`node --version` to check)
+- **Fix:** Upgrade to Node.js 24 or later (`node --version` to check)
 
 **Error: Biome lint failures**
 - **Cause:** Code doesn't meet Biome rules
