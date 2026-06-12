@@ -157,7 +157,7 @@ function createColumnDefinitions(
       headerName: "Matched %",
       resizable: true,
       sort: "asc",
-      comparator: matchedPercentComparator,
+      comparator: matchedPercentComparator as never,
       cellRenderer: renderMatchedPercentCell,
       cellClass: getMatchedCellClass,
     },
