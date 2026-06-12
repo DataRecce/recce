@@ -2877,3 +2877,180 @@ class TestImpactAnalysisBehavior:
         assert "max_affected_row_count" in result
         assert "total_affected_row_count" not in result
         assert "suggested_deep_dives" not in result
+
+
+class TestLocalModeRunBacked:
+    """DRC-3634: local-mode ad-hoc diff tools must persist Runs to the in-process
+    RecceContext and surface run_id in the tool result — matching the shape of
+    CloudBackend._tool_run_backed (commit 98670f9e)."""
+
+    @pytest.fixture(autouse=True)
+    def _setup_default_context(self, request):
+        """Set a minimal RecceContext as the default_context for RunDAO access,
+        then tear it down after each test to avoid cross-test pollution."""
+        from recce.core import set_default_context
+
+        mock_adapter = MagicMock()
+        mock_adapter.adapter_type = "dbt"
+        context = RecceContext(adapter_type="dbt", adapter=mock_adapter, runs=[])
+        set_default_context(context)
+        # Expose context on the test instance so individual tests can inspect runs.
+        request.instance._test_context = context
+        yield
+        set_default_context(None)
+
+    @property
+    def _context(self):
+        return self._test_context
+
+    @pytest.fixture
+    def server(self):
+        """RecceMCPServer backed by the context set up in _setup_default_context."""
+        # _setup_default_context runs before server fixture because autouse=True.
+        context = self._test_context
+        return RecceMCPServer(context)
+
+    # ------------------------------------------------------------------
+    # row_count_diff
+    # ------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_row_count_diff_returns_run_id(self, server):
+        """row_count_diff in local mode surfaces run_id in the result (DRC-3634)."""
+        mock_raw = {"results": [{"node_id": "model.p.orders", "base": 100, "current": 105, "diff": 5}]}
+        with patch.object(RowCountDiffTask, "execute", return_value=mock_raw):
+            result = await server._tool_row_count_diff({"node_names": ["orders"]})
+        assert "run_id" in result, "run_id must be in result for DRC-3634 run-backed local mode"
+
+    @pytest.mark.asyncio
+    async def test_row_count_diff_persists_run_in_context(self, server):
+        """row_count_diff must create a Run in context.runs (DRC-3634)."""
+        mock_raw = {"results": []}
+        with patch.object(RowCountDiffTask, "execute", return_value=mock_raw):
+            result = await server._tool_row_count_diff({"node_names": ["orders"]})
+        assert len(self._context.runs) == 1, "exactly one Run must be persisted"
+        assert str(self._context.runs[0].run_id) == result["run_id"]
+
+    # ------------------------------------------------------------------
+    # query (current env — run_type "query")
+    # ------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_query_returns_run_id(self, server):
+        """query in local mode surfaces run_id in the result (DRC-3634)."""
+        mock_model = MagicMock()
+        mock_model.model_dump.return_value = {"columns": ["id"], "data": [[1]]}
+        with patch("recce.tasks.query.QueryTask.execute", return_value=mock_model):
+            result = await server._tool_query({"sql_template": "SELECT 1", "base": False})
+        assert "run_id" in result
+
+    @pytest.mark.asyncio
+    async def test_query_persists_run_type_query(self, server):
+        """query (base=False) must persist a run with type 'query' (DRC-3634)."""
+        from recce.models.types import RunType
+
+        mock_model = MagicMock()
+        mock_model.model_dump.return_value = {"columns": ["id"], "data": [[1]]}
+        with patch("recce.tasks.query.QueryTask.execute", return_value=mock_model):
+            await server._tool_query({"sql_template": "SELECT 1", "base": False})
+        assert len(self._context.runs) == 1
+        assert self._context.runs[0].type == RunType.QUERY
+
+    @pytest.mark.asyncio
+    async def test_query_base_persists_run_type_query_base(self, server):
+        """query (base=True) must persist a run with type 'query_base' (DRC-3634)."""
+        from recce.models.types import RunType
+
+        mock_model = MagicMock()
+        mock_model.model_dump.return_value = {"columns": ["id"], "data": [[1]]}
+        with patch("recce.tasks.query.QueryBaseTask.execute", return_value=mock_model):
+            result = await server._tool_query({"sql_template": "SELECT 1", "base": True})
+        assert "run_id" in result
+        assert len(self._context.runs) == 1
+        assert self._context.runs[0].type == RunType.QUERY_BASE
+
+    # ------------------------------------------------------------------
+    # query_diff
+    # ------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_query_diff_returns_run_id(self, server):
+        """query_diff in local mode surfaces run_id in the result (DRC-3634)."""
+        mock_model = MagicMock()
+        mock_model.model_dump.return_value = {"diff": {"added": [], "removed": [], "modified": []}}
+        with patch.object(QueryDiffTask, "execute", return_value=mock_model):
+            result = await server._tool_query_diff(
+                {"sql_template": "SELECT * FROM {{ ref('m') }}", "primary_keys": ["id"]}
+            )
+        assert "run_id" in result
+
+    @pytest.mark.asyncio
+    async def test_query_diff_persists_run_in_context(self, server):
+        """query_diff must create a Run in context.runs (DRC-3634)."""
+        mock_model = MagicMock()
+        mock_model.model_dump.return_value = {"diff": {}}
+        with patch.object(QueryDiffTask, "execute", return_value=mock_model):
+            result = await server._tool_query_diff(
+                {"sql_template": "SELECT id FROM {{ ref('m') }}", "primary_keys": ["id"]}
+            )
+        assert len(self._context.runs) == 1
+        assert str(self._context.runs[0].run_id) == result["run_id"]
+
+    # ------------------------------------------------------------------
+    # profile_diff
+    # ------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_profile_diff_returns_run_id(self, server):
+        """profile_diff in local mode surfaces run_id in the result (DRC-3634)."""
+        mock_model = MagicMock()
+        mock_model.model_dump.return_value = {"columns": {"id": {"base": {}, "current": {}}}}
+        with patch.object(ProfileDiffTask, "execute", return_value=mock_model):
+            result = await server._tool_profile_diff({"model": "orders"})
+        assert "run_id" in result
+
+    @pytest.mark.asyncio
+    async def test_profile_diff_persists_run_in_context(self, server):
+        """profile_diff must create a Run in context.runs (DRC-3634)."""
+        mock_model = MagicMock()
+        mock_model.model_dump.return_value = {"columns": {}}
+        with patch.object(ProfileDiffTask, "execute", return_value=mock_model):
+            result = await server._tool_profile_diff({"model": "orders"})
+        assert len(self._context.runs) == 1
+        assert str(self._context.runs[0].run_id) == result["run_id"]
+
+    # ------------------------------------------------------------------
+    # value_diff
+    # ------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_value_diff_returns_run_id(self, server):
+        """value_diff in local mode surfaces run_id in the result (DRC-3634)."""
+        mock_model = MagicMock()
+        mock_model.model_dump.return_value = {"summary": {"total": 10}, "data": {}}
+        with patch.object(ValueDiffTask, "execute", return_value=mock_model):
+            result = await server._tool_value_diff({"model": "orders", "primary_key": "id"})
+        assert "run_id" in result
+
+    @pytest.mark.asyncio
+    async def test_value_diff_persists_run_in_context(self, server):
+        """value_diff must create a Run in context.runs (DRC-3634)."""
+        mock_model = MagicMock()
+        mock_model.model_dump.return_value = {"summary": {}, "data": {}}
+        with patch.object(ValueDiffTask, "execute", return_value=mock_model):
+            result = await server._tool_value_diff({"model": "orders", "primary_key": "id"})
+        assert len(self._context.runs) == 1
+        assert str(self._context.runs[0].run_id) == result["run_id"]
+
+    # ------------------------------------------------------------------
+    # Isolation: existing tools without run-backed behavior unchanged
+    # ------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_value_diff_detail_no_run_id(self, server):
+        """value_diff_detail is NOT run-backed — result must NOT carry run_id (DRC-3634 scope boundary)."""
+        mock_model = MagicMock()
+        mock_model.model_dump.return_value = {"columns": ["id"], "data": [[1]]}
+        with patch.object(ValueDiffDetailTask, "execute", return_value=mock_model):
+            result = await server._tool_value_diff_detail({"model": "orders", "primary_key": "id"})
+        assert "run_id" not in result, "value_diff_detail is outside run-backed scope"
