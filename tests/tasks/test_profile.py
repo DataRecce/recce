@@ -122,6 +122,84 @@ def test_validator():
         validate({})
 
 
+# =============================================================================
+# Snowflake column-case regression tests (DRC-3674)
+#
+# Root cause: profile_diff / profile filtered the requested columns with a
+# case-sensitive membership test (``column.name in selected_columns``).
+# get_columns() returns physical catalog names, which case-folding warehouses
+# (e.g. Snowflake) store UPPERCASE, while the cloud summary agent supplies
+# lowercase manifest-convention names. The exact-case filter dropped EVERY
+# column, so the per-column profiling loop never ran and the result came back
+# completely empty:
+#   {"base":{"columns":[],"data":[]},"current":{"columns":[],"data":[]}}
+#
+# DuckDB preserves the CSV-header casing, so an UPPERCASE header reproduces the
+# Snowflake physical-name casing end-to-end (no mocking needed).
+#
+# Fix: lowercase both sides of the membership test before filtering, so
+# lowercase input resolves to the physical (uppercase) columns and yields the
+# same non-empty profile as uppercase input. No-op on already-lowercase
+# duckdb models and on quoted/case-sensitive identifiers (the SQL still profiles
+# via the physical column.name).
+# =============================================================================
+
+csv_data_uppercase = """
+        CUSTOMER_ID,CUSTOMER_LIFETIME_VALUE,NET_CUSTOMER_LIFETIME_VALUE
+        1,100,90
+        2,200,180
+        3,300,270
+        """
+
+
+def test_profile_diff_lowercase_columns_on_uppercase_physical(dbt_test_helper):
+    """DRC-3674: lowercase requested columns must resolve against UPPERCASE physical names.
+
+    Pre-fix: lowercase input yields 0 columns / 0 rows on both sides (empty profile).
+    Post-fix: lowercase input returns the SAME non-empty profile as uppercase input.
+    """
+    dbt_test_helper.create_model("snowflake_customers", csv_data_uppercase, csv_data_uppercase)
+
+    lower = ProfileDiffTask(
+        dict(model="snowflake_customers", columns=["customer_lifetime_value", "net_customer_lifetime_value"])
+    ).execute()
+    upper = ProfileDiffTask(
+        dict(model="snowflake_customers", columns=["CUSTOMER_LIFETIME_VALUE", "NET_CUSTOMER_LIFETIME_VALUE"])
+    ).execute()
+
+    # Lowercase must not be empty (the production bug).
+    assert len(lower.base.data) == 2
+    assert len(lower.current.data) == 2
+
+    # Lowercase and uppercase requests must be identical.
+    assert len(lower.base.data) == len(upper.base.data)
+    assert len(lower.current.data) == len(upper.current.data)
+
+    # Profiled the physical (uppercase) columns, not the lowercase request strings.
+    profiled = {row[0] for row in lower.current.data}
+    assert profiled == {"CUSTOMER_LIFETIME_VALUE", "NET_CUSTOMER_LIFETIME_VALUE"}
+
+
+def test_profile_lowercase_columns_on_uppercase_physical(dbt_test_helper):
+    """DRC-3674: single-sided ProfileTask must also resolve lowercase → physical names."""
+    dbt_test_helper.create_model("snowflake_customers", None, csv_data_uppercase)
+
+    lower = ProfileTask(dict(model="snowflake_customers", columns=["customer_lifetime_value"])).execute()
+    upper = ProfileTask(dict(model="snowflake_customers", columns=["CUSTOMER_LIFETIME_VALUE"])).execute()
+
+    assert len(lower.current.data) == 1
+    assert len(lower.current.data) == len(upper.current.data)
+    assert lower.current.data[0][0] == "CUSTOMER_LIFETIME_VALUE"
+
+
+def test_profile_diff_lowercase_is_noop_on_lowercase_physical(dbt_test_helper):
+    """Adapter-safety: case-insensitive matching is a no-op when physical names are already lowercase (duckdb)."""
+    dbt_test_helper.create_model("customers", csv_data_base, csv_data_curr)
+    run_result = ProfileDiffTask(dict(model="customers", columns=["name", "age"])).execute()
+    assert len(run_result.current.data) == 2
+    assert len(run_result.base.data) == 2
+
+
 def test_profile_column_jinja_template():
 
     class DummyAdapter:

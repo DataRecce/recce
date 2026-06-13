@@ -183,9 +183,15 @@ class ProfileDiffTask(Task):
             curr_columns = [column for column in dbt_adapter.get_columns(model, base=False)]
 
             if selected_columns:
-                # Only profile the columns in the filter_columns
-                base_columns = [column for column in base_columns if column.name in selected_columns]
-                curr_columns = [column for column in curr_columns if column.name in selected_columns]
+                # Only profile the columns in the filter_columns.
+                # Match case-insensitively: get_columns() returns physical catalog names,
+                # which case-folding warehouses (e.g. Snowflake) store UPPERCASE while
+                # callers supply lowercase manifest-convention names. A case-sensitive
+                # `column.name in selected_columns` test would drop every column and yield
+                # an empty profile. (DRC-3674)
+                requested = {name.lower() for name in selected_columns}
+                base_columns = [column for column in base_columns if column.name.lower() in requested]
+                curr_columns = [column for column in curr_columns if column.name.lower() in requested]
 
             total = len(base_columns) + len(curr_columns)
             completed = 0
@@ -288,7 +294,11 @@ class ProfileTask(ProfileDiffTask):
             curr_columns = [column for column in dbt_adapter.get_columns(model, base=False)]
 
             if selected_columns:
-                curr_columns = [column for column in curr_columns if column.name in selected_columns]
+                # Case-insensitive match — see ProfileDiffTask.execute (DRC-3674): physical
+                # catalog names are UPPERCASE on case-folding warehouses while callers supply
+                # lowercase names, so an exact-case filter would drop every column.
+                requested = {name.lower() for name in selected_columns}
+                curr_columns = [column for column in curr_columns if column.name.lower() in requested]
 
             total = len(curr_columns)
             completed = 0
