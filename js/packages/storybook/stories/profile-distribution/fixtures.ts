@@ -18,20 +18,24 @@
  */
 
 // ----------------------------------------------------------------------
-// Inline payload-shape types (frozen Stage B contract; Storybook-only)
+// Payload-shape types (Storybook-only)
 // ----------------------------------------------------------------------
+//
+// Continuous histogram fixtures use the CANONICAL
+// `ProfileDistributionHistogramPayload` from `@datarecce/ui/api` — that's the
+// shape the production cell consumes, so it must not drift.
+//
+// The top-K (counts) and result types below are deliberately Storybook-LOCAL
+// and DIVERGE from the canonical `run.ts` contract: the fixtures bundle
+// envelope-level `base_total`/`current_total` onto the counts payload for
+// display convenience here, whereas the wire contract puts those on the
+// `ProfileDistributionOkResult` envelope and types counts as `(number|null)[]`.
+// Do NOT copy these shapes into production — use the `@datarecce/ui/api` types.
+// (Fully canonicalizing the counts fixtures means moving totals to the envelope
+// across the discrete stories; deferred — storybook-only, no prod impact.)
 
-interface ProfileDistributionHistogramPayload {
-  kind: "histogram";
-  /** Per-env quantile edges — base and current bin on their own edges, so
-   * each side stays constant-area (see PR #1398). They generally differ. */
-  base_bin_edges: number[];
-  current_bin_edges: number[];
-  base_density: number[];
-  current_density: number[];
-  base_total: number;
-  current_total: number;
-}
+import type { ProfileDistributionHistogramPayload } from "@datarecce/ui/api";
+import type { PairedHistogramContinuousData } from "@datarecce/ui/primitives";
 
 interface ProfileDistributionTopKPayload {
   kind: "topk";
@@ -158,21 +162,41 @@ export const continuousStable = continuousFromProportions(
 );
 
 /**
- * Added column — base totals 0, all mass on current side. Renders as a
- * solid-blue chart (current dominates every bin). Base still carries valid
- * edges (the warehouse returns them even for an empty side); we reuse
- * current's edges so the merged grid stays clean with no base mass.
+ * Added column — exists in current only, no base. The backend emits EMPTY base
+ * edges/density for the absent side (not zero-density padded edges), so the
+ * cell renders the current side one-sided (gap-on-absent), the same way the
+ * discrete cell handles a value present in only one env.
  */
 const addedCurrentEdges = [
   0, 50, 100, 150, 200, 300, 400, 500, 700, 900, 1200, 1500,
 ];
 export const continuousAddedOnly = continuousFromProportions(
-  addedCurrentEdges,
-  Array(11).fill(0),
+  [],
+  [],
   addedCurrentEdges,
   [0.02, 0.08, 0.2, 0.3, 0.18, 0.1, 0.06, 0.03, 0.02, 0.008, 0.002],
   0,
   18_000,
+);
+
+/**
+ * TIME column — edges are **seconds since midnight** (0–86399), the shape the
+ * backend's `epoch()` cast emits for `TIME` (distinct from the Unix-epoch
+ * seconds a TIMESTAMP/DATE emits). An activity bump around midday. Used to
+ * exercise the `HH:MM:SS` clock-time tooltip path (vs the calendar-date path
+ * a TIMESTAMP takes).
+ */
+const HOUR = 3600;
+const timeOfDayEdges = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22].map(
+  (h) => h * HOUR,
+);
+export const continuousEventTime = continuousFromProportions(
+  timeOfDayEdges,
+  [0.01, 0.02, 0.04, 0.08, 0.13, 0.19, 0.18, 0.13, 0.1, 0.07, 0.05],
+  timeOfDayEdges,
+  [0.02, 0.03, 0.05, 0.09, 0.14, 0.18, 0.16, 0.12, 0.1, 0.07, 0.04],
+  5000,
+  5200,
 );
 
 // ----------------------------------------------------------------------
@@ -470,7 +494,13 @@ export const mixedTaskResult: ProfileDistributionResult = {
 // shape conversion, so the same five-line copy appeared a dozen times.
 // These adapters centralize it.
 
-export function toContinuousProps(p: ProfileDistributionHistogramPayload) {
+// Typed return so this mapper can't silently drift from the component's prop
+// shape — if `PairedHistogramContinuousData` gains/changes a field, TS flags
+// this here (and the production `toContinuousData` equivalent) rather than
+// letting the story pass a stale shape.
+export function toContinuousProps(
+  p: ProfileDistributionHistogramPayload,
+): PairedHistogramContinuousData {
   return {
     baseBinEdges: p.base_bin_edges,
     currentBinEdges: p.current_bin_edges,

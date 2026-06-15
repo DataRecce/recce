@@ -3,8 +3,8 @@ import { useCallback, useState } from "react";
 export interface ImpactSets {
   nodeIds: Set<string>;
   columnIds: Set<string>;
-  wholeModelImpactedNodeIds?: Set<string>;
-  wholeModelChangedNodeIds?: Set<string>;
+  wholeModelImpactedNodeIds: Set<string>;
+  wholeModelChangedNodeIds: Set<string>;
 }
 
 export interface UsePublishedImpactSetsResult {
@@ -15,9 +15,9 @@ export interface UsePublishedImpactSetsResult {
   publish: (sets: ImpactSets) => void;
 }
 
-// Stable empty-set reference shared by the whole-model fallback path.
-// Allocating `new Set()` on every publish would break `Object.is` bailout in
-// `setState`, causing extra renders on refresh when whole-model is disabled.
+// Stable empty-set reference for the whole-model initial state (before the
+// first `publish`). A fresh `new Set()` here would break the `Object.is`
+// bailout in `setState`, causing extra renders on refresh.
 const EMPTY_SET: ReadonlySet<string> = new Set<string>();
 
 // State (not refs) so downstream memos re-render when impact CLL populates the
@@ -40,12 +40,8 @@ export function usePublishedImpactSets(): UsePublishedImpactSetsResult {
   const publish = useCallback((sets: ImpactSets) => {
     setImpactedNodeIds(sets.nodeIds);
     setImpactedColumnIds(sets.columnIds);
-    setWholeModelImpactedNodeIds(
-      sets.wholeModelImpactedNodeIds ?? (EMPTY_SET as Set<string>),
-    );
-    setWholeModelChangedNodeIds(
-      sets.wholeModelChangedNodeIds ?? (EMPTY_SET as Set<string>),
-    );
+    setWholeModelImpactedNodeIds(sets.wholeModelImpactedNodeIds);
+    setWholeModelChangedNodeIds(sets.wholeModelChangedNodeIds);
   }, []);
 
   return {

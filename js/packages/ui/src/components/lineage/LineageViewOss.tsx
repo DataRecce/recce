@@ -118,6 +118,7 @@ import { toReactFlow } from "./lineage";
 import { NodeViewOss as NodeView } from "./NodeViewOss";
 import type { NodeChangeStatus } from "./nodes/LineageNode";
 import { patchLineageFromCll } from "./patchLineageDiffFromCll";
+import { shouldCloseOrphanedRunResult } from "./runResultVisibility";
 import SetupConnectionBanner from "./SetupConnectionBannerOss";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
 import {
@@ -139,12 +140,11 @@ export const MINIMAP_NODE_THRESHOLD = 500;
 function computeImpactedSets(
   lineageGraph: LineageGraph,
   cll: ColumnLineageData,
-  wholeModelImpact = false,
 ): {
   nodeIds: Set<string>;
   columnIds: Set<string>;
-  wholeModelImpactedNodeIds?: Set<string>;
-  wholeModelChangedNodeIds?: Set<string>;
+  wholeModelImpactedNodeIds: Set<string>;
+  wholeModelChangedNodeIds: Set<string>;
 } {
   const columnIds = computeImpactedColumns(cll);
   const nodeIds = new Set<string>();
@@ -161,17 +161,14 @@ function computeImpactedSets(
       nodeIds.add(nodeId);
     }
   }
-  if (wholeModelImpact) {
-    const { wholeModelImpactedNodeIds, wholeModelChangedNodeIds } =
-      computeWholeModelImpact(lineageGraph, cll);
-    return {
-      nodeIds,
-      columnIds,
-      wholeModelImpactedNodeIds,
-      wholeModelChangedNodeIds,
-    };
-  }
-  return { nodeIds, columnIds };
+  const { wholeModelImpactedNodeIds, wholeModelChangedNodeIds } =
+    computeWholeModelImpact(lineageGraph, cll);
+  return {
+    nodeIds,
+    columnIds,
+    wholeModelImpactedNodeIds,
+    wholeModelChangedNodeIds,
+  };
 }
 
 /**
@@ -281,7 +278,6 @@ export function PrivateLineageView(
 
   const { data: serverFlags } = useRecceServerFlag();
   const newCllExperience = serverFlags?.new_cll_experience ?? false;
-  const wholeModelImpact = serverFlags?.whole_model_impact ?? false;
   const { runId, showRunId, closeRunResult, runAction, isRunResultOpen } =
     useRecceActionContext();
   const { run } = useRun(runId);
@@ -638,11 +634,7 @@ export function PrivateLineageView(
       // Compute impacted sets once; thread into ancestry to avoid redundant DFS.
       const impacted =
         newCllExperience && cll
-          ? computeImpactedSets(
-              lineageGraph,
-              cll,
-              serverFlags?.whole_model_impact ?? false,
-            )
+          ? computeImpactedSets(lineageGraph, cll)
           : undefined;
 
       const [nodes, edges, nodeColumnSetMap] = await toReactFlow(lineageGraph, {
@@ -970,11 +962,7 @@ export function PrivateLineageView(
 
     const impacted =
       newCllExperience && cll
-        ? computeImpactedSets(
-            lineageGraph,
-            cll,
-            serverFlags?.whole_model_impact ?? false,
-          )
+        ? computeImpactedSets(lineageGraph, cll)
         : undefined;
 
     const [newNodes, newEdges, newNodeColumnSetMap] = await toReactFlow(
@@ -1011,18 +999,12 @@ export function PrivateLineageView(
       !!focusedNodeId || !!run,
     );
 
-    // Close the run result view if the run result node is not in the new nodes
-    if (
-      run &&
-      (isTopKDiffRun(run) ||
-        isProfileDiffRun(run) ||
-        isHistogramDiffRun(run) ||
-        isValueDiffRun(run) ||
-        isValueDiffDetailRun(run))
-    ) {
-      if (run.params?.model && !findNodeByName(run.params.model)) {
-        closeRunResult();
-      }
+    // Close the run result view if its model node is not in the new nodes —
+    // but NOT while the graph is still building (empty node set), so a run
+    // result deep-linked open before the first layout is not slammed shut
+    // (DRC-3532 race). See shouldCloseOrphanedRunResult.
+    if (shouldCloseOrphanedRunResult(run, nodes)) {
+      closeRunResult();
     }
 
     if (fitView) {
@@ -1258,7 +1240,6 @@ export function PrivateLineageView(
     },
     changeAnalysisMode,
     newCllExperience,
-    wholeModelImpact,
     setChangeAnalysisMode,
     getNodeAction: (nodeId: string) => {
       return multiNodeAction.actionState.actions[nodeId];

@@ -300,3 +300,101 @@ class TestReadinessGate:
         client = TestClient(app)
         response = client.get("/api/health")
         assert response.status_code == 200
+
+
+class TestV2VocabularyEndpoints:
+    """DRC-3553: opt-in v2 change-category vocabulary on the wire (Accept-Vocabulary: v2)."""
+
+    def test_api_info_lineage_respects_accept_vocabulary_header(self, dbt_test_helper):
+        from unittest.mock import patch
+
+        from recce.models.types import MergedLineage, MergedNode, NodeChange
+        from recce.state import FileStateLoader
+
+        context = default_context()
+        context.state_loader = FileStateLoader()
+        lineage = MergedLineage(
+            nodes={
+                "model.m1": MergedNode(
+                    name="m1",
+                    resource_type="model",
+                    change_status="modified",
+                    change=NodeChange(category="breaking"),
+                )
+            },
+            edges=[],
+            metadata={},
+        )
+        client = TestClient(app)
+        with patch.object(context, "get_merged_lineage", return_value=lineage):
+            legacy = client.get("/api/info")
+            v2 = client.get("/api/info", headers={"Accept-Vocabulary": "v2"})
+
+        assert legacy.status_code == 200
+        assert v2.status_code == 200
+        legacy_node = legacy.json()["lineage"]["nodes"]["model.m1"]
+        v2_node = v2.json()["lineage"]["nodes"]["model.m1"]
+        assert legacy_node["change"]["category"] == "breaking"
+        assert v2_node["change"]["category"] == "model_wide"
+        # change_status is a separate vocabulary and must be left untouched.
+        assert v2_node["change_status"] == "modified"
+        # The category remap is the ONLY difference between the two modes.
+        assert set(v2_node.keys()) == set(legacy_node.keys())
+
+    def test_api_cll_v2_remaps_categories_and_preserves_shape(self, dbt_test_helper):
+        from unittest.mock import patch
+
+        from recce.models.types import CllData, CllNode
+
+        context = default_context()
+        cll_data = CllData(
+            nodes={
+                "model.m1": CllNode(
+                    id="model.m1",
+                    name="m1",
+                    package_name="jaffle_shop",
+                    resource_type="model",
+                    change_status="modified",
+                    change_category="breaking",
+                ),
+                # All-optional fields left as None to pin shape parity below.
+                "model.m2": CllNode(
+                    id="model.m2",
+                    name="m2",
+                    package_name="jaffle_shop",
+                    resource_type="model",
+                ),
+            },
+        )
+
+        had_flag = hasattr(app.state, "flag")
+        old_flag = getattr(app.state, "flag", None)
+        app.state.flag = {}
+        try:
+            client = TestClient(app)
+            with patch.object(context.adapter, "get_cll", return_value=cll_data):
+                legacy = client.post("/api/cll", json={})
+                v2 = client.post("/api/cll", json={}, headers={"Accept-Vocabulary": "v2"})
+        finally:
+            if had_flag:
+                app.state.flag = old_flag
+            else:
+                del app.state.flag
+
+        assert legacy.status_code == 200
+        assert v2.status_code == 200
+        legacy_nodes = legacy.json()["current"]["nodes"]
+        v2_nodes = v2.json()["current"]["nodes"]
+
+        # Only the change_category labels differ between modes.
+        assert legacy_nodes["model.m1"]["change_category"] == "breaking"
+        assert v2_nodes["model.m1"]["change_category"] == "model_wide"
+        # Null categories stay null (not remapped, not dropped).
+        assert legacy_nodes["model.m2"]["change_category"] is None
+        assert v2_nodes["model.m2"]["change_category"] is None
+
+        # Shape parity: the v2 path must emit the exact same fields as the
+        # default response_model path — including null-valued ones.
+        assert set(v2.json()["current"].keys()) == set(legacy.json()["current"].keys())
+        for node_id, legacy_node in legacy_nodes.items():
+            assert set(v2_nodes[node_id].keys()) == set(legacy_node.keys()), node_id

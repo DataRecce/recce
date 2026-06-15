@@ -299,7 +299,6 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
     cll,
     impactedNodeIds,
     newCllExperience,
-    wholeModelImpact,
   } = lineageViewCtx;
   const isImpacted = newCllExperience ? impactedNodeIds.has(id) : false;
   const { isWholeModelChanged, isWholeModelImpacted } = pickWholeModelFlags(
@@ -365,7 +364,6 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
       isImpacted={isImpacted}
       isWholeModelChanged={isWholeModelChanged}
       isWholeModelImpacted={isWholeModelImpacted}
-      wholeModelImpact={wholeModelImpact}
       // Interactive props
       interactive={interactive}
       selectMode={nodeSelectMode}

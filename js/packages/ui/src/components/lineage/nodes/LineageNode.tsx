@@ -156,8 +156,6 @@ export interface LineageNodeProps {
   isWholeModelChanged?: boolean;
   /** This model is downstream of (impacted by) a whole-model change. Suppresses the graph badge (the signal lives on NodeView's title chip + stripe) and the change-category text label. Precedence is enforced internally: `isWholeModelChanged` outranks this flag. */
   isWholeModelImpacted?: boolean;
-  /** Whether the `--whole-model-impact` server flag is on. When false, no per-column badges render and the "Model-Wide Change / Column Change / Additive Change" text labels are shown instead. */
-  wholeModelImpact?: boolean;
 
   // === Callbacks ===
   /** Callback when node is clicked */
@@ -302,7 +300,6 @@ function LineageNodeComponent({
   isImpacted: isImpactedProp,
   isWholeModelChanged = false,
   isWholeModelImpacted = false,
-  wholeModelImpact = false,
   // Callbacks
   onNodeClick,
   onNodeDoubleClick,
@@ -459,7 +456,7 @@ function LineageNodeComponent({
   };
 
   const treatmentInputs = {
-    wholeModelImpact,
+    newCllExperience,
     isWholeModelChanged,
     isWholeModelImpacted,
     isImpacted,
@@ -474,13 +471,13 @@ function LineageNodeComponent({
     treatmentInputs,
   );
 
-  // When --whole-model-impact is on, the COLUMN / ADD graph badge and the
+  // In the new CLL experience, the COLUMN / ADD graph badge and the
   // NodeView title chip + stripe carry the signal — suppress the text
   // label except for "unknown", which has no badge equivalent.
   const changeCategoryLabel =
     showChangeAnalysis &&
     changeCategory &&
-    (!wholeModelImpact || changeCategory === "unknown")
+    (!newCllExperience || changeCategory === "unknown")
       ? CHANGE_CATEGORY_LABELS[changeCategory]
       : null;
 

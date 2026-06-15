@@ -165,6 +165,32 @@ export function trackColumnLevelLineage(props: ColumnLevelLineageProps) {
   capturePosthog("column_level_lineage", props);
 }
 
+/**
+ * Per-task timing for the inline paired-distribution feature (DRC-3390).
+ * Emitted once when a `profile_distribution` run resolves (success, error,
+ * or unsupported). Mirrors the backend's `log_performance` payload so the
+ * frontend wall-time can be compared against the warehouse wall-time.
+ */
+export interface ProfileDistributionProps {
+  /** Terminal outcome of the run as seen by the UI. */
+  status: "ok" | "unsupported" | "error";
+  /** Strategy the backend router picked (Stage B only emits "approx_all"). */
+  strategy?: string;
+  /** Wall-clock from submit to resolved result, in milliseconds. */
+  total_wall_ms: number;
+  /** Number of per-column payloads returned (0 for unsupported/error). */
+  column_count: number;
+  /** Columns that came back as a per-column failure (`kind: null`). */
+  error_count: number;
+  /** True when the backend served this payload from its in-memory cache. */
+  cache_hit?: boolean;
+}
+
+export function trackProfileDistribution(props: ProfileDistributionProps) {
+  track("[Web] profile_distribution", props);
+  capturePosthog("profile_distribution", props);
+}
+
 interface ShareStateProps {
   name: "enable" | "create" | "copy";
 }
@@ -290,6 +316,7 @@ export const EXPLORE_SOURCE = {
   NODE_SIDEBAR_MULTI_ENV: "node_sidebar_multi_env",
   SCHEMA_ROW_COUNT_BUTTON: "schema_row_count_button",
   SCHEMA_COLUMN_MENU: "schema_column_menu",
+  SCHEMA_VIEW: "schema_view",
 } as const;
 
 export type ExploreActionType =
