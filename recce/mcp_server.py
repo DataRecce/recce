@@ -609,6 +609,16 @@ class RecceMCPServer:
         run, future = _submit_run_fn(run_type, params, triggered_by="recce_ai")
         # Await the executor future so run.result is populated before we return.
         await asyncio.wrap_future(future)
+        # DRC-3634: submit_run.fn swallows non-DuckDBExternalAccessBlocked errors —
+        # it records run.status=FAILED / run.error and returns None, so the awaited
+        # future resolves cleanly. Re-raise here so call_tool restores isError=True and
+        # _classify_db_error can classify the failure, instead of collapsing a FAILED
+        # run into a success-shaped {"run_id": ...} (which a citation agent would read
+        # as "ran fine, empty diff"). The persisted FAILED Run stays in context.runs.
+        from recce.models.types import RunStatus
+
+        if run.status == RunStatus.FAILED:
+            raise RecceException(run.error or f"{run_type} run failed")
         # Normalise run.result to a plain dict (tasks may return Pydantic models).
         raw_result = run.result
         if raw_result is None:
@@ -929,7 +939,9 @@ class RecceMCPServer:
                                 "- 'table_not_found': IMPORTANT - Table defined in manifest but doesn't exist in database. "
                                 "This indicates stale dbt artifacts or environment misconfiguration. "
                                 "Report this to users as it requires rebuilding dbt artifacts or checking environment setup.\n"
-                                "- 'permission_denied': User lacks permission to access the table"
+                                "- 'permission_denied': User lacks permission to access the table\n\n"
+                                "The response includes a top-level 'run_id' field identifying the persisted run, "
+                                "so this exact run can be cited inline (e.g. {{run:<run_id>}})."
                             )
                             + (
                                 "\n\nNote: When base environment is not configured, this tool compares "
@@ -974,7 +986,9 @@ class RecceMCPServer:
                         Tool(
                             name="query",
                             description="Execute a SQL query on the current environment. "
-                            "Supports Jinja templates with dbt macros like {{ ref('model_name') }}.",
+                            "Supports Jinja templates with dbt macros like {{ ref('model_name') }}. "
+                            "The response includes a top-level 'run_id' field identifying the persisted run, "
+                            "so this exact run can be cited inline (e.g. {{run:<run_id>}}).",
                             inputSchema={
                                 "type": "object",
                                 "properties": {
@@ -995,7 +1009,9 @@ class RecceMCPServer:
                             name="query_diff",
                             description=(
                                 "Execute SQL queries on both base and current environments and compare results. "
-                                "Supports primary keys for row-level comparison."
+                                "Supports primary keys for row-level comparison.\n\n"
+                                "The response includes a top-level 'run_id' field identifying the persisted run, "
+                                "so this exact run can be cited inline (e.g. {{run:<run_id>}})."
                             )
                             + (
                                 "\n\nNote: When base environment is not configured, this tool compares "
@@ -1027,7 +1043,9 @@ class RecceMCPServer:
                             name="profile_diff",
                             description=(
                                 "Generate and compare statistical profiles (min, max, avg, distinct count, etc.) "
-                                "for columns in a model between base and current environments."
+                                "for columns in a model between base and current environments.\n\n"
+                                "The response includes a top-level 'run_id' field identifying the persisted run, "
+                                "so this exact run can be cited inline (e.g. {{run:<run_id>}})."
                             )
                             + (
                                 "\n\nNote: When base environment is not configured, this tool compares "
@@ -1056,7 +1074,9 @@ class RecceMCPServer:
                             description=(
                                 "Compare row-level values between base and current environments using primary key join. "
                                 "Returns per-column match rates showing data quality impact. "
-                                "Use this to understand which columns changed and how many rows are affected."
+                                "Use this to understand which columns changed and how many rows are affected.\n\n"
+                                "The response includes a top-level 'run_id' field identifying the persisted run, "
+                                "so this exact run can be cited inline (e.g. {{run:<run_id>}})."
                             )
                             + (
                                 "\n\nNote: When base environment is not configured, this tool compares "
