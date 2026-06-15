@@ -17,7 +17,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { NodeData } from "../../../api";
 import { theme } from "../../../theme";
-import { SchemaView } from "../SchemaView";
+import { SchemaLegend, SchemaView } from "../SchemaView";
 
 const { flags, distribution, lineageViewContext } = vi.hoisted(() => ({
   flags: {
@@ -124,5 +124,41 @@ describe("SchemaView inline-profile wiring", () => {
     // changed-columns default is restored, so the button returns.
     rerender(wrap(model("model.shop.customers")));
     expect(screen.getByRole("button", BUTTON)).toBeInTheDocument();
+  });
+});
+
+const wrapLegend = () => (
+  <ThemeProvider theme={theme}>
+    <CssBaseline />
+    <SchemaLegend />
+  </ThemeProvider>
+);
+
+describe("SchemaLegend", () => {
+  it("always shows the added / removed / changed entries", () => {
+    render(wrapLegend());
+    expect(screen.getByText("added")).toBeInTheDocument();
+    expect(screen.getByText("removed")).toBeInTheDocument();
+    expect(screen.getByText("changed")).toBeInTheDocument();
+  });
+
+  it("documents the whole-model and additive badges when new_cll_experience is on", () => {
+    flags.current = { new_cll_experience: true };
+    render(wrapLegend());
+    expect(screen.getByLabelText("whole-model")).toHaveTextContent("ALL");
+    expect(screen.getByLabelText("additive change")).toHaveTextContent("ADD");
+    expect(
+      screen.getByText(/every row in this model can be affected/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/adds a column; existing rows unchanged/),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the whole-model and additive badges when new_cll_experience is off", () => {
+    flags.current = { new_cll_experience: false };
+    render(wrapLegend());
+    expect(screen.queryByLabelText("whole-model")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("additive change")).not.toBeInTheDocument();
   });
 });
