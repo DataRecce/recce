@@ -3057,3 +3057,45 @@ class TestLocalModeRunBacked:
         with patch.object(ValueDiffDetailTask, "execute", return_value=mock_model):
             result = await server._tool_value_diff_detail({"model": "orders", "primary_key": "id"})
         assert "run_id" not in result, "value_diff_detail is outside run-backed scope"
+
+    # ------------------------------------------------------------------
+    # Error surfacing: a failing run must raise, not return a success-shaped {run_id}
+    # ------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_failing_run_surfaces_error_not_run_id(self, server):
+        """A raising task must surface the error, NOT collapse into a success-shaped
+        ``{"run_id": ...}`` dict (DRC-3634 regression).
+
+        ``submit_run.fn`` catches non-DuckDBExternalAccessBlocked exceptions, records
+        ``run.status=FAILED`` / ``run.error``, and returns None — so the awaited future
+        resolves cleanly. ``_tool_run_backed_local`` must inspect ``run.status`` and
+        re-raise; otherwise a failed query (bad SQL / missing model / permission denied)
+        returns an empty *success* and a citation agent reports "no diff" for a run that
+        actually errored.
+        """
+        with patch.object(
+            QueryDiffTask,
+            "execute",
+            side_effect=Exception('Referenced column "bad_col" not found'),
+        ):
+            with pytest.raises(Exception) as exc_info:
+                await server._tool_query_diff(
+                    {"sql_template": "SELECT bad_col FROM {{ ref('orders') }}", "primary_keys": ["id"]}
+                )
+        # The original error message must be preserved so call_tool's _classify_db_error
+        # can classify it (TABLE_NOT_FOUND / PERMISSION_DENIED / SYNTAX_ERROR).
+        assert "bad_col" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_failing_run_still_persists_failed_run_for_citation(self, server):
+        """Even when the run fails, the Run is persisted to context.runs with
+        status FAILED — submit_run records it before executing, and the error
+        guard must surface the failure without dropping the persisted Run."""
+        from recce.models.types import RunStatus
+
+        with patch.object(RowCountDiffTask, "execute", side_effect=ValueError("missing model 'orders'")):
+            with pytest.raises(Exception):
+                await server._tool_row_count_diff({"node_names": ["orders"]})
+        assert len(self._context.runs) == 1, "the failed Run must still be persisted for citation"
+        assert self._context.runs[0].status == RunStatus.FAILED
