@@ -248,8 +248,10 @@ class TestRecceMCPServer:
         with patch.object(RowCountDiffTask, "execute", return_value=mock_result):
             result = await server._tool_row_count_diff({"node_names": ["my_model"]})
 
-        # Verify the result
-        assert result == mock_result
+        # Verify the result. DRC-3532 run-backed local mode surfaces a run_id key
+        # alongside the diff result; compare on the result fields, ignoring run_id
+        # (the dedicated TestLocalModeRunBacked tests cover run_id surfacing).
+        assert {k: v for k, v in result.items() if k != "run_id"} == mock_result
         assert "results" in result
 
     @pytest.mark.asyncio
@@ -285,8 +287,9 @@ class TestRecceMCPServer:
 
                 result = await server._tool_query({"sql_template": "SELECT 1", "base": True})
 
-                # Verify base flag was set (would need to inspect task creation)
-                assert result == mock_result
+                # Verify base flag was set (would need to inspect task creation).
+                # DRC-3532 run-backed local mode adds a run_id key; ignore it here.
+                assert {k: v for k, v in result.items() if k != "run_id"} == mock_result
 
     @pytest.mark.asyncio
     async def test_tool_query_diff(self, mcp_server):
