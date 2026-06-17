@@ -1,13 +1,13 @@
 ---
 id: 8fgt2jswrdbz3qbm13qhhghp
 title: Sample dbt unit-test corpus
-status: scoping
+status: prototyping
 source: commission seed
 started: 2026-06-17T23:29:06Z
 completed:
 verdict:
 score: 0.9
-worktree:
+worktree: .worktrees/spacedock-ensign-sample-unit-test-corpus
 issue: DRC-3087
 pr:
 ---
