@@ -1,0 +1,10 @@
+# Self-contained duckdb profile. The relative `path:` keeps the database file
+# inside the project dir so a fresh checkout needs nothing but dbt-duckdb.
+# dbt resolves this profiles.yml via `--profiles-dir .` (run from corpus/).
+coverage_corpus:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: coverage_corpus.duckdb
+      threads: 1

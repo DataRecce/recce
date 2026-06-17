@@ -1,0 +1,24 @@
+version: 2
+
+models:
+  - name: dim_order_status
+    description: >
+      C1 -- multi-branch CASE. Buckets raw order status.
+
+unit_tests:
+  # PARTIAL-COVERAGE test. Deliberate, documented gap:
+  # the `given` fixtures only emit statuses 'placed' and 'completed', which hit
+  # the WHEN ('placed','shipped') branch and the WHEN 'completed' branch.
+  # GAP: the 'returned'/'cancelled' branch and the ELSE 'unknown' branch are
+  # never exercised. A coverage spike should report 2 of 4 CASE arms uncovered.
+  - name: c1_partial_two_branches
+    model: dim_order_status
+    given:
+      - input: ref('raw_orders')
+        rows:
+          - { order_id: 1, status: "placed" }
+          - { order_id: 3, status: "completed" }
+    expect:
+      rows:
+        - { order_id: 1, status: "placed", status_bucket: "open" }
+        - { order_id: 3, status: "completed", status_bucket: "fulfilled" }

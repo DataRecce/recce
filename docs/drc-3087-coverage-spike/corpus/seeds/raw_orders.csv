@@ -1,0 +1,6 @@
+order_id,status,amount,tax_rate,customer_id,line_items
+1,placed,100,0.10,10,2
+2,shipped,250,0.10,10,5
+3,completed,400,0.08,20,1
+4,returned,50,0.10,30,3
+5,placed,0,0.10,40,0

@@ -1,0 +1,63 @@
+[0m23:43:26  Running with dbt=1.11.7
+[0m23:43:26  Registered adapter: duckdb=1.10.1
+[0m23:43:26  Encountered an error:
+[Errno 1] Operation not permitted
+[0m23:43:26  Traceback (most recent call last):
+  File "/Users/danyel/code/Recce/recce/.venv/lib/python3.13/site-packages/dbt/cli/requires.py", line 182, in wrapper
+    result, success = func(*args, **kwargs)
+                      ~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/danyel/code/Recce/recce/.venv/lib/python3.13/site-packages/dbt/cli/requires.py", line 128, in wrapper
+    return func(*args, **kwargs)
+  File "/Users/danyel/code/Recce/recce/.venv/lib/python3.13/site-packages/dbt/cli/requires.py", line 276, in wrapper
+    return func(*args, **kwargs)
+  File "/Users/danyel/code/Recce/recce/.venv/lib/python3.13/site-packages/dbt/cli/requires.py", line 321, in wrapper
+    return func(*args, **kwargs)
+  File "/Users/danyel/code/Recce/recce/.venv/lib/python3.13/site-packages/dbt/cli/requires.py", line 391, in wrapper
+    return func(*args, **kwargs)
+  File "/Users/danyel/code/Recce/recce/.venv/lib/python3.13/site-packages/dbt/cli/requires.py", line 368, in wrapper
+    return func(*args, **kwargs)
+  File "/Users/danyel/code/Recce/recce/.venv/lib/python3.13/site-packages/dbt/cli/requires.py", line 407, in wrapper
+    setup_manifest(ctx, write=write, write_perf_info=write_perf_info)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/danyel/code/Recce/recce/.venv/lib/python3.13/site-packages/dbt/cli/requires.py", line 434, in setup_manifest
+    ctx.obj["manifest"] = parse_manifest(
+                          ~~~~~~~~~~~~~~^
+        runtime_config,
+        ^^^^^^^^^^^^^^^
+    ...<3 lines>...
+        active_integrations,
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/danyel/code/Recce/recce/.venv/lib/python3.13/site-packages/dbt/parser/manifest.py", line 2252, in parse_manifest
+    register_adapter(runtime_config, get_mp_context())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/danyel/code/Recce/recce/.venv/lib/python3.13/site-packages/dbt/adapters/factory.py", line 203, in register_adapter
+    FACTORY.register_adapter(config, mp_context, adapter_registered_log_level)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/danyel/code/Recce/recce/.venv/lib/python3.13/site-packages/dbt/adapters/factory.py", line 118, in register_adapter
+    adapter: Adapter = adapter_type(config, mp_context)  # type: ignore
+                       ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/danyel/code/Recce/recce/.venv/lib/python3.13/site-packages/dbt/adapters/base/impl.py", line 334, in __init__
+    self.connections = self.ConnectionManager(config, mp_context)
+                       ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/danyel/code/Recce/recce/.venv/lib/python3.13/site-packages/dbt/adapters/duckdb/connections.py", line 32, in __init__
+    super().__init__(config, mp_context)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/danyel/code/Recce/recce/.venv/lib/python3.13/site-packages/dbt/adapters/base/connections.py", line 78, in __init__
+    self.lock: RLock = mp_context.RLock()
+                       ~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.13_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/multiprocessing/context.py", line 73, in RLock
+    return RLock(ctx=self.get_context())
+  File "/opt/homebrew/Cellar/python@3.13/3.13.13_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/multiprocessing/synchronize.py", line 194, in __init__
+    SemLock.__init__(self, RECURSIVE_MUTEX, 1, 1, ctx=ctx)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.13_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/multiprocessing/synchronize.py", line 57, in __init__
+    sl = self._semlock = _multiprocessing.SemLock(
+                         ~~~~~~~~~~~~~~~~~~~~~~~~^
+        kind, value, maxvalue, self._make_name(),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        unlink_now)
+        ^^^^^^^^^^^
+PermissionError: [Errno 1] Operation not permitted
+

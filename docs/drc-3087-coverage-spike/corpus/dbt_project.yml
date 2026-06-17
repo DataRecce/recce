@@ -1,0 +1,16 @@
+name: coverage_corpus
+version: "1.0.0"
+config-version: 2
+
+profile: coverage_corpus
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  coverage_corpus:
+    +materialized: view
