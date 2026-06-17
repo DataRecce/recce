@@ -1,7 +1,7 @@
 ---
 id: 8fgt2jswrdbz3qbm13qhhghp
 title: Sample dbt unit-test corpus
-status: scoping
+status: proposed
 source: commission seed
 started:
 completed:

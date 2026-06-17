@@ -1,7 +1,7 @@
 ---
 id: g76413gnj562nwy6qay7byya
 title: Spike — query rewriting for coverage
-status: scoping
+status: proposed
 source: commission seed
 started:
 completed:

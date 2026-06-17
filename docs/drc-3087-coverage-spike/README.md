@@ -11,8 +11,9 @@ stages:
     worktree: false
     concurrency: 2
   states:
-    - name: scoping
+    - name: proposed
       initial: true
+    - name: scoping
     - name: prototyping
       worktree: true
     - name: findings
@@ -53,7 +54,7 @@ Every track file has YAML frontmatter. Fields are documented below; see **Track 
 |-------|------|-------------|
 | `id` | string | Unique identifier (sd-b32 stored ID) |
 | `title` | string | Human-readable track name |
-| `status` | enum | One of: scoping, prototyping, findings, done |
+| `status` | enum | One of: proposed, scoping, prototyping, findings, done |
 | `source` | string | Where this track came from |
 | `started` | ISO 8601 | When active work began |
 | `completed` | ISO 8601 | When the track reached terminal status |
@@ -68,6 +69,15 @@ Every track file has YAML frontmatter. Fields are documented below; see **Track 
 `id-style: sd-b32` — `id` stores the full stable 24-character lowercase SD-B32 value from `status --next-id --id-seed <slug-or-title>`. Status tables show the shortest unique prefix (`MIN_PREFIX: 2`). Use `status --validate` before trusting state and `status --resolve <ref>` to resolve a slug, stored ID, or address prefix.
 
 ## Stages
+
+### `proposed`
+
+Holding bucket. A track is created here and sits in `proposed` until the first officer dispatches it. No work happens in this stage — it is the inbox the entity enters on creation.
+
+- **Inputs:** none (entry state).
+- **Outputs:** none — dispatch moves the track to `scoping`.
+- **Good:** n/a.
+- **Bad:** n/a.
 
 ### `scoping`
 

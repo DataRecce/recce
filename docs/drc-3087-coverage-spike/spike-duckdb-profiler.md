@@ -1,7 +1,7 @@
 ---
 id: aexkfb7he4fwamyrkcb4cjr5
 title: Spike — DuckDB profiler / coverage report
-status: scoping
+status: proposed
 source: commission seed
 started:
 completed:
