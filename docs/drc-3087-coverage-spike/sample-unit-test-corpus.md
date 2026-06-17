@@ -133,3 +133,16 @@ Verified by: the entity body enumerates which constructs (CASE branches, joins, 
 ### Summary
 
 Scoped the shared corpus as an *engineered* set (not a representative one): five models covering CASE branches, joins, aggregations, multi-column transforms, and a nested combination, each shipping a unit test with a deliberate, documented coverage gap so the two spikes can be scored on whether they detect partial coverage. Decided to author in-repo at `docs/drc-3087-coverage-spike/corpus/` rather than vendor a public project, since scavenged tests are written to pass-all and don't leave the named gaps the spikes need. Verified the toolchain at scoping time — `.venv/bin` has dbt-core 1.11.7 / dbt-duckdb 1.10.1 (above the 1.8 unit-test floor) and duckdb is present — and flagged that `dbt` is not on `$PATH` (use `.venv/bin/dbt`); riskiest assumption is that unit tests actually run green on the duckdb target, to be de-risked first with a one-model slice.
+
+## Stage Report: prototyping
+
+- FAILED: Exercise the riskiest assumption FIRST ... stand up the smallest slice — the C1 CASE model plus one partial-coverage unit_test with inline `given` rows — and run `.venv/bin/dbt build` then `.venv/bin/dbt test --select test_type:unit`, capturing the transcript.
+  C1 slice authored and committed (e8a764c); `dbt build` BLOCKED in the agent-safehouse App Sandbox — dbt's adapter ConnectionManager `mp_context.RLock()` needs POSIX `sem_open`, which the container denies (PermissionError Errno 1). Reproduces foreground, sandbox-disabled, and detached. Transcript: corpus/evidence/dbt_build_BLOCKED.transcript.txt.
+- SKIPPED: Build the full five-model corpus ... with `dbt build`/`dbt test --select test_type:unit` passing and the transcript committed.
+  Gated on the riskiest-assumption check, which is blocked at the sandbox boundary (not a corpus/SQL fault). Authoring all five before a green runner would burn effort the contract says to de-risk first. Holding until dbt can run.
+- SKIPPED: Confirm and document the compiled-artifact handoff: note the readable `target/compiled/.../<unit_test>.sql` path(s) the two sibling spikes will instrument.
+  `target/compiled/` is a dbt output; it cannot materialize until `dbt build` runs. The intended handoff path is `corpus/target/compiled/coverage_corpus/models/_corpus.yml/unit_tests/dim_order_status/c1_partial_two_branches.sql`; to be confirmed empirically once the runner is unblocked.
+
+### Summary
+
+Authored the smallest riskiest-assumption slice (C1 multi-branch CASE model + one inline-`given` partial-coverage unit test, named gap = the `returned`/`cancelled` and ELSE arms) as a self-contained duckdb dbt project at `docs/drc-3087-coverage-spike/corpus/`. Exercising it surfaced a hard blocker: this agent runs inside a macOS App Sandbox container (`agent-safehouse`) that denies POSIX named-semaphore creation, so dbt's adapter cannot initialize its multiprocessing RLock and `dbt build`/`dbt test` cannot run from inside the agent — in any execution path tried. Proved the blocker is dbt-process-specific, not the corpus: duckdb runs fine in-sandbox and the C1 SQL returns the exact expected unit-test rows (corpus/evidence/duckdb_c1_probe.out.txt). Escalating to the FO with two unblock options (run dbt outside the safehouse, or grant the seatbelt `sem_open`). See corpus/evidence/BLOCKER.md.
