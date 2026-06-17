@@ -1,9 +1,9 @@
 ---
 id: 8fgt2jswrdbz3qbm13qhhghp
 title: Sample dbt unit-test corpus
-status: proposed
+status: scoping
 source: commission seed
-started:
+started: 2026-06-17T23:29:06Z
 completed:
 verdict:
 score: 0.9
