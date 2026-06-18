@@ -54,7 +54,7 @@ overrides:
   yaml@>=2.0.0 <2.8.3: '>=2.8.3'
   js-cookie@<3.0.7: ^3.0.7
   ws@>=8.0.0 <8.20.1: ^8.20.1
-  date-fns: ~4.2.1
+  date-fns: ^4.1.0
 
 importers:
 
@@ -104,7 +104,7 @@ importers:
         version: 18.0.1(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@jeromefitz/date-fns-tz':
         specifier: 3.0.0-canary.8
-        version: 3.0.0-canary.8(date-fns@4.2.1)
+        version: 3.0.0-canary.8(date-fns@4.4.0)
       '@mui/material':
         specifier: ^9.0.0
         version: 9.1.1(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(@types/react@19.2.17)(react@19.2.7))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -157,8 +157,8 @@ importers:
         specifier: ^1.8.2
         version: 1.8.2
       date-fns:
-        specifier: ~4.2.1
-        version: 4.2.1
+        specifier: ^4.1.0
+        version: 4.4.0
       file-saver:
         specifier: ^2.0.5
         version: 2.0.5
@@ -352,7 +352,7 @@ importers:
         version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
       chartjs-adapter-date-fns:
         specifier: ^3.0.0
-        version: 3.0.0(chart.js@4.5.1)(date-fns@4.2.1)
+        version: 3.0.0(chart.js@4.5.1)(date-fns@4.4.0)
       msw:
         specifier: ^2.14.6
         version: 2.14.6(@types/node@25.9.3)(typescript@6.0.3)
@@ -441,8 +441,8 @@ importers:
         specifier: ^1.8.0
         version: 1.8.2
       date-fns:
-        specifier: ~4.2.1
-        version: 4.2.1
+        specifier: ^4.1.0
+        version: 4.4.0
       file-saver:
         specifier: ^2.0.5
         version: 2.0.5
@@ -1265,7 +1265,7 @@ packages:
   '@jeromefitz/date-fns-tz@3.0.0-canary.8':
     resolution: {integrity: sha512-tU4JAYkqsKqwdwa+4X2Un0fFT/OaeQw3NV6AGLeyNd/TfNEJZlV6lHOemG6NAigZlGkGEIK279SIjEJPZsMkUg==}
     peerDependencies:
-      date-fns: ~4.2.1
+      date-fns: ^4.1.0
 
   '@joshwooding/vite-plugin-react-docgen-typescript@0.7.0':
     resolution: {integrity: sha512-qvsTEwEFefhdirGOPnu9Wp6ChfIwy2dBCRuETU3uE+4cC+PFoxMSiiEhxk4lOluA34eARHA0OxqsEUYDqRMgeQ==}
@@ -3201,7 +3201,7 @@ packages:
     resolution: {integrity: sha512-Rs3iEB3Q5pJ973J93OBTpnP7qoGwvq3nUnoMdtxO+9aoJof7UFcRbWcIDteXuYd1fgAvct/32T9qaLyLuZVwCg==}
     peerDependencies:
       chart.js: '>=2.8.0'
-      date-fns: ~4.2.1
+      date-fns: ^4.1.0
 
   check-error@2.1.3:
     resolution: {integrity: sha512-PAJdDJusoxnwm1VwW07VWwUN1sl7smmC3OKggvndJFadxxDRyFJBX/ggnu/KE4kQAB7a3Dp8f/YXC1FlUprWmA==}
@@ -3322,8 +3322,8 @@ packages:
     resolution: {integrity: sha512-b8AmV3kfQaqWAuacbPuNbL6vahnOJflOhexLzMMNLga62+/nh0JzvJ0aO/5a5MVgUFGS7Hu1P9P03o3fJkDCyw==}
     engines: {node: '>=12'}
 
-  date-fns@4.2.1:
-    resolution: {integrity: sha512-37RhSdxaG1suen6VDCza6rNrQfooyQh57HFVPwQGEq2QWliVLzPQZ8Oa017weOu+HZCnzI7N3Pf/wyoBKfEqrA==}
+  date-fns@4.4.0:
+    resolution: {integrity: sha512-+1UMbeh68lH1SegH83CGWwpb6OHHbpSgr3+s5Eww5M4CAgswBpoWS0AjTOfEJ33HiYKz1hdj/KTFprzXHmq/6w==}
 
   debug@4.4.3:
     resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
@@ -5940,9 +5940,9 @@ snapshots:
     optionalDependencies:
       '@types/node': 25.9.3
 
-  '@jeromefitz/date-fns-tz@3.0.0-canary.8(date-fns@4.2.1)':
+  '@jeromefitz/date-fns-tz@3.0.0-canary.8(date-fns@4.4.0)':
     dependencies:
-      date-fns: 4.2.1
+      date-fns: 4.4.0
       lodash.clonedeep: 4.5.0
 
   '@joshwooding/vite-plugin-react-docgen-typescript@0.7.0(typescript@6.0.3)(vite@8.0.16(@types/node@25.9.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.48.0)(yaml@2.9.0))':
@@ -7649,10 +7649,10 @@ snapshots:
     dependencies:
       '@kurkle/color': 0.3.4
 
-  chartjs-adapter-date-fns@3.0.0(chart.js@4.5.1)(date-fns@4.2.1):
+  chartjs-adapter-date-fns@3.0.0(chart.js@4.5.1)(date-fns@4.4.0):
     dependencies:
       chart.js: 4.5.1
-      date-fns: 4.2.1
+      date-fns: 4.4.0
 
   check-error@2.1.3: {}
 
@@ -7760,7 +7760,7 @@ snapshots:
       d3-selection: 3.0.0
       d3-transition: 3.0.1(d3-selection@3.0.0)
 
-  date-fns@4.2.1: {}
+  date-fns@4.4.0: {}
 
   debug@4.4.3:
     dependencies:
