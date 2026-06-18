@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Set
 
-from pydantic import UUID4, BaseModel, ConfigDict, Field
+from pydantic import UUID4, BaseModel, ConfigDict, Field, field_validator
 
 from recce.util.pydantic_model import pydantic_model_dump
 
@@ -139,6 +139,11 @@ ChangeStatus = Literal[
     "modified",
     "unknown",
 ]
+# DEPRECATED 2026-05-25: legacy vocabulary; removal target <next release>.
+# New vocab: model_wide/column/additive. See DRC-3553.
+# During the aliasing window the wire/enum values stay legacy; the v2 vocabulary
+# is accepted on input and emitted opt-in via `Accept-Vocabulary: v2`. See
+# recce.util.change_classifier for the alias map and normalizer.
 ChangeCategory = Literal[
     "breaking",
     "non_breaking",
@@ -146,10 +151,75 @@ ChangeCategory = Literal[
     "unknown",
 ]
 
+# DRC-3553: dual-vocabulary aliasing window. The wire/enum values stay LEGACY
+# (above) during this deprecation window; the v2 vocabulary
+# (model_wide / column / additive / unknown) is accepted on input and emitted
+# opt-in via `Accept-Vocabulary: v2`. These maps live here (the low-level
+# models module) so recce.util.change_classifier can re-export them without a
+# circular import.
+#
+# legacy wire value -> v2 vocabulary value
+CHANGE_CATEGORY_ALIASES: dict[str, str] = {
+    "breaking": "model_wide",
+    "partial_breaking": "column",
+    "non_breaking": "additive",
+    "unknown": "unknown",
+}
+
+# v2 vocabulary value -> legacy wire value (inverse of CHANGE_CATEGORY_ALIASES)
+CHANGE_CATEGORY_ALIASES_INVERSE: dict[str, str] = {v: k for k, v in CHANGE_CATEGORY_ALIASES.items()}
+
+
+def normalize_change_category(value: str) -> str:
+    """Normalize a change-category label to its canonical LEGACY wire value.
+
+    Accepts EITHER vocabulary:
+      - legacy: breaking / non_breaking / partial_breaking / unknown
+      - v2:     model_wide / column / additive / unknown
+
+    Returns the legacy wire value so that, e.g.,
+    ``normalize_change_category("breaking") == normalize_change_category("model_wide")``.
+
+    Unknown/unrecognized labels are returned unchanged so DIRECT callers
+    (dict-level translators, parsers) can decide how strictly to validate
+    without hard-failing on a label a future vocabulary introduces. Note this
+    passthrough does NOT make Pydantic model boundaries forward-compatible:
+    fields typed as the ``ChangeCategory`` Literal (e.g. ``NodeChange.category``)
+    still reject unrecognized labels after normalization.
+    """
+    if value in CHANGE_CATEGORY_ALIASES:
+        # Already a legacy value.
+        return value
+    if value in CHANGE_CATEGORY_ALIASES_INVERSE:
+        # A v2 value; map back to legacy.
+        return CHANGE_CATEGORY_ALIASES_INVERSE[value]
+    return value
+
+
+def to_v2_change_category(value: str) -> str:
+    """Map a change-category label to its v2 vocabulary value.
+
+    Accepts either vocabulary (normalized to legacy first) and returns the v2
+    label (model_wide / column / additive / unknown). Unrecognized labels are
+    returned unchanged. Used by the opt-in ``Accept-Vocabulary: v2`` output path.
+    """
+    legacy = normalize_change_category(value)
+    return CHANGE_CATEGORY_ALIASES.get(legacy, legacy)
+
 
 class NodeChange(BaseModel):
     category: ChangeCategory
     columns: Optional[dict[str, ChangeStatus]] = None
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def _normalize_category(cls, value):
+        # DRC-3553: accept either vocabulary on input (legacy or v2) and store
+        # the canonical legacy wire value. Keeps the model forward-compatible
+        # with v2-emitting producers during the aliasing window.
+        if isinstance(value, str):
+            return normalize_change_category(value)
+        return value
 
 
 class NodeDiff(BaseModel):
@@ -245,6 +315,14 @@ class CllNode(BaseModel):
 
     # Column to column dependencies
     columns: Dict[str, CllColumn] = Field(default_factory=dict)
+
+    @field_validator("change_category", mode="before")
+    @classmethod
+    def _normalize_change_category(cls, value):
+        # DRC-3553: accept either vocabulary on input (legacy or v2).
+        if isinstance(value, str):
+            return normalize_change_category(value)
+        return value
 
     # If the node is impacted. Only used if option 'change_analysis' is set
     impacted: Optional[bool] = None

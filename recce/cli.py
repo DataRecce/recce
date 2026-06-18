@@ -1213,12 +1213,6 @@ def diff(
     envvar="RECCE_NEW_CLL_EXPERIENCE",
 )
 @click.option(
-    "--whole-model-impact",
-    is_flag=True,
-    help="Highlight models downstream of a whole-model change. Implies --new-cll-experience.",
-    envvar="RECCE_WHOLE_MODEL_IMPACT",
-)
-@click.option(
     "--inline-profile",
     is_flag=True,
     help="Enable inline paired-distribution profiles in the schema view. Implies --new-cll-experience.",
@@ -1308,7 +1302,6 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
         "disable_cll_cache": True,
         "impact_at_startup": False,
         "new_cll_experience": False,
-        "whole_model_impact": False,
         "inline_profile": False,
     }
     console = Console()
@@ -1361,10 +1354,6 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
         flag["impact_at_startup"] = True
 
     if kwargs.get("new_cll_experience", False):
-        flag["new_cll_experience"] = True
-
-    if kwargs.get("whole_model_impact", False):
-        flag["whole_model_impact"] = True
         flag["new_cll_experience"] = True
 
     if kwargs.get("inline_profile", False):

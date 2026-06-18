@@ -1662,3 +1662,112 @@ class UnresolvableCteChangeTest(unittest.TestCase):
         # When branch C is wired up, every outer column should surface as
         # "unknown" — see follow-up DRC-3409 thread.
         assert result.columns == {}, f"expected empty columns, got {result.columns}"
+
+
+class TestChangeCategoryVocabularyAliasing(unittest.TestCase):
+    """DRC-3553: dual-vocabulary aliasing window.
+
+    The issue's AC#1 pseudo-code (``parse_change_category("breaking") ==
+    parse_change_category("model_wide")``) is aspirational: the real
+    ``parse_change_category`` diffs two SQL strings and does NOT take a
+    category-label string. The INTENT — that the legacy and v2 vocabularies
+    are interchangeable on input — is realized by ``normalize_change_category``,
+    which is what these tests exercise.
+    """
+
+    def test_normalize_change_category_accepts_both_vocabularies(self):
+        from recce.util.change_classifier import normalize_change_category
+
+        # Each legacy label and its v2 alias normalize to the same canonical
+        # (legacy) wire value — the equivalences AC#1 describes.
+        self.assertEqual(
+            normalize_change_category("breaking"),
+            normalize_change_category("model_wide"),
+        )
+        self.assertEqual(
+            normalize_change_category("partial_breaking"),
+            normalize_change_category("column"),
+        )
+        self.assertEqual(
+            normalize_change_category("non_breaking"),
+            normalize_change_category("additive"),
+        )
+        self.assertEqual(
+            normalize_change_category("unknown"),
+            normalize_change_category("unknown"),
+        )
+
+        # The canonical value is always the LEGACY wire value.
+        self.assertEqual(normalize_change_category("model_wide"), "breaking")
+        self.assertEqual(normalize_change_category("column"), "partial_breaking")
+        self.assertEqual(normalize_change_category("additive"), "non_breaking")
+        self.assertEqual(normalize_change_category("unknown"), "unknown")
+
+    def test_to_v2_change_category_maps_legacy_to_v2(self):
+        from recce.util.change_classifier import to_v2_change_category
+
+        self.assertEqual(to_v2_change_category("breaking"), "model_wide")
+        self.assertEqual(to_v2_change_category("partial_breaking"), "column")
+        self.assertEqual(to_v2_change_category("non_breaking"), "additive")
+        self.assertEqual(to_v2_change_category("unknown"), "unknown")
+        # Idempotent when already v2.
+        self.assertEqual(to_v2_change_category("model_wide"), "model_wide")
+
+    def test_normalize_passthrough_for_unrecognized_label(self):
+        from recce.util.change_classifier import normalize_change_category
+
+        # Forward-compat: a label from a future vocabulary is returned unchanged
+        # rather than hard-failing.
+        self.assertEqual(normalize_change_category("some_future_label"), "some_future_label")
+
+    def test_wants_v2_vocabulary_header_detection(self):
+        from recce.util.change_classifier import wants_v2_vocabulary
+
+        self.assertFalse(wants_v2_vocabulary(None))
+        self.assertFalse(wants_v2_vocabulary({}))
+        self.assertTrue(wants_v2_vocabulary({"accept-vocabulary": "v2"}))
+        # Value matching is whitespace/case tolerant.
+        self.assertTrue(wants_v2_vocabulary({"accept-vocabulary": " V2 "}))
+        self.assertFalse(wants_v2_vocabulary({"accept-vocabulary": "v1"}))
+        self.assertFalse(wants_v2_vocabulary({"accept-vocabulary": ""}))
+
+    def test_translate_merged_lineage_to_v2(self):
+        from recce.util.change_classifier import translate_merged_lineage_to_v2
+
+        lineage = {
+            "nodes": {
+                "model.a": {"change_status": "modified", "change": {"category": "breaking"}},
+                "model.b": {"change_status": "added"},  # no change dict
+                "model.c": "not-a-dict",  # defensive: skipped, not raised on
+            },
+            "edges": [],
+        }
+        out = translate_merged_lineage_to_v2(lineage)
+        # In-place translation; same dict returned for convenience.
+        self.assertIs(out, lineage)
+        self.assertEqual(out["nodes"]["model.a"]["change"]["category"], "model_wide")
+        # change_status is a separate vocabulary and is left untouched.
+        self.assertEqual(out["nodes"]["model.a"]["change_status"], "modified")
+        self.assertNotIn("change", out["nodes"]["model.b"])
+        # Non-dict input passes through unchanged.
+        self.assertEqual(translate_merged_lineage_to_v2(["x"]), ["x"])
+
+    def test_node_change_model_accepts_v2_input(self):
+        from recce.models.types import NodeChange
+
+        # Pydantic field validator normalizes v2 input to the legacy wire value.
+        self.assertEqual(NodeChange(category="model_wide").category, "breaking")
+        self.assertEqual(NodeChange(category="column").category, "partial_breaking")
+        self.assertEqual(NodeChange(category="additive").category, "non_breaking")
+        self.assertEqual(NodeChange(category="breaking").category, "breaking")
+
+    def test_breaking_shim_reexports_public_symbols(self):
+        # AC#6: the deprecated shim keeps the legacy import path working.
+        from recce.util.breaking import (  # noqa: F401
+            BreakingPerformanceTracking,
+            normalize_change_category,
+            parse_change_category,
+            to_v2_change_category,
+        )
+
+        self.assertEqual(normalize_change_category("model_wide"), "breaking")

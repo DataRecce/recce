@@ -123,7 +123,7 @@ const lineageNodeBaseProps = {
   hasParents: true,
   hasChildren: true,
   showContent: true,
-  wholeModelImpact: true,
+  newCllExperience: true,
 };
 
 // =============================================================================
@@ -166,7 +166,7 @@ const baseNodeViewArgs: Partial<NodeViewProps<NodeViewNodeData>> = {
   SchemaView: StubSchemaView,
   NodeSqlView: StubNodeSqlView,
   ResourceTypeTag,
-  wholeModelImpact: true,
+  newCllExperience: true,
 };
 
 /** Brown title chip + brown left stripe for a whole-model-changed model. */

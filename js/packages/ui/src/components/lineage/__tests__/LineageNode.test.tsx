@@ -424,7 +424,7 @@ describe("LineageNode", () => {
       ["breaking", "Model-Wide Change"],
       ["non_breaking", "Additive Change"],
       ["partial_breaking", "Column Change"],
-    ])("shows %s category text label when wholeModelImpact is false", (category, label) => {
+    ])("shows %s category text label when newCllExperience is false", (category, label) => {
       const props = createMockNodeProps(
         { showChangeAnalysis: true, changeCategory: category },
         { label: "test" },
@@ -439,12 +439,12 @@ describe("LineageNode", () => {
       "breaking",
       "non_breaking",
       "partial_breaking",
-    ])("suppresses %s category text label when wholeModelImpact is true (badge carries the signal)", (category) => {
+    ])("suppresses %s category text label when newCllExperience is true (badge carries the signal)", (category) => {
       const props = createMockNodeProps(
         {
           showChangeAnalysis: true,
           changeCategory: category,
-          wholeModelImpact: true,
+          newCllExperience: true,
         },
         { label: "test" },
       );
@@ -701,7 +701,7 @@ describe("LineageNode", () => {
     it("renders no graph badge for whole-model-changed (signalled by other surfaces)", () => {
       const props = createMockNodeProps({
         isWholeModelChanged: true,
-        wholeModelImpact: true,
+        newCllExperience: true,
       });
       const { container } = render(<LineageNode {...props} />);
       expect(
@@ -712,7 +712,7 @@ describe("LineageNode", () => {
     it("renders no graph badge for whole-model-impacted (signalled by other surfaces)", () => {
       const props = createMockNodeProps({
         isWholeModelImpacted: true,
-        wholeModelImpact: true,
+        newCllExperience: true,
       });
       const { container } = render(<LineageNode {...props} />);
       expect(
@@ -720,10 +720,10 @@ describe("LineageNode", () => {
       ).toHaveLength(0);
     });
 
-    it("renders the additive badge for non_breaking when wholeModelImpact is on", () => {
+    it("renders the additive badge for non_breaking when newCllExperience is on", () => {
       const props = createMockNodeProps({
         changeCategory: "non_breaking",
-        wholeModelImpact: true,
+        newCllExperience: true,
       });
       render(<LineageNode {...props} />);
       const badge = screen.getByTestId("whole-model-additive-badge");
@@ -734,7 +734,7 @@ describe("LineageNode", () => {
     it("renders no badge when neither flag is set and category is not additive", () => {
       const props = createMockNodeProps({
         changeCategory: "breaking",
-        wholeModelImpact: true,
+        newCllExperience: true,
       });
       const { container } = render(<LineageNode {...props} />);
       expect(
@@ -742,10 +742,10 @@ describe("LineageNode", () => {
       ).toHaveLength(0);
     });
 
-    it("renders the column-changed badge for partial_breaking when wholeModelImpact is on", () => {
+    it("renders the column-changed badge for partial_breaking when newCllExperience is on", () => {
       const props = createMockNodeProps({
         changeCategory: "partial_breaking",
-        wholeModelImpact: true,
+        newCllExperience: true,
       });
       render(<LineageNode {...props} />);
       const badge = screen.getByTestId("column-changed-badge");
@@ -753,10 +753,10 @@ describe("LineageNode", () => {
       expect(badge.textContent).toBe("COLUMN");
     });
 
-    it("renders the column-impacted badge for isImpacted nodes without own change when wholeModelImpact is on", () => {
+    it("renders the column-impacted badge for isImpacted nodes without own change when newCllExperience is on", () => {
       const props = createMockNodeProps({
         isImpacted: true,
-        wholeModelImpact: true,
+        newCllExperience: true,
       });
       render(<LineageNode {...props} />);
       const badge = screen.getByTestId("column-impacted-badge");
@@ -768,7 +768,7 @@ describe("LineageNode", () => {
       const props = createMockNodeProps({
         isWholeModelImpacted: true,
         changeCategory: "partial_breaking",
-        wholeModelImpact: true,
+        newCllExperience: true,
       });
       render(<LineageNode {...props} />);
       // Whole-model-impacted resolution wins over column-changed, but
@@ -786,7 +786,7 @@ describe("LineageNode", () => {
       const props = createMockNodeProps({
         isImpacted: true,
         changeCategory: "partial_breaking",
-        wholeModelImpact: true,
+        newCllExperience: true,
       });
       render(<LineageNode {...props} />);
       expect(screen.getByTestId("column-changed-badge")).toBeInTheDocument();
@@ -795,7 +795,7 @@ describe("LineageNode", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("renders no badge when wholeModelImpact is off, even if flags are set", () => {
+    it("renders no badge when newCllExperience is off, even if flags are set", () => {
       const props = createMockNodeProps({
         isWholeModelChanged: true,
         isWholeModelImpacted: true,
