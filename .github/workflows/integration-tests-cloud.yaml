@@ -65,6 +65,18 @@ jobs:
             exit 0
           fi
 
+          # Fork PRs never receive repository secrets/variables on the
+          # `pull_request` trigger, so RECCE_STATE_PASSWORD would be empty and
+          # `recce cloud upload-artifacts` fails with "Missing option --password".
+          # Skip the cloud test for any cross-repo PR regardless of the author's
+          # permission level — collaborator write access does not change the
+          # fork's secret/variable context.
+          if [[ "${{ github.event.pull_request.head.repo.fork }}" == "true" ]]; then
+            echo "authorized=false" >> $GITHUB_OUTPUT
+            echo "::warning::Cloud smoke test skipped for fork PR (secrets/variables unavailable). Run via workflow_dispatch from a maintainer branch if needed."
+            exit 0
+          fi
+
           PERMISSION=$(gh api repos/${{ github.repository }}/collaborators/${{ github.triggering_actor }}/permission --jq '.permission' 2>/dev/null || echo "none")
           if [[ "$PERMISSION" == "write" || "$PERMISSION" == "admin" ]]; then
             echo "authorized=true" >> $GITHUB_OUTPUT
