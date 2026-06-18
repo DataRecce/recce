@@ -98,6 +98,7 @@ export const QueryDiffResultView = createResultView<
   typeGuard: isQueryDiffRunGuard,
   expectedRunType: "query_diff",
   screenshotWrapper: "grid",
+  enableRowSelection: true,
   emptyState: "No data",
   transformData: (
     run,

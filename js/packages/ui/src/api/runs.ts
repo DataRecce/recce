@@ -24,7 +24,7 @@ export type RunsAggregated = Record<
  */
 export interface SubmitRunTrackProps {
   breaking_change_analysis?: boolean;
-  source?: "lineage_model_node" | "lineage_column_node";
+  source?: "lineage_model_node" | "lineage_column_node" | "schema_view";
   [key: string]: unknown;
 }
 

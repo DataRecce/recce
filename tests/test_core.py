@@ -172,3 +172,36 @@ def test_lineage_diff(dbt_test_helper):
     assert nodediff is None
     nodediff2 = result.diff.get("model2")
     assert nodediff2 is not None and nodediff2.change_status == "modified"
+
+
+def test_get_merged_lineage_cached(dbt_test_helper):
+    """DRC-3326: /api/info serves a cached merged lineage.
+
+    The merge result must equal build_merged_lineage(get_lineage_diff()),
+    be returned as the same cached instance on repeated calls, and be
+    invalidated when artifacts change (refresh clears the cache).
+    """
+    from recce.models.lineage import build_merged_lineage
+
+    sql_model1 = """
+    select a from T
+    """
+    sql_model2 = """
+    select a from {{ ref("model1") }}
+    """
+    dbt_test_helper.create_model("model1", sql_model1, sql_model1)
+    dbt_test_helper.create_model("model2", sql_model2, sql_model2)
+
+    adapter = dbt_test_helper.adapter
+
+    # 1. Equivalence: cached merge == fresh merge of the lineage diff.
+    expected = build_merged_lineage(adapter.get_lineage_diff())
+    merged = adapter.get_merged_lineage()
+    assert merged.model_dump(exclude_none=True, by_alias=True) == expected.model_dump(exclude_none=True, by_alias=True)
+
+    # 2. Caching: repeated calls return the identical instance (no recompute).
+    assert adapter.get_merged_lineage() is merged
+
+    # 3. Invalidation: clearing the cache yields a freshly-built instance.
+    adapter._get_merged_lineage_cached.cache_clear()
+    assert adapter.get_merged_lineage() is not merged

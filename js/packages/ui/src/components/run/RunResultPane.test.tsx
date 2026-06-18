@@ -10,6 +10,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { Run } from "../../api";
@@ -137,5 +138,53 @@ describe("RunResultPane sticky-cancel gating", () => {
     const headerText = document.body.textContent ?? "";
     expect(headerText).toMatch(/Cancelled/);
     expect(headerText).not.toMatch(/Running・/);
+  });
+
+  test("invokes copySelectedRows from the export menu", async () => {
+    const user = userEvent.setup();
+    const copySelectedRows = vi.fn().mockResolvedValue(undefined);
+    renderWithProviders(
+      <RunResultPane
+        runId="run-1"
+        run={
+          { run_id: "run-1", type: "query", result: { columns: [] } } as never
+        }
+        csvExport={{
+          canExportCSV: true,
+          copyAsCSV: vi.fn().mockResolvedValue(undefined),
+          copyAsTSV: vi.fn().mockResolvedValue(undefined),
+          downloadAsCSV: vi.fn(),
+          copySelectedRows,
+        }}
+        onCopyAsImage={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /export|share/i }));
+    await user.click(
+      screen.getByRole("menuitem", { name: /copy selected rows/i }),
+    );
+    expect(copySelectedRows).toHaveBeenCalledOnce();
+  });
+
+  test("omits Copy Selected Rows when no handler is provided", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <RunResultPane
+        runId="run-1"
+        run={
+          { run_id: "run-1", type: "query", result: { columns: [] } } as never
+        }
+        csvExport={{
+          canExportCSV: true,
+          copyAsCSV: vi.fn().mockResolvedValue(undefined),
+          downloadAsCSV: vi.fn(),
+        }}
+        onCopyAsImage={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /export|share/i }));
+    expect(
+      screen.queryByRole("menuitem", { name: /copy selected rows/i }),
+    ).toBeNull();
   });
 });

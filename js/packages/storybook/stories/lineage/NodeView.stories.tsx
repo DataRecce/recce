@@ -28,8 +28,16 @@ import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fn } from "storybook/test";
+import { expect, fn, waitFor, within } from "storybook/test";
+import {
+  mockRunResult,
+  mockServerFlags,
+} from "../../.storybook/mocks/handlers";
 import { MockLineageProvider } from "../mocks/MockProviders";
+import {
+  continuousAddedOnly,
+  continuousOrderAmount,
+} from "../profile-distribution/fixtures";
 
 // =============================================================================
 // REAL REGISTRY ICONS (no stubbing)
@@ -185,6 +193,13 @@ const queryClient = new QueryClient({
   },
 });
 
+// Dedicated client for the inline-profile story so the server-flag query isn't
+// served from the shared client's cache (which other stories fill with the
+// feature OFF). staleTime 0 → it refetches under this story's flag override.
+const profileQueryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
 const meta: Meta<typeof NodeView> = {
   title: "Lineage/NodeView",
   component: NodeView,
@@ -334,5 +349,92 @@ export const MaterializationChanged: Story = {
       changeStatus: "modified",
       rowCountDiff: { base: 1000, curr: 1200 },
     }),
+  },
+};
+
+/**
+ * Inline profile distribution — the Columns tab shows a paired base-vs-current
+ * histogram next to each changed column. `revenue` was modified (two-sided
+ * histogram); `margin` was added (one-sided, current only). Unchanged columns
+ * (`order_id`, `customer_id`) are out of scope and show no distribution.
+ *
+ * The server flags (`new_cll_experience`, `inline_profile`) are turned on and
+ * the `profile_distribution` run is served via story-scoped MSW handlers, so
+ * the real SchemaView fires its real hook against mock results.
+ */
+export const InlineProfileDistribution: Story = {
+  decorators: [
+    (Story) => (
+      <QueryClientProvider client={profileQueryClient}>
+        <Story />
+      </QueryClientProvider>
+    ),
+  ],
+  beforeEach: () => {
+    // Turn the inline-profile feature on and serve a completed
+    // profile_distribution run for this story only (the dedicated
+    // profileQueryClient keeps this off the shared flag cache).
+    profileQueryClient.clear();
+    mockServerFlags.new_cll_experience = true;
+    mockServerFlags.inline_profile = true;
+    mockRunResult.current = {
+      run_id: "story-profile-distribution",
+      type: "profile_distribution",
+      result: {
+        status: "ok",
+        strategy: "approx_all",
+        base_total: 12000,
+        current_total: 14500,
+        columns: {
+          revenue: continuousOrderAmount,
+          margin: continuousAddedOnly,
+        },
+      },
+    };
+    return () => {
+      mockServerFlags.new_cll_experience = false;
+      mockServerFlags.inline_profile = false;
+      mockRunResult.current = null;
+      profileQueryClient.clear();
+    };
+  },
+  args: {
+    ...(() => {
+      const args = createStoryArgs({
+        name: "finance_revenue",
+        materialized: "table",
+        rowCountDiff: { base: 12000, curr: 14500 },
+        baseColumns: {
+          order_id: { name: "order_id", type: "integer" },
+          customer_id: { name: "customer_id", type: "integer" },
+          revenue: { name: "revenue", type: "numeric" },
+        },
+        currentColumns: {
+          order_id: { name: "order_id", type: "integer" },
+          customer_id: { name: "customer_id", type: "integer" },
+          revenue: { name: "revenue", type: "numeric" },
+          margin: { name: "margin", type: "numeric" },
+        },
+      });
+      args.node.data.change = {
+        category: "breaking",
+        columns: { revenue: "modified", margin: "added" },
+      };
+      return args;
+    })(),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // The changed columns render a paired continuous histogram once the run
+    // resolves. (Unchanged columns are out of scope and stay blank.)
+    await waitFor(
+      () =>
+        expect(
+          canvas.getAllByRole("img", {
+            name: "Paired baseline and current continuous distribution",
+          }).length,
+        ).toBeGreaterThan(0),
+      { timeout: 5000 },
+    );
   },
 };

@@ -1,5 +1,6 @@
 import MuiAlert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import "./style.css";
 import type {
@@ -23,6 +24,7 @@ import {
   useLineageViewContext,
   useRecceServerFlag,
 } from "../../contexts";
+import { useInlineProfileDistribution } from "../../hooks/useInlineProfileDistribution";
 import { trackColumnLevelLineage } from "../../lib/api/track";
 import type {
   SchemaDiffRow,
@@ -33,8 +35,11 @@ import {
   EmptyRowsRenderer,
   ScreenshotDataGrid,
 } from "../../primitives";
-
+import { ProfileDistributionUnsupportedBanner } from "../data/ProfileDistributionUnsupportedBanner";
 import { createDataGridFromData } from "../ui/dataGrid";
+import type { SchemaDistributionData } from "../ui/dataGrid/schemaCells";
+import { getColumnChangeStatus } from "./getColumnChangeStatus";
+import { selectInlineProfileScope } from "./selectInlineProfileScope";
 
 export function SchemaLegend() {
   return (
@@ -230,10 +235,20 @@ export function PrivateSchemaView(
   const lineageViewContext = useLineageViewContext();
   const { data: serverFlags } = useRecceServerFlag();
   const newCllExperience = serverFlags?.new_cll_experience ?? false;
+  const inlineProfile = serverFlags?.inline_profile ?? false;
   const [gridApi, setGridApi] = useState<GridApi<SchemaDiffRow> | null>(null);
   const [cllRunningMap, setCllRunningMap] = useState<Map<string, boolean>>(
     new Map(),
   );
+
+  // Per-model opt-in to profile *every* column rather than just the changed
+  // ones. Keyed by the node id it was enabled for (not a bare boolean +
+  // reset-in-effect) so switching nodes restores the changed-columns default on
+  // the SAME render — the view isn't remounted per node, so a reset effect left
+  // one stale render that fired a spurious all-columns run before it landed.
+  const [profileAllColumnsNodeId, setProfileAllColumnsNodeId] = useState<
+    string | null
+  >(null);
 
   // Use the frozen impacted column set from impact analysis so sidebar
   // highlights stay stable when navigating between models/columns.
@@ -243,35 +258,131 @@ export function PrivateSchemaView(
     return frozen?.size ? frozen : undefined;
   }, [newCllExperience, lineageViewContext?.impactedColumnIds]);
 
-  const { columns, rows } = useMemo(() => {
+  // Resolve the dbt node used for context-menu actions and inline profiling.
+  const profileNode = useMemo(() => {
     const resourceType = current?.resource_type ?? base?.resource_type;
-    const node =
-      resourceType &&
+    return resourceType &&
       ["model", "seed", "snapshot", "source"].includes(resourceType)
-        ? (current ?? base)
-        : undefined;
-    const nodeId = current?.id ?? base?.id;
+      ? (current ?? base)
+      : undefined;
+  }, [current, base]);
+  const nodeId = current?.id ?? base?.id;
 
+  // This node's own column names (base ∪ current), used to attribute impacted
+  // ids to this node by exact `<nodeId>_<column>` membership in the scoping
+  // logic rather than fragile prefix-stripping.
+  const nodeColumnNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const name of Object.keys(base?.columns ?? {})) names.add(name);
+    for (const name of Object.keys(current?.columns ?? {})) names.add(name);
+    return names;
+  }, [base, current]);
+
+  // Derived (not stored): the opt-in only applies to the node it was enabled
+  // for, so navigating away clears it within the same render — no stale frame.
+  const profileAllColumns =
+    profileAllColumnsNodeId != null && profileAllColumnsNodeId === nodeId;
+
+  // Whole-model change: read the lineage's canonical set directly (the same
+  // signal that paints the changed title chip/stripe), exactly as we consult
+  // `impactedColumnIds` above — no bespoke per-view recomputation. A whole-model
+  // change profiles every column (the change isn't pinned to specific columns).
+  const wholeModelChange =
+    lineageViewContext?.wholeModelChangedNodeIds?.has(nodeId ?? "") ?? false;
+
+  // DRC-3390 Stage C: scope the inline distribution to *changed* columns under
+  // the new-CLL experience. The pure decision (which columns to profile,
+  // whether to profile at all, whether the run already covers everything) is
+  // factored into `selectInlineProfileScope` so the wiring is unit-tested
+  // without mounting the whole view. "Profile all columns" widens the *same*
+  // run to every column; the wider request re-profiles the already-shown
+  // columns (the backend cache is keyed on the exact column set — DRC-3630),
+  // but the hook keeps the prior histograms on screen via `placeholderData`
+  // while the wider query loads, so it never visually goes backwards.
+  const { scopedColumns, profileEnabled, profilingAll } = useMemo(
+    () =>
+      selectInlineProfileScope({
+        newCllExperience,
+        columnChanges,
+        impactedColumns,
+        nodeId,
+        nodeColumnNames,
+        wholeModelChange,
+        profileAllColumns,
+      }),
+    [
+      newCllExperience,
+      columnChanges,
+      impactedColumns,
+      nodeId,
+      nodeColumnNames,
+      wholeModelChange,
+      profileAllColumns,
+    ],
+  );
+
+  // The hook also self-gates on the `inline_profile` server flag — a no-op
+  // (status "disabled") when it's off.
+  const distribution = useInlineProfileDistribution({
+    model: profileNode?.name,
+    nodeId,
+    columns: scopedColumns,
+    enabled: profileEnabled,
+  });
+
+  // Thread distribution data into the grid. "disabled"/"unsupported" render no
+  // column (unsupported shows a banner instead); "loading"/"ok"/"error" keep
+  // the column so cells can show a pending dot, a histogram, or a "failed to
+  // read" error icon respectively.
+  const distributionData: SchemaDistributionData | undefined = useMemo(() => {
+    if (
+      distribution.status === "disabled" ||
+      distribution.status === "unsupported"
+    ) {
+      return undefined;
+    }
+    return {
+      payloads: distribution.columns,
+      baseTotal: distribution.baseTotal,
+      currentTotal: distribution.currentTotal,
+      isLoading: distribution.isLoading,
+      hasError: distribution.status === "error",
+      scopedColumns,
+    };
+  }, [
+    distribution.status,
+    distribution.columns,
+    distribution.baseTotal,
+    distribution.currentTotal,
+    distribution.isLoading,
+    scopedColumns,
+  ]);
+
+  const { columns, rows } = useMemo(() => {
     return createDataGridFromData(
       { type: "schema_diff", base: base?.columns, current: current?.columns },
       {
-        node,
+        node: profileNode,
         cllRunningMap,
         showMenu,
         columnChanges,
         onViewCode,
         impactedColumns,
         nodeId,
+        distribution: distributionData,
       },
     );
   }, [
     base,
     current,
+    profileNode,
+    nodeId,
     cllRunningMap,
     showMenu,
     columnChanges,
     onViewCode,
     impactedColumns,
+    distributionData,
   ]);
 
   const { lineageGraph, isActionAvailable } = useLineageGraphContext();
@@ -352,23 +463,25 @@ export function PrivateSchemaView(
     const row = params.data;
     if (!row) return "row-normal";
 
+    // Same cause resolution as the name-cell badge, so the row background and
+    // the badge always agree (see getColumnChangeStatus).
+    const status = getColumnChangeStatus(row, row.isImpacted);
+    if (status === "removed") return "row-removed"; // not selectable
+
     let className: string;
-    if (row.baseIndex === undefined) {
-      className = "row-added";
-    } else if (row.currentIndex === undefined) {
-      return "row-removed"; // removed column isn't selectable
-    } else if (
-      row.baseType !== row.currentType ||
-      row.reordered === true ||
-      row.definitionChanged === true ||
-      row.changeUnknown === true
-    ) {
-      // Any change (structural, definition-only, or unknown) gets the changed row background
-      className = "row-changed";
-    } else if (row.isImpacted) {
-      className = "row-impacted";
-    } else {
-      className = "row-normal";
+    switch (status) {
+      case "added":
+        className = "row-added";
+        break;
+      case "changed":
+      case "unknown":
+        className = "row-changed";
+        break;
+      case "impacted":
+        className = "row-impacted";
+        break;
+      default:
+        className = "row-normal";
     }
     if (lineageViewContext !== undefined && changeAnalysisAvailable) {
       className += " row-selectable";
@@ -415,8 +528,40 @@ export function PrivateSchemaView(
         }}
       >
         <SchemaLegend />
-        {headerAction}
+        <Stack direction="row" sx={{ alignItems: "center", gap: 1 }}>
+          {newCllExperience &&
+            inlineProfile &&
+            profileNode &&
+            distribution.status !== "unsupported" &&
+            !profilingAll && (
+              <Button
+                size="small"
+                variant="text"
+                onClick={() => {
+                  setProfileAllColumnsNodeId(nodeId ?? null);
+                }}
+                sx={{
+                  textTransform: "none",
+                  fontSize: "0.7rem",
+                  py: 0.25,
+                  px: 1,
+                  minWidth: 0,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Profile all columns
+              </Button>
+            )}
+          {headerAction}
+        </Stack>
       </Stack>
+      {distribution.status === "unsupported" && (
+        <Box sx={{ px: 1, pb: 0.5 }}>
+          <ProfileDistributionUnsupportedBanner
+            reason={distribution.unsupportedReason}
+          />
+        </Box>
+      )}
       {rows.length > 0 && (
         <ScreenshotDataGrid
           style={{

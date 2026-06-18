@@ -253,7 +253,6 @@ const createMockContext = (
   impactedNodeIds: new Set<string>(),
   wholeModelImpactedNodeIds: new Set<string>(),
   wholeModelChangedNodeIds: new Set<string>(),
-  wholeModelImpact: false,
   ...overrides,
 });
 

@@ -10,6 +10,10 @@ export {
   type HistogramDataset,
   type HistogramDataType,
 } from "./HistogramChart";
+export {
+  InlineProfileDistributionCell,
+  type InlineProfileDistributionCellProps,
+} from "./InlineProfileDistributionCell";
 // Paired histograms for inline profile distribution (DRC-3390)
 export {
   PairedHistogramContinuous,

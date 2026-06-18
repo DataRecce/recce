@@ -1,6 +1,7 @@
 import type { ApiClient } from "../lib/fetchClient";
 import { type SubmitOptions, submitRun } from "./runs";
 import { type ColumnRenderMode, type DataFrame } from "./types";
+import type { ProfileDistributionParams } from "./types/run";
 
 // ============================================================================
 // Profile Diff Types
@@ -32,6 +33,23 @@ export async function submitProfileDiff(
   client: ApiClient,
 ) {
   return await submitRun("profile_diff", params, options, client);
+}
+
+/**
+ * Submit a `profile_distribution` run (DRC-3390 Stage C).
+ *
+ * Backed by the DuckDB-only `approx_all` pipeline in Stage B. The result is a
+ * {@link ProfileDistributionResult} discriminated union (`ok` with per-column
+ * payloads, or an `unsupported` envelope for adapters without native
+ * approx-aggregate support). Callers normally drive this through
+ * {@link useInlineProfileDistribution} rather than calling it directly.
+ */
+export async function submitProfileDistribution(
+  params: ProfileDistributionParams,
+  options: SubmitOptions | undefined,
+  client: ApiClient,
+) {
+  return await submitRun("profile_distribution", params, options, client);
 }
 
 // ============================================================================

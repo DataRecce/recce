@@ -80,6 +80,7 @@ export const QueryResultView = createResultView<
   typeGuard: isQueryOrQueryBaseRun,
   expectedRunType: "query",
   screenshotWrapper: "grid",
+  enableRowSelection: true,
   emptyState: "No data",
   transformData: (
     run,

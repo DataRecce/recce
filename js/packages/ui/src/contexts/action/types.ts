@@ -22,7 +22,8 @@ export type ExploreSource =
   | "schema_row_count_button"
   | "schema_column_menu"
   | "lineage_model_node"
-  | "lineage_column_node";
+  | "lineage_column_node"
+  | "schema_view";
 
 /**
  * Explore action types - matches EXPLORE_ACTION in track.ts
