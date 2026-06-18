@@ -1,6 +1,9 @@
 import sys
-from typing import Dict, List, Optional, Set, Type, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Type, Union
 from uuid import UUID
+
+if TYPE_CHECKING:
+    from recce.models.types import NodeDiff
 
 from pydantic import BaseModel
 
@@ -65,14 +68,21 @@ class Node:
 
         self.base_data = {}
         self.current_data = {}
+        self._forced_change_status = None
 
         if data_from == "base":
             self.base_data = node_data
         elif data_from == "current":
             self.current_data = node_data
 
+    def apply_diff(self, node_diff: "NodeDiff"):
+        """Apply an externally computed diff (e.g., from state:modified)."""
+        self._forced_change_status = node_diff.change_status
+
     @property
     def change_status(self):
+        if self._forced_change_status is not None:
+            return self._forced_change_status
         base_checksum = self.base_data.get("checksum", {}).get("checksum")
         curr_checksum = self.current_data.get("checksum", {}).get("checksum")
         if self.data_from == "base":
@@ -262,9 +272,13 @@ def differ_factory(run: Run):
 
 
 class LineageGraph:
-    nodes: Dict[str, Node] = {}
-    edges: Dict[str, Edge] = {}
+    nodes: Dict[str, Node]
+    edges: Dict[str, Edge]
     checks: List[CheckSummary] = None
+
+    def __init__(self):
+        self.nodes = {}
+        self.edges = {}
 
     def create_node(self, node_id: str, node_data: dict, data_from: str = "base"):
         if node_id not in self.nodes:
@@ -306,7 +320,7 @@ class LineageGraph:
             return f"{edge.parent_id}-...->{edge.child_id}\n"
 
 
-def _build_lineage_graph(base, current) -> LineageGraph:
+def _build_lineage_graph(base, current, diff: Optional[Dict[str, "NodeDiff"]] = None) -> LineageGraph:
     graph = LineageGraph()
 
     # Get the current package name to filter nodes (from the current manifest metadata)
@@ -333,6 +347,14 @@ def _build_lineage_graph(base, current) -> LineageGraph:
         else:
             node = graph.nodes[node_id]
             node.update_data(node_data, "current")
+
+    # Apply externally computed diff (e.g., from state:modified or macro detection).
+    # This allows nodes whose SQL checksum didn't change (e.g., macro-affected nodes)
+    # to be surfaced as modified in the graph.
+    if diff:
+        for node_id, node_diff in diff.items():
+            if node_id in graph.nodes:
+                graph.nodes[node_id].apply_diff(node_diff)
 
     # Build edges
     for child_id, parents in base.get("parent_map", {}).items():
@@ -523,7 +545,7 @@ def generate_markdown_summary(ctx: RecceContext, summary_format: str = "markdown
 
     lineage_diff = ctx.get_lineage_diff()
     summary_metadata = generate_summary_metadata(lineage_diff.base, lineage_diff.current)
-    graph = _build_lineage_graph(lineage_diff.base, lineage_diff.current)
+    graph = _build_lineage_graph(lineage_diff.base, lineage_diff.current, lineage_diff.diff)
     graph.checks, check_statistics = generate_check_summary(lineage_diff.base, lineage_diff.current)
     summary_config = RecceConfig().get("summary") or {}
     node_shapes = summary_config.get("node_shapes") or {}
