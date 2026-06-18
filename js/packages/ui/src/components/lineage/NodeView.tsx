@@ -211,8 +211,8 @@ export interface NodeViewProps<
   isWholeModelChanged?: boolean;
   /** This model is downstream of a whole-model change — paints the amber title chip + amber left stripe. Precedence is enforced internally: `isWholeModelChanged` outranks this flag. */
   isWholeModelImpacted?: boolean;
-  /** Whether the `--whole-model-impact` server flag is on. When false, no whole-model UI renders (no title chip, no left stripe). */
-  wholeModelImpact?: boolean;
+  /** Whether the new CLL experience (`new_cll_experience` server flag) is on. When false, no whole-model UI renders (no title chip, no left stripe). */
+  newCllExperience?: boolean;
   /** This model is downstream of any breaking change. Only feeds the title-row hover tooltip (column-impacted kind) — no visual chip in NodeView. */
   isImpacted?: boolean;
 }
@@ -599,7 +599,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
   isActionAvailable = defaultIsActionAvailable,
   isWholeModelChanged = false,
   isWholeModelImpacted = false,
-  wholeModelImpact = false,
+  newCllExperience = false,
   isImpacted = false,
   rowCountDisplay,
 }: NodeViewProps<TNode>) {
@@ -639,7 +639,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
   // MUI colorSchemes setup — useThemeColors() is the correct accessor.
   const { isDark } = useThemeColors();
   const treatmentInputs = {
-    wholeModelImpact,
+    newCllExperience,
     isWholeModelChanged,
     isWholeModelImpacted,
     isImpacted,

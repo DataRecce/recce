@@ -163,14 +163,14 @@ describe("NodeView", () => {
     // never renders a graph badge of any kind. The structural badge check
     // (`[data-testid$="-badge"]` returns 0) catches a regression that
     // re-introduces a badge surface under any naming.
-    test("renders the changed title chip (no inline badge) when isWholeModelChanged is true and wholeModelImpact is on", () => {
+    test("renders the changed title chip (no inline badge) when isWholeModelChanged is true and newCllExperience is on", () => {
       const { container } = render(
         <NodeView
           node={createNode("model")}
           onCloseNode={vi.fn()}
           isSingleEnv={false}
           isWholeModelChanged
-          wholeModelImpact
+          newCllExperience
         />,
       );
       expect(
@@ -181,14 +181,14 @@ describe("NodeView", () => {
       ).toHaveLength(0);
     });
 
-    test("renders the impacted title chip (no inline badge) when isWholeModelImpacted is true and wholeModelImpact is on", () => {
+    test("renders the impacted title chip (no inline badge) when isWholeModelImpacted is true and newCllExperience is on", () => {
       const { container } = render(
         <NodeView
           node={createNode("model")}
           onCloseNode={vi.fn()}
           isSingleEnv={false}
           isWholeModelImpacted
-          wholeModelImpact
+          newCllExperience
         />,
       );
       expect(
@@ -207,7 +207,7 @@ describe("NodeView", () => {
           isSingleEnv={false}
           isWholeModelChanged
           isWholeModelImpacted
-          wholeModelImpact
+          newCllExperience
         />,
       );
       expect(
@@ -227,7 +227,7 @@ describe("NodeView", () => {
           node={createNode("model")}
           onCloseNode={vi.fn()}
           isSingleEnv={false}
-          wholeModelImpact
+          newCllExperience
         />,
       );
       expect(
@@ -251,7 +251,7 @@ describe("NodeView", () => {
           }}
           onCloseNode={vi.fn()}
           isSingleEnv={false}
-          wholeModelImpact
+          newCllExperience
         />,
       );
       expect(
@@ -262,7 +262,7 @@ describe("NodeView", () => {
       ).toHaveLength(0);
     });
 
-    test("renders no whole-model surfaces when wholeModelImpact is off, even if flags are set", () => {
+    test("renders no whole-model surfaces when newCllExperience is off, even if flags are set", () => {
       const { container } = render(
         <NodeView
           node={createNode("model")}

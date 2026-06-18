@@ -250,18 +250,15 @@ export interface LineageViewContextType {
   isNodeShowingChangeAnalysis: (nodeId: string) => boolean;
   /** Whether impact radius (change analysis) mode is active */
   changeAnalysisMode: boolean;
-  /** Whether the new CLL experience flag is enabled on the server */
-  newCllExperience: boolean;
   /**
-   * Whether the `--whole-model-impact` server flag is on. Implies
-   * `newCllExperience`. Gates two surfaces (NodeView title chip + left
-   * stripe for whole-model kinds; LineageNode COLUMN / ADD graph badge
-   * for per-column kinds) AND the suppression of the "Breaking /
-   * Non Breaking / Partial Breaking" text labels on the graph node.
-   * When false, lineage nodes render the original category text labels
-   * and no whole-model UI.
+   * Whether the new CLL experience flag is enabled on the server. Besides the
+   * column-level lineage visuals, this gates the whole-model surfaces (NodeView
+   * title chip + left stripe for whole-model kinds; LineageNode COLUMN / ADD
+   * graph badge for per-column kinds) AND the suppression of the "Breaking /
+   * Non Breaking / Partial Breaking" text labels on the graph node. When false,
+   * lineage nodes render the original category text labels and no whole-model UI.
    */
-  wholeModelImpact: boolean;
+  newCllExperience: boolean;
   // TODO: Move isImpacted to be a per-model state on node data instead of
   // a lookup set, so impact status is part of the graph model rather than
   // a side-channel computed separately.
@@ -275,8 +272,7 @@ export interface LineageViewContextType {
    * CLL classifier level — `change_category === "breaking"`). Drives the
    * brown title chip + brown left stripe in NodeView. The LineageNode graph
    * badge is intentionally suppressed for whole-model kinds; the chip +
-   * stripe carry the signal. Empty Set when the `--whole-model-impact`
-   * flag is off.
+   * stripe carry the signal. Empty Set when the new CLL experience is off.
    */
   wholeModelChangedNodeIds: Set<string>;
   /**
@@ -287,8 +283,7 @@ export interface LineageViewContextType {
    * intentionally suppressed for whole-model kinds. Changed-wins: a model
    * may appear in both this set AND in `wholeModelChangedNodeIds`;
    * consumers must consult `wholeModelChangedNodeIds` first (use
-   * `pickWholeModelFlags`). Empty Set when the `--whole-model-impact` flag
-   * is off.
+   * `pickWholeModelFlags`). Empty Set when the new CLL experience is off.
    */
   wholeModelImpactedNodeIds: Set<string>;
   /** Set change analysis mode on/off */
