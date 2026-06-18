@@ -338,7 +338,7 @@ export function NodeViewOss({
       featureToggles={featureToggles}
       isWholeModelChanged={wholeModelFlags.isWholeModelChanged}
       isWholeModelImpacted={wholeModelFlags.isWholeModelImpacted}
-      wholeModelImpact={lineageViewCtx?.wholeModelImpact ?? false}
+      newCllExperience={lineageViewCtx?.newCllExperience ?? false}
       isImpacted={impactedNodeIds?.has(node.id) ?? false}
       modelDetail={(() => {
         if (!modelDetail) return undefined;

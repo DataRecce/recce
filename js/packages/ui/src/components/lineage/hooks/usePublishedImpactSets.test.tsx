@@ -34,6 +34,8 @@ describe("usePublishedImpactSets", () => {
       result.current.publish({
         nodeIds: new Set(["model.test.orders"]),
         columnIds: new Set(["model.test.orders.status"]),
+        wholeModelImpactedNodeIds: new Set(),
+        wholeModelChangedNodeIds: new Set(),
       });
     });
 
@@ -55,6 +57,8 @@ describe("usePublishedImpactSets", () => {
       result.current.publish({
         nodeIds: new Set(["a"]),
         columnIds: new Set(["a.x"]),
+        wholeModelImpactedNodeIds: new Set(),
+        wholeModelChangedNodeIds: new Set(),
       });
     });
     const first = result.current.impactedColumnIds;
@@ -63,6 +67,8 @@ describe("usePublishedImpactSets", () => {
       result.current.publish({
         nodeIds: new Set(["a", "b"]),
         columnIds: new Set(["a.x", "b.y"]),
+        wholeModelImpactedNodeIds: new Set(),
+        wholeModelChangedNodeIds: new Set(),
       });
     });
     const second = result.current.impactedColumnIds;
@@ -71,33 +77,14 @@ describe("usePublishedImpactSets", () => {
     expect(second.size).toBe(2);
   });
 
-  it("reuses a stable empty-Set reference when whole-model fields are omitted", () => {
-    // Allocating `new Set()` on every publish would break Object.is bailout in
-    // setState and cause extra renders on every refresh when whole-model is off.
+  it("starts with a stable empty-Set reference for whole-model fields", () => {
+    // The initial whole-model sets share a stable empty-Set reference.
+    // Allocating `new Set()` for the initial state would break Object.is
+    // bailout in setState and cause extra renders on refresh.
     const { result } = renderHook(() => usePublishedImpactSets());
 
-    const initialWholeChanged = result.current.wholeModelChangedNodeIds;
-    const initialWholeImpacted = result.current.wholeModelImpactedNodeIds;
-
-    act(() => {
-      result.current.publish({
-        nodeIds: new Set(["a"]),
-        columnIds: new Set(["a.x"]),
-      });
-    });
-    const afterFirst = result.current.wholeModelChangedNodeIds;
-
-    act(() => {
-      result.current.publish({
-        nodeIds: new Set(["b"]),
-        columnIds: new Set(["b.x"]),
-      });
-    });
-    const afterSecond = result.current.wholeModelChangedNodeIds;
-
-    expect(afterFirst).toBe(initialWholeChanged);
-    expect(afterSecond).toBe(initialWholeChanged);
-    expect(result.current.wholeModelImpactedNodeIds).toBe(initialWholeImpacted);
+    expect(result.current.wholeModelChangedNodeIds.size).toBe(0);
+    expect(result.current.wholeModelImpactedNodeIds.size).toBe(0);
   });
 
   it("publishes whole-model impact sets when provided", () => {

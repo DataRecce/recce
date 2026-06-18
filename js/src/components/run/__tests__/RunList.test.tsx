@@ -47,9 +47,6 @@ vi.mock("@datarecce/ui/contexts", () => ({
 
 vi.mock("@datarecce/ui/hooks", () => ({
   useIsDark: vi.fn(() => false),
-}));
-
-vi.mock("@datarecce/ui/hooks", () => ({
   useApiConfig: vi.fn(() => ({
     apiClient: {},
   })),
