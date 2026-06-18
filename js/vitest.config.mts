@@ -388,6 +388,13 @@ export default defineConfig({
           // ag-grid packages need inline processing for mock compatibility
           "ag-grid-community",
           "ag-grid-react",
+          // MUI 9.1.x's Transition.mjs does an extensionless ESM directory
+          // import of react-transition-group/TransitionGroupContext, which
+          // Node's raw ESM loader rejects (ERR_UNSUPPORTED_DIR_IMPORT).
+          // Inlining routes it through Vite's resolver, which handles the
+          // directory import.
+          "@mui/material",
+          "react-transition-group",
         ],
       },
     },
