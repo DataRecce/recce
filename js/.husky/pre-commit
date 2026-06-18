@@ -16,7 +16,7 @@ export GIT_WORK_TREE="$REPO_ROOT"
 #   ALLOW_BIOME_BUMP=1 git commit ...
 PINNED_PKG_JSON="js/package.json"
 if git diff --cached --name-only --diff-filter=ACM | grep -qx "$PINNED_PKG_JSON"; then
-    # Pinned: @biomejs/biome → 2.4.15.
+    # Pinned: @biomejs/biome → 2.5.0.
     #
     # Rationale: biome 2.4.12 through 2.4.16 have a deterministic Rust stack
     # overflow on macOS arm64 when running TS-aware nursery rules
@@ -26,12 +26,14 @@ if git diff --cached --name-only --diff-filter=ACM | grep -qx "$PINNED_PKG_JSON"
     # 2.4.16 locally on 2026-05-28 and CONFIRMED it still crashes — see
     # DataRecce/recce-cloud-infra#1382 for the testing notes.
     #
-    # The js/biome.json in this repo does NOT currently enable those rules,
-    # so 2.4.15 is safe here. But a silent dependabot bump past this version
-    # (or a future enabling of those rules) could regress us. Any change
-    # requires deliberate ack. When biome ships a release that confirms the
-    # full fix, update EXPECTED_BIOME in the same commit as the bump.
-    EXPECTED_BIOME="2.4.15"
+    # 2.5.0 is ABOVE the affected 2.4.12–2.4.16 range and verified clean on
+    # macOS arm64 (`biome check src/` + `packages/ui/src/` exit 0, no stack
+    # overflow). Bumped to 2.5.0 in #1435; this guard was left at 2.4.15 by
+    # that PR and reconciled here. The js/biome.json in this repo does NOT
+    # currently enable those nursery rules either. A silent dependabot bump
+    # still requires deliberate ack: when changing biome, update EXPECTED_BIOME
+    # in the same commit as the bump (and re-run the macOS arm64 check above).
+    EXPECTED_BIOME="2.5.0"
     # head -1 hardens against a future pnpm.overrides entry adding a second
     # "@biomejs/biome": line. Fail-loud (below) if extraction is empty so a
     # package.json reformat (or removed dep) can't silently disable the guard.

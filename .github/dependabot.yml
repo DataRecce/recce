@@ -37,9 +37,6 @@ updates:
       - dependency-name: "@dagrejs/dagre"
       # Pinned: breaking API changes in v2
       - dependency-name: "html2canvas-pro"
-      # Pinned to 4.2.x (see js/pnpm-workspace.yaml): date-fns 4.3.0+ breaks
-      # vi.mock("date-fns") in TimelineEvent.test.tsx via subpath re-exports.
-      - dependency-name: "date-fns"
     groups:
       all-minor-patch:
         patterns: ["*"]

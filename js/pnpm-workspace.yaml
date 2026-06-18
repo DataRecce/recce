@@ -52,10 +52,7 @@ overrides:
   'yaml@>=2.0.0 <2.8.3': '>=2.8.3'
   'js-cookie@<3.0.7': ^3.0.7
   'ws@>=8.0.0 <8.20.1': ^8.20.1
-  # Pinned to 4.2.x: date-fns 4.3.0 added a modularized optimization fallback
-  # that breaks `vi.mock("date-fns", ...)` in TimelineEvent.test.tsx (OSS).
-  # Revisit when the test mock is updated to handle subpath re-exports.
-  date-fns: ~4.2.1
+  date-fns: ^4.1.0
 
 allowBuilds:
   # Allowed: these packages produce native artifacts we use at runtime
