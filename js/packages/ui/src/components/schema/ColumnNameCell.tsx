@@ -38,6 +38,7 @@ import {
 } from "../../contexts";
 import { supportsHistogramDiff } from "../histogram";
 import { buildColumnTooltip, DataTypeIcon } from "../ui/DataTypeIcon";
+import { getColumnChangeStatus } from "./getColumnChangeStatus";
 import type { SchemaDiffRow } from "./types";
 
 // ============================================================================
@@ -100,9 +101,7 @@ export function ColumnNameCell({
     currentType,
     baseIndex,
     currentIndex,
-    reordered,
     definitionChanged,
-    changeUnknown,
   } = row;
   const columnType =
     currentType ??
@@ -111,21 +110,29 @@ export function ColumnNameCell({
   const isAdded = baseIndex === undefined && currentIndex !== undefined;
   const isRemoved = baseIndex !== undefined && currentIndex === undefined;
   const isTypeChanged = !isAdded && !isRemoved && baseType !== currentType;
-  const hasStructuralChange =
-    !isAdded && !isRemoved && (baseType !== currentType || reordered === true);
 
-  const columnStatus = singleEnv
+  // Resolve the change cause once. The badge, the tooltip, and the row
+  // background (in SchemaView) all consume this single result, so they can't
+  // disagree — e.g. an "impacted" badge sitting on a "changed"-coloured row.
+  const changeStatus = singleEnv
     ? "unchanged"
-    : isAdded
+    : getColumnChangeStatus(row, isImpacted);
+
+  // Tooltip copy still distinguishes a type shift from a definition change —
+  // that's presentation detail read from the raw fields, not a second cause
+  // decision. (buildColumnTooltip keeps its existing status vocabulary.)
+  const tooltipStatus =
+    changeStatus === "added"
       ? "added"
-      : isRemoved
+      : changeStatus === "removed"
         ? "removed"
-        : isTypeChanged
-          ? "type_changed"
-          : definitionChanged
-            ? "definition_changed"
-            : changeUnknown
-              ? "definition_unknown"
+        : changeStatus === "unknown"
+          ? "definition_unknown"
+          : (changeStatus === "changed" || changeStatus === "impacted") &&
+              isTypeChanged
+            ? "type_changed"
+            : changeStatus === "changed" && definitionChanged
+              ? "definition_changed"
               : "unchanged";
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -206,18 +213,12 @@ export function ColumnNameCell({
     !isActionAvailable("change_analysis") ||
     (baseIndex !== undefined && currentIndex === undefined);
 
-  // Mirror the `!` badge render rule below — only annotate the tooltip as
-  // "impacted" when no other status badge already carries that signal.
-  const showImpactedTag =
-    !!isImpacted &&
-    !isAdded &&
-    !isRemoved &&
-    !hasStructuralChange &&
-    !definitionChanged;
+  // The tooltip's "· impacted" annotation tracks the resolved cause exactly.
+  const showImpactedTag = changeStatus === "impacted";
 
   const tooltipTitle = buildColumnTooltip({
     name,
-    status: columnStatus,
+    status: tooltipStatus,
     baseType,
     currentType,
     cllAvailable: !isCllDisabled,
@@ -227,70 +228,61 @@ export function ColumnNameCell({
   return (
     <Tooltip title={tooltipTitle} placement="top">
       <Box sx={{ display: "flex", alignItems: "center", gap: "3px" }}>
-        {hasStructuralChange && (
-          <span className="schema-change-badge schema-change-badge-changed">
-            ~
-          </span>
-        )}
-        {isAdded && (
+        {changeStatus === "changed" &&
+          (definitionChanged ? (
+            <Tooltip
+              title="Definition changed — click to view code"
+              placement="top"
+              onMouseOver={(e) => e.stopPropagation()}
+            >
+              {onViewCode ? (
+                <button
+                  type="button"
+                  className="schema-change-badge schema-change-badge-changed schema-change-badge-clickable"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onViewCode();
+                  }}
+                >
+                  ~
+                </button>
+              ) : (
+                <span className="schema-change-badge schema-change-badge-changed">
+                  ~
+                </span>
+              )}
+            </Tooltip>
+          ) : (
+            <span className="schema-change-badge schema-change-badge-changed">
+              ~
+            </span>
+          ))}
+        {changeStatus === "added" && (
           <span className="schema-change-badge schema-change-badge-added">
             +
           </span>
         )}
-        {isRemoved && (
+        {changeStatus === "removed" && (
           <span className="schema-change-badge schema-change-badge-removed">
             -
           </span>
         )}
-        {isImpacted &&
-          !isAdded &&
-          !isRemoved &&
-          !hasStructuralChange &&
-          !definitionChanged &&
-          !changeUnknown && (
-            <span className="schema-change-badge schema-change-badge-impacted">
-              !
-            </span>
-          )}
-        {definitionChanged && (
+        {changeStatus === "impacted" && (
+          <span className="schema-change-badge schema-change-badge-impacted">
+            !
+          </span>
+        )}
+        {changeStatus === "unknown" && (
           <Tooltip
-            title="Definition changed — click to view code"
+            title="Change status unknown — analyzer couldn't resolve column dependencies"
             placement="top"
             onMouseOver={(e) => e.stopPropagation()}
           >
-            {onViewCode ? (
-              <button
-                type="button"
-                className="schema-change-badge schema-change-badge-changed schema-change-badge-clickable"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onViewCode();
-                }}
-              >
-                ~
-              </button>
-            ) : (
-              <span className="schema-change-badge schema-change-badge-changed">
-                ~
-              </span>
-            )}
+            <span className="schema-change-badge schema-change-badge-unknown">
+              ?
+            </span>
           </Tooltip>
         )}
-        {changeUnknown &&
-          !isAdded &&
-          !isRemoved &&
-          !hasStructuralChange &&
-          !definitionChanged && (
-            <Tooltip
-              title="Change status unknown — analyzer couldn't resolve column dependencies"
-              placement="top"
-              onMouseOver={(e) => e.stopPropagation()}
-            >
-              <span className="schema-change-badge schema-change-badge-unknown">
-                ?
-              </span>
-            </Tooltip>
-          )}
         <Box
           sx={{
             overflow: "hidden",
@@ -309,20 +301,41 @@ export function ColumnNameCell({
               gap: "0.125rem",
               ml: "0.25rem",
               fontSize: "1.6rem",
+              lineHeight: 1,
             }}
           >
             {baseType && (
               <Box
                 component="span"
-                sx={{ textDecoration: "line-through", opacity: 0.6 }}
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  textDecoration: "line-through",
+                  opacity: 0.6,
+                }}
               >
                 <DataTypeIcon type={baseType} disableTooltip />
               </Box>
             )}
-            <Box component="span" sx={{ fontSize: "0.7em", opacity: 0.5 }}>
+            <Box
+              component="span"
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                fontSize: "0.7em",
+                opacity: 0.5,
+              }}
+            >
               →
             </Box>
-            {currentType && <DataTypeIcon type={currentType} disableTooltip />}
+            {currentType && (
+              <Box
+                component="span"
+                sx={{ display: "inline-flex", alignItems: "center" }}
+              >
+                <DataTypeIcon type={currentType} disableTooltip />
+              </Box>
+            )}
           </Box>
         ) : (
           columnType && (

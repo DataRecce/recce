@@ -19,6 +19,13 @@ describe("classifyType", () => {
       "SERIAL",
       "BIGSERIAL",
       "SMALLSERIAL",
+      "INT128",
+      "HUGEINT",
+      "UHUGEINT",
+      "UTINYINT",
+      "USMALLINT",
+      "UINTEGER",
+      "UBIGINT",
     ])("classifies %s as integer", (type) => {
       expect(classifyType(type)).toBe("integer");
     });

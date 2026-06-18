@@ -38,6 +38,7 @@ import {
 import { ProfileDistributionUnsupportedBanner } from "../data/ProfileDistributionUnsupportedBanner";
 import { createDataGridFromData } from "../ui/dataGrid";
 import type { SchemaDistributionData } from "../ui/dataGrid/schemaCells";
+import { getColumnChangeStatus } from "./getColumnChangeStatus";
 import { selectInlineProfileScope } from "./selectInlineProfileScope";
 
 export function SchemaLegend() {
@@ -462,23 +463,25 @@ export function PrivateSchemaView(
     const row = params.data;
     if (!row) return "row-normal";
 
+    // Same cause resolution as the name-cell badge, so the row background and
+    // the badge always agree (see getColumnChangeStatus).
+    const status = getColumnChangeStatus(row, row.isImpacted);
+    if (status === "removed") return "row-removed"; // not selectable
+
     let className: string;
-    if (row.baseIndex === undefined) {
-      className = "row-added";
-    } else if (row.currentIndex === undefined) {
-      return "row-removed"; // removed column isn't selectable
-    } else if (
-      row.baseType !== row.currentType ||
-      row.reordered === true ||
-      row.definitionChanged === true ||
-      row.changeUnknown === true
-    ) {
-      // Any change (structural, definition-only, or unknown) gets the changed row background
-      className = "row-changed";
-    } else if (row.isImpacted) {
-      className = "row-impacted";
-    } else {
-      className = "row-normal";
+    switch (status) {
+      case "added":
+        className = "row-added";
+        break;
+      case "changed":
+      case "unknown":
+        className = "row-changed";
+        break;
+      case "impacted":
+        className = "row-impacted";
+        break;
+      default:
+        className = "row-normal";
     }
     if (lineageViewContext !== undefined && changeAnalysisAvailable) {
       className += " row-selectable";

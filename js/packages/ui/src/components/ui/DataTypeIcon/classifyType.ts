@@ -25,10 +25,18 @@ const CATEGORY_MAP: Record<string, TypeCategory> = {
   INT8: "integer",
   INT4: "integer",
   INT2: "integer",
+  INT128: "integer",
   MEDIUMINT: "integer",
   SERIAL: "integer",
   BIGSERIAL: "integer",
   SMALLSERIAL: "integer",
+  // DuckDB wide and unsigned integers
+  HUGEINT: "integer",
+  UHUGEINT: "integer",
+  UTINYINT: "integer",
+  USMALLINT: "integer",
+  UINTEGER: "integer",
+  UBIGINT: "integer",
 
   // number
   DOUBLE: "number",

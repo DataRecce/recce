@@ -45,12 +45,12 @@ export type TitleChipKind = "changed" | "impacted";
 export type GraphBadgeKind = "additive" | "column-changed" | "column-impacted";
 
 /**
- * Raw inputs consumed by the surface classifiers. `wholeModelImpact` gates
- * the entire pipeline (server flag from `--whole-model-impact`); when false,
+ * Raw inputs consumed by the surface classifiers. `newCllExperience` gates
+ * the entire pipeline (the `new_cll_experience` server flag); when false,
  * every classifier returns `null` and no treatment renders.
  */
 export interface TreatmentInputs {
-  wholeModelImpact: boolean;
+  newCllExperience: boolean;
   isWholeModelChanged: boolean;
   isWholeModelImpacted: boolean;
   isImpacted: boolean;
@@ -149,14 +149,14 @@ const GRAPH_BADGE_LABELS: Record<
 };
 
 function classifyTitleChip(inputs: TreatmentInputs): TitleChipKind | null {
-  if (!inputs.wholeModelImpact) return null;
+  if (!inputs.newCllExperience) return null;
   if (inputs.isWholeModelChanged) return "changed";
   if (inputs.isWholeModelImpacted) return "impacted";
   return null;
 }
 
 function classifyGraphBadge(inputs: TreatmentInputs): GraphBadgeKind | null {
-  if (!inputs.wholeModelImpact) return null;
+  if (!inputs.newCllExperience) return null;
   // Whole-model kinds short-circuit the badge — their signal lives on the
   // NodeView title chip + stripe instead.
   if (inputs.isWholeModelChanged || inputs.isWholeModelImpacted) return null;
