@@ -236,23 +236,21 @@ def as_manifest(m: WritableManifest) -> Manifest:
         return result
 
 
-def _guard_unsupported_schema(cls, artifact: str, found_version_url):
-    """Raise a clear Recce error if `found_version_url` is a schema NEWER than the
-    bundled dbt supports (i.e. dbt v2 / Fusion's v20). No-op otherwise, so genuinely
-    older/incompatible versions keep dbt's own error.
+# Highest artifact schema versions emitted by dbt 1.x. dbt v2 / Fusion jumps straight
+# to v20, leaving a gap, so "above the 1.x ceiling" cleanly means "v2 / Fusion era".
+# The ceiling is FIXED (not the running dbt's version): an artifact merely too new for
+# the installed dbt 1.x — e.g. a v12 manifest under dbt 1.6 — is not Fusion and must
+# keep dbt's own "running a different version of dbt?" error.
+_DBT1X_MAX_SCHEMA = {"manifest": 12, "catalog": 1}
 
-    ponytail: threshold check (found > bundled), not a v20 parser — robust against a
-    future legit dbt 1.x schema bump; revisit when Recce gains v20 support.
-    """
 
-    def version_num(schema_version):
-        # dbt_schema_version looks like "https://schemas.getdbt.com/dbt/manifest/v12.json"
-        match = re.search(r"/v(\d+)\.json", str(schema_version))
-        return int(match.group(1)) if match else None
-
-    found = version_num(found_version_url)
-    supported = version_num(cls.dbt_schema_version)
-    if found is not None and supported is not None and found > supported:
+def _guard_unsupported_schema(artifact: str, found_version_url):
+    """Raise a clear Recce error if `found_version_url` is a dbt v2 / Fusion schema
+    (above the dbt 1.x ceiling). No-op otherwise."""
+    # dbt_schema_version looks like "https://schemas.getdbt.com/dbt/manifest/v12.json"
+    match = re.search(r"/v(\d+)\.json", str(found_version_url))
+    found = int(match.group(1)) if match else None
+    if found is not None and found > _DBT1X_MAX_SCHEMA[artifact]:
         raise UnsupportedDbtSchemaError(artifact, found)
 
 
@@ -264,10 +262,10 @@ def load_manifest(path: str = None, data: dict = None):
         try:
             return WritableManifest.read_and_check_versions(path)
         except IncompatibleSchemaError as e:
-            _guard_unsupported_schema(WritableManifest, "manifest", e.found)
+            _guard_unsupported_schema("manifest", e.found)
             raise
     if data is not None:
-        _guard_unsupported_schema(WritableManifest, "manifest", (data.get("metadata") or {}).get("dbt_schema_version"))
+        _guard_unsupported_schema("manifest", (data.get("metadata") or {}).get("dbt_schema_version"))
         return WritableManifest.upgrade_schema_version(data)
 
 
@@ -279,10 +277,10 @@ def load_catalog(path: str = None, data: dict = None):
         try:
             return CatalogArtifact.read_and_check_versions(path)
         except IncompatibleSchemaError as e:
-            _guard_unsupported_schema(CatalogArtifact, "catalog", e.found)
+            _guard_unsupported_schema("catalog", e.found)
             raise
     if data is not None:
-        _guard_unsupported_schema(CatalogArtifact, "catalog", (data.get("metadata") or {}).get("dbt_schema_version"))
+        _guard_unsupported_schema("catalog", (data.get("metadata") or {}).get("dbt_schema_version"))
         return CatalogArtifact.upgrade_schema_version(data)
 
 
