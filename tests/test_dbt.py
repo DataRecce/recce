@@ -89,7 +89,10 @@ class TestFusionManifestFailLoud(TestCase):
         finally:
             os.unlink(path)
 
-    def test_supported_manifest_still_loads(self):
-        # Regression guard: a supported (v12) manifest must still load unchanged.
-        manifest = load_manifest(path=os.path.join(current_dir, "data", "manifest", "base", "manifest.json"))
-        assert manifest is not None
+    def test_v12_not_flagged_as_fusion(self):
+        # A v12 manifest / v1 catalog is dbt 1.x, not Fusion — the guard must not fire,
+        # regardless of which dbt version Recce is running against.
+        from recce.adapter.dbt_adapter import _guard_unsupported_schema
+
+        _guard_unsupported_schema("manifest", "https://schemas.getdbt.com/dbt/manifest/v12.json")
+        _guard_unsupported_schema("catalog", "https://schemas.getdbt.com/dbt/catalog/v1.json")
