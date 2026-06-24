@@ -1622,7 +1622,7 @@ class DbtAdapter(BaseAdapter):
     _RELATION_RESOURCE_TYPES = frozenset({"model", "seed", "snapshot"})
 
     @staticmethod
-    def _resolve_compiled_table(table_id_map: dict, manifest, table_name: str) -> Optional[str]:
+    def _resolve_compiled_table(table_id_map: Dict[str, Optional[str]], manifest, table_name: str) -> Optional[str]:
         """Resolve a table name from compiled SQL to a parent unique_id.
 
         Tries the pre-built map (from depends_on.nodes) first, then falls back
@@ -1631,11 +1631,13 @@ class DbtAdapter(BaseAdapter):
         stale compiled_code still resolve. Returns None when no match OR when
         more than one node/source matches — picking arbitrarily on ambiguity
         would silently produce incorrect lineage, mirroring the existing
-        `has_alias_collision` safeguard on the depends_on-derived map.
+        ``has_alias_collision`` safeguard on the depends_on-derived map.
 
-        On a successful project-wide resolution, the result is memoized into
-        ``table_id_map`` so repeated lookups for the same name in the same
-        ``get_cll_cached`` call are O(1) instead of O(N) per scan.
+        Both successful and negative results are memoized into ``table_id_map``
+        (negatives stored as ``None``) so repeated lookups for the same name
+        within a single ``get_cll_cached`` call are O(1) instead of O(N) per
+        scan. This bounds the cold path for nodes whose compiled SQL repeats
+        the same unresolved reference across many column dependencies.
         """
         key = table_name.lower()
         if key in table_id_map:
@@ -1649,19 +1651,20 @@ class DbtAdapter(BaseAdapter):
             if candidate and candidate.lower() == key:
                 matches.append(unique_id)
                 if len(matches) > 1:
-                    return None  # ambiguous — bail early
+                    table_id_map[key] = None  # ambiguous — cache and bail
+                    return None
 
         for unique_id, manifest_src in manifest.sources.items():
             candidate = getattr(manifest_src, "identifier", None) or manifest_src.name
             if candidate and candidate.lower() == key:
                 matches.append(unique_id)
                 if len(matches) > 1:
+                    table_id_map[key] = None
                     return None
 
-        if len(matches) == 1:
-            table_id_map[key] = matches[0]
-            return matches[0]
-        return None
+        result = matches[0] if len(matches) == 1 else None
+        table_id_map[key] = result
+        return result
 
     @lru_cache(maxsize=128)
     def get_cll_cached(self, node_id: str, base: Optional[bool] = False) -> Optional[CllData]:
