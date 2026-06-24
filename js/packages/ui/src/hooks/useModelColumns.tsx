@@ -109,18 +109,18 @@ export function useModelColumns(
   });
 
   const { columns, primaryKey } = useMemo(() => {
+    // added nodes have no base, removed nodes have no current
     const modelInfo = data?.model;
-    if (!modelInfo?.base.columns || !modelInfo.current.columns) {
-      return {
-        columns: [] as NodeColumnData[],
-        primaryKey: modelInfo?.current.primary_key,
-      };
-    }
-    const baseColumns = Object.values(modelInfo.base.columns);
-    const currentColumns = Object.values(modelInfo.current.columns);
+    const baseColumns = modelInfo?.base?.columns
+      ? Object.values(modelInfo.base.columns)
+      : [];
+    const currentColumns = modelInfo?.current?.columns
+      ? Object.values(modelInfo.current.columns)
+      : [];
     return {
       columns: unionColumns(baseColumns, currentColumns),
-      primaryKey: modelInfo.current.primary_key,
+      primaryKey:
+        modelInfo?.current?.primary_key ?? modelInfo?.base?.primary_key,
     };
   }, [data]);
 
