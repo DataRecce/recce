@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import time
 import uuid
 from contextlib import contextmanager
@@ -28,6 +29,7 @@ from recce.event import log_performance
 from recce.exceptions import (
     DuckDBExternalAccessBlocked,
     RecceException,
+    UnsupportedDbtSchemaError,
     is_duckdb_external_access_blocked,
 )
 from recce.util.cll import CLLPerformanceTracking, cll, get_cll_cache
@@ -51,6 +53,11 @@ except ImportError as e:
     print("Error: dbt module not found. Please install it by running:")
     print("pip install dbt-core dbt-<adapter>")
     raise e
+
+try:
+    from dbt.artifacts.exceptions import IncompatibleSchemaError
+except ImportError:  # dbt < 1.8 kept it under dbt.exceptions
+    from dbt.exceptions import IncompatibleSchemaError
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
@@ -229,13 +236,36 @@ def as_manifest(m: WritableManifest) -> Manifest:
         return result
 
 
+# Highest artifact schema versions emitted by dbt 1.x. dbt v2 / Fusion jumps straight
+# to v20, leaving a gap, so "above the 1.x ceiling" cleanly means "v2 / Fusion era".
+# The ceiling is FIXED (not the running dbt's version): an artifact merely too new for
+# the installed dbt 1.x — e.g. a v12 manifest under dbt 1.6 — is not Fusion and must
+# keep dbt's own "running a different version of dbt?" error.
+_DBT1X_MAX_SCHEMA = {"manifest": 12, "catalog": 1}
+
+
+def _guard_unsupported_schema(artifact: str, found_version_url):
+    """Raise a clear Recce error if `found_version_url` is a dbt v2 / Fusion schema
+    (above the dbt 1.x ceiling). No-op otherwise."""
+    # dbt_schema_version looks like "https://schemas.getdbt.com/dbt/manifest/v12.json"
+    match = re.search(r"/v(\d+)\.json", str(found_version_url))
+    found = int(match.group(1)) if match else None
+    if found is not None and found > _DBT1X_MAX_SCHEMA[artifact]:
+        raise UnsupportedDbtSchemaError(artifact, found)
+
+
 @track_timing(record_size=True)
 def load_manifest(path: str = None, data: dict = None):
     if path is not None:
         if not os.path.isfile(path):
             return None
-        return WritableManifest.read_and_check_versions(path)
+        try:
+            return WritableManifest.read_and_check_versions(path)
+        except IncompatibleSchemaError as e:
+            _guard_unsupported_schema("manifest", e.found)
+            raise
     if data is not None:
+        _guard_unsupported_schema("manifest", (data.get("metadata") or {}).get("dbt_schema_version"))
         return WritableManifest.upgrade_schema_version(data)
 
 
@@ -244,8 +274,13 @@ def load_catalog(path: str = None, data: dict = None):
     if path is not None:
         if not os.path.isfile(path):
             return None
-        return CatalogArtifact.read_and_check_versions(path)
+        try:
+            return CatalogArtifact.read_and_check_versions(path)
+        except IncompatibleSchemaError as e:
+            _guard_unsupported_schema("catalog", e.found)
+            raise
     if data is not None:
+        _guard_unsupported_schema("catalog", (data.get("metadata") or {}).get("dbt_schema_version"))
         return CatalogArtifact.upgrade_schema_version(data)
 
 
