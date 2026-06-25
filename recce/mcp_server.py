@@ -50,6 +50,14 @@ SINGLE_ENV_WARNING = (
     "Run `dbt docs generate --target-path target-base` to enable diffing."
 )
 
+# DRC-3758: cap the node count returned by lineage_diff(view_mode="all") so the
+# serialized MCP result cannot exceed the Claude Agent SDK output cap
+# (MAX_MCP_OUTPUT_TOKENS, default 25,000 tokens). A full-project lineage on a large
+# warehouse overflowed at 527K chars (DRC-3756); the summary agent has no file
+# tools to read the SDK's file-pointer fallback, so the lineage silently vanished.
+# ~300 nodes keeps the worst-case serialized result under ~75% of the 25k cap.
+VIEW_ALL_MAX_NODES = 300
+
 
 class InstanceSpawningError(RuntimeError):
     """Raised when a Recce Cloud session instance is not ready yet."""
@@ -619,7 +627,7 @@ class RecceMCPServer:
                                 "type": "string",
                                 "enum": ["changed_models", "all"],
                                 "default": "changed_models",
-                                "description": "View mode: 'changed_models' for only changed models (default), 'all' for all models",
+                                "description": "View mode: 'changed_models' for only changed models (default), 'all' for all models. On large projects, 'all' is capped to the most relevant nodes (changed and impacted first); when capped, the result carries 'truncated', 'total_nodes', and 'returned_nodes'. Prefer 'changed_models', which already includes the impacted models.",
                             },
                         },
                     },
@@ -1373,7 +1381,7 @@ class RecceMCPServer:
                 self.mcp_logger.log_tool_call(name, log_arguments, result, duration_ms)
 
                 # Log outgoing response
-                response_json = json.dumps(result, indent=2)
+                response_json = json.dumps(result, separators=(",", ":"))
                 logger.info(f"[MCP] Tool response for {name} ({duration_ms:.2f}ms):")
                 # Truncate large responses for console readability
                 if len(response_json) > 1000:
@@ -1463,6 +1471,24 @@ class RecceMCPServer:
                         if materialized is not None:
                             nodes[node_id]["materialized"] = materialized
 
+        # DRC-3758: bound view_mode="all" so the serialized result cannot exceed the
+        # Claude Agent SDK MCP output cap (see VIEW_ALL_MAX_NODES). Keep the nodes
+        # that matter for analysis — changed + impacted — first, then fill to
+        # the cap. Edges to dropped nodes are excluded by the id_to_idx guard in the
+        # edge-building loop below, so the returned graph stays internally consistent.
+        truncated = False
+        total_node_count = len(nodes)
+        if view_mode == "all" and total_node_count > VIEW_ALL_MAX_NODES:
+
+            def _node_priority(item: tuple) -> int:
+                node_id = item[0]
+                is_changed = diff_info.get(node_id, {}).get("change_status") is not None
+                is_impacted = node_id in impacted_node_ids
+                return 0 if (is_changed or is_impacted) else 1
+
+            nodes = dict(sorted(nodes.items(), key=_node_priority)[:VIEW_ALL_MAX_NODES])
+            truncated = True
+
         # Create id to idx mapping
         id_to_idx = {node_id: idx for idx, node_id in enumerate(nodes.keys())}
 
@@ -1516,6 +1542,10 @@ class RecceMCPServer:
             "nodes": nodes_df.model_dump(mode="json"),
             "edges": edges_df.model_dump(mode="json"),
         }
+        if truncated:
+            result["truncated"] = True
+            result["total_nodes"] = total_node_count
+            result["returned_nodes"] = len(nodes)
 
         return result
 

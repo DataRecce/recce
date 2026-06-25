@@ -120,6 +120,71 @@ class TestRecceMCPServer:
         mock_context.adapter.select_nodes.assert_called()
 
     @pytest.mark.asyncio
+    async def test_tool_lineage_diff_view_all_truncates(self, mcp_server, monkeypatch):
+        """DRC-3758: view_mode='all' caps node count, keeping changed + impacted first."""
+        monkeypatch.setattr("recce.mcp_server.VIEW_ALL_MAX_NODES", 2)
+
+        server, mock_context = mcp_server
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "current": {
+                "nodes": {
+                    "model.p.a": {"name": "a", "resource_type": "model"},
+                    "model.p.b": {"name": "b", "resource_type": "model"},
+                    "model.p.c": {"name": "c", "resource_type": "model"},
+                },
+                "parent_map": {"model.p.a": [], "model.p.b": [], "model.p.c": []},
+            },
+            "diff": {"model.p.a": {"change_status": "modified"}},
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+        # First call selects all nodes (view_mode="all"); second call returns impacted.
+        mock_context.adapter.select_nodes.side_effect = [
+            {"model.p.a", "model.p.b", "model.p.c"},
+            {"model.p.b"},
+        ]
+
+        result = await server._tool_lineage_diff({"view_mode": "all"})
+
+        # Truncated to the cap, with provenance markers
+        assert result["truncated"] is True
+        assert result["total_nodes"] == 3
+        assert result["returned_nodes"] == 2
+
+        # The changed (a) and impacted (b) nodes are kept; the unrelated node (c) is dropped
+        kept_ids = {row[1] for row in result["nodes"]["data"]}
+        assert kept_ids == {"model.p.a", "model.p.b"}
+
+    @pytest.mark.asyncio
+    async def test_tool_lineage_diff_changed_models_not_truncated(self, mcp_server, monkeypatch):
+        """DRC-3758: the cap applies only to view_mode='all', never changed_models."""
+        monkeypatch.setattr("recce.mcp_server.VIEW_ALL_MAX_NODES", 1)
+
+        server, mock_context = mcp_server
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "current": {
+                "nodes": {
+                    "model.p.a": {"name": "a", "resource_type": "model"},
+                    "model.p.b": {"name": "b", "resource_type": "model"},
+                },
+                "parent_map": {"model.p.a": [], "model.p.b": []},
+            },
+            "diff": {},
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+        mock_context.adapter.select_nodes.side_effect = [
+            {"model.p.a", "model.p.b"},
+            set(),
+        ]
+
+        result = await server._tool_lineage_diff({"view_mode": "changed_models"})
+
+        # No truncation markers even though count (2) exceeds the patched cap (1)
+        assert "truncated" not in result
+        assert len(result["nodes"]["data"]) == 2
+
+    @pytest.mark.asyncio
     async def test_tool_schema_diff(self, mcp_server):
         """Test the schema_diff tool"""
         server, mock_context = mcp_server
