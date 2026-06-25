@@ -252,8 +252,9 @@ export interface ModelEnvDetail {
  */
 export interface ModelInfoResult {
   model: {
-    base: ModelEnvDetail;
-    current: ModelEnvDetail;
+    // optional: added nodes have no base, removed nodes have no current
+    base?: ModelEnvDetail;
+    current?: ModelEnvDetail;
   };
 }
 
