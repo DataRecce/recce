@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "engines": {
-    "node": ">=24"
+    "node": ">=24.11"
   },
   "packageManager": "pnpm@11.1.1+sha512.d1fdf5f73c617b64fa1a56a81c3c8dfe0e966e33a6010aa256b517ae77be21d93e05affc0de1a83b0e4f29d569f68b446ae8f068cd7247c0bb3df0fb4d7bdf9a",
   "scripts": {
@@ -25,8 +25,8 @@
   },
   "dependencies": {
     "@amplitude/unified": "1.1.16",
-    "@babel/helpers": "^7.29.7",
-    "@babel/runtime": "^7.29.7",
+    "@babel/helpers": "^8.0.0",
+    "@babel/runtime": "^8.0.0",
     "@codemirror/lang-sql": "^6.10.0",
     "@codemirror/lang-yaml": "^6.1.3",
     "@codemirror/merge": "^6.12.2",
