@@ -24,6 +24,7 @@ import {
   useLineageViewContext,
   useRecceServerFlag,
 } from "../../contexts";
+import { useThemeColors } from "../../hooks";
 import { useInlineProfileDistribution } from "../../hooks/useInlineProfileDistribution";
 import { trackColumnLevelLineage } from "../../lib/api/track";
 import type {
@@ -36,12 +37,41 @@ import {
   ScreenshotDataGrid,
 } from "../../primitives";
 import { ProfileDistributionUnsupportedBanner } from "../data/ProfileDistributionUnsupportedBanner";
+import { TreatmentChip } from "../lineage/TreatmentChip";
+import { pickGraphBadge, pickTitleChip } from "../lineage/wholeModelTreatment";
 import { createDataGridFromData } from "../ui/dataGrid";
 import type { SchemaDistributionData } from "../ui/dataGrid/schemaCells";
 import { getColumnChangeStatus } from "./getColumnChangeStatus";
 import { selectInlineProfileScope } from "./selectInlineProfileScope";
 
 export function SchemaLegend() {
+  const { isDark } = useThemeColors();
+  const { data: serverFlags } = useRecceServerFlag();
+  const newCllExperience = serverFlags?.new_cll_experience ?? false;
+
+  // Reuse the same resolution + token palette that the lineage graph and
+  // NodeView header use, so the legend chips match the in-product badges.
+  // Gated on the same flag that controls whether the badges render at all.
+  const wholeModelChip = pickTitleChip(
+    {
+      newCllExperience,
+      isWholeModelChanged: false,
+      isWholeModelImpacted: true,
+      isImpacted: true,
+    },
+    isDark,
+  );
+  const additiveBadge = pickGraphBadge(
+    {
+      newCllExperience,
+      isWholeModelChanged: false,
+      isWholeModelImpacted: false,
+      isImpacted: true,
+      changeCategory: "non_breaking",
+    },
+    isDark,
+  );
+
   return (
     <Box
       sx={{
@@ -69,6 +99,25 @@ export function SchemaLegend() {
         </span>{" "}
         changed
       </span>
+      {wholeModelChip && (
+        <Box component="span" sx={{ display: "inline-flex", gap: 0.5 }}>
+          <TreatmentChip tokens={wholeModelChip.tokens} ariaLabel="whole-model">
+            ALL
+          </TreatmentChip>{" "}
+          whole-model — every row in this model can be affected
+        </Box>
+      )}
+      {additiveBadge && (
+        <Box component="span" sx={{ display: "inline-flex", gap: 0.5 }}>
+          <TreatmentChip
+            tokens={additiveBadge.tokens}
+            ariaLabel={additiveBadge.ariaLabel}
+          >
+            {additiveBadge.text}
+          </TreatmentChip>{" "}
+          additive — adds a column; existing rows unchanged
+        </Box>
+      )}
     </Box>
   );
 }
