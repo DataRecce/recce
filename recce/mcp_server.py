@@ -284,6 +284,25 @@ class CloudBackend:
         impacted = set((await self._request("POST", "select", json={"select": "state:modified+"})).get("nodes", []))
 
         selected_nodes = {node_id: node for node_id, node in nodes.items() if node_id in selected}
+
+        # DRC-3758: bound view_mode="all" so the serialized result cannot exceed the
+        # Claude Agent SDK MCP output cap (see VIEW_ALL_MAX_NODES). Mirrors the
+        # local RecceMCPServer path. Keep changed + impacted nodes first; edges to
+        # dropped nodes are excluded by the id_to_idx guard below.
+        view_mode = arguments.get("view_mode", "changed_models")
+        truncated = False
+        total_node_count = len(selected_nodes)
+        if view_mode == "all" and total_node_count > VIEW_ALL_MAX_NODES:
+
+            def _node_priority(item: tuple) -> int:
+                node_id, node = item
+                is_changed = node.get("change_status") is not None
+                is_impacted = node_id in impacted
+                return 0 if (is_changed or is_impacted) else 1
+
+            selected_nodes = dict(sorted(selected_nodes.items(), key=_node_priority)[:VIEW_ALL_MAX_NODES])
+            truncated = True
+
         id_to_idx = {node_id: idx for idx, node_id in enumerate(selected_nodes.keys())}
         nodes_df = DataFrame.from_data(
             columns={
@@ -316,10 +335,15 @@ class CloudBackend:
             if source in id_to_idx and target in id_to_idx:
                 edge_rows.append((id_to_idx[source], id_to_idx[target]))
         edges_df = DataFrame.from_data(columns={"from": "integer", "to": "integer"}, data=edge_rows)
-        return {
+        result = {
             "nodes": nodes_df.model_dump(mode="json"),
             "edges": edges_df.model_dump(mode="json"),
         }
+        if truncated:
+            result["truncated"] = True
+            result["total_nodes"] = total_node_count
+            result["returned_nodes"] = len(selected_nodes)
+        return result
 
     async def _tool_schema_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         info = await self._request("GET", "info")

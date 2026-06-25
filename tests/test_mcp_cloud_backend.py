@@ -147,6 +147,42 @@ async def test_create_check_runs_lineage_diff_via_checks_run_endpoint(cloud_requ
 
 
 @pytest.mark.asyncio
+async def test_cloud_backend_lineage_diff_view_all_truncates(monkeypatch):
+    """DRC-3758: CloudBackend caps view_mode='all', keeping changed + impacted first."""
+    from recce.mcp_server import CloudBackend
+
+    monkeypatch.setattr("recce.mcp_server.VIEW_ALL_MAX_NODES", 2)
+
+    nodes = {
+        "a": {"name": "a", "resource_type": "model", "change_status": "modified"},
+        "b": {"name": "b", "resource_type": "model"},
+        "c": {"name": "c", "resource_type": "model"},
+    }
+
+    async def fake_request(method, path, **kwargs):
+        if path == "info":
+            return {"lineage": {"nodes": nodes, "edges": []}}
+        if path == "select":
+            return {"nodes": ["b"]}  # impacted set
+        return {}
+
+    async def fake_selected(arguments, _nodes):
+        return set(nodes.keys())  # view_mode="all" selects everything
+
+    backend = CloudBackend.__new__(CloudBackend)
+    backend._request = fake_request
+    backend._selected_nodes = fake_selected
+
+    result = await backend._tool_lineage_diff({"view_mode": "all"})
+
+    assert result["truncated"] is True
+    assert result["total_nodes"] == 3
+    assert result["returned_nodes"] == 2
+    kept = {row[1] for row in result["nodes"]["data"]}
+    assert kept == {"a", "b"}  # changed (a) + impacted (b) kept; unrelated (c) dropped
+
+
+@pytest.mark.asyncio
 async def test_recce_mcp_server_delegates_tool_calls_to_backend():
     backend = AsyncMock()
     backend.call_tool.return_value = {"ok": True}
@@ -161,7 +197,8 @@ async def test_recce_mcp_server_delegates_tool_calls_to_backend():
     result = await handler(request)
 
     backend.call_tool.assert_awaited_once_with("get_server_info", {})
-    assert result.root.content[0].text == '{\n  "ok": true\n}'
+    # DRC-3758: tool results are now serialized compactly (no indent).
+    assert result.root.content[0].text == '{"ok":true}'
 
 
 @pytest.mark.asyncio
@@ -334,7 +371,7 @@ async def test_unconfigured_server_blocks_normal_tools_but_allows_set_backend():
             params=CallToolRequestParams(name="get_server_info", arguments={}),
         )
     )
-    assert '"mode": "none"' in info.root.content[0].text
+    assert '"mode":"none"' in info.root.content[0].text
 
 
 @pytest.mark.asyncio
