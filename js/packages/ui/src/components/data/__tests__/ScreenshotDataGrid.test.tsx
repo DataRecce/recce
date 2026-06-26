@@ -54,3 +54,50 @@ describe("ScreenshotDataGrid grid options", () => {
     expect(props.enableCellTextSelection).toBe(false);
   });
 });
+
+describe("ScreenshotDataGrid getRowId", () => {
+  beforeEach(() => {
+    agGridProps.mockClear();
+  });
+
+  it("uses _index when present (query result rows)", () => {
+    render(<ScreenshotDataGrid columnDefs={[]} rowData={[]} />);
+    const props = agGridProps.mock.calls[0][0];
+    const getRowId = props.getRowId;
+
+    expect(getRowId({ data: { _index: 42 } })).toBe("42");
+  });
+
+  it("uses __rowKey when present (takes precedence)", () => {
+    render(<ScreenshotDataGrid columnDefs={[]} rowData={[]} />);
+    const props = agGridProps.mock.calls[0][0];
+    const getRowId = props.getRowId;
+
+    expect(getRowId({ data: { __rowKey: "custom-key", _index: 42 } })).toBe(
+      "custom-key",
+    );
+  });
+
+  it("falls back to rowIndex when _index is absent", () => {
+    render(<ScreenshotDataGrid columnDefs={[]} rowData={[]} />);
+    const props = agGridProps.mock.calls[0][0];
+    const getRowId = props.getRowId;
+
+    expect(getRowId({ data: { rowIndex: 10 } })).toBe("10");
+  });
+
+  it("generates a random ID as last resort", () => {
+    render(<ScreenshotDataGrid columnDefs={[]} rowData={[]} />);
+    const props = agGridProps.mock.calls[0][0];
+    const getRowId = props.getRowId;
+
+    const id1 = getRowId({ data: {} });
+    const id2 = getRowId({ data: {} });
+
+    // Both should be valid strings (not undefined)
+    expect(id1).toBeTruthy();
+    expect(id2).toBeTruthy();
+    // Random IDs should be different
+    expect(id1).not.toBe(id2);
+  });
+});

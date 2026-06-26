@@ -170,6 +170,8 @@ export function toSchemaDataGrid(
       field: "name",
       headerName: "Name",
       resizable: true,
+      flex: 1,
+      minWidth: 180,
       cellRenderer: node
         ? createSchemaColumnNameRenderer(
             node,
@@ -282,6 +284,8 @@ export function toSingleEnvDataGrid(
       field: "name",
       headerName: "Name",
       resizable: true,
+      flex: 1,
+      minWidth: 180,
       cellRenderer: node
         ? createSingleEnvColumnNameRenderer(node, cllRunningMap, showMenu)
         : undefined,

@@ -432,6 +432,69 @@ describe("ColumnNameCell", () => {
     });
   });
 
+  describe("impacted vs structural type change", () => {
+    test("inherited type change on an impacted column renders ! not ~", () => {
+      // A column whose type shifted only because an upstream column's type
+      // changed (e.g. DOUBLE → HUGEINT propagated through a sum) is impacted,
+      // not locally changed — it should get the ! badge, never ~.
+      const inheritedTypeChangeRow = createMockRow({
+        baseType: "DOUBLE",
+        currentType: "HUGEINT",
+      });
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={inheritedTypeChangeRow}
+          isImpacted={true}
+          showMenu={false}
+        />,
+      );
+
+      expect(screen.getByText("!")).toBeInTheDocument();
+      expect(screen.queryByText("~")).not.toBeInTheDocument();
+    });
+
+    test("type change without impact still renders ~", () => {
+      // No impact attribution → a type delta is a local structural change.
+      const structuralRow = createMockRow({
+        baseType: "INT",
+        currentType: "VARCHAR",
+      });
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={structuralRow}
+          showMenu={false}
+        />,
+      );
+
+      expect(screen.getByText("~")).toBeInTheDocument();
+      expect(screen.queryByText("!")).not.toBeInTheDocument();
+    });
+
+    test("locally definition-changed impacted column keeps ~ over !", () => {
+      // A local definition change is a real structural change; the impact
+      // reclassification must not steal its ~.
+      const definitionAndTypeRow = createMockRow({
+        baseType: "DOUBLE",
+        currentType: "HUGEINT",
+        definitionChanged: true,
+      });
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={definitionAndTypeRow}
+          isImpacted={true}
+          showMenu={false}
+        />,
+      );
+
+      // The structural ~ (and the definition-changed ~) render; ! does not.
+      expect(screen.getAllByText("~").length).toBeGreaterThanOrEqual(1);
+      expect(screen.queryByText("!")).not.toBeInTheDocument();
+    });
+  });
+
   describe("DataTypeIcon rendering", () => {
     test("renders DataTypeIcon for unchanged column", () => {
       renderWithMui(

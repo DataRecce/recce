@@ -120,6 +120,56 @@ describe("useModelColumns", () => {
     expect(result.current.error).toBe(null);
   });
 
+  // Regression: guard against the crash on an added model (no base key).
+  it("returns current columns (no throw) for an added model with no base", async () => {
+    mockGetModelInfo.mockResolvedValue({
+      model: {
+        current: {
+          columns: {
+            id: { name: "id", type: "INT" },
+            name: { name: "name", type: "TEXT" },
+          },
+          primary_key: "id",
+        },
+      },
+    });
+
+    const { result } = renderHook(() => useModelColumns(MODEL_NAME), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.columns.map((c) => c.name)).toEqual(["id", "name"]);
+    expect(result.current.primaryKey).toBe("id");
+    expect(result.current.error).toBe(null);
+  });
+
+  it("returns base columns (no throw) for a removed model with no current", async () => {
+    mockGetModelInfo.mockResolvedValue({
+      model: {
+        base: {
+          columns: { id: { name: "id", type: "INT" } },
+          primary_key: "id",
+        },
+      },
+    });
+
+    const { result } = renderHook(() => useModelColumns(MODEL_NAME), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.columns.map((c) => c.name)).toEqual(["id"]);
+    expect(result.current.primaryKey).toBe("id");
+    expect(result.current.error).toBe(null);
+  });
+
   it("dedupes the /api/models/{id} fetch when a sibling useQuery shares the cache key (DRC-3343)", async () => {
     mockGetModelInfo.mockResolvedValue(fakeModelInfo);
 
