@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Query Result</title>
+  <style>
+    /* ── Base reset + design tokens ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+      font-size: 13px;
+      margin: 0;
+      padding: 12px 16px 20px;
+      color: var(--color-text-primary, #1a1a1a);
+      background: var(--color-background-primary, #ffffff);
+      line-height: 1.4;
+    }
+
+    /* ── Dark-mode fallback — exhaustive coverage of every class ──── */
+    @media (prefers-color-scheme: dark) {
+      body {
+        color: var(--color-text-primary, #e5e7eb);
+        background: var(--color-background-primary, #1a1a1a);
+      }
+      /* Header */
+      .header-icon    { color: var(--color-text-secondary, #9ca3af) !important; }
+      .header-title   { color: var(--color-text-primary, #e5e7eb) !important; }
+      .header-badge   { background: var(--color-background-secondary, #3f3f46) !important;
+                        color: var(--color-text-secondary, #9ca3af) !important; }
+      /* Summary bar */
+      .summary-bar    { color: var(--color-text-secondary, #9ca3af) !important;
+                        border-bottom-color: var(--color-border-primary, #3f3f46) !important; }
+      .badge-truncated { background: var(--color-background-warning, #78350f) !important;
+                         color: var(--color-text-warning, #fde68a) !important; }
+      /* Table container */
+      .table-wrap     { border-color: var(--color-border-primary, #3f3f46) !important; }
+      .result-table   { background: var(--color-background-secondary, #27272a) !important; }
+      /* Table header */
+      .th-cell        { background: var(--color-background-secondary, #27272a) !important;
+                        color: var(--color-text-secondary, #9ca3af) !important;
+                        border-bottom-color: var(--color-border-primary, #3f3f46) !important;
+                        border-right-color: var(--color-border-primary, #3f3f46) !important; }
+      /* Table rows */
+      .tr-row:nth-child(even) { background: var(--color-background-primary, #1a1a1a) !important; }
+      .tr-row:nth-child(odd)  { background: var(--color-background-secondary, #27272a) !important; }
+      .tr-row:hover           { background: var(--color-background-info, #1e3a8a) !important; }
+      /* Cells */
+      .td-cell        { color: var(--color-text-primary, #e5e7eb) !important;
+                        border-bottom-color: var(--color-border-secondary, #3f3f46) !important;
+                        border-right-color: var(--color-border-secondary, #3f3f46) !important; }
+      .cell-null      { color: var(--color-text-secondary, #6b7280) !important; }
+      .cell-num       { color: var(--color-text-primary, #e5e7eb) !important; }
+      .cell-bool-true { color: var(--color-text-success, #4ade80) !important; }
+      .cell-bool-false { color: var(--color-text-secondary, #6b7280) !important; }
+      /* SQL code block */
+      .sql-block      { background: var(--color-background-secondary, #3f3f46) !important;
+                        color: var(--color-text-secondary, #9ca3af) !important;
+                        border-color: var(--color-border-primary, #3f3f46) !important; }
+      /* Empty state */
+      .empty-card     { background: var(--color-background-secondary, #27272a) !important; }
+      .empty-title    { color: var(--color-text-primary, #e5e7eb) !important; }
+      .empty-hint     { color: var(--color-text-secondary, #9ca3af) !important; }
+      /* Error state */
+      .error-card     { background: var(--color-background-secondary, #27272a) !important; }
+      .error-title    { color: var(--color-text-danger, #f87171) !important; }
+      .error-hint     { color: var(--color-text-secondary, #9ca3af) !important; }
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0 8px;
+    }
+    .header-icon {
+      font-size: 16px;
+      line-height: 1;
+      color: var(--color-text-secondary, #6b7280);
+    }
+    .header-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--color-text-primary, #1a1a1a);
+      flex: 1;
+    }
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      border-radius: var(--border-radius-sm, 4px);
+      font-size: 11px;
+      font-weight: 500;
+      background: var(--color-background-secondary, #f3f4f6);
+      color: var(--color-text-secondary, #6b7280);
+      white-space: nowrap;
+    }
+
+    /* ── Summary bar ─────────────────────────────────────────────────── */
+    .summary-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--color-text-secondary, #6b7280);
+      padding: 0 0 8px;
+      border-bottom: 1px solid var(--color-border-primary, #e5e7eb);
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .badge-truncated {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 6px;
+      border-radius: var(--border-radius-sm, 4px);
+      font-size: 10px;
+      font-weight: 600;
+      background: var(--color-background-warning, #fef3c7);
+      color: var(--color-text-warning, #92400e);
+      white-space: nowrap;
+    }
+
+    /* ── Table container — capped height with internal scroll ────────── */
+    .table-wrap {
+      max-height: 400px;
+      overflow: auto;
+      border: 1px solid var(--color-border-primary, #e5e7eb);
+      border-radius: var(--border-radius-md, 8px);
+    }
+    .result-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      background: var(--color-background-secondary, #f9fafb);
+    }
+
+    /* ── Sticky table header ─────────────────────────────────────────── */
+    .result-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .th-cell {
+      padding: 7px 10px;
+      text-align: left;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: var(--color-background-secondary, #f3f4f6);
+      color: var(--color-text-secondary, #6b7280);
+      border-bottom: 1px solid var(--color-border-primary, #e5e7eb);
+      border-right: 1px solid var(--color-border-primary, #e5e7eb);
+      white-space: nowrap;
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+    }
+    .th-cell:last-child { border-right: none; }
+
+    /* ── Table rows ──────────────────────────────────────────────────── */
+    .tr-row:nth-child(even) { background: var(--color-background-primary, #ffffff); }
+    .tr-row:nth-child(odd)  { background: var(--color-background-secondary, #f9fafb); }
+    .tr-row:hover           { background: var(--color-background-info, #eff6ff); }
+    .tr-row:last-child .td-cell { border-bottom: none; }
+
+    /* ── Data cells ──────────────────────────────────────────────────── */
+    .td-cell {
+      padding: 5px 10px;
+      color: var(--color-text-primary, #1a1a1a);
+      border-bottom: 1px solid var(--color-border-secondary, #f3f4f6);
+      border-right: 1px solid var(--color-border-secondary, #f3f4f6);
+      max-width: 300px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+    .td-cell:last-child { border-right: none; }
+
+    /* ── Cell type variants ──────────────────────────────────────────── */
+    /* Null values — secondary italic */
+    .cell-null {
+      font-style: italic;
+      color: var(--color-text-secondary, #9ca3af);
+    }
+    /* Numbers — tabular-nums right-aligned */
+    .cell-num {
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+      color: var(--color-text-primary, #1a1a1a);
+    }
+    /* Boolean true — green check */
+    .cell-bool-true {
+      color: var(--color-text-success, #16a34a);
+      font-weight: 600;
+    }
+    /* Boolean false — gray dash */
+    .cell-bool-false {
+      color: var(--color-text-secondary, #9ca3af);
+    }
+
+    /* ── SQL code block (shown in empty / debug states) ──────────────── */
+    .sql-block {
+      display: block;
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+      font-size: 11px;
+      padding: 8px 10px;
+      margin-top: 8px;
+      border-radius: var(--border-radius-sm, 4px);
+      background: var(--color-background-secondary, #f3f4f6);
+      color: var(--color-text-secondary, #6b7280);
+      border: 1px solid var(--color-border-primary, #e5e7eb);
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 120px;
+      overflow: auto;
+    }
+
+    /* ── Empty state ─────────────────────────────────────────────────── */
+    .empty-card {
+      background: var(--color-background-secondary, #f9fafb);
+      border-radius: var(--border-radius-md, 8px);
+      padding: 32px 24px;
+      text-align: center;
+    }
+    .empty-icon  { font-size: 28px; margin-bottom: 8px; }
+    .empty-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-text-primary, #1a1a1a);
+      margin-bottom: 6px;
+    }
+    .empty-hint {
+      font-size: 12px;
+      color: var(--color-text-secondary, #6b7280);
+    }
+
+    /* ── Error state ─────────────────────────────────────────────────── */
+    .error-card {
+      background: var(--color-background-secondary, #f9fafb);
+      border-radius: var(--border-radius-md, 8px);
+      padding: 24px;
+      text-align: center;
+    }
+    .error-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-text-danger, #dc2626);
+      margin-bottom: 6px;
+    }
+    .error-hint {
+      font-size: 12px;
+      color: var(--color-text-secondary, #6b7280);
+    }
+
+    #root { min-height: 40px; }
+  </style>
+</head>
+<body>
+  <div id="root">Loading…</div>
+  <script type="module">
+    import {
+      App,
+      applyDocumentTheme,
+      applyHostStyleVariables,
+      applyHostFonts,
+    } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+
+    const app = new App({ name: "Recce Query Result", version: "1.0.0" });
+
+    app.onhostcontextchanged = (ctx) => {
+      if (ctx.theme) applyDocumentTheme(ctx.theme);
+      if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+      if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
+    };
+
+    app.ontoolresult = ({ structuredContent }) => {
+      render(structuredContent ?? {});
+    };
+
+    app.onteardown = async () => {
+      return {};
+    };
+
+    await app.connect();
+
+    const initialCtx = app.getHostContext?.();
+    if (initialCtx) {
+      if (initialCtx.theme) applyDocumentTheme(initialCtx.theme);
+      if (initialCtx.styles?.variables) applyHostStyleVariables(initialCtx.styles.variables);
+      if (initialCtx.styles?.css?.fonts) applyHostFonts(initialCtx.styles.css.fonts);
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────
+    function escapeHtml(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+    }
+
+    /**
+     * Render a single cell value with type-aware formatting.
+     * @param {*} value  - raw cell value (null | bool | number | string | …)
+     * @param {string} type - DataFrameColumnType string: "integer"|"number"|"boolean"|
+     *                        "text"|"date"|"datetime"|"timedelta"|"unknown"
+     * @returns {string} - HTML string for a <td> inner content
+     */
+    function renderCell(value, type) {
+      // Null / undefined
+      if (value === null || value === undefined) {
+        return `<span class="cell-null">—</span>`;
+      }
+
+      // Boolean — green check or gray dash
+      if (type === "boolean" || typeof value === "boolean") {
+        if (value === true || value === "true" || value === 1) {
+          return `<span class="cell-bool-true">&#10003;</span>`;  // ✓
+        }
+        return `<span class="cell-bool-false">—</span>`;
+      }
+
+      // Numbers (integer or number type) — tabular-nums, right-aligned
+      if (type === "integer" || type === "number") {
+        const formatted = typeof value === "number"
+          ? value.toLocaleString(undefined, { maximumFractionDigits: 6 })
+          : escapeHtml(String(value));
+        return `<span class="cell-num">${formatted}</span>`;
+      }
+
+      // Dates and datetimes — display as-is (already formatted by dbt/agate)
+      if (type === "date" || type === "datetime" || type === "timedelta") {
+        return `<span title="${escapeHtml(String(value))}">${escapeHtml(String(value))}</span>`;
+      }
+
+      // Text and unknown — truncate long strings (title attr for full value)
+      const str = String(value);
+      if (str.length > 80) {
+        return `<span title="${escapeHtml(str)}">${escapeHtml(str.slice(0, 80))}…</span>`;
+      }
+      return escapeHtml(str);
+    }
+
+    // ── Main render ──────────────────────────────────────────────────────
+    function render(data) {
+      const root = document.getElementById("root");
+
+      // Defensive: handle missing or malformed data
+      if (!data || typeof data !== "object") {
+        root.innerHTML = `
+          <div class="error-card">
+            <div class="error-title">Widget data unavailable</div>
+            <div class="error-hint">No structured content received from the tool.</div>
+          </div>`;
+        return;
+      }
+
+      const columns = Array.isArray(data.columns) ? data.columns : [];
+      const rows = Array.isArray(data.data) ? data.data : [];
+      const more = !!data.more;
+      const limit = data.limit ?? null;
+      const totalRowCount = data.total_row_count ?? null;
+      const sqlTemplate = data.sql_template ?? "";
+
+      const nRows = rows.length;
+      const nCols = columns.length;
+
+      // ── Header ────────────────────────────────────────────────────────
+      const dimensionBadge = nCols > 0
+        ? `<span class="header-badge">${nRows} row${nRows !== 1 ? "s" : ""} &times; ${nCols} col${nCols !== 1 ? "s" : ""}</span>`
+        : "";
+      const header = `
+        <div class="header">
+          <span class="header-icon">&#128196;</span>
+          <span class="header-title">Query result</span>
+          ${dimensionBadge}
+        </div>`;
+
+      // ── Empty state: columns present but 0 rows ───────────────────────
+      if (nRows === 0) {
+        const sqlHint = sqlTemplate
+          ? `<code class="sql-block">${escapeHtml(sqlTemplate)}</code>`
+          : "";
+        root.innerHTML = header + `
+          <div class="empty-card">
+            <div class="empty-icon">&#128203;</div>
+            <div class="empty-title">Query returned 0 rows</div>
+            <div class="empty-hint">
+              The SQL executed successfully but returned no results.
+              ${sqlHint}
+            </div>
+          </div>`;
+        return;
+      }
+
+      // ── Summary bar ───────────────────────────────────────────────────
+      let summaryText = `Showing ${nRows} row${nRows !== 1 ? "s" : ""} &times; ${nCols} col${nCols !== 1 ? "s" : ""}.`;
+      if (totalRowCount !== null && totalRowCount > nRows) {
+        summaryText += ` Total rows in warehouse: ${totalRowCount.toLocaleString()}.`;
+      }
+      const truncatedBadge = more
+        ? `<span class="badge-truncated">Truncated to ${limit ?? nRows} rows</span>`
+        : "";
+      const summaryBar = `
+        <div class="summary-bar">
+          <span>${summaryText}</span>
+          ${truncatedBadge}
+        </div>`;
+
+      // ── Table header row ──────────────────────────────────────────────
+      const headerCells = columns
+        .map(col => `<th class="th-cell" title="${escapeHtml(col.name)} (${escapeHtml(col.type ?? 'unknown')})">${escapeHtml(col.name)}</th>`)
+        .join("");
+
+      // ── Table data rows ───────────────────────────────────────────────
+      const dataRows = rows.map((row, _rowIdx) => {
+        if (!Array.isArray(row)) return "";
+        const cells = columns.map((col, colIdx) => {
+          const value = row[colIdx];
+          const cellHtml = renderCell(value, col.type ?? "unknown");
+          return `<td class="td-cell">${cellHtml}</td>`;
+        }).join("");
+        return `<tr class="tr-row">${cells}</tr>`;
+      }).join("");
+
+      // ── Assemble ──────────────────────────────────────────────────────
+      const table = `
+        <div class="table-wrap">
+          <table class="result-table">
+            <thead><tr>${headerCells}</tr></thead>
+            <tbody>${dataRows}</tbody>
+          </table>
+        </div>`;
+
+      root.innerHTML = header + summaryBar + table;
+    }
+  </script>
+</body>
+</html>

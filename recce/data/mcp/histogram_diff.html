@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Histogram Diff</title>
+  <style>
+    /* ── Base reset + design tokens ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+      font-size: 13px;
+      margin: 0;
+      padding: 12px 16px 20px;
+      color: var(--color-text-primary, #1a1a1a);
+      background: var(--color-background-primary, #ffffff);
+      line-height: 1.4;
+    }
+
+    /* ── Dark-mode fallback ─────────────────────────────────────────── */
+    @media (prefers-color-scheme: dark) {
+      body {
+        color: var(--color-text-primary, #e5e7eb);
+        background: var(--color-background-primary, #1a1a1a);
+      }
+      .header-icon    { color: var(--color-text-secondary, #9ca3af) !important; }
+      .header-title   { color: var(--color-text-primary, #e5e7eb) !important; }
+      .header-col     { color: var(--color-text-secondary, #9ca3af) !important; }
+      .summary-bar    { background: var(--color-background-secondary, #27272a) !important;
+                        border-color: var(--color-border-primary, #3f3f46) !important; }
+      .summary-text   { color: var(--color-text-secondary, #9ca3af) !important; }
+      .summary-text strong { color: var(--color-text-primary, #e5e7eb) !important; }
+      .warning-bar    { background: var(--color-background-warning, #78350f) !important;
+                        color: var(--color-text-warning, #fde68a) !important;
+                        border-color: #92400e !important; }
+      .chart-wrap     { border-color: var(--color-border-primary, #3f3f46) !important;
+                        background: var(--color-background-secondary, #18181b) !important; }
+      .legend-dot-base { background: #60a5fa !important; }
+      .legend-dot-curr { background: #4ade80 !important; }
+      .legend-label   { color: var(--color-text-secondary, #9ca3af) !important; }
+      .axis-text      { fill: #9ca3af !important; }
+      .axis-line      { stroke: #3f3f46 !important; }
+      .grid-line      { stroke: #3f3f46 !important; }
+      .bar-base       { fill: #3b82f6 !important; fill-opacity: 0.55 !important; }
+      .bar-curr       { fill: #4ade80 !important; fill-opacity: 0.75 !important; }
+      .empty-card     { background: var(--color-background-secondary, #27272a) !important; }
+      .empty-title    { color: var(--color-text-primary, #e5e7eb) !important; }
+      .empty-hint     { color: var(--color-text-secondary, #9ca3af) !important; }
+      .error-card     { background: var(--color-background-secondary, #27272a) !important; }
+      .error-title    { color: var(--color-text-danger, #f87171) !important; }
+      .error-hint     { color: var(--color-text-secondary, #9ca3af) !important; }
+      .tooltip        { background: #18181b !important;
+                        border-color: #3f3f46 !important;
+                        color: #e5e7eb !important; }
+      .tooltip-label  { color: #9ca3af !important; }
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0 8px;
+    }
+    .header-icon  { font-size: 16px; line-height: 1; color: var(--color-text-secondary, #6b7280); }
+    .header-title { font-size: 14px; font-weight: 700; color: var(--color-text-primary, #1a1a1a); flex: 1; }
+    .header-col {
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+      font-size: 11px;
+      color: var(--color-text-secondary, #6b7280);
+      white-space: nowrap;
+    }
+
+    /* ── Summary bar ─────────────────────────────────────────────────── */
+    .summary-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 7px 12px;
+      margin-bottom: 10px;
+      border-radius: var(--border-radius-sm, 4px);
+      border: 1px solid var(--color-border-primary, #e5e7eb);
+      background: var(--color-background-secondary, #f9fafb);
+      font-size: 12px;
+      flex-wrap: wrap;
+    }
+    .summary-text { color: var(--color-text-secondary, #6b7280); }
+    .summary-text strong { color: var(--color-text-primary, #1a1a1a); }
+
+    /* ── Warning bar ─────────────────────────────────────────────────── */
+    .warning-bar {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 8px 10px;
+      margin-bottom: 10px;
+      border-radius: var(--border-radius-sm, 4px);
+      font-size: 12px;
+      font-style: italic;
+      background: var(--color-background-warning, #fffbeb);
+      color: var(--color-text-warning, #92400e);
+      border: 1px solid var(--color-border-warning, #fcd34d);
+    }
+
+    /* ── Chart wrapper ───────────────────────────────────────────────── */
+    .chart-wrap {
+      position: relative;
+      border: 1px solid var(--color-border-primary, #e5e7eb);
+      border-radius: var(--border-radius-md, 8px);
+      padding: 12px 12px 8px;
+      background: var(--color-background-primary, #ffffff);
+      overflow: visible;
+    }
+
+    /* ── Legend ─────────────────────────────────────────────────────── */
+    .legend {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 8px;
+      font-size: 11px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .legend-dot-base {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      background: #3b82f6;
+      opacity: 0.6;
+    }
+    .legend-dot-curr {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      background: #16a34a;
+      opacity: 0.75;
+    }
+    .legend-label { color: var(--color-text-secondary, #6b7280); }
+
+    /* ── SVG chart ───────────────────────────────────────────────────── */
+    .chart-svg {
+      display: block;
+      width: 100%;
+      overflow: visible;
+    }
+    /* SVG text and line classes for dark-mode targeting */
+    .axis-text { fill: #6b7280; font-size: 9px; font-family: inherit; }
+    .axis-line { stroke: #e5e7eb; }
+    .grid-line { stroke: #f3f4f6; }
+    .bar-base  { fill: #3b82f6; fill-opacity: 0.45; }
+    .bar-curr  { fill: #16a34a; fill-opacity: 0.7; }
+
+    /* ── Tooltip ─────────────────────────────────────────────────────── */
+    .tooltip {
+      position: absolute;
+      pointer-events: none;
+      display: none;
+      background: #ffffff;
+      border: 1px solid var(--color-border-primary, #e5e7eb);
+      border-radius: var(--border-radius-sm, 4px);
+      padding: 7px 10px;
+      font-size: 11px;
+      line-height: 1.6;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.10);
+      min-width: 140px;
+      z-index: 10;
+      white-space: nowrap;
+    }
+    .tooltip-label  { font-weight: 600; margin-bottom: 2px; color: var(--color-text-secondary, #6b7280); }
+    .tooltip-base   { color: #2563eb; }
+    .tooltip-curr   { color: #15803d; }
+
+    /* ── Empty / error states ────────────────────────────────────────── */
+    .empty-card {
+      background: var(--color-background-secondary, #f9fafb);
+      border-radius: var(--border-radius-md, 8px);
+      padding: 32px 24px;
+      text-align: center;
+    }
+    .empty-icon  { font-size: 28px; margin-bottom: 8px; }
+    .empty-title { font-size: 14px; font-weight: 600; color: var(--color-text-primary, #1a1a1a); margin-bottom: 6px; }
+    .empty-hint  { font-size: 12px; color: var(--color-text-secondary, #6b7280); }
+
+    .error-card  { background: var(--color-background-secondary, #f9fafb);
+                   border-radius: var(--border-radius-md, 8px); padding: 24px; text-align: center; }
+    .error-title { font-size: 14px; font-weight: 600; color: var(--color-text-danger, #dc2626); margin-bottom: 6px; }
+    .error-hint  { font-size: 12px; color: var(--color-text-secondary, #6b7280); }
+
+    #root { min-height: 40px; }
+  </style>
+</head>
+<body>
+  <div id="root">Loading…</div>
+  <script type="module">
+    import {
+      App,
+      applyDocumentTheme,
+      applyHostStyleVariables,
+      applyHostFonts,
+    } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+
+    const app = new App({ name: "Recce Histogram Diff", version: "1.0.0" });
+
+    app.onhostcontextchanged = (ctx) => {
+      if (ctx.theme) applyDocumentTheme(ctx.theme);
+      if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+      if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
+    };
+
+    app.ontoolresult = ({ structuredContent }) => {
+      render(structuredContent ?? {});
+    };
+
+    app.onteardown = async () => { return {}; };
+
+    await app.connect();
+
+    const initialCtx = app.getHostContext?.();
+    if (initialCtx) {
+      if (initialCtx.theme) applyDocumentTheme(initialCtx.theme);
+      if (initialCtx.styles?.variables) applyHostStyleVariables(initialCtx.styles.variables);
+      if (initialCtx.styles?.css?.fonts) applyHostFonts(initialCtx.styles.css.fonts);
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────
+    function escapeHtml(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+    }
+
+    function fmtNum(n) {
+      if (n === null || n === undefined) return "—";
+      return Number(n).toLocaleString();
+    }
+
+    // Format a bin edge label: truncate long strings, show N decimal places for floats
+    function fmtEdge(v) {
+      if (v === null || v === undefined) return "?";
+      if (typeof v === "number") {
+        // If integer-valued, show as integer
+        if (Number.isInteger(v)) return v.toLocaleString();
+        // Otherwise show up to 2 decimal places
+        return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+      }
+      return String(v);
+    }
+
+    // Shorten an axis label to avoid overlap (max chars)
+    function shortLabel(s, maxChars) {
+      if (!s) return "";
+      return s.length > maxChars ? s.slice(0, maxChars - 1) + "…" : s;
+    }
+
+    // ── SVG namespace helper
+    const SVG_NS = "http://www.w3.org/2000/svg";
+    function svgEl(tag, attrs = {}) {
+      const el = document.createElementNS(SVG_NS, tag);
+      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+      return el;
+    }
+
+    // ── Build SVG chart
+    // Returns an SVG element + a tooltip DIV element.
+    function buildChart(baseCounts, currCounts, labels, binEdges) {
+      const n = Math.max(baseCounts.length, currCounts.length);
+      if (n === 0) return null;
+
+      // Pad arrays to same length
+      const bc = Array.from({ length: n }, (_, i) => baseCounts[i] ?? 0);
+      const cc = Array.from({ length: n }, (_, i) => currCounts[i] ?? 0);
+      const maxCount = Math.max(...bc, ...cc, 1);
+
+      // Chart dimensions (in viewBox units)
+      const W = 600;
+      const H = 180;
+      const PAD_LEFT = 44;  // y-axis labels
+      const PAD_RIGHT = 10;
+      const PAD_TOP = 10;
+      const PAD_BOTTOM = 36; // x-axis labels
+
+      const chartW = W - PAD_LEFT - PAD_RIGHT;
+      const chartH = H - PAD_TOP - PAD_BOTTOM;
+
+      // How many x-axis labels to show (avoid clutter for many bins)
+      const MAX_XLABELS = 10;
+      const labelStep = n <= MAX_XLABELS ? 1 : Math.ceil(n / MAX_XLABELS);
+
+      // Build label array: prefer labels (numeric), else derive from binEdges
+      function getBinLabel(i) {
+        if (Array.isArray(labels) && labels[i]) return labels[i];
+        if (Array.isArray(binEdges) && binEdges[i] !== undefined) {
+          const lo = fmtEdge(binEdges[i]);
+          const hi = binEdges[i + 1] !== undefined ? fmtEdge(binEdges[i + 1]) : "";
+          return hi ? `${lo}–${hi}` : lo;
+        }
+        return String(i);
+      }
+
+      // Y-axis ticks (4–5 ticks)
+      const Y_TICKS = 4;
+      function yPos(count) {
+        return PAD_TOP + chartH - (count / maxCount) * chartH;
+      }
+
+      const svg = svgEl("svg", {
+        viewBox: `0 0 ${W} ${H}`,
+        class: "chart-svg",
+        "aria-label": "Histogram comparison chart",
+        role: "img",
+      });
+
+      // Grid lines + y-axis tick labels
+      for (let t = 0; t <= Y_TICKS; t++) {
+        const val = (maxCount / Y_TICKS) * t;
+        const y = yPos(val);
+        const gridLine = svgEl("line", {
+          x1: PAD_LEFT, x2: W - PAD_RIGHT,
+          y1: y, y2: y,
+          class: t === 0 ? "axis-line" : "grid-line",
+          "stroke-width": t === 0 ? "1" : "0.5",
+        });
+        svg.appendChild(gridLine);
+
+        // Label
+        const tickLabel = svgEl("text", {
+          x: PAD_LEFT - 4,
+          y: y + 3,
+          "text-anchor": "end",
+          class: "axis-text",
+        });
+        tickLabel.textContent = fmtNum(Math.round(val));
+        svg.appendChild(tickLabel);
+      }
+
+      // Bars — base behind current (slight transparency)
+      const barW = chartW / n;
+      const GAP = Math.max(1, barW * 0.08);  // small gap between bars
+
+      // Tooltip interaction overlay (one invisible rect per bin)
+      const tooltipData = [];
+
+      for (let i = 0; i < n; i++) {
+        const x = PAD_LEFT + i * barW + GAP / 2;
+        const bw = barW - GAP;
+
+        // Base bar
+        const bh = (bc[i] / maxCount) * chartH;
+        if (bc[i] > 0) {
+          const baseRect = svgEl("rect", {
+            x: x,
+            y: PAD_TOP + chartH - bh,
+            width: bw,
+            height: bh,
+            class: "bar-base",
+            rx: "1",
+          });
+          svg.appendChild(baseRect);
+        }
+
+        // Current bar
+        const ch = (cc[i] / maxCount) * chartH;
+        if (cc[i] > 0) {
+          const currRect = svgEl("rect", {
+            x: x,
+            y: PAD_TOP + chartH - ch,
+            width: bw,
+            height: ch,
+            class: "bar-curr",
+            rx: "1",
+          });
+          svg.appendChild(currRect);
+        }
+
+        // X-axis label (every labelStep bins, or last bin)
+        if (i % labelStep === 0 || i === n - 1) {
+          const rawLabel = getBinLabel(i);
+          const shortLbl = shortLabel(rawLabel, 10);
+          const labelX = x + bw / 2;
+          const xLabel = svgEl("text", {
+            x: labelX,
+            y: H - PAD_BOTTOM + 14,
+            "text-anchor": "middle",
+            class: "axis-text",
+            transform: `rotate(-35, ${labelX}, ${H - PAD_BOTTOM + 14})`,
+          });
+          xLabel.textContent = shortLbl;
+          svg.appendChild(xLabel);
+        }
+
+        tooltipData.push({
+          x: PAD_LEFT + i * barW,
+          w: barW,
+          label: getBinLabel(i),
+          base: bc[i],
+          curr: cc[i],
+        });
+      }
+
+      // Hover overlay rects (transparent, for tooltip triggers)
+      // We'll use a wrapper DIV approach in the DOM instead (SVG foreignObject is fragile).
+      // Store tooltip data on the svg element for JS access.
+      svg._tooltipData = tooltipData;
+      svg._PAD = { left: PAD_LEFT, top: PAD_TOP, right: PAD_RIGHT, bottom: PAD_BOTTOM };
+      svg._dims = { W, H, chartW, chartH };
+
+      return svg;
+    }
+
+    // ── Tooltip setup (uses rendered SVG bounding rect for hit detection)
+    function attachTooltip(svgEl, tooltipEl, containerEl) {
+      const data = svgEl._tooltipData;
+      const pad = svgEl._PAD;
+      const dims = svgEl._dims;
+      if (!data || !data.length) return;
+
+      svgEl.addEventListener("mousemove", (e) => {
+        const rect = svgEl.getBoundingClientRect();
+        // Map mouse X to viewBox coordinate
+        const scale = dims.W / rect.width;
+        const mouseVbX = (e.clientX - rect.left) * scale;
+
+        // Find which bin we're over
+        let hit = null;
+        for (const d of data) {
+          if (mouseVbX >= d.x && mouseVbX < d.x + d.w) {
+            hit = d;
+            break;
+          }
+        }
+        if (!hit) {
+          tooltipEl.style.display = "none";
+          return;
+        }
+
+        tooltipEl.innerHTML = `
+          <div class="tooltip-label">${escapeHtml(hit.label)}</div>
+          <div class="tooltip-base">&#9632; Base: <strong>${fmtNum(hit.base)}</strong></div>
+          <div class="tooltip-curr">&#9632; Current: <strong>${fmtNum(hit.curr)}</strong></div>
+        `;
+
+        // Position tooltip relative to container (chart-wrap)
+        const containerRect = containerEl.getBoundingClientRect();
+        let tx = e.clientX - containerRect.left + 12;
+        let ty = e.clientY - containerRect.top - 10;
+        // Keep inside bounds roughly
+        if (tx + 160 > containerRect.width) tx = tx - 170;
+        tooltipEl.style.left = `${tx}px`;
+        tooltipEl.style.top = `${ty}px`;
+        tooltipEl.style.display = "block";
+      });
+
+      svgEl.addEventListener("mouseleave", () => {
+        tooltipEl.style.display = "none";
+      });
+    }
+
+    // ── Main render ──────────────────────────────────────────────────────
+    function render(data) {
+      const root = document.getElementById("root");
+
+      if (!data || typeof data !== "object") {
+        root.innerHTML = `
+          <div class="error-card">
+            <div class="error-title">Widget data unavailable</div>
+            <div class="error-hint">No structured content received from the tool.</div>
+          </div>`;
+        return;
+      }
+
+      const modelName   = data.model ?? "";
+      const colName     = data.column_name ?? "";
+      const baseEnv     = data.base ?? {};
+      const currEnv     = data.current ?? {};
+      const binEdges    = Array.isArray(data.bin_edges) ? data.bin_edges : [];
+      const labels      = data.labels ?? null;
+      const warning     = data.warning ?? null;
+      const minVal      = data.min;
+      const maxVal      = data.max;
+
+      const baseCounts  = Array.isArray(baseEnv.counts) ? baseEnv.counts : [];
+      const currCounts  = Array.isArray(currEnv.counts) ? currEnv.counts : [];
+      const n           = Math.max(baseCounts.length, currCounts.length);
+
+      // ── Header
+      const headerHtml = `
+        <div class="header">
+          <span class="header-icon">&#128202;</span>
+          <span class="header-title">Histogram diff</span>
+          <span class="header-col">${escapeHtml(modelName)}.${escapeHtml(colName)}</span>
+        </div>`;
+
+      // ── Warning bar
+      const warningHtml = warning
+        ? `<div class="warning-bar">&#9888; ${escapeHtml(warning)}</div>`
+        : "";
+
+      // ── Empty state
+      if (n === 0) {
+        root.innerHTML = headerHtml + warningHtml + `
+          <div class="empty-card">
+            <div class="empty-icon">&#128202;</div>
+            <div class="empty-title">No histogram data available</div>
+            <div class="empty-hint">The column may be all-null, or the column type is not supported for histogram analysis (text, boolean).</div>
+          </div>`;
+        return;
+      }
+
+      // ── Summary bar
+      const baseTotal = baseEnv.total != null ? fmtNum(baseEnv.total) : "N/A";
+      const currTotal = currEnv.total != null ? fmtNum(currEnv.total) : "N/A";
+      const rangeStr = (minVal != null && maxVal != null)
+        ? `Range: <strong>${escapeHtml(fmtEdge(minVal))}</strong> → <strong>${escapeHtml(fmtEdge(maxVal))}</strong>`
+        : "";
+      const summaryHtml = `
+        <div class="summary-bar">
+          <span class="summary-text"><strong>${n}</strong> bin${n !== 1 ? "s" : ""}</span>
+          ${rangeStr ? `<span class="summary-text">${rangeStr}</span>` : ""}
+          <span class="summary-text">Base total: <strong>${baseTotal}</strong></span>
+          <span class="summary-text">Current total: <strong>${currTotal}</strong></span>
+        </div>`;
+
+      // ── Legend
+      const legendHtml = `
+        <div class="legend">
+          <span class="legend-item">
+            <span class="legend-dot-base"></span>
+            <span class="legend-label">Base</span>
+          </span>
+          <span class="legend-item">
+            <span class="legend-dot-curr"></span>
+            <span class="legend-label">Current</span>
+          </span>
+        </div>`;
+
+      // ── Assemble wrapper
+      root.innerHTML = headerHtml + warningHtml + summaryHtml + `
+        <div class="chart-wrap" id="chart-container">
+          ${legendHtml}
+          <div id="chart-mount"></div>
+          <div class="tooltip" id="chart-tooltip"></div>
+        </div>`;
+
+      // ── Build and mount SVG chart
+      const chartMount = document.getElementById("chart-mount");
+      const tooltipEl  = document.getElementById("chart-tooltip");
+      const container  = document.getElementById("chart-container");
+
+      const svgChart = buildChart(baseCounts, currCounts, labels, binEdges);
+      if (svgChart) {
+        chartMount.appendChild(svgChart);
+        attachTooltip(svgChart, tooltipEl, container);
+      }
+    }
+  </script>
+</body>
+</html>

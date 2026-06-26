@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Top-K Diff</title>
+  <style>
+    /* ── Base reset + design tokens ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+      font-size: 13px;
+      margin: 0;
+      padding: 12px 16px 20px;
+      color: var(--color-text-primary, #1a1a1a);
+      background: var(--color-background-primary, #ffffff);
+      line-height: 1.4;
+    }
+
+    /* ── Dark-mode fallback ─────────────────────────────────────────── */
+    @media (prefers-color-scheme: dark) {
+      body {
+        color: var(--color-text-primary, #e5e7eb);
+        background: var(--color-background-primary, #1a1a1a);
+      }
+      .header-icon    { color: var(--color-text-secondary, #9ca3af) !important; }
+      .header-title   { color: var(--color-text-primary, #e5e7eb) !important; }
+      .header-col     { color: var(--color-text-secondary, #9ca3af) !important; }
+      .summary-bar    { background: var(--color-background-secondary, #27272a) !important;
+                        border-color: var(--color-border-primary, #3f3f46) !important; }
+      .summary-text   { color: var(--color-text-secondary, #9ca3af) !important; }
+      .warning-bar    { background: var(--color-background-warning, #78350f) !important;
+                        color: var(--color-text-warning, #fde68a) !important;
+                        border-color: #92400e !important; }
+      .side-header    { background: var(--color-background-secondary, #27272a) !important;
+                        border-bottom-color: var(--color-border-primary, #3f3f46) !important; }
+      .side-title     { color: var(--color-text-primary, #e5e7eb) !important; }
+      .side-stats     { color: var(--color-text-secondary, #9ca3af) !important; }
+      .rank-row       { border-bottom-color: var(--color-border-secondary, #3f3f46) !important; }
+      .rank-row:hover { background: var(--color-background-info, #1e3a8a) !important; }
+      .rank-row.row-new     { background: rgb(30 58 138 / 0.25) !important; }
+      .rank-row.row-gone    { background: rgb(63 63 70 / 0.4) !important; }
+      .rank-row.row-up      { background: rgb(22 101 52 / 0.25) !important; }
+      .rank-row.row-down    { background: rgb(120 53 15 / 0.25) !important; }
+      .rank-num       { color: var(--color-text-secondary, #9ca3af) !important; }
+      .rank-val       { color: var(--color-text-primary, #e5e7eb) !important; }
+      .rank-count     { color: var(--color-text-secondary, #9ca3af) !important; }
+      .bar-track      { background: var(--color-border-primary, #3f3f46) !important; }
+      .bar-fill-base  { background: #60a5fa !important; }
+      .bar-fill-curr  { background: #4ade80 !important; }
+      .badge-new      { background: rgb(37 99 235 / 0.15) !important;
+                        color: #93c5fd !important;
+                        border-color: #2563eb !important; }
+      .badge-gone     { background: var(--color-background-secondary, #27272a) !important;
+                        color: var(--color-text-secondary, #9ca3af) !important;
+                        border-color: var(--color-border-primary, #3f3f46) !important; }
+      .arrow-up       { color: #4ade80 !important; }
+      .arrow-down     { color: #fbbf24 !important; }
+      .grid-divider   { border-color: var(--color-border-primary, #3f3f46) !important; }
+      .side-panel     { border-color: var(--color-border-primary, #3f3f46) !important; }
+      .empty-card     { background: var(--color-background-secondary, #27272a) !important; }
+      .empty-title    { color: var(--color-text-primary, #e5e7eb) !important; }
+      .empty-hint     { color: var(--color-text-secondary, #9ca3af) !important; }
+      .error-card     { background: var(--color-background-secondary, #27272a) !important; }
+      .error-title    { color: var(--color-text-danger, #f87171) !important; }
+      .error-hint     { color: var(--color-text-secondary, #9ca3af) !important; }
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0 8px;
+    }
+    .header-icon  { font-size: 16px; line-height: 1; color: var(--color-text-secondary, #6b7280); }
+    .header-title { font-size: 14px; font-weight: 700; color: var(--color-text-primary, #1a1a1a); flex: 1; }
+    .header-col {
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+      font-size: 11px;
+      color: var(--color-text-secondary, #6b7280);
+      white-space: nowrap;
+    }
+
+    /* ── Summary bar ─────────────────────────────────────────────────── */
+    .summary-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 7px 12px;
+      margin-bottom: 10px;
+      border-radius: var(--border-radius-sm, 4px);
+      border: 1px solid var(--color-border-primary, #e5e7eb);
+      background: var(--color-background-secondary, #f9fafb);
+      font-size: 12px;
+      flex-wrap: wrap;
+    }
+    .summary-text { color: var(--color-text-secondary, #6b7280); }
+    .summary-text strong { color: var(--color-text-primary, #1a1a1a); }
+
+    /* ── Warning bar ─────────────────────────────────────────────────── */
+    .warning-bar {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 8px 10px;
+      margin-bottom: 10px;
+      border-radius: var(--border-radius-sm, 4px);
+      font-size: 12px;
+      font-style: italic;
+      background: var(--color-background-warning, #fffbeb);
+      color: var(--color-text-warning, #92400e);
+      border: 1px solid var(--color-border-warning, #fcd34d);
+    }
+
+    /* ── Side-by-side grid ───────────────────────────────────────────── */
+    .side-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .side-panel {
+      border: 1px solid var(--color-border-primary, #e5e7eb);
+      border-radius: var(--border-radius-md, 8px);
+      overflow: hidden;
+    }
+    .side-header {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--color-border-primary, #e5e7eb);
+      background: var(--color-background-secondary, #f9fafb);
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .side-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--color-text-primary, #1a1a1a);
+      flex: 1;
+    }
+    .side-stats {
+      font-size: 11px;
+      color: var(--color-text-secondary, #6b7280);
+      font-variant-numeric: tabular-nums;
+    }
+    .side-list {
+      max-height: 320px;
+      overflow-y: auto;
+    }
+
+    /* ── Ranked row ─────────────────────────────────────────────────── */
+    .rank-row {
+      display: grid;
+      grid-template-columns: 28px 1fr auto 80px;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-bottom: 1px solid var(--color-border-secondary, #f3f4f6);
+      min-height: 32px;
+    }
+    .rank-row:last-child { border-bottom: none; }
+    .rank-row:hover { background: var(--color-background-info, #eff6ff); }
+
+    /* Row tints based on rank state */
+    .rank-row.row-new  { background: rgb(37 99 235 / 0.06); }
+    .rank-row.row-gone { background: rgb(107 114 128 / 0.08); }
+    .rank-row.row-up   { background: rgb(22 101 52 / 0.06); }
+    .rank-row.row-down { background: rgb(217 119 6 / 0.06); }
+
+    .rank-num {
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      color: var(--color-text-secondary, #9ca3af);
+      text-align: right;
+      min-width: 20px;
+    }
+    .rank-val-wrap {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      min-width: 0;
+    }
+    .rank-val {
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+      font-size: 12px;
+      color: var(--color-text-primary, #1a1a1a);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .rank-count {
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      color: var(--color-text-secondary, #6b7280);
+      white-space: nowrap;
+      text-align: right;
+    }
+    .rank-bar {
+      /* inline bar: proportion of max count for this env */
+    }
+    .bar-track {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--color-border-primary, #e5e7eb);
+      overflow: hidden;
+    }
+    .bar-fill-base {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--color-accent-blue, #3b82f6);
+    }
+    .bar-fill-curr {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--color-text-success, #16a34a);
+    }
+
+    /* ── Badges + arrows ─────────────────────────────────────────────── */
+    .badge-new {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 5px;
+      border-radius: var(--border-radius-sm, 4px);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      background: rgb(37 99 235 / 0.1);
+      color: #2563eb;
+      border: 1px solid #93c5fd;
+      white-space: nowrap;
+    }
+    .badge-gone {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 5px;
+      border-radius: var(--border-radius-sm, 4px);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      background: var(--color-background-secondary, #f3f4f6);
+      color: var(--color-text-secondary, #6b7280);
+      border: 1px solid var(--color-border-primary, #d1d5db);
+      white-space: nowrap;
+    }
+    .arrow-up   { font-size: 11px; color: var(--color-text-success, #16a34a); }
+    .arrow-down { font-size: 11px; color: #d97706; }
+
+    /* ── Empty / error states ────────────────────────────────────────── */
+    .empty-card {
+      background: var(--color-background-secondary, #f9fafb);
+      border-radius: var(--border-radius-md, 8px);
+      padding: 32px 24px;
+      text-align: center;
+    }
+    .empty-icon  { font-size: 28px; margin-bottom: 8px; }
+    .empty-title { font-size: 14px; font-weight: 600; color: var(--color-text-primary, #1a1a1a); margin-bottom: 6px; }
+    .empty-hint  { font-size: 12px; color: var(--color-text-secondary, #6b7280); }
+
+    .error-card  { background: var(--color-background-secondary, #f9fafb);
+                   border-radius: var(--border-radius-md, 8px); padding: 24px; text-align: center; }
+    .error-title { font-size: 14px; font-weight: 600; color: var(--color-text-danger, #dc2626); margin-bottom: 6px; }
+    .error-hint  { font-size: 12px; color: var(--color-text-secondary, #6b7280); }
+
+    #root { min-height: 40px; }
+  </style>
+</head>
+<body>
+  <div id="root">Loading…</div>
+  <script type="module">
+    import {
+      App,
+      applyDocumentTheme,
+      applyHostStyleVariables,
+      applyHostFonts,
+    } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+
+    const app = new App({ name: "Recce Top-K Diff", version: "1.0.0" });
+
+    app.onhostcontextchanged = (ctx) => {
+      if (ctx.theme) applyDocumentTheme(ctx.theme);
+      if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+      if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
+    };
+
+    app.ontoolresult = ({ structuredContent }) => {
+      render(structuredContent ?? {});
+    };
+
+    app.onteardown = async () => { return {}; };
+
+    await app.connect();
+
+    const initialCtx = app.getHostContext?.();
+    if (initialCtx) {
+      if (initialCtx.theme) applyDocumentTheme(initialCtx.theme);
+      if (initialCtx.styles?.variables) applyHostStyleVariables(initialCtx.styles.variables);
+      if (initialCtx.styles?.css?.fonts) applyHostFonts(initialCtx.styles.css.fonts);
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────
+    function escapeHtml(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+    }
+
+    function fmtNum(n) {
+      if (n === null || n === undefined) return "—";
+      return Number(n).toLocaleString();
+    }
+
+    function truncateVal(s, max) {
+      if (s === null || s === undefined) return '<span style="font-style:italic;color:var(--color-text-secondary,#9ca3af)">(null)</span>';
+      const str = String(s);
+      if (str.length > max) {
+        return `<span title="${escapeHtml(str)}">${escapeHtml(str.slice(0, max))}…</span>`;
+      }
+      return escapeHtml(str);
+    }
+
+    // ── Build rank index: value → rank for one env (rank 0 = highest count)
+    // Entries with count=0 (absent from that env) get rank = null.
+    function buildRankIndex(values, counts) {
+      const idx = {};
+      // Values are already ordered by SQL (curr_count desc, base_count desc).
+      // We rank only entries that actually appear (count > 0) in this env.
+      let rankNum = 0;
+      values.forEach((v, i) => {
+        const key = v === null ? "__null__" : String(v);
+        if (counts[i] > 0) {
+          idx[key] = rankNum++;
+        } else {
+          idx[key] = null;
+        }
+      });
+      return idx;
+    }
+
+    // ── Main render ──────────────────────────────────────────────────────
+    function render(data) {
+      const root = document.getElementById("root");
+
+      if (!data || typeof data !== "object") {
+        root.innerHTML = `
+          <div class="error-card">
+            <div class="error-title">Widget data unavailable</div>
+            <div class="error-hint">No structured content received from the tool.</div>
+          </div>`;
+        return;
+      }
+
+      const modelName = data.model ?? "";
+      const colName = data.column_name ?? "";
+      const k = data.k ?? 10;
+      const baseEnv = data.base ?? {};
+      const currEnv = data.current ?? {};
+      const warning = data.warning ?? null;
+
+      const baseValues = Array.isArray(baseEnv.values) ? baseEnv.values : [];
+      const baseCounts = Array.isArray(baseEnv.counts) ? baseEnv.counts : [];
+      const currCounts = Array.isArray(currEnv.counts) ? currEnv.counts : [];
+
+      const n = baseValues.length;  // same length for both (union of categories)
+
+      // ── Header
+      const header = `
+        <div class="header">
+          <span class="header-icon">&#127942;</span>
+          <span class="header-title">Top-K diff</span>
+          <span class="header-col">${escapeHtml(modelName)}.${escapeHtml(colName)}</span>
+        </div>`;
+
+      // ── Warning bar
+      const warningHtml = warning
+        ? `<div class="warning-bar">&#9888; ${escapeHtml(warning)}</div>`
+        : "";
+
+      // ── Empty state
+      if (n === 0) {
+        root.innerHTML = header + warningHtml + `
+          <div class="empty-card">
+            <div class="empty-icon">&#128202;</div>
+            <div class="empty-title">Column has no values</div>
+            <div class="empty-hint">No top-K categories were returned. The column may be empty or all-null.</div>
+          </div>`;
+        return;
+      }
+
+      // ── Summary bar
+      const baseTotal = fmtNum(baseEnv.total ?? 0);
+      const currTotal = fmtNum(currEnv.total ?? 0);
+      const baseValids = fmtNum(baseEnv.valids ?? 0);
+      const currValids = fmtNum(currEnv.valids ?? 0);
+      const summaryBar = `
+        <div class="summary-bar">
+          <span class="summary-text">Comparing top <strong>${k}</strong> values of <strong>${escapeHtml(colName)}</strong></span>
+          <span class="summary-text">Base: <strong>${baseValids}</strong> non-null / ${baseTotal} total</span>
+          <span class="summary-text">Current: <strong>${currValids}</strong> non-null / ${currTotal} total</span>
+        </div>`;
+
+      // ── Rank indexes for change indicators
+      const baseRanks = buildRankIndex(baseValues, baseCounts);
+      const currRanks = buildRankIndex(baseValues, currCounts);
+
+      const baseMaxCount = Math.max(...baseCounts, 1);
+      const currMaxCount = Math.max(...currCounts, 1);
+
+      // ── Render one side panel (env = "base" | "current")
+      function renderPanel(label, values, myCounts, otherCounts, myRanks, otherRanks, fillClass) {
+        const statsHtml = `<span class="side-stats">${fmtNum(myCounts.reduce((a, b) => a + b, 0))} shown</span>`;
+        const headerHtml = `
+          <div class="side-header">
+            <span class="side-title">${label}</span>
+            ${statsHtml}
+          </div>`;
+
+        const maxCount = Math.max(...myCounts, 1);
+
+        const rows = values.map((val, i) => {
+          const key = val === null ? "__null__" : String(val);
+          const myCount = myCounts[i] ?? 0;
+          const otherCount = otherCounts[i] ?? 0;
+          const myRank = myRanks[key];       // rank in THIS env (null if absent)
+          const otherRank = otherRanks[key]; // rank in OTHER env (null if absent)
+
+          // State classification
+          const isGone = myCount === 0 && otherCount > 0;  // absent here, present in other
+          const isNew  = myCount > 0 && otherCount === 0;  // present here, absent in other
+          let rowClass = "";
+          let badge = "";
+          let arrow = "";
+
+          if (isGone) {
+            rowClass = "row-gone";
+            badge = `<span class="badge-gone">Gone</span>`;
+          } else if (isNew) {
+            rowClass = "row-new";
+            badge = `<span class="badge-new">New</span>`;
+          } else if (myRank !== null && otherRank !== null) {
+            if (myRank < otherRank) {
+              // lower rank number = better rank (rank 0 = #1)
+              rowClass = "row-up";
+              arrow = `<span class="arrow-up" title="Rank improved">&#8593;</span>`;
+            } else if (myRank > otherRank) {
+              rowClass = "row-down";
+              arrow = `<span class="arrow-down" title="Rank dropped">&#8595;</span>`;
+            }
+          }
+
+          const rankLabel = myCount > 0 && myRank !== null ? `#${myRank + 1}` : "—";
+          const barWidth = myCount > 0 ? Math.round((myCount / maxCount) * 100) : 0;
+
+          return `
+            <div class="rank-row ${rowClass}">
+              <span class="rank-num">${rankLabel}</span>
+              <span class="rank-val-wrap">
+                <span class="rank-val">${truncateVal(val, 30)}</span>
+                ${badge}${arrow}
+              </span>
+              <span class="rank-count">${fmtNum(myCount)}</span>
+              <span class="rank-bar">
+                <div class="bar-track">
+                  <div class="${fillClass}" style="width:${barWidth}%"></div>
+                </div>
+              </span>
+            </div>`;
+        }).join("");
+
+        return `
+          <div class="side-panel">
+            ${headerHtml}
+            <div class="side-list">${rows}</div>
+          </div>`;
+      }
+
+      const basePanel = renderPanel(
+        "Base", baseValues, baseCounts, currCounts,
+        baseRanks, currRanks, "bar-fill-base"
+      );
+      const currPanel = renderPanel(
+        "Current", baseValues, currCounts, baseCounts,
+        currRanks, baseRanks, "bar-fill-curr"
+      );
+
+      root.innerHTML = header + warningHtml + summaryBar + `
+        <div class="side-grid">
+          ${basePanel}
+          ${currPanel}
+        </div>`;
+    }
+  </script>
+</body>
+</html>

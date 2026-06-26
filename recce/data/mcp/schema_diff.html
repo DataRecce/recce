@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Schema Diff</title>
+  <style>
+    /* ── Base reset + design tokens ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+      font-size: 13px;
+      margin: 0;
+      padding: 12px 16px 20px;
+      color: var(--color-text-primary, #1a1a1a);
+      background: var(--color-background-primary, #ffffff);
+      line-height: 1.4;
+    }
+    /* Dark-mode fallback for non-Claude hosts (OS preference respected):
+       This block must be exhaustive — covers all classes using color:/background:
+       so the widget renders correctly when SDK helpers don't fire. */
+    @media (prefers-color-scheme: dark) {
+      /* ── Base ── */
+      body {
+        color: var(--color-text-primary, #e5e7eb);
+        background: var(--color-background-primary, #1a1a1a);
+      }
+      /* ── Header ── */
+      .header-icon  { color: var(--color-text-secondary, #9ca3af) !important; }
+      .header-title { color: var(--color-text-primary, #e5e7eb) !important; }
+      .header-count { color: var(--color-text-secondary, #9ca3af) !important; }
+      /* ── Model block header ── */
+      .model-header {
+        color: var(--color-text-primary, #e5e7eb) !important;
+        border-color: var(--color-border-secondary, #3f3f46) !important;
+      }
+      /* ── Table ── */
+      th      { background: var(--color-background-secondary, #27272a) !important;
+                color: var(--color-text-secondary, #9ca3af) !important; }
+      td, th  { border-color: var(--color-border-tertiary, #3f3f46) !important; }
+      /* Monospace cells — explicit color so they don't inherit dark-bg-only styles */
+      td.col-name, td.col-type { color: var(--color-text-primary, #e5e7eb) !important; }
+      /* ── Arrow between types ── */
+      .arrow { color: var(--color-text-tertiary, #6b7280) !important; }
+      /* ── Diff row backgrounds — use low-opacity tints on dark ── */
+      tr.added   td { background: var(--color-background-success, rgba(5,150,105,0.15)) !important; }
+      tr.removed td { background: var(--color-background-danger, rgba(220,38,38,0.12)) !important; }
+      tr.changed td { background: var(--color-background-info, rgba(37,99,235,0.12)) !important; }
+      /* ── Section pills — light pastels too bright on dark; flip to dark bg + light text ── */
+      .pill-added   { background: var(--color-background-success, #064e3b) !important;
+                      color: var(--color-text-success, #6ee7b7) !important; }
+      .pill-removed { background: var(--color-background-danger, #7f1d1d) !important;
+                      color: var(--color-text-danger, #fca5a5) !important; }
+      .pill-changed { background: var(--color-background-info, #1e3a8a) !important;
+                      color: var(--color-text-info, #93c5fd) !important; }
+      /* ── Misc ── */
+      .unchanged-msg { color: var(--color-text-secondary, #9ca3af) !important; }
+      .empty         { color: var(--color-text-secondary, #9ca3af) !important; }
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0 12px;
+    }
+    .header-icon {
+      font-size: 18px;
+      line-height: 1;
+      color: var(--color-text-secondary, #6b7280);
+    }
+    .header-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-text-primary, #1a1a1a);
+    }
+    .header-count {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--color-text-secondary, #6b7280);
+    }
+
+    /* ── Model blocks ───────────────────────────────────────────────── */
+    .model-block { margin-bottom: 20px; }
+    .model-header {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-text-primary, #1a1a1a);
+      border-bottom: 1px solid var(--color-border-secondary, #e5e7eb);
+      padding: 8px 0 6px;
+      margin: 0 0 8px;
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+    }
+
+    /* ── Section headings ───────────────────────────────────────────── */
+    .section-heading {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 10px 0 6px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: var(--border-radius-sm, 4px);
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .pill-added   { background: var(--color-background-success, #d1fae5); color: var(--color-text-success, #065f46); }
+    .pill-removed { background: var(--color-background-danger, #fee2e2); color: var(--color-text-danger, #991b1b); }
+    .pill-changed { background: var(--color-background-info, #dbeafe); color: var(--color-text-info, #1e40af); }
+
+    /* ── Tables ─────────────────────────────────────────────────────── */
+    table { border-collapse: collapse; width: 100%; margin-bottom: 10px; font-size: 12px; }
+    th {
+      text-align: left;
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--color-text-secondary, #6b7280);
+      background: var(--color-background-secondary, #f9fafb);
+      border-bottom: 1px solid var(--color-border-tertiary, #e5e7eb);
+    }
+    td {
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--color-border-tertiary, #e5e7eb);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+
+    /* Row colors */
+    tr.added   td { background: var(--color-background-success, #f0fdf4); }
+    tr.removed td { background: var(--color-background-danger, #fff7f7); }
+    tr.changed td { background: var(--color-background-info, #eff6ff); }
+
+    /* Arrow between types */
+    .arrow { color: var(--color-text-tertiary, #9ca3af); padding: 0 4px; }
+
+    /* Font mono for column/type names */
+    td.col-name, td.col-type {
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+      font-size: 11px;
+    }
+
+    /* ── Misc ───────────────────────────────────────────────────────── */
+    .unchanged-msg {
+      color: var(--color-text-secondary, #6b7280);
+      font-size: 12px;
+      margin: 4px 0 8px;
+    }
+    .empty { color: var(--color-text-secondary, #6b7280); padding: 16px 0; }
+    #root { min-height: 40px; }
+  </style>
+</head>
+<body>
+  <div id="root">Loading…</div>
+  <script type="module">
+    import {
+      App,
+      applyDocumentTheme,
+      applyHostStyleVariables,
+      applyHostFonts,
+    } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+
+    const app = new App({ name: "Recce Schema Diff", version: "1.0.0" });
+
+    // Apply host theme on every context change (theme switch, font change, etc.)
+    app.onhostcontextchanged = (ctx) => {
+      if (ctx.theme) applyDocumentTheme(ctx.theme);
+      if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+      if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
+    };
+
+    app.ontoolresult = ({ structuredContent }) => {
+      render(structuredContent ?? {});
+    };
+
+    app.onteardown = async () => {
+      return {};
+    };
+
+    await app.connect();
+
+    // Apply theme from initial host context if available before first change event
+    const initialCtx = app.getHostContext?.();
+    if (initialCtx) {
+      if (initialCtx.theme) applyDocumentTheme(initialCtx.theme);
+      if (initialCtx.styles?.variables) applyHostStyleVariables(initialCtx.styles.variables);
+      if (initialCtx.styles?.css?.fonts) applyHostFonts(initialCtx.styles.css.fonts);
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+    }
+
+    function renderModelBlock(nodeId, m) {
+      const added = m.added ?? [];
+      const removed = m.removed ?? [];
+      const typeChanged = m.type_changed ?? [];
+      const unchangedCount = m.unchanged_count ?? 0;
+      const hasChanges = added.length > 0 || removed.length > 0 || typeChanged.length > 0;
+
+      let html = `<div class="model-block">
+        <div class="model-header">${escapeHtml(nodeId)}</div>`;
+
+      if (!hasChanges && unchangedCount > 0) {
+        const noun = unchangedCount === 1 ? "column" : "columns";
+        html += `<p class="unchanged-msg">&#10003; No schema changes (${unchangedCount} ${noun} unchanged)</p>`;
+        return html + "</div>";
+      }
+
+      if (added.length > 0) {
+        html += `<div class="section-heading"><span class="pill pill-added">&#43; ${added.length} Added</span></div>`;
+        html += `<table><thead><tr><th>Column</th><th>Type</th></tr></thead><tbody>`;
+        html += added.map(c =>
+          `<tr class="added">
+            <td class="col-name">${escapeHtml(c.name)}</td>
+            <td class="col-type">${escapeHtml(c.type ?? "")}</td>
+          </tr>`).join("");
+        html += `</tbody></table>`;
+      }
+
+      if (removed.length > 0) {
+        html += `<div class="section-heading"><span class="pill pill-removed">&#8722; ${removed.length} Removed</span></div>`;
+        html += `<table><thead><tr><th>Column</th><th>Type</th></tr></thead><tbody>`;
+        html += removed.map(c =>
+          `<tr class="removed">
+            <td class="col-name">${escapeHtml(c.name)}</td>
+            <td class="col-type">${escapeHtml(c.type ?? "")}</td>
+          </tr>`).join("");
+        html += `</tbody></table>`;
+      }
+
+      if (typeChanged.length > 0) {
+        html += `<div class="section-heading"><span class="pill pill-changed">&#8646; ${typeChanged.length} Type changed</span></div>`;
+        html += `<table><thead><tr><th>Column</th><th>Base type</th><th></th><th>Current type</th></tr></thead><tbody>`;
+        html += typeChanged.map(c =>
+          `<tr class="changed">
+            <td class="col-name">${escapeHtml(c.name)}</td>
+            <td class="col-type">${escapeHtml(c.base_type ?? "")}</td>
+            <td class="arrow">&#8594;</td>
+            <td class="col-type">${escapeHtml(c.curr_type ?? "")}</td>
+          </tr>`).join("");
+        html += `</tbody></table>`;
+      }
+
+      if (unchangedCount > 0) {
+        const noun = unchangedCount === 1 ? "column" : "columns";
+        html += `<p class="unchanged-msg">${unchangedCount} ${noun} unchanged</p>`;
+      }
+
+      return html + "</div>";
+    }
+
+    function render(data) {
+      const models = data.models ?? {};
+      const entries = Object.entries(models);
+
+      if (entries.length === 0) {
+        document.getElementById("root").innerHTML =
+          `<div class="header"><span class="header-icon">&#9783;</span><span class="header-title">Schema diff</span></div><p class="empty">No models found.</p>`;
+        return;
+      }
+
+      const total = entries.length;
+      const blocks = entries.map(([nodeId, m]) => renderModelBlock(nodeId, m)).join("");
+      document.getElementById("root").innerHTML = `
+        <div class="header">
+          <span class="header-icon">&#9783;</span>
+          <span class="header-title">Schema diff</span>
+          <span class="header-count">${total} model${total !== 1 ? 's' : ''}</span>
+        </div>
+        ${blocks}`;
+    }
+  </script>
+</body>
+</html>

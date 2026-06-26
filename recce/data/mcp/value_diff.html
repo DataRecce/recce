@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Value Diff</title>
+  <style>
+    /* ── Base reset + design tokens ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+      font-size: 13px;
+      margin: 0;
+      padding: 12px 16px 20px;
+      color: var(--color-text-primary, #1a1a1a);
+      background: var(--color-background-primary, #ffffff);
+      line-height: 1.4;
+    }
+
+    /* ── Dark-mode fallback ────────────────────────────────────────── */
+    @media (prefers-color-scheme: dark) {
+      body {
+        color: var(--color-text-primary, #e5e7eb);
+        background: var(--color-background-primary, #1a1a1a);
+      }
+      .header-icon    { color: var(--color-text-secondary, #9ca3af) !important; }
+      .header-title   { color: var(--color-text-primary, #e5e7eb) !important; }
+      .header-model   { color: var(--color-text-secondary, #9ca3af) !important; }
+      .warning-bar    { background: var(--color-background-warning, #78350f) !important;
+                        color: var(--color-text-warning, #fde68a) !important;
+                        border-color: #92400e !important; }
+      .stat-card      { background: var(--color-background-secondary, #27272a) !important;
+                        border-color: var(--color-border-primary, #3f3f46) !important; }
+      .stat-label     { color: var(--color-text-secondary, #9ca3af) !important; }
+      .stat-value     { color: var(--color-text-primary, #e5e7eb) !important; }
+      .stat-value.green { color: #4ade80 !important; }
+      .stat-value.amber { color: #fbbf24 !important; }
+      .stat-value.gray  { color: var(--color-text-secondary, #9ca3af) !important; }
+      .section-title  { color: var(--color-text-secondary, #9ca3af) !important;
+                        border-bottom-color: var(--color-border-primary, #3f3f46) !important; }
+      .col-table-wrap { border-color: var(--color-border-primary, #3f3f46) !important; }
+      .col-table      { background: var(--color-background-secondary, #27272a) !important; }
+      .th-cell        { background: var(--color-background-secondary, #27272a) !important;
+                        color: var(--color-text-secondary, #9ca3af) !important;
+                        border-bottom-color: var(--color-border-primary, #3f3f46) !important;
+                        border-right-color: var(--color-border-primary, #3f3f46) !important; }
+      .tr-row:nth-child(even) { background: var(--color-background-primary, #1a1a1a) !important; }
+      .tr-row:nth-child(odd)  { background: var(--color-background-secondary, #27272a) !important; }
+      .tr-row:hover           { background: var(--color-background-info, #1e3a8a) !important; }
+      .td-cell        { color: var(--color-text-primary, #e5e7eb) !important;
+                        border-bottom-color: var(--color-border-secondary, #3f3f46) !important;
+                        border-right-color: var(--color-border-secondary, #3f3f46) !important; }
+      .cell-col-name  { color: var(--color-text-primary, #e5e7eb) !important; }
+      .pct-green      { color: #4ade80 !important; }
+      .pct-amber      { color: #fbbf24 !important; }
+      .pct-red        { color: #f87171 !important; }
+      .bar-track      { background: var(--color-border-primary, #3f3f46) !important; }
+      .bar-fill-match { background: #4ade80 !important; }
+      .bar-fill-miss  { background: #f87171 !important; }
+      .empty-card     { background: var(--color-background-secondary, #27272a) !important; }
+      .empty-title    { color: var(--color-text-primary, #e5e7eb) !important; }
+      .empty-hint     { color: var(--color-text-secondary, #9ca3af) !important; }
+      .error-card     { background: var(--color-background-secondary, #27272a) !important; }
+      .error-title    { color: var(--color-text-danger, #f87171) !important; }
+      .error-hint     { color: var(--color-text-secondary, #9ca3af) !important; }
+      .badge-truncated { background: var(--color-background-warning, #78350f) !important;
+                         color: var(--color-text-warning, #fde68a) !important; }
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0 8px;
+    }
+    .header-icon  { font-size: 16px; line-height: 1; color: var(--color-text-secondary, #6b7280); }
+    .header-title { font-size: 14px; font-weight: 700; color: var(--color-text-primary, #1a1a1a); flex: 1; }
+    .header-model {
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+      font-size: 11px;
+      color: var(--color-text-secondary, #6b7280);
+      white-space: nowrap;
+    }
+
+    /* ── Warning bar ─────────────────────────────────────────────────── */
+    .warning-bar {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 8px 10px;
+      margin-bottom: 10px;
+      border-radius: var(--border-radius-sm, 4px);
+      font-size: 12px;
+      font-style: italic;
+      background: var(--color-background-warning, #fffbeb);
+      color: var(--color-text-warning, #92400e);
+      border: 1px solid var(--color-border-warning, #fcd34d);
+    }
+
+    /* ── 4-up summary cards ──────────────────────────────────────────── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .stat-card {
+      padding: 10px 12px;
+      border-radius: var(--border-radius-md, 8px);
+      border: 1px solid var(--color-border-primary, #e5e7eb);
+      background: var(--color-background-secondary, #f9fafb);
+      text-align: center;
+    }
+    .stat-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-text-secondary, #6b7280);
+      margin-bottom: 4px;
+    }
+    .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--color-text-primary, #1a1a1a);
+    }
+    .stat-value.green { color: var(--color-text-success, #16a34a); }
+    .stat-value.amber { color: #d97706; }
+    .stat-value.gray  { color: var(--color-text-secondary, #6b7280); }
+    .stat-sub {
+      font-size: 10px;
+      color: var(--color-text-secondary, #9ca3af);
+      margin-top: 2px;
+    }
+
+    /* ── Section heading ─────────────────────────────────────────────── */
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-text-secondary, #6b7280);
+      border-bottom: 1px solid var(--color-border-primary, #e5e7eb);
+      padding-bottom: 6px;
+      margin-bottom: 8px;
+    }
+
+    /* ── Per-column table ────────────────────────────────────────────── */
+    .col-table-wrap {
+      max-height: 360px;
+      overflow: auto;
+      border: 1px solid var(--color-border-primary, #e5e7eb);
+      border-radius: var(--border-radius-md, 8px);
+    }
+    .col-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      background: var(--color-background-secondary, #f9fafb);
+    }
+    .col-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .th-cell {
+      padding: 7px 10px;
+      text-align: left;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: var(--color-background-secondary, #f3f4f6);
+      color: var(--color-text-secondary, #6b7280);
+      border-bottom: 1px solid var(--color-border-primary, #e5e7eb);
+      border-right: 1px solid var(--color-border-primary, #e5e7eb);
+      white-space: nowrap;
+    }
+    .th-cell:last-child { border-right: none; }
+    .th-right { text-align: right; }
+
+    .tr-row:nth-child(even) { background: var(--color-background-primary, #ffffff); }
+    .tr-row:nth-child(odd)  { background: var(--color-background-secondary, #f9fafb); }
+    .tr-row:hover           { background: var(--color-background-info, #eff6ff); }
+    .tr-row:last-child .td-cell { border-bottom: none; }
+
+    .td-cell {
+      padding: 6px 10px;
+      color: var(--color-text-primary, #1a1a1a);
+      border-bottom: 1px solid var(--color-border-secondary, #f3f4f6);
+      border-right: 1px solid var(--color-border-secondary, #f3f4f6);
+      vertical-align: middle;
+    }
+    .td-cell:last-child { border-right: none; }
+
+    .cell-col-name {
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+      font-size: 12px;
+      color: var(--color-text-primary, #1a1a1a);
+    }
+    .td-right {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+    }
+
+    /* ── Percentage color bands ──────────────────────────────────────── */
+    .pct-green { color: var(--color-text-success, #16a34a); font-weight: 600; }
+    .pct-amber { color: #d97706; font-weight: 600; }
+    .pct-red   { color: #dc2626; font-weight: 600; }
+
+    /* ── Inline bar visualization (CSS only, no chart lib) ───────────── */
+    .bar-cell { width: 120px; padding: 6px 10px; }
+    .bar-track {
+      width: 100%;
+      height: 8px;
+      border-radius: 4px;
+      background: var(--color-border-primary, #e5e7eb);
+      overflow: hidden;
+      display: flex;
+    }
+    .bar-fill-match {
+      height: 100%;
+      background: var(--color-text-success, #16a34a);
+      border-radius: 4px 0 0 4px;
+      transition: width 0.2s ease;
+    }
+    .bar-fill-miss {
+      height: 100%;
+      background: #dc2626;
+      border-radius: 0 4px 4px 0;
+    }
+
+    /* ── Empty / error states ────────────────────────────────────────── */
+    .empty-card {
+      background: var(--color-background-secondary, #f9fafb);
+      border-radius: var(--border-radius-md, 8px);
+      padding: 32px 24px;
+      text-align: center;
+    }
+    .empty-icon  { font-size: 28px; margin-bottom: 8px; }
+    .empty-title { font-size: 14px; font-weight: 600; color: var(--color-text-primary, #1a1a1a); margin-bottom: 6px; }
+    .empty-hint  { font-size: 12px; color: var(--color-text-secondary, #6b7280); }
+
+    .error-card  { background: var(--color-background-secondary, #f9fafb);
+                   border-radius: var(--border-radius-md, 8px); padding: 24px; text-align: center; }
+    .error-title { font-size: 14px; font-weight: 600; color: var(--color-text-danger, #dc2626); margin-bottom: 6px; }
+    .error-hint  { font-size: 12px; color: var(--color-text-secondary, #6b7280); }
+
+    .badge-truncated {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 6px;
+      border-radius: var(--border-radius-sm, 4px);
+      font-size: 10px;
+      font-weight: 600;
+      background: var(--color-background-warning, #fef3c7);
+      color: var(--color-text-warning, #92400e);
+      white-space: nowrap;
+    }
+
+    #root { min-height: 40px; }
+  </style>
+</head>
+<body>
+  <div id="root">Loading…</div>
+  <script type="module">
+    import {
+      App,
+      applyDocumentTheme,
+      applyHostStyleVariables,
+      applyHostFonts,
+    } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+
+    const app = new App({ name: "Recce Value Diff", version: "1.0.0" });
+
+    app.onhostcontextchanged = (ctx) => {
+      if (ctx.theme) applyDocumentTheme(ctx.theme);
+      if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+      if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
+    };
+
+    app.ontoolresult = ({ structuredContent }) => {
+      render(structuredContent ?? {});
+    };
+
+    app.onteardown = async () => { return {}; };
+
+    await app.connect();
+
+    const initialCtx = app.getHostContext?.();
+    if (initialCtx) {
+      if (initialCtx.theme) applyDocumentTheme(initialCtx.theme);
+      if (initialCtx.styles?.variables) applyHostStyleVariables(initialCtx.styles.variables);
+      if (initialCtx.styles?.css?.fonts) applyHostFonts(initialCtx.styles.css.fonts);
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────
+    function escapeHtml(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+    }
+
+    function fmtPct(p) {
+      // p is 0.0–1.0; render as percentage string
+      if (p === null || p === undefined) return "—";
+      return (p * 100).toFixed(2) + "%";
+    }
+
+    function pctClass(p) {
+      if (p === null || p === undefined) return "";
+      if (p >= 0.95) return "pct-green";
+      if (p >= 0.80) return "pct-amber";
+      return "pct-red";
+    }
+
+    function fmtNum(n) {
+      if (n === null || n === undefined) return "—";
+      return Number(n).toLocaleString();
+    }
+
+    function pkLabel(pk) {
+      if (!pk) return "";
+      if (Array.isArray(pk)) return pk.join(", ");
+      return String(pk);
+    }
+
+    // ── Main render ──────────────────────────────────────────────────────
+    function render(data) {
+      const root = document.getElementById("root");
+
+      if (!data || typeof data !== "object") {
+        root.innerHTML = `
+          <div class="error-card">
+            <div class="error-title">Widget data unavailable</div>
+            <div class="error-hint">No structured content received from the tool.</div>
+          </div>`;
+        return;
+      }
+
+      const modelName = data.model ?? "";
+      const pk = data.primary_key ?? null;
+      const summary = data.summary ?? {};
+      const columns = Array.isArray(data.columns) ? data.columns : [];
+      const warning = data.warning ?? null;
+
+      const total    = summary.total   ?? 0;
+      const added    = summary.added   ?? 0;
+      const removed  = summary.removed ?? 0;
+      const common   = total - added - removed;   // rows present in both envs
+      const matched  = columns.reduce((acc, c) => acc + (c.matched ?? 0), 0) / Math.max(columns.length, 1);
+      // Count mismatched = any column with matched_p < 1.0
+      const mismatchedCols = columns.filter(c => c.matched_p !== null && c.matched_p !== undefined && c.matched_p < 1.0);
+
+      // ── Header
+      const pkHint = pk ? ` · PK: ${escapeHtml(pkLabel(pk))}` : "";
+      const header = `
+        <div class="header">
+          <span class="header-icon">&#9878;</span>
+          <span class="header-title">Value diff</span>
+          <span class="header-model">${escapeHtml(modelName)}${pkHint}</span>
+        </div>`;
+
+      // ── Warning bar
+      const warningHtml = warning
+        ? `<div class="warning-bar">&#9888; ${escapeHtml(warning)}</div>`
+        : "";
+
+      // ── 4-up stat cards
+      const addedRemovedSub = (added > 0 || removed > 0)
+        ? `<div class="stat-sub">+${fmtNum(added)} / -${fmtNum(removed)}</div>`
+        : `<div class="stat-sub">none</div>`;
+
+      const statGrid = `
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-label">Total rows</div>
+            <div class="stat-value">${fmtNum(total)}</div>
+            <div class="stat-sub">compared</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Common</div>
+            <div class="stat-value green">${fmtNum(common)}</div>
+            <div class="stat-sub">in both envs</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Columns affected</div>
+            <div class="stat-value ${mismatchedCols.length > 0 ? "amber" : "green"}">${mismatchedCols.length}</div>
+            <div class="stat-sub">of ${columns.length} compared</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Added / Removed</div>
+            <div class="stat-value gray">${fmtNum(added + removed)}</div>
+            ${addedRemovedSub}
+          </div>
+        </div>`;
+
+      // ── All-match empty state (no column has mismatches)
+      if (columns.length > 0 && mismatchedCols.length === 0 && added === 0 && removed === 0) {
+        root.innerHTML = header + warningHtml + statGrid + `
+          <div class="empty-card">
+            <div class="empty-icon">&#10003;</div>
+            <div class="empty-title">All values match across primary key</div>
+            <div class="empty-hint">Every column is 100% identical between base and current environments.</div>
+          </div>`;
+        return;
+      }
+
+      // ── Per-column breakdown table
+      const thead = `
+        <thead>
+          <tr>
+            <th class="th-cell">Column</th>
+            <th class="th-cell th-right">Matched %</th>
+            <th class="th-cell th-right">Mismatched rows</th>
+            <th class="th-cell">Match / Mismatch</th>
+          </tr>
+        </thead>`;
+
+      const tbody = columns.map(col => {
+        const p = col.matched_p;        // 0.0–1.0 or null
+        const matchedCount = col.matched ?? 0;
+        // mismatched = common rows minus matched (for this column)
+        const mismatchedCount = p !== null && p !== undefined
+          ? Math.round(common - matchedCount)
+          : null;
+
+        const pctStr = fmtPct(p);
+        const cls    = pctClass(p);
+
+        // Inline bar: match portion = p, mismatch = 1-p
+        let barHtml = "";
+        if (p !== null && p !== undefined && common > 0) {
+          const matchPct = Math.round(p * 100);
+          const missPct  = 100 - matchPct;
+          barHtml = `
+            <div class="bar-track">
+              <div class="bar-fill-match" style="width:${matchPct}%"></div>
+              <div class="bar-fill-miss"  style="width:${missPct}%"></div>
+            </div>`;
+        } else {
+          barHtml = `<div class="bar-track"><div class="bar-fill-match" style="width:100%"></div></div>`;
+        }
+
+        const mismatchCell = mismatchedCount !== null
+          ? `<span class="${mismatchedCount > 0 ? "pct-red" : "pct-green"}">${fmtNum(mismatchedCount)}</span>`
+          : `<span style="font-style:italic;color:var(--color-text-secondary,#9ca3af)">—</span>`;
+
+        return `
+          <tr class="tr-row">
+            <td class="td-cell"><span class="cell-col-name">${escapeHtml(col.column)}</span></td>
+            <td class="td-cell td-right"><span class="${cls}">${pctStr}</span></td>
+            <td class="td-cell td-right">${mismatchCell}</td>
+            <td class="td-cell bar-cell">${barHtml}</td>
+          </tr>`;
+      }).join("");
+
+      const table = `
+        <div class="section-title">Per-column breakdown</div>
+        <div class="col-table-wrap">
+          <table class="col-table">
+            ${thead}
+            <tbody>${tbody}</tbody>
+          </table>
+        </div>`;
+
+      root.innerHTML = header + warningHtml + statGrid + (columns.length > 0 ? table : `
+        <div class="empty-card">
+          <div class="empty-icon">&#128203;</div>
+          <div class="empty-title">No column data</div>
+          <div class="empty-hint">No columns were compared. Check that the model has common columns in both environments.</div>
+        </div>`);
+    }
+  </script>
+</body>
+</html>

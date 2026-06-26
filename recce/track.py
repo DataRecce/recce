@@ -54,11 +54,14 @@ class TrackCommand(Command):
     def _show_error_message(self, msg, params):
         from rich.console import Console
 
-        console = Console()
+        # stderr=True: stdio MCP servers use stdout as the JSON-RPC channel, so a
+        # traceback printed to stdout (e.g. the --debug path below) corrupts the
+        # protocol. Mirrors the non-debug branch which already writes to stderr.
+        console = Console(stderr=True)
         if params.get("debug"):
             console.print_exception(show_locals=True)
         else:
-            print(traceback.format_exc())
+            print(traceback.format_exc(), file=sys.stderr)
             # console.print('[bold red]Error:[/bold red] ', end='')
             # console.out(msg, highlight=False)
 

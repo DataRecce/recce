@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Column Lineage</title>
+  <style>
+    /* ── Base reset + design tokens ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+      font-size: 13px;
+      margin: 0;
+      padding: 12px 16px 20px;
+      color: var(--color-text-primary, #1a1a1a);
+      background: var(--color-background-primary, #ffffff);
+      line-height: 1.4;
+    }
+
+    /* ── Dark-mode fallback ─────────────────────────────────────────── */
+    @media (prefers-color-scheme: dark) {
+      body {
+        color: var(--color-text-primary, #e5e7eb);
+        background: var(--color-background-primary, #1a1a1a);
+      }
+      .header-icon    { color: var(--color-text-secondary, #9ca3af) !important; }
+      .header-title   { color: var(--color-text-primary, #e5e7eb) !important; }
+      .header-col     { color: var(--color-text-secondary, #9ca3af) !important; }
+      .summary-bar    { background: var(--color-background-secondary, #27272a) !important;
+                        border-color: var(--color-border-primary, #3f3f46) !important; }
+      .summary-text   { color: var(--color-text-secondary, #9ca3af) !important; }
+      .summary-text strong { color: var(--color-text-primary, #e5e7eb) !important; }
+      .warning-bar    { background: var(--color-background-warning, #78350f) !important;
+                        color: var(--color-text-warning, #fde68a) !important;
+                        border-color: #92400e !important; }
+      .dag-wrap       { border-color: var(--color-border-primary, #3f3f46) !important;
+                        background: var(--color-background-secondary, #18181b) !important; }
+      .node-card rect { stroke: var(--color-border-primary, #3f3f46) !important; }
+      .node-card .card-bg   { fill: var(--color-background-secondary, #27272a) !important; }
+      .node-card .header-bg { fill: var(--color-background-primary, #18181b) !important; }
+      .node-card .node-name { fill: var(--color-text-secondary, #9ca3af) !important; }
+      .node-card .col-text  { fill: var(--color-text-primary, #e5e7eb) !important; }
+      .node-card .col-type  { fill: var(--color-text-secondary, #6b7280) !important; }
+      .node-card .col-row-hover { fill: var(--color-background-primary, #27272a) !important; }
+      .target-col-bg { fill: var(--color-primary, #3b82f6) !important; fill-opacity: 0.35 !important; }
+      .edge-path      { stroke: var(--color-border-primary, #4b5563) !important; }
+      .edge-path.changed { stroke: #4ade80 !important; }
+      .badge-truncated { background: var(--color-background-warning, #78350f) !important;
+                         color: var(--color-text-warning, #fde68a) !important;
+                         border-color: #92400e !important; }
+      .bail-card      { background: var(--color-background-secondary, #27272a) !important;
+                        border-color: var(--color-border-primary, #3f3f46) !important; }
+      .bail-title     { color: var(--color-text-primary, #e5e7eb) !important; }
+      .bail-list li   { color: var(--color-text-secondary, #9ca3af) !important; }
+      .bail-hint      { color: var(--color-text-secondary, #6b7280) !important; }
+      .empty-card     { background: var(--color-background-secondary, #27272a) !important; }
+      .empty-title    { color: var(--color-text-primary, #e5e7eb) !important; }
+      .empty-hint     { color: var(--color-text-secondary, #9ca3af) !important; }
+      .error-card     { background: var(--color-background-secondary, #27272a) !important; }
+      .error-title    { color: var(--color-text-danger, #f87171) !important; }
+      .error-hint     { color: var(--color-text-secondary, #9ca3af) !important; }
+      .change-badge   { background: #14532d !important; color: #86efac !important; }
+      .added-badge    { background: #14532d !important; color: #86efac !important; }
+      .removed-badge  { background: #7f1d1d !important; color: #fca5a5 !important; }
+      .modified-badge { background: #78350f !important; color: #fde68a !important; }
+      .type-chip      { background: var(--color-background-primary, #18181b) !important;
+                        color: var(--color-text-secondary, #6b7280) !important;
+                        border-color: var(--color-border-primary, #3f3f46) !important; }
+      .layer-label    { fill: var(--color-text-secondary, #6b7280) !important; }
+    }
+
+    /* ── Header ──────────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .header-icon  { font-size: 16px; }
+    .header-title { font-size: 14px; font-weight: 600;
+                    color: var(--color-text-primary, #1a1a1a); flex: 1; }
+    .header-col   { font-family: var(--font-mono, ui-monospace, monospace);
+                    font-size: 11px;
+                    color: var(--color-text-secondary, #6b7280); }
+
+    /* ── Summary bar ─────────────────────────────────────────────────── */
+    .summary-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      background: var(--color-background-secondary, #f4f4f5);
+      border: 1px solid var(--color-border-primary, #e4e4e7);
+      border-radius: 6px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .summary-text { font-size: 12px; color: var(--color-text-secondary, #52525b); }
+    .summary-text strong { color: var(--color-text-primary, #1a1a1a); }
+    .summary-sep  { color: var(--color-border-primary, #d4d4d8); }
+
+    /* ── Warning bar ─────────────────────────────────────────────────── */
+    .warning-bar {
+      padding: 6px 10px;
+      background: var(--color-background-warning, #fef3c7);
+      border: 1px solid #f59e0b;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      font-style: italic;
+      color: var(--color-text-warning, #92400e);
+    }
+
+    /* ── DAG viewport ────────────────────────────────────────────────── */
+    .dag-wrap {
+      overflow-x: auto;
+      overflow-y: hidden;
+      border: 1px solid var(--color-border-primary, #e4e4e7);
+      border-radius: 8px;
+      background: var(--color-background-secondary, #fafafa);
+      padding: 8px;
+    }
+    .dag-svg { display: block; }
+
+    /* ── SVG node elements ───────────────────────────────────────────── */
+    .node-card .card-bg   { fill: var(--color-background-primary, #ffffff); stroke: var(--color-border-primary, #d4d4d8); stroke-width: 1; }
+    .node-card .header-bg { fill: var(--color-background-secondary, #f4f4f5); }
+    .node-card .node-name { font-size: 11px; font-weight: 600; fill: var(--color-text-secondary, #52525b); }
+    .node-card .type-tag  { font-size: 9px; fill: var(--color-text-secondary, #a1a1aa); }
+    .node-card .col-text  { font-size: 11px; fill: var(--color-text-primary, #1a1a1a); }
+    .node-card .col-type  { font-size: 9px; fill: var(--color-text-secondary, #9ca3af); }
+    .node-card .col-hover { fill: transparent; }
+    .node-card .col-hover:hover { fill: var(--color-background-secondary, #f0f0f0); fill-opacity: 0.5; }
+    .target-col-bg { fill: var(--color-primary, #3b82f6); fill-opacity: 0.2; }
+    .edge-path { fill: none; stroke: var(--color-border-primary, #94a3b8); stroke-width: 1.5; opacity: 0.7; }
+    .edge-path.changed { stroke: #22c55e; stroke-width: 2; opacity: 0.9; }
+    .layer-label { font-size: 9px; fill: var(--color-text-secondary, #9ca3af); font-style: italic; }
+
+    /* ── Bail-out card ───────────────────────────────────────────────── */
+    .bail-card {
+      padding: 14px 16px;
+      background: var(--color-background-secondary, #f4f4f5);
+      border: 1px solid var(--color-border-primary, #e4e4e7);
+      border-radius: 8px;
+    }
+    .bail-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-text-primary, #1a1a1a);
+      margin-bottom: 8px;
+    }
+    .bail-list {
+      margin: 0 0 8px 16px;
+      padding: 0;
+      font-size: 12px;
+      color: var(--color-text-secondary, #52525b);
+      list-style: disc;
+    }
+    .bail-list li { margin-bottom: 3px; }
+    .bail-hint {
+      font-size: 11px;
+      font-style: italic;
+      color: var(--color-text-secondary, #9ca3af);
+    }
+
+    /* ── Empty / error states ────────────────────────────────────────── */
+    .empty-card {
+      padding: 24px;
+      background: var(--color-background-secondary, #f4f4f5);
+      border-radius: 8px;
+      text-align: center;
+    }
+    .empty-title { font-weight: 600; margin-bottom: 4px; }
+    .empty-hint  { font-size: 12px; color: var(--color-text-secondary, #6b7280); }
+    .error-card  { padding: 16px; border-radius: 8px;
+                   border: 1px solid var(--color-danger, #f87171);
+                   background: var(--color-background-secondary, #f4f4f5); }
+    .error-title { font-weight: 600; color: var(--color-danger, #dc2626); margin-bottom: 4px; }
+    .error-hint  { font-size: 12px; color: var(--color-text-secondary, #6b7280); }
+
+    /* ── Change status badges (inline) ──────────────────────────────── */
+    .change-badge, .added-badge, .removed-badge, .modified-badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 600;
+      padding: 1px 4px;
+      border-radius: 3px;
+      vertical-align: middle;
+      margin-left: 3px;
+    }
+    .added-badge    { background: #dcfce7; color: #166534; }
+    .removed-badge  { background: #fee2e2; color: #991b1b; }
+    .modified-badge { background: #fef3c7; color: #92400e; }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="empty-card">
+      <div class="empty-title">Loading column lineage…</div>
+      <div class="empty-hint">Waiting for CLL results.</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      App,
+      applyDocumentTheme,
+      applyHostStyleVariables,
+      applyHostFonts,
+    } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+
+    const app = new App({ name: "Column Lineage", version: "1.0.0" });
+
+    app.onhostcontextchanged = (ctx) => {
+      if (ctx.theme)             applyDocumentTheme(ctx.theme);
+      if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+      if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
+    };
+
+    app.onteardown = async () => { return {}; };
+
+    // ── Constants ────────────────────────────────────────────────────
+    const BAIL_MAX_NODES = 12;
+    const BAIL_MAX_EDGES = 30;
+
+    // Card layout constants
+    const CARD_W        = 200;   // card width px
+    const CARD_HEADER_H = 32;    // header height
+    const COL_ROW_H     = 22;    // per-column row height
+    const CARD_PAD_H    = 6;     // bottom padding after last column
+    const LAYER_GAP_X   = 80;    // horizontal gap between layers
+    const NODE_GAP_Y    = 20;    // vertical gap between nodes in same layer
+    const SVG_PAD_X     = 20;    // SVG horizontal padding
+    const SVG_PAD_Y     = 30;    // SVG vertical padding (for layer labels)
+
+    // ── Helpers ──────────────────────────────────────────────────────
+
+    function escapeHtml(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+    }
+
+    function svgEl(tag, attrs = {}) {
+      const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+      return el;
+    }
+
+    function shortName(s, max = 24) {
+      if (!s) return "—";
+      return s.length > max ? s.slice(0, max - 1) + "…" : s;
+    }
+
+    function shortType(t, max = 16) {
+      if (!t) return "";
+      return t.length > max ? t.slice(0, max - 1) + "…" : t;
+    }
+
+    // ── Graph layout algorithm ────────────────────────────────────────
+    //
+    // Strategy: BFS from the queried node outward (upstream = left, downstream = right).
+    // Assigns each node a layer index: target = 0, upstream nodes = negative layer,
+    // downstream nodes = positive layer. Layer indices are then shifted so min=0.
+    // Within each layer, nodes are stacked top-to-bottom in alphabetical name order.
+
+    function assignLayers(nodeId, nodes, parentMap, childMap) {
+      // parent_map: {child_key → [parent_key, …]} — edges point right-to-left (upstream)
+      // child_map:  {parent_key → [child_key, …]} — edges point left-to-right (downstream)
+
+      const layerOf = {};
+      const queue = [[nodeId, 0]];
+      layerOf[nodeId] = 0;
+      const seen = new Set([nodeId]);
+
+      while (queue.length > 0) {
+        const [nid, layer] = queue.shift();
+
+        // Upstream: look at parent_map entries where nid appears as parent of something,
+        // AND look at parent_map[nid] itself for parents of nid.
+        // Actually parent_map[key] = parents of key (so parent_map[nid] = upstream of nid).
+        const parents = parentMap[nid] || [];
+        for (const pid of parents) {
+          // parent node_ids are raw node ids OR col keys like "node_id_col_name"
+          // We only care about actual node IDs in nodes dict
+          if (!(pid in nodes)) continue;
+          if (!seen.has(pid)) {
+            seen.add(pid);
+            layerOf[pid] = layer - 1;  // upstream = one step left
+            queue.push([pid, layer - 1]);
+          }
+        }
+
+        // Downstream: look at child_map[nid]
+        const children = childMap[nid] || [];
+        for (const cid of children) {
+          if (!(cid in nodes)) continue;
+          if (!seen.has(cid)) {
+            seen.add(cid);
+            layerOf[cid] = layer + 1;  // downstream = one step right
+            queue.push([cid, layer + 1]);
+          }
+        }
+      }
+
+      // Any nodes not reachable from nodeId (orphans in the subgraph) get layer 0
+      for (const nid of Object.keys(nodes)) {
+        if (!(nid in layerOf)) layerOf[nid] = 0;
+      }
+
+      // Shift layers so min = 0
+      const minLayer = Math.min(...Object.values(layerOf));
+      for (const k in layerOf) layerOf[k] -= minLayer;
+
+      return layerOf;
+    }
+
+    function cardHeight(node) {
+      const colCount = Object.keys(node.columns || {}).length;
+      return CARD_HEADER_H + Math.max(colCount, 1) * COL_ROW_H + CARD_PAD_H;
+    }
+
+    function computeLayout(nodeId, nodes, parentMap, childMap) {
+      const layerOf = assignLayers(nodeId, nodes, parentMap, childMap);
+
+      // Group nodes by layer
+      const layers = {};
+      for (const [nid, layer] of Object.entries(layerOf)) {
+        if (!(layer in layers)) layers[layer] = [];
+        layers[layer].push(nid);
+      }
+      // Sort each layer by node name (alphabetical)
+      for (const layer of Object.values(layers)) {
+        layer.sort((a, b) => (nodes[a]?.name || a).localeCompare(nodes[b]?.name || b));
+      }
+
+      const layerNums = Object.keys(layers).map(Number).sort((a, b) => a - b);
+      const numLayers = layerNums.length;
+
+      // Calculate x positions per layer
+      const layerX = {};
+      layerNums.forEach((ln, i) => {
+        layerX[ln] = SVG_PAD_X + i * (CARD_W + LAYER_GAP_X);
+      });
+
+      // Calculate y positions per node within layer
+      const nodePos = {}; // nid → {x, y, w, h}
+      let totalHeight = 0;
+      for (const ln of layerNums) {
+        let yOffset = SVG_PAD_Y;
+        for (const nid of layers[ln]) {
+          const h = cardHeight(nodes[nid]);
+          nodePos[nid] = { x: layerX[ln], y: yOffset, w: CARD_W, h };
+          yOffset += h + NODE_GAP_Y;
+        }
+        totalHeight = Math.max(totalHeight, yOffset);
+      }
+
+      const svgW = numLayers > 0
+        ? SVG_PAD_X * 2 + numLayers * CARD_W + (numLayers - 1) * LAYER_GAP_X
+        : 400;
+      const svgH = totalHeight + SVG_PAD_Y;
+
+      return { nodePos, layerOf, layers, layerNums, layerX, svgW, svgH };
+    }
+
+    // ── SVG node card rendering ──────────────────────────────────────
+
+    function buildNodeCard(nid, node, pos, targetNodeId, targetCol, changeAnalysis) {
+      const { x, y, w, h } = pos;
+      const g = svgEl("g", { class: "node-card" });
+
+      // Card background
+      const rect = svgEl("rect", {
+        class: "card-bg",
+        x, y, width: w, height: h,
+        rx: 6, ry: 6,
+      });
+      g.appendChild(rect);
+
+      // Header background
+      const headerRect = svgEl("rect", {
+        class: "header-bg",
+        x, y, width: w, height: CARD_HEADER_H,
+        rx: 6, ry: 6,
+      });
+      g.appendChild(headerRect);
+      // Overlay to square bottom corners of header
+      g.appendChild(svgEl("rect", {
+        class: "header-bg",
+        x, y: y + CARD_HEADER_H - 6, width: w, height: 6,
+      }));
+
+      // Node name
+      const nameText = svgEl("text", {
+        class: "node-name",
+        x: x + 10,
+        y: y + 14,
+        "dominant-baseline": "middle",
+      });
+      nameText.textContent = shortName(node.name, 22);
+      g.appendChild(nameText);
+
+      // Resource type tag
+      const rtag = svgEl("text", {
+        class: "type-tag",
+        x: x + 10,
+        y: y + CARD_HEADER_H - 7,
+      });
+      rtag.textContent = node.resource_type || "model";
+      g.appendChild(rtag);
+
+      // Change status badge in header (if change_analysis)
+      if (changeAnalysis && node.change_status) {
+        const badgeX = x + w - 8;
+        const badgeY = y + CARD_HEADER_H / 2;
+        const badgeTxt = svgEl("text", {
+          class: `node-name`,
+          x: badgeX,
+          y: badgeY,
+          "text-anchor": "end",
+          "dominant-baseline": "middle",
+          fill: node.change_status === "added" ? "#22c55e"
+               : node.change_status === "removed" ? "#ef4444"
+               : "#f59e0b",
+          "font-size": "9",
+        });
+        badgeTxt.textContent = node.change_status.toUpperCase();
+        g.appendChild(badgeTxt);
+      }
+
+      // Column rows
+      const colNames = Object.keys(node.columns || {});
+      if (colNames.length === 0) {
+        // Placeholder row when no columns
+        const ph = svgEl("text", {
+          class: "col-type",
+          x: x + 10,
+          y: y + CARD_HEADER_H + COL_ROW_H / 2,
+          "dominant-baseline": "middle",
+          "font-style": "italic",
+        });
+        ph.textContent = "no columns";
+        g.appendChild(ph);
+      }
+
+      colNames.forEach((cname, i) => {
+        const col = node.columns[cname];
+        const rowY = y + CARD_HEADER_H + i * COL_ROW_H;
+        const isTarget = nid === targetNodeId && cname === targetCol;
+
+        // Target column highlight background
+        if (isTarget) {
+          g.appendChild(svgEl("rect", {
+            class: "target-col-bg",
+            x: x + 1,
+            y: rowY,
+            width: w - 2,
+            height: COL_ROW_H,
+          }));
+        }
+
+        // Hover hit area
+        const hover = svgEl("rect", {
+          class: "col-hover",
+          x: x + 1,
+          y: rowY,
+          width: w - 2,
+          height: COL_ROW_H,
+          rx: 3,
+        });
+        g.appendChild(hover);
+
+        // Column name
+        const colT = svgEl("text", {
+          class: "col-text",
+          x: x + 10,
+          y: rowY + COL_ROW_H / 2,
+          "dominant-baseline": "middle",
+          "font-weight": isTarget ? "600" : "normal",
+        });
+        colT.textContent = shortName(cname, 20);
+        g.appendChild(colT);
+
+        // Transformation type icon (right side)
+        const ttIcon = { source: "◆", passthrough: "→", renamed: "↔", derived: "⊕", unknown: "" };
+        const icon = ttIcon[col?.transformation_type] || "";
+        if (icon) {
+          const iconT = svgEl("text", {
+            class: "col-type",
+            x: x + w - 28,
+            y: rowY + COL_ROW_H / 2,
+            "dominant-baseline": "middle",
+            "text-anchor": "middle",
+            "font-size": "10",
+          });
+          iconT.textContent = icon;
+          g.appendChild(iconT);
+        }
+
+        // Data type (far right, truncated)
+        if (col?.type) {
+          const typeT = svgEl("text", {
+            class: "col-type",
+            x: x + w - 8,
+            y: rowY + COL_ROW_H / 2,
+            "dominant-baseline": "middle",
+            "text-anchor": "end",
+          });
+          typeT.textContent = shortType(col.type, 10);
+          g.appendChild(typeT);
+        }
+
+        // Change status dot (if change_analysis)
+        if (changeAnalysis && col?.change_status) {
+          const dotColor = col.change_status === "added" ? "#22c55e"
+                         : col.change_status === "removed" ? "#ef4444"
+                         : "#f59e0b";
+          g.appendChild(svgEl("circle", {
+            cx: x + 4,
+            cy: rowY + COL_ROW_H / 2,
+            r: 3,
+            fill: dotColor,
+          }));
+        }
+
+        // Horizontal divider (not after last row)
+        if (i < colNames.length - 1) {
+          g.appendChild(svgEl("line", {
+            x1: x + 6, y1: rowY + COL_ROW_H,
+            x2: x + w - 6, y2: rowY + COL_ROW_H,
+            stroke: "var(--color-border-primary, #e4e4e7)",
+            "stroke-width": "0.5",
+          }));
+        }
+      });
+
+      return g;
+    }
+
+    // ── Edge (bezier) rendering ──────────────────────────────────────
+    //
+    // CllColumn.depends_on = [{node, column}]  — source node + source column
+    // We draw bezier from right edge of source column row → left edge of target column row.
+
+    function buildEdges(nodes, nodePos, targetNodeId, targetCol, parentMap, changeAnalysis) {
+      const edgesGroup = svgEl("g", { class: "edges" });
+
+      // Walk all nodes' columns and their depends_on
+      for (const [nid, node] of Object.entries(nodes)) {
+        const tPos = nodePos[nid];
+        if (!tPos) continue;
+        const colNames = Object.keys(node.columns || {});
+
+        colNames.forEach((cname, ci) => {
+          const col = node.columns[cname];
+          if (!col || !col.depends_on || col.depends_on.length === 0) return;
+
+          const targetRowY = tPos.y + CARD_HEADER_H + ci * COL_ROW_H + COL_ROW_H / 2;
+          const targetX = tPos.x;  // left edge of target node
+
+          for (const dep of col.depends_on) {
+            const srcNid = dep.node;
+            const srcCol = dep.column;
+            const srcPos = nodePos[srcNid];
+            if (!srcPos) continue;
+
+            const srcNode = nodes[srcNid];
+            if (!srcNode) continue;
+            const srcColNames = Object.keys(srcNode.columns || {});
+            const srcColIdx = srcColNames.indexOf(srcCol);
+            if (srcColIdx < 0) continue;
+
+            const srcRowY = srcPos.y + CARD_HEADER_H + srcColIdx * COL_ROW_H + COL_ROW_H / 2;
+            const srcX = srcPos.x + srcPos.w;  // right edge of source node
+
+            // Bezier control points — horizontal cubic
+            const dx = (targetX - srcX) * 0.45;
+            const d = `M ${srcX} ${srcRowY} C ${srcX + dx} ${srcRowY}, ${targetX - dx} ${targetRowY}, ${targetX} ${targetRowY}`;
+
+            const changed = changeAnalysis && (col.change_status === "modified" || col.change_status === "added");
+            const path = svgEl("path", {
+              class: `edge-path${changed ? " changed" : ""}`,
+              d,
+            });
+            edgesGroup.appendChild(path);
+          }
+        });
+      }
+
+      return edgesGroup;
+    }
+
+    // ── Layer labels ────────────────────────────────────────────────
+
+    function buildLayerLabels(layerNums, layerX, layerOf, targetNodeId, svgH) {
+      const g = svgEl("g", { class: "layer-labels" });
+      const targetLayer = layerOf[targetNodeId] ?? 0;
+
+      layerNums.forEach(ln => {
+        const x = layerX[ln] + CARD_W / 2;
+        const y = 12;
+        const label = ln < targetLayer ? "upstream"
+                    : ln > targetLayer ? "downstream"
+                    : "target";
+        const t = svgEl("text", {
+          class: "layer-label",
+          x, y,
+          "text-anchor": "middle",
+          "dominant-baseline": "middle",
+        });
+        t.textContent = label;
+        g.appendChild(t);
+      });
+
+      return g;
+    }
+
+    // ── Bail-out card ────────────────────────────────────────────────
+
+    function renderBailOut(data) {
+      const { node_id, column, node_count, edge_count, nodes } = data;
+      const nodeNames = Object.values(nodes).map(n => n.name).sort();
+      const listItems = nodeNames.map(n => `<li>${escapeHtml(n)}</li>`).join("");
+      return `
+        <div class="bail-card">
+          <div class="bail-title">Graph too large for mini view</div>
+          <p class="summary-text" style="margin: 0 0 8px">
+            Column lineage for <strong>${escapeHtml(node_id)}.${escapeHtml(column)}</strong>
+            spans <strong>${node_count} nodes</strong> and <strong>${edge_count} edges</strong>
+            — exceeds the mini-DAG limit (${BAIL_MAX_NODES} nodes / ${BAIL_MAX_EDGES} edges).
+          </p>
+          <p class="summary-text" style="margin: 0 0 4px"><strong>Nodes in subgraph:</strong></p>
+          <ul class="bail-list">${listItems}</ul>
+          <p class="bail-hint">
+            Use the Recce web app lineage view for the full interactive DAG.
+            (iter 2 of this widget will support larger graphs via Cytoscape/D3.)
+          </p>
+        </div>`;
+    }
+
+    // ── Main render ──────────────────────────────────────────────────
+
+    function render(data) {
+      const root = document.getElementById("root");
+      if (!data || typeof data !== "object") {
+        root.innerHTML = `
+          <div class="empty-card">
+            <div class="empty-title">No lineage data</div>
+            <div class="empty-hint">No CLL result received.</div>
+          </div>`;
+        return;
+      }
+
+      const {
+        node_id, column, change_analysis,
+        nodes, columns, parent_map, child_map,
+        node_count, edge_count, warning,
+      } = data;
+
+      const targetNode = nodes?.[node_id];
+      const nodeDisplayName = targetNode?.name || node_id;
+
+      // Warning bar
+      const warningHtml = warning
+        ? `<div class="warning-bar">⚠ ${escapeHtml(warning)}</div>`
+        : "";
+
+      // Empty state: no nodes
+      if (!nodes || node_count === 0) {
+        root.innerHTML = `
+          ${warningHtml}
+          <div class="empty-card">
+            <div class="empty-title">No upstream/downstream references found</div>
+            <div class="empty-hint">Column <strong>${escapeHtml(column)}</strong> in <strong>${escapeHtml(nodeDisplayName)}</strong> has no CLL data.</div>
+          </div>`;
+        return;
+      }
+
+      // Summary counts
+      const targetNodeColCount = targetNode ? Object.keys(targetNode.columns || {}).length : 0;
+      const upstreamNodes = Object.values(nodes).filter(n => {
+        // upstream = nodes that have columns depending_on the target node's column
+        return n.id !== node_id;
+      });
+      // Rough upstream/downstream split using layer assignment
+      const layerOf = assignLayers(node_id, nodes, parent_map, child_map);
+      const targetLayer = layerOf[node_id] ?? 0;
+      const upstreamCount = Object.values(layerOf).filter(l => l < targetLayer).length;
+      const downstreamCount = Object.values(layerOf).filter(l => l > targetLayer).length;
+
+      const summaryHtml = `
+        <div class="summary-bar">
+          <span class="summary-text">
+            <strong>${upstreamCount}</strong> upstream node${upstreamCount !== 1 ? "s" : ""}
+          </span>
+          <span class="summary-sep">|</span>
+          <span class="summary-text">
+            target: <strong>${escapeHtml(nodeDisplayName)}.${escapeHtml(column)}</strong>
+          </span>
+          <span class="summary-sep">|</span>
+          <span class="summary-text">
+            <strong>${downstreamCount}</strong> downstream node${downstreamCount !== 1 ? "s" : ""}
+          </span>
+          <span class="summary-sep">|</span>
+          <span class="summary-text">
+            <strong>${node_count}</strong> total node${node_count !== 1 ? "s" : ""},
+            <strong>${edge_count}</strong> edge${edge_count !== 1 ? "s" : ""}
+          </span>
+          ${change_analysis ? `<span class="summary-sep">|</span><span class="summary-text"><em>change analysis on</em></span>` : ""}
+        </div>`;
+
+      // Header
+      const headerHtml = `
+        <div class="header">
+          <span class="header-icon">🔗</span>
+          <span class="header-title">Column lineage</span>
+          <span class="header-col">${escapeHtml(nodeDisplayName)}.${escapeHtml(column)}</span>
+        </div>`;
+
+      // Bail-out for complex graphs
+      if (node_count > BAIL_MAX_NODES || edge_count > BAIL_MAX_EDGES) {
+        root.innerHTML = headerHtml + warningHtml + summaryHtml + renderBailOut(data);
+        return;
+      }
+
+      // Build layout
+      const { nodePos, layers, layerNums, layerX, svgW, svgH } =
+        computeLayout(node_id, nodes, parent_map, child_map);
+
+      // Build SVG
+      const svg = svgEl("svg", {
+        class: "dag-svg",
+        width: svgW,
+        height: svgH,
+        viewBox: `0 0 ${svgW} ${svgH}`,
+      });
+
+      // Layer labels
+      svg.appendChild(buildLayerLabels(layerNums, layerX, layerOf, node_id, svgH));
+
+      // Edges (drawn first so they appear behind nodes)
+      svg.appendChild(buildEdges(nodes, nodePos, node_id, column, parent_map, change_analysis));
+
+      // Node cards
+      for (const [nid, node] of Object.entries(nodes)) {
+        const pos = nodePos[nid];
+        if (!pos) continue;
+        svg.appendChild(buildNodeCard(nid, node, pos, node_id, column, change_analysis));
+      }
+
+      root.innerHTML = headerHtml + warningHtml + summaryHtml;
+      const dagWrap = document.createElement("div");
+      dagWrap.className = "dag-wrap";
+      dagWrap.appendChild(svg);
+      root.appendChild(dagWrap);
+    }
+
+    // ── Wire up MCP App ──────────────────────────────────────────────
+
+    app.ontoolresult = ({ structuredContent }) => {
+      try {
+        render(structuredContent);
+      } catch (err) {
+        document.getElementById("root").innerHTML = `
+          <div class="error-card">
+            <div class="error-title">Render error</div>
+            <div class="error-hint">${escapeHtml(String(err))}</div>
+          </div>`;
+      }
+    };
+
+    await app.connect();
+
+    // Apply theme from initial context if available before first change event
+    const initialCtx = app.getHostContext?.();
+    if (initialCtx) {
+      if (initialCtx.theme)              applyDocumentTheme(initialCtx.theme);
+      if (initialCtx.styles?.variables)  applyHostStyleVariables(initialCtx.styles.variables);
+      if (initialCtx.styles?.css?.fonts) applyHostFonts(initialCtx.styles.css.fonts);
+    }
+  </script>
+</body>
+</html>

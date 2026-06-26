@@ -1,0 +1,2309 @@
+"""Tests for recce/widget_server.py and WIDGET_TOOLS env-var coordination.
+
+Covers:
+- WIDGET_TOOLS enumeration regression (main mcp-server with/without widgets enabled)
+- Widget server tool + resource registration (FastMCP public API)
+- Resource handler graceful degradation when HTML asset is missing
+- CallToolResult shape: short content + structuredContent matching Pydantic models
+- Tool annotations presence and values
+"""
+
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+# Skip entire module if mcp is not available
+pytest.importorskip("mcp")
+
+from mcp.types import ListToolsRequest  # noqa: E402
+
+from recce.core import RecceContext  # noqa: E402
+from recce.mcp_server import WIDGET_TOOLS, RecceMCPServer  # noqa: E402
+from recce.server import RecceServerMode  # noqa: E402
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+async def _list_tool_names(server: RecceMCPServer):
+    """Call the registered list_tools handler and return tool name set."""
+    handler = server.server.request_handlers[ListToolsRequest]
+    result = await handler(ListToolsRequest(method="tools/list"))
+    return {t.name for t in result.root.tools}
+
+
+# ---------------------------------------------------------------------------
+# Test 1: All tools present when widgets disabled (no-regression baseline)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_mcp_server_lists_all_tools_when_widgets_disabled(monkeypatch):
+    """When RECCE_MCP_WIDGETS is unset/empty, all tools including widget tools are returned."""
+    monkeypatch.delenv("RECCE_MCP_WIDGETS", raising=False)
+
+    mock_context = MagicMock(spec=RecceContext)
+    server = RecceMCPServer(mock_context, mode=RecceServerMode.server)
+    names = await _list_tool_names(server)
+
+    assert "row_count_diff" in names
+    assert "schema_diff" in names
+    assert "get_server_info" in names
+    # Sanity: lineage_diff is always present
+    assert "lineage_diff" in names
+
+
+# ---------------------------------------------------------------------------
+# Test 2: Widget tools filtered when RECCE_MCP_WIDGETS=1
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_mcp_server_filters_widget_tools_when_widgets_enabled(monkeypatch):
+    """When RECCE_MCP_WIDGETS=1, widget tools are omitted from mcp-server's list_tools."""
+    monkeypatch.setenv("RECCE_MCP_WIDGETS", "1")
+
+    mock_context = MagicMock(spec=RecceContext)
+    server = RecceMCPServer(mock_context, mode=RecceServerMode.server)
+    names = await _list_tool_names(server)
+
+    assert "row_count_diff" not in names
+    assert "schema_diff" not in names
+    assert "get_server_info" not in names
+    assert "list_checks" not in names
+    assert "get_model" not in names
+    assert "query" not in names
+    assert "lineage_diff" not in names
+    # Non-widget tools must still be present
+    assert "create_check" in names
+    assert "run_check" in names
+
+
+# ---------------------------------------------------------------------------
+# Test 3: Widget server registers exactly 5 tools + 5 resources
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_widget_server_registers_six_tools_and_six_resources():
+    """Widget FastMCP instance has exactly 15 tools/resources (Phase A + Phase B + Phase C + Phase D + lineage_diff).
+
+    Uses FastMCP public API: mcp.list_tools() and mcp.list_resources().
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert tool_names == {
+        "row_count_diff",
+        "schema_diff",
+        "get_server_info",
+        "list_checks",
+        "get_model",
+        "query",
+        "query_diff",
+        "value_diff",
+        "value_diff_detail",
+        "top_k_diff",
+        "histogram_diff",
+        "profile_diff",
+        "get_cll",
+        "impact_analysis",
+        "lineage_diff",
+    }
+    assert resource_uris == {
+        "ui://recce/row_count_diff.html",
+        "ui://recce/schema_diff.html",
+        "ui://recce/get_server_info.html",
+        "ui://recce/list_checks.html",
+        "ui://recce/get_model.html",
+        "ui://recce/query.html",
+        "ui://recce/query_diff.html",
+        "ui://recce/value_diff.html",
+        "ui://recce/value_diff_detail.html",
+        "ui://recce/top_k_diff.html",
+        "ui://recce/histogram_diff.html",
+        "ui://recce/profile_diff.html",
+        "ui://recce/get_cll.html",
+        "ui://recce/impact_analysis.html",
+        "ui://recce/lineage_diff.html",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Test 4: Resource handler returns error stub when HTML asset is missing
+# ---------------------------------------------------------------------------
+
+
+def test_widget_resource_handler_returns_error_stub_when_html_missing():
+    """_read_widget_html returns a valid HTML stub when the asset file does not exist."""
+    from recce.widget_server import _read_widget_html
+
+    with patch("importlib.resources.files", side_effect=FileNotFoundError("no such file")):
+        result = _read_widget_html("row_count_diff")
+
+    assert result.startswith("<html><body>")
+    assert "Widget asset missing" in result
+    assert "row_count_diff.html" in result
+
+
+# ---------------------------------------------------------------------------
+# Test 5: Difference between disabled and enabled is exactly WIDGET_TOOLS
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_tool_enumeration_diff_is_exactly_widget_tools(monkeypatch):
+    """The set difference between widgets-off and widgets-on is exactly WIDGET_TOOLS."""
+    mock_context = MagicMock(spec=RecceContext)
+
+    monkeypatch.delenv("RECCE_MCP_WIDGETS", raising=False)
+    server_off = RecceMCPServer(mock_context, mode=RecceServerMode.server)
+    names_off = await _list_tool_names(server_off)
+
+    monkeypatch.setenv("RECCE_MCP_WIDGETS", "1")
+    server_on = RecceMCPServer(mock_context, mode=RecceServerMode.server)
+    names_on = await _list_tool_names(server_on)
+
+    assert names_off - names_on == WIDGET_TOOLS
+    assert names_on - names_off == set()
+
+
+# ---------------------------------------------------------------------------
+# Test 6: row_count_diff returns CallToolResult with short one-sentence content
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_row_count_diff_returns_calltoolresult_with_short_content():
+    """row_count_diff handler returns CallToolResult with one-sentence content and structuredContent.
+
+    Verifies:
+    - content[0].text is a short string, NOT a JSON dump of the full result
+    - structuredContent is populated (not empty, not None)
+    - structuredContent has 'models' and 'warning' keys (RowCountDiffOutput shape)
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import RowCountDiffInput
+
+    # Mock _recce_server._tool_row_count_diff to return a minimal row count result
+    mock_server = MagicMock()
+    mock_server._tool_row_count_diff = AsyncMock(
+        return_value={
+            "customers": {
+                "base": 1000,
+                "curr": 1000,
+                "base_meta": {"status": "ok"},
+                "curr_meta": {"status": "ok"},
+            }
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = RowCountDiffInput(select="customers")
+        result = await ws.row_count_diff(args)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    # Content must be a short human-readable sentence, NOT a JSON data dump
+    assert isinstance(content_text, str)
+    assert len(content_text) < 100, f"content too long (got {len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+    # structuredContent must be populated with Pydantic output shape
+    assert result.structuredContent is not None
+    assert "models" in result.structuredContent
+    assert "warning" in result.structuredContent
+
+
+# ---------------------------------------------------------------------------
+# Test 7: structuredContent matches RowCountDiffOutput Pydantic model schema
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_structured_content_matches_pydantic_model():
+    """structuredContent from row_count_diff passes RowCountDiffOutput.model_validate().
+
+    Proves Pydantic shape is clean and matches what widget JS reads.
+    """
+    import recce.widget_server as ws
+    from recce.widget_server import RowCountDiffInput, RowCountDiffOutput
+
+    mock_server = MagicMock()
+    mock_server._tool_row_count_diff = AsyncMock(
+        return_value={
+            "orders": {
+                "base": None,
+                "curr": 500,
+                "base_meta": {"status": "table_not_found", "message": "Table not found"},
+                "curr_meta": {"status": "ok"},
+            },
+            "customers": {
+                "base": 200,
+                "curr": 210,
+                "base_meta": {"status": "ok"},
+                "curr_meta": {"status": "ok"},
+            },
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = RowCountDiffInput()
+        result = await ws.row_count_diff(args)
+    finally:
+        ws._recce_server = original
+
+    # Must round-trip through Pydantic validation without error
+    validated = RowCountDiffOutput.model_validate(result.structuredContent)
+    assert len(validated.models) == 2
+    assert validated.models["orders"].base is None
+    assert validated.models["orders"].curr == 500
+    assert validated.models["orders"].base_meta.status == "table_not_found"
+    assert validated.models["customers"].base == 200
+    assert validated.warning is None
+
+
+# ---------------------------------------------------------------------------
+# Test 8: Tool annotations are present and correct on both widget tools
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_widget_tool_annotations_present():
+    """All widget tools have required annotations per SDK idiom checklist.
+
+    All tools: readOnlyHint=True, destructiveHint=False, idempotentHint=True, title set.
+    openWorldHint=False for all except 'query' (which hits the warehouse, openWorldHint=True).
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    tool_map = {t.name: t for t in tools}
+
+    for tool_name in (
+        "row_count_diff",
+        "schema_diff",
+        "get_server_info",
+        "list_checks",
+        "get_model",
+        "query",
+        "query_diff",
+        "value_diff",
+        "value_diff_detail",
+        "top_k_diff",
+        "histogram_diff",
+        "profile_diff",
+        "get_cll",
+        "impact_analysis",
+    ):
+        assert tool_name in tool_map, f"{tool_name} not found in widget mcp tools"
+        t = tool_map[tool_name]
+        a = t.annotations
+        assert a is not None, f"{tool_name} has no annotations"
+        assert a.readOnlyHint is True, f"{tool_name}: expected readOnlyHint=True"
+        assert a.destructiveHint is False, f"{tool_name}: expected destructiveHint=False"
+        assert a.idempotentHint is True, f"{tool_name}: expected idempotentHint=True"
+        assert a.title is not None and len(a.title) > 0, f"{tool_name}: title must be set"
+
+    # Closed-world tools (no external warehouse I/O) — get_cll reads manifest only
+    closed_world_tools = ("row_count_diff", "schema_diff", "get_server_info", "list_checks", "get_model", "get_cll")
+    for tool_name in closed_world_tools:
+        t = tool_map[tool_name]
+        assert t.annotations.openWorldHint is False, f"{tool_name}: expected openWorldHint=False"
+
+    # query, query_diff, value_diff, value_diff_detail, top_k_diff, and histogram_diff hit the warehouse
+    assert tool_map["query"].annotations.openWorldHint is True, "query: expected openWorldHint=True"
+    assert tool_map["query_diff"].annotations.openWorldHint is True, "query_diff: expected openWorldHint=True"
+    assert tool_map["value_diff"].annotations.openWorldHint is True, "value_diff: expected openWorldHint=True"
+    assert (
+        tool_map["value_diff_detail"].annotations.openWorldHint is True
+    ), "value_diff_detail: expected openWorldHint=True"
+    assert tool_map["top_k_diff"].annotations.openWorldHint is True, "top_k_diff: expected openWorldHint=True"
+    assert tool_map["histogram_diff"].annotations.openWorldHint is True, "histogram_diff: expected openWorldHint=True"
+    assert tool_map["profile_diff"].annotations.openWorldHint is True, "profile_diff: expected openWorldHint=True"
+    assert tool_map["impact_analysis"].annotations.openWorldHint is True, "impact_analysis: expected openWorldHint=True"
+
+
+# ---------------------------------------------------------------------------
+# Test 9: get_server_info widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_server_info_widget_registered():
+    """get_server_info appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'get_server_info' is in widget mcp tool list
+    - resource URI 'ui://recce/get_server_info.html' is in widget mcp resource list
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "get_server_info" in tool_names
+    assert "ui://recce/get_server_info.html" in resource_uris
+
+
+# ---------------------------------------------------------------------------
+# Test 10: get_server_info returns CallToolResult with ServerInfoOutput shape
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_server_info_returns_calltoolresult_with_pydantic_shape():
+    """get_server_info handler returns CallToolResult with structuredContent matching ServerInfoOutput.
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent is populated and passes ServerInfoOutput.model_validate()
+    - structuredContent has expected fields: mode, single_env, base_status
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import ServerInfoOutput
+
+    mock_server = MagicMock()
+    mock_server._tool_get_server_info = AsyncMock(
+        return_value={
+            "mode": "local",
+            "adapter_type": "dbt",
+            "review_mode": False,
+            "support_tasks": {
+                "query": True,
+                "query_base": True,
+                "value_diff": True,
+                "profile_diff": True,
+                "row_count_diff": True,
+                "top_k_diff": True,
+                "histogram_diff": True,
+                "change_analysis": True,
+            },
+            "single_env": False,
+            "base_status": "fresh",
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        result = await ws.get_server_info()
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 100, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    assert result.structuredContent is not None
+    # Must round-trip through Pydantic validation without error
+    validated = ServerInfoOutput.model_validate(result.structuredContent)
+    assert validated.mode == "local"
+    assert validated.adapter_type == "dbt"
+    assert validated.single_env is False
+    assert validated.base_status == "fresh"
+    assert validated.git is None
+    assert validated.pull_request is None
+
+
+# ---------------------------------------------------------------------------
+# Test 11: list_checks widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_list_checks_widget_registered():
+    """list_checks appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'list_checks' is in widget mcp tool list
+    - resource URI 'ui://recce/list_checks.html' is in widget mcp resource list
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "list_checks" in tool_names
+    assert "ui://recce/list_checks.html" in resource_uris
+
+
+# ---------------------------------------------------------------------------
+# Test 12: list_checks returns CallToolResult with correct Pydantic shape + counts
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_list_checks_returns_calltoolresult_with_pydantic_shape():
+    """list_checks handler returns CallToolResult with structuredContent matching ListChecksOutput.
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent passes ListChecksOutput.model_validate()
+    - approved/pending counts are derived correctly from the check list
+    - empty is_preset field is tolerated (default False)
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import ListChecksOutput
+
+    mock_server = MagicMock()
+    mock_server._tool_list_checks = AsyncMock(
+        return_value={
+            "checks": [
+                {
+                    "check_id": "aaaaaaaa-0000-0000-0000-000000000001",
+                    "name": "Row count check",
+                    "type": "row_count_diff",
+                    "description": "Checks that row counts match",
+                    "params": {"select": "customers"},
+                    "is_checked": True,
+                    "is_preset": False,
+                },
+                {
+                    "check_id": "aaaaaaaa-0000-0000-0000-000000000002",
+                    "name": "Schema check",
+                    "type": "schema_diff",
+                    "description": "",
+                    "params": {},
+                    "is_checked": False,
+                    "is_preset": True,
+                },
+            ],
+            "total": 2,
+            "approved": 1,
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        result = await ws.list_checks()
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 100, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    assert result.structuredContent is not None
+    validated = ListChecksOutput.model_validate(result.structuredContent)
+    assert validated.total == 2
+    assert validated.approved == 1
+    assert validated.pending == 1
+    assert len(validated.checks) == 2
+    assert validated.checks[0].is_checked is True
+    assert validated.checks[1].is_preset is True
+    assert validated.checks[1].is_checked is False
+
+
+# ---------------------------------------------------------------------------
+# Test 13: get_model widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_model_widget_registered():
+    """get_model appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'get_model' is in widget mcp tool list
+    - resource URI 'ui://recce/get_model.html' is in widget mcp resource list
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "get_model" in tool_names
+    assert "ui://recce/get_model.html" in resource_uris
+
+
+# ---------------------------------------------------------------------------
+# Test 14: get_model returns CallToolResult with correct Pydantic shape
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_model_returns_calltoolresult_with_pydantic_shape():
+    """get_model handler returns CallToolResult with structuredContent matching GetModelOutput.
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent passes GetModelOutput.model_validate()
+    - columns are normalised from dict → list
+    - primary_key is preserved
+    - not_found is False when at least one env has data
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import GetModelInput, GetModelOutput
+
+    mock_server = MagicMock()
+    mock_server._tool_get_model = AsyncMock(
+        return_value={
+            "model": {
+                "base": {
+                    "columns": {
+                        "id": {"name": "id", "type": "bigint", "unique": True},
+                        "name": {"name": "name", "type": "varchar", "not_null": True},
+                        "created_at": {"name": "created_at", "type": "timestamp"},
+                    },
+                    "primary_key": "id",
+                },
+                "current": {
+                    "columns": {
+                        "id": {"name": "id", "type": "bigint", "unique": True},
+                        "name": {"name": "name", "type": "varchar", "not_null": True},
+                        "created_at": {"name": "created_at", "type": "timestamp"},
+                        "updated_at": {"name": "updated_at", "type": "timestamp"},
+                    },
+                    "primary_key": "id",
+                },
+            }
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = GetModelInput(model_id="model.jaffle_shop.customers")
+        result = await ws.get_model(args)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 120, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    assert result.structuredContent is not None
+    validated = GetModelOutput.model_validate(result.structuredContent)
+    assert validated.model_id == "model.jaffle_shop.customers"
+    assert validated.not_found is False
+    # base: 3 columns, primary_key=id
+    assert validated.base is not None
+    assert len(validated.base.columns) == 3
+    assert validated.base.primary_key == "id"
+    pk_col = next(c for c in validated.base.columns if c.name == "id")
+    assert pk_col.unique is True
+    # current: 4 columns (added updated_at)
+    assert validated.current is not None
+    assert len(validated.current.columns) == 4
+
+
+# ---------------------------------------------------------------------------
+# Test 15: query widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_query_widget_registered():
+    """query appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'query' is in widget mcp tool list
+    - resource URI 'ui://recce/query.html' is in widget mcp resource list
+    - sql_template is required in inputSchema
+    - base is optional (has default)
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "query" in tool_names
+    assert "ui://recce/query.html" in resource_uris
+
+    # Check inputSchema: sql_template required, base optional.
+    # FastMCP wraps the Pydantic model in an 'args' outer envelope
+    # (schema is {properties: {args: {$ref: ...}}, required: ["args"]}).
+    # The actual field requirements live inside the $defs/QueryInput sub-schema.
+    query_tool = next(t for t in tools if t.name == "query")
+    schema = query_tool.inputSchema
+    assert schema is not None
+
+    # Navigate into the nested QueryInput definition
+    defs = schema.get("$defs", {})
+    inner_schema = next(iter(defs.values()), schema)  # first $def or top-level
+    inner_required = inner_schema.get("required", [])
+    inner_props = inner_schema.get("properties", {})
+    assert "sql_template" in inner_required, "sql_template must be required"
+    assert "base" not in inner_required, "base must be optional (has default)"
+    assert "sql_template" in inner_props, "sql_template must be a property"
+    assert "base" in inner_props, "base must be a property"
+
+
+# ---------------------------------------------------------------------------
+# Test 16: query returns CallToolResult with correct Pydantic shape
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_query_returns_calltoolresult_with_pydantic_shape():
+    """query handler returns CallToolResult with structuredContent matching QueryOutput.
+
+    Uses a realistic DataFrame.model_dump shape (confirmed from source reading):
+    {columns: [{key, name, type}], data: [[...]], limit, more, total_row_count}
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent passes QueryOutput.model_validate()
+    - columns are hydrated correctly into QueryColumnInfo list
+    - sql_template is echoed back in structuredContent
+    - more/limit/total_row_count are preserved
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import QueryInput, QueryOutput
+
+    mock_server = MagicMock()
+    # Realistic DataFrame.model_dump shape (shape verified from recce/tasks/dataframe.py)
+    mock_server._tool_query = AsyncMock(
+        return_value={
+            "columns": [
+                {"key": "id", "name": "id", "type": "integer"},
+                {"key": "name", "name": "name", "type": "text"},
+                {"key": "amount", "name": "amount", "type": "number"},
+                {"key": "active", "name": "active", "type": "boolean"},
+                {"key": "created_at", "name": "created_at", "type": "date"},
+            ],
+            "data": [
+                [1, "Alice", 99.9, True, "2024-01-01"],
+                [2, None, None, False, "2024-02-15"],
+            ],
+            "limit": 2000,
+            "more": False,
+            "total_row_count": 2,
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = QueryInput(
+            sql_template="SELECT id, name, amount, active, created_at FROM {{ ref('customers') }}", base=False
+        )
+        result = await ws.query(args)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 120, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    assert result.structuredContent is not None
+    validated = QueryOutput.model_validate(result.structuredContent)
+
+    # Columns
+    assert len(validated.columns) == 5
+    assert validated.columns[0].name == "id"
+    assert validated.columns[0].type == "integer"
+    assert validated.columns[1].name == "name"
+    assert validated.columns[1].type == "text"
+    assert validated.columns[3].type == "boolean"
+
+    # Data — 2 rows, nulls preserved
+    assert len(validated.data) == 2
+    assert validated.data[0][0] == 1
+    assert validated.data[1][1] is None  # null name
+    assert validated.data[1][2] is None  # null amount
+
+    # Metadata
+    assert validated.limit == 2000
+    assert validated.more is False
+    assert validated.total_row_count == 2
+
+    # sql_template echoed back
+    assert validated.sql_template is not None
+    assert "customers" in validated.sql_template
+
+
+# ---------------------------------------------------------------------------
+# Test 17: query_diff widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_query_diff_widget_registered():
+    """query_diff appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'query_diff' is in widget mcp tool list
+    - resource URI 'ui://recce/query_diff.html' is in widget mcp resource list
+    - sql_template is required; base_sql_template and primary_keys are optional
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "query_diff" in tool_names
+    assert "ui://recce/query_diff.html" in resource_uris
+
+    # Check inputSchema: sql_template required, others optional.
+    # FastMCP wraps the Pydantic model in an 'args' outer envelope.
+    qd_tool = next(t for t in tools if t.name == "query_diff")
+    schema = qd_tool.inputSchema
+    assert schema is not None
+
+    defs = schema.get("$defs", {})
+    inner_schema = next(iter(defs.values()), schema)
+    inner_required = inner_schema.get("required", [])
+    inner_props = inner_schema.get("properties", {})
+    assert "sql_template" in inner_required, "sql_template must be required"
+    assert "base_sql_template" not in inner_required, "base_sql_template must be optional"
+    assert "primary_keys" not in inner_required, "primary_keys must be optional"
+    assert "sql_template" in inner_props
+    assert "base_sql_template" in inner_props
+    assert "primary_keys" in inner_props
+
+
+# ---------------------------------------------------------------------------
+# Test 18: query_diff returns CallToolResult with correct Pydantic shape
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_query_diff_returns_calltoolresult_with_pydantic_shape():
+    """query_diff handler returns CallToolResult with structuredContent matching QueryDiffOutput.
+
+    Tests both QueryDiffResult shapes:
+    A — side-by-side (no primary_keys → base+current DataFrames)
+    B — join diff (primary_keys provided → diff DataFrame with in_a/in_b)
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent passes QueryDiffOutput.model_validate() for both shapes
+    - sql_template is echoed back
+    - _warning is extracted to output.warning named field
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import QueryDiffInput, QueryDiffOutput
+
+    # ── Shape A: side-by-side (no primary_keys) ──────────────────────────
+    mock_server = MagicMock()
+    base_df = {
+        "columns": [
+            {"key": "id", "name": "id", "type": "integer"},
+            {"key": "amount", "name": "amount", "type": "number"},
+        ],
+        "data": [[1, 100.0], [2, 200.0]],
+        "limit": 2000,
+        "more": False,
+        "total_row_count": 2,
+    }
+    curr_df = {
+        "columns": [
+            {"key": "id", "name": "id", "type": "integer"},
+            {"key": "amount", "name": "amount", "type": "number"},
+        ],
+        "data": [[1, 110.0], [2, 200.0], [3, 300.0]],
+        "limit": 2000,
+        "more": False,
+        "total_row_count": 3,
+    }
+    mock_server._tool_query_diff = AsyncMock(
+        return_value={
+            "base": base_df,
+            "current": curr_df,
+            "diff": None,
+            "_warning": "Base environment not configured",
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = QueryDiffInput(sql_template="SELECT id, amount FROM {{ ref('orders') }}")
+        result = await ws.query_diff(args)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 140, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    assert result.structuredContent is not None
+    validated_a = QueryDiffOutput.model_validate(result.structuredContent)
+    # Shape A: base + current present, diff absent
+    assert validated_a.base is not None
+    assert validated_a.current is not None
+    assert validated_a.diff is None
+    assert len(validated_a.base.columns) == 2
+    assert len(validated_a.base.data) == 2
+    assert len(validated_a.current.data) == 3
+    # warning extracted from _warning key
+    assert validated_a.warning == "Base environment not configured"
+    # sql_template echoed back
+    assert validated_a.sql_template is not None
+    assert "orders" in validated_a.sql_template
+
+    # ── Shape B: join diff (primary_keys → diff DataFrame with in_a/in_b) ──
+    diff_df = {
+        "columns": [
+            {"key": "id", "name": "id", "type": "integer"},
+            {"key": "amount", "name": "amount", "type": "number"},
+            {"key": "in_a", "name": "in_a", "type": "boolean"},
+            {"key": "in_b", "name": "in_b", "type": "boolean"},
+        ],
+        "data": [
+            [1, 100.0, True, False],  # removed (only in base)
+            [3, 300.0, False, True],  # added   (only in current)
+        ],
+        "limit": 2000,
+        "more": False,
+        "total_row_count": None,
+    }
+    mock_server2 = MagicMock()
+    mock_server2._tool_query_diff = AsyncMock(return_value={"base": None, "current": None, "diff": diff_df})
+
+    ws._recce_server = mock_server2
+    try:
+        args_b = QueryDiffInput(
+            sql_template="SELECT id, amount FROM {{ ref('orders') }}",
+            primary_keys=["id"],
+        )
+        result_b = await ws.query_diff(args_b)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result_b, CallToolResult)
+    validated_b = QueryDiffOutput.model_validate(result_b.structuredContent)
+    # Shape B: diff present, base/current absent
+    assert validated_b.diff is not None
+    assert validated_b.base is None
+    assert validated_b.current is None
+    # diff DataFrame has 4 columns (including in_a/in_b) and 2 rows
+    assert len(validated_b.diff.columns) == 4
+    assert len(validated_b.diff.data) == 2
+    assert validated_b.warning is None
+
+
+# ---------------------------------------------------------------------------
+# Test 19: value_diff widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_value_diff_widget_registered():
+    """value_diff appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'value_diff' is in widget mcp tool list
+    - resource URI 'ui://recce/value_diff.html' is in widget mcp resource list
+    - model and primary_key are required in inputSchema; columns is optional
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "value_diff" in tool_names
+    assert "ui://recce/value_diff.html" in resource_uris
+
+    # Check inputSchema: model + primary_key required, columns optional.
+    # FastMCP wraps the Pydantic model in an 'args' outer envelope.
+    vd_tool = next(t for t in tools if t.name == "value_diff")
+    schema = vd_tool.inputSchema
+    assert schema is not None
+
+    defs = schema.get("$defs", {})
+    inner_schema = next(iter(defs.values()), schema)
+    inner_required = inner_schema.get("required", [])
+    inner_props = inner_schema.get("properties", {})
+    assert "model" in inner_required, "model must be required"
+    assert "primary_key" in inner_required, "primary_key must be required"
+    assert "columns" not in inner_required, "columns must be optional"
+    assert "model" in inner_props
+    assert "primary_key" in inner_props
+    assert "columns" in inner_props
+
+
+# ---------------------------------------------------------------------------
+# Test 20: value_diff returns CallToolResult with correct Pydantic shape
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_value_diff_returns_calltoolresult_with_pydantic_shape():
+    """value_diff handler returns CallToolResult with structuredContent matching ValueDiffOutput.
+
+    Uses the actual ValueDiffResult.model_dump(mode='json') shape verified from source:
+    {
+      "summary": {"total": N, "added": N, "removed": N},
+      "data": {
+        "columns": [{"key": "column", "name": "column", "type": "text"},
+                    {"key": "matched", "name": "matched", "type": "number"},
+                    {"key": "matched_p", "name": "matched_p", "type": "number"}],
+        "data": [["col_name", matched_count, matched_percent_0_to_1], ...],
+        "limit": null, "more": null, "total_row_count": null
+      }
+    }
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent passes ValueDiffOutput.model_validate()
+    - per-column rows are extracted correctly from data.data (list-of-lists)
+    - _warning is extracted to output.warning named field
+    - model and primary_key are echoed back
+    - matched_p is preserved as 0.0–1.0 fraction
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import ValueDiffInput, ValueDiffOutput
+
+    mock_server = MagicMock()
+    # Realistic ValueDiffResult.model_dump(mode='json') shape (verified from source)
+    mock_server._tool_value_diff = AsyncMock(
+        return_value={
+            "summary": {
+                "total": 1000,
+                "added": 5,
+                "removed": 3,
+            },
+            "data": {
+                "columns": [
+                    {"key": "column", "name": "column", "type": "text"},
+                    {"key": "matched", "name": "matched", "type": "number"},
+                    {"key": "matched_p", "name": "matched_p", "type": "number"},
+                ],
+                "data": [
+                    ["customer_id", 992, 1.0],
+                    ["name", 990, 0.9980],
+                    ["amount", 750, 0.7560],
+                    ["status", 992, 1.0],
+                ],
+                "limit": None,
+                "more": None,
+                "total_row_count": None,
+            },
+            "_warning": "Base environment not configured — comparing current against itself.",
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = ValueDiffInput(model="customers", primary_key="customer_id")
+        result = await ws.value_diff(args)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 200, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    assert result.structuredContent is not None
+    validated = ValueDiffOutput.model_validate(result.structuredContent)
+
+    # model + primary_key echoed back
+    assert validated.model == "customers"
+    assert validated.primary_key == "customer_id"
+
+    # summary
+    assert validated.summary.total == 1000
+    assert validated.summary.added == 5
+    assert validated.summary.removed == 3
+
+    # per-column rows: 4 columns extracted from data.data list-of-lists
+    assert len(validated.columns) == 4
+    # First column: customer_id — 100% match
+    col0 = validated.columns[0]
+    assert col0.column == "customer_id"
+    assert col0.matched == 992
+    assert col0.matched_p == 1.0
+    # Third column: amount — partial match
+    col2 = validated.columns[2]
+    assert col2.column == "amount"
+    assert col2.matched == 750
+    assert abs(col2.matched_p - 0.7560) < 1e-6
+
+    # _warning extracted
+    assert validated.warning == "Base environment not configured — comparing current against itself."
+
+
+# ---------------------------------------------------------------------------
+# Test 21: value_diff_detail widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_value_diff_detail_widget_registered():
+    """value_diff_detail appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'value_diff_detail' is in widget mcp tool list
+    - resource URI 'ui://recce/value_diff_detail.html' is in widget mcp resource list
+    - model and primary_key are required in inputSchema; columns is optional
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "value_diff_detail" in tool_names
+    assert "ui://recce/value_diff_detail.html" in resource_uris
+
+    # Check inputSchema: model + primary_key required, columns optional.
+    # FastMCP wraps the Pydantic model in an 'args' outer envelope.
+    vdd_tool = next(t for t in tools if t.name == "value_diff_detail")
+    schema = vdd_tool.inputSchema
+    assert schema is not None
+
+    defs = schema.get("$defs", {})
+    inner_schema = next(iter(defs.values()), schema)
+    inner_required = inner_schema.get("required", [])
+    inner_props = inner_schema.get("properties", {})
+    assert "model" in inner_required, "model must be required"
+    assert "primary_key" in inner_required, "primary_key must be required"
+    assert "columns" not in inner_required, "columns must be optional"
+    assert "model" in inner_props
+    assert "primary_key" in inner_props
+    assert "columns" in inner_props
+
+
+# ---------------------------------------------------------------------------
+# Test 22: value_diff_detail returns CallToolResult with correct Pydantic shape
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_value_diff_detail_returns_calltoolresult_with_pydantic_shape():
+    """value_diff_detail handler returns CallToolResult with structuredContent matching ValueDiffDetailOutput.
+
+    Uses the actual ValueDiffDetailTask return shape — a plain DataFrame (confirmed from source):
+    ValueDiffDetailResult(DataFrame) → model_dump(mode='json') →
+    {columns: [{key, name, type}], data: [[...]], limit, more, total_row_count}
+
+    Columns include all data columns PLUS in_a / in_b booleans.
+    Rows where in_a=True, in_b=False are "removed" (only in base).
+    Rows where in_a=False, in_b=True are "added" (only in current).
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent passes ValueDiffDetailOutput.model_validate()
+    - model and primary_key are echoed back
+    - columns include in_a / in_b (raw DataFrame shape preserved)
+    - data rows are preserved verbatim
+    - _warning is extracted to output.warning named field
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import ValueDiffDetailInput, ValueDiffDetailOutput
+
+    mock_server = MagicMock()
+    # Realistic ValueDiffDetailResult.model_dump(mode='json') shape (verified from source).
+    # Returns a DataFrame with all original data columns + in_a + in_b booleans.
+    mock_server._tool_value_diff_detail = AsyncMock(
+        return_value={
+            "columns": [
+                {"key": "customer_id", "name": "customer_id", "type": "integer"},
+                {"key": "name", "name": "name", "type": "text"},
+                {"key": "amount", "name": "amount", "type": "number"},
+                {"key": "in_a", "name": "in_a", "type": "boolean"},
+                {"key": "in_b", "name": "in_b", "type": "boolean"},
+            ],
+            "data": [
+                [1, "Alice", 100.0, True, False],  # removed (only in base)
+                [2, "Bob", 250.0, True, False],  # removed (only in base)
+                [5, "Carol", 310.0, False, True],  # added   (only in current)
+            ],
+            "limit": 1000,
+            "more": False,
+            "total_row_count": None,
+            "_warning": "Base environment not configured — comparing current against itself.",
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = ValueDiffDetailInput(model="customers", primary_key="customer_id")
+        result = await ws.value_diff_detail(args)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 200, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    assert result.structuredContent is not None
+    validated = ValueDiffDetailOutput.model_validate(result.structuredContent)
+
+    # model + primary_key echoed back
+    assert validated.model == "customers"
+    assert validated.primary_key == "customer_id"
+
+    # columns: 5 total (3 data cols + in_a + in_b)
+    assert len(validated.columns) == 5
+    col_names = [c.name for c in validated.columns]
+    assert "customer_id" in col_names
+    assert "name" in col_names
+    assert "amount" in col_names
+    assert "in_a" in col_names
+    assert "in_b" in col_names
+
+    # data: 3 rows preserved verbatim
+    assert len(validated.data) == 3
+    # First row: customer_id=1, in_a=True, in_b=False (removed)
+    assert validated.data[0][0] == 1
+    assert validated.data[0][3] is True  # in_a
+    assert validated.data[0][4] is False  # in_b
+    # Third row: customer_id=5, added
+    assert validated.data[2][0] == 5
+    assert validated.data[2][3] is False  # in_a
+    assert validated.data[2][4] is True  # in_b
+
+    # metadata
+    assert validated.limit == 1000
+    assert validated.more is False
+
+    # _warning extracted
+    assert validated.warning == "Base environment not configured — comparing current against itself."
+
+
+# ---------------------------------------------------------------------------
+# Test 23: top_k_diff widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_top_k_diff_widget_registered():
+    """top_k_diff appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'top_k_diff' is in widget mcp tool list
+    - resource URI 'ui://recce/top_k_diff.html' is in widget mcp resource list
+    - model and column_name are required in inputSchema; k is optional
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "top_k_diff" in tool_names
+    assert "ui://recce/top_k_diff.html" in resource_uris
+
+    # Check inputSchema: model + column_name required, k optional.
+    # FastMCP wraps the Pydantic model in an 'args' outer envelope.
+    tk_tool = next(t for t in tools if t.name == "top_k_diff")
+    schema = tk_tool.inputSchema
+    assert schema is not None
+
+    defs = schema.get("$defs", {})
+    inner_schema = next(iter(defs.values()), schema)
+    inner_required = inner_schema.get("required", [])
+    inner_props = inner_schema.get("properties", {})
+    assert "model" in inner_required, "model must be required"
+    assert "column_name" in inner_required, "column_name must be required"
+    assert "k" not in inner_required, "k must be optional"
+    assert "model" in inner_props
+    assert "column_name" in inner_props
+    assert "k" in inner_props
+
+
+# ---------------------------------------------------------------------------
+# Test 24: top_k_diff returns CallToolResult with correct Pydantic shape
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_top_k_diff_returns_calltoolresult_with_pydantic_shape():
+    """top_k_diff handler returns CallToolResult with structuredContent matching TopKDiffOutput.
+
+    Uses the actual TopKDiffTask.execute() return shape (verified from source):
+    {
+      "base":    {"values": [...], "counts": [...], "valids": N, "total": N},
+      "current": {"values": [...], "counts": [...], "valids": N, "total": N},
+    }
+
+    Note: values[] is the SAME list in both envs (union ordered by curr_count desc,
+    base_count desc). counts[] differ per env. Categories absent from an env have
+    count=0 in that env's counts list.
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent passes TopKDiffOutput.model_validate()
+    - model, column_name, k are echoed back
+    - base and current env stats are hydrated correctly
+    - _warning is extracted to output.warning named field
+    - categories with count=0 in an env represent absent entries (New/Gone in widget)
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import TopKDiffInput, TopKDiffOutput
+
+    mock_server = MagicMock()
+    # Realistic TopKDiffTask.execute() return shape (verified from recce/tasks/top_k.py).
+    # values[] is the union ordered by curr_count desc, base_count desc.
+    # Entries with base_count=0 are "new" (only in current); entries with curr_count=0 are "gone".
+    mock_server._tool_top_k_diff = AsyncMock(
+        return_value={
+            "base": {
+                "values": ["active", "pending", "closed", "cancelled", None],
+                "counts": [500, 300, 200, 0, 10],  # 'cancelled' absent in base
+                "valids": 1010,
+                "total": 1020,
+            },
+            "current": {
+                "values": ["active", "pending", "closed", "cancelled", None],
+                "counts": [480, 320, 180, 50, 8],  # 'cancelled' appeared in current
+                "valids": 1030,
+                "total": 1038,
+            },
+            "_warning": "Base environment not configured — comparing current against itself.",
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = TopKDiffInput(model="orders", column_name="status", k=5)
+        result = await ws.top_k_diff(args)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 200, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    assert result.structuredContent is not None
+    validated = TopKDiffOutput.model_validate(result.structuredContent)
+
+    # model, column_name, k echoed back
+    assert validated.model == "orders"
+    assert validated.column_name == "status"
+    assert validated.k == 5
+
+    # base env stats
+    assert len(validated.base.values) == 5
+    assert validated.base.values[0] == "active"
+    assert validated.base.values[4] is None  # null category
+    assert validated.base.counts[0] == 500
+    assert validated.base.counts[3] == 0  # cancelled absent in base
+    assert validated.base.valids == 1010
+    assert validated.base.total == 1020
+
+    # current env stats (same values list, different counts)
+    assert len(validated.current.values) == 5
+    assert validated.current.counts[0] == 480
+    assert validated.current.counts[3] == 50  # cancelled appeared in current
+    assert validated.current.valids == 1030
+    assert validated.current.total == 1038
+
+    # _warning extracted
+    assert validated.warning == "Base environment not configured — comparing current against itself."
+
+
+# ---------------------------------------------------------------------------
+# Test 25: histogram_diff widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_histogram_diff_widget_registered():
+    """histogram_diff appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'histogram_diff' is in widget mcp tool list
+    - resource URI 'ui://recce/histogram_diff.html' is in widget mcp resource list
+    - model and column_name are required in inputSchema; num_bins is optional
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "histogram_diff" in tool_names
+    assert "ui://recce/histogram_diff.html" in resource_uris
+
+    # Check inputSchema: model + column_name required, num_bins optional.
+    # FastMCP wraps the Pydantic model in an 'args' outer envelope.
+    hd_tool = next(t for t in tools if t.name == "histogram_diff")
+    schema = hd_tool.inputSchema
+    assert schema is not None
+
+    defs = schema.get("$defs", {})
+    inner_schema = next(iter(defs.values()), schema)
+    inner_required = inner_schema.get("required", [])
+    inner_props = inner_schema.get("properties", {})
+    assert "model" in inner_required, "model must be required"
+    assert "column_name" in inner_required, "column_name must be required"
+    assert "num_bins" not in inner_required, "num_bins must be optional"
+    assert "model" in inner_props
+    assert "column_name" in inner_props
+    assert "num_bins" in inner_props
+
+
+# ---------------------------------------------------------------------------
+# Test 26: histogram_diff returns CallToolResult with correct Pydantic shape
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_histogram_diff_returns_calltoolresult_with_pydantic_shape():
+    """histogram_diff handler returns CallToolResult with structuredContent matching HistogramDiffOutput.
+
+    Uses the actual HistogramDiffTask.execute() return shape (verified from source):
+    {
+      "base":     {"counts": [int, ...], "total": int},
+      "current":  {"counts": [int, ...], "total": int},
+      "min":      <numeric or date value>,
+      "max":      <numeric or date value>,
+      "bin_edges": [edge0, edge1, ..., edgeN],
+      "labels":   ["lo-hi", ...] for numeric cols; None for datetime,
+    }
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent passes HistogramDiffOutput.model_validate()
+    - base and current counts are hydrated correctly
+    - bin_edges and labels are preserved
+    - min/max are echoed from the raw result
+    - _warning is extracted to output.warning named field
+    - model and column_name are echoed from input
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import HistogramDiffInput, HistogramDiffOutput
+
+    mock_server = MagicMock()
+    # Realistic HistogramDiffTask.execute() return shape (confirmed from recce/tasks/histogram.py).
+    # Numeric column: 5 bins, shared bin_edges, labels from integer binning.
+    mock_server._tool_histogram_diff = AsyncMock(
+        return_value={
+            "base": {
+                "counts": [120, 340, 210, 80, 15],
+                "total": 765,
+            },
+            "current": {
+                "counts": [100, 360, 220, 90, 20],
+                "total": 790,
+            },
+            "min": 0,
+            "max": 500,
+            "bin_edges": [0, 100, 200, 300, 400, 500],
+            "labels": ["0-100", "100-200", "200-300", "300-400", "400-500"],
+            "_warning": "Base environment not configured — comparing current against itself.",
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = HistogramDiffInput(model="orders", column_name="amount")
+        result = await ws.histogram_diff(args)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 200, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    assert result.structuredContent is not None
+    validated = HistogramDiffOutput.model_validate(result.structuredContent)
+
+    # model + column_name echoed back
+    assert validated.model == "orders"
+    assert validated.column_name == "amount"
+
+    # base env stats
+    assert len(validated.base.counts) == 5
+    assert validated.base.counts[0] == 120
+    assert validated.base.counts[1] == 340
+    assert validated.base.total == 765
+
+    # current env stats
+    assert len(validated.current.counts) == 5
+    assert validated.current.counts[1] == 360
+    assert validated.current.total == 790
+
+    # bin_edges and labels preserved
+    assert len(validated.bin_edges) == 6
+    assert validated.bin_edges[0] == 0
+    assert validated.bin_edges[5] == 500
+    assert validated.labels is not None
+    assert len(validated.labels) == 5
+    assert validated.labels[0] == "0-100"
+
+    # min/max
+    assert validated.min == 0
+    assert validated.max == 500
+
+    # _warning extracted
+    assert validated.warning == "Base environment not configured — comparing current against itself."
+
+
+# ---------------------------------------------------------------------------
+# Test 27: profile_diff widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_profile_diff_widget_registered():
+    """profile_diff appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'profile_diff' is in widget mcp tool list
+    - resource URI 'ui://recce/profile_diff.html' is in widget mcp resource list
+    - model is required in inputSchema; columns is optional
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "profile_diff" in tool_names
+    assert "ui://recce/profile_diff.html" in resource_uris
+
+    # Check inputSchema: model required, columns optional.
+    pd_tool = next(t for t in tools if t.name == "profile_diff")
+    schema = pd_tool.inputSchema
+    assert schema is not None
+
+    defs = schema.get("$defs", {})
+    inner_schema = next(iter(defs.values()), schema)
+    inner_required = inner_schema.get("required", [])
+    inner_props = inner_schema.get("properties", {})
+    assert "model" in inner_required, "model must be required"
+    assert "columns" not in inner_required, "columns must be optional"
+    assert "model" in inner_props
+    assert "columns" in inner_props
+
+
+# ---------------------------------------------------------------------------
+# Test 28: profile_diff returns CallToolResult with correct Pydantic shape
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_profile_diff_returns_calltoolresult_with_pydantic_shape():
+    """profile_diff handler returns CallToolResult with structuredContent matching ProfileDiffOutput.
+
+    Uses the actual ProfileDiffResult.model_dump(mode='json') shape (verified from source):
+    ProfileDiffResult has base: DataFrame, current: DataFrame.
+    Each DataFrame: {columns: [{key, name, type}], data: [[row_values], ...]}
+    Profile columns: column_name, data_type, row_count, not_null_proportion,
+    distinct_proportion, distinct_count, is_unique, min, max, avg, median.
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent passes ProfileDiffOutput.model_validate()
+    - per-column diffs are built correctly from base + current DataFrames
+    - model is echoed from input
+    - _warning is extracted to output.warning named field
+    - numeric stats (row_count, distinct_count, avg, etc.) are correctly typed
+    - string stats (min, max) are preserved as str (SQL casts them to text)
+    - is_unique bool is parsed correctly
+    - columns absent from one env still appear in the output (union)
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import ProfileDiffInput, ProfileDiffOutput
+
+    # Profile DataFrame column metadata (matches PROFILE_COLUMN_JINJA_TEMPLATE output)
+    profile_col_meta = [
+        {"key": "column_name", "name": "column_name", "type": "text"},
+        {"key": "data_type", "name": "data_type", "type": "text"},
+        {"key": "row_count", "name": "row_count", "type": "integer"},
+        {"key": "not_null_proportion", "name": "not_null_proportion", "type": "number"},
+        {"key": "distinct_proportion", "name": "distinct_proportion", "type": "number"},
+        {"key": "distinct_count", "name": "distinct_count", "type": "integer"},
+        {"key": "is_unique", "name": "is_unique", "type": "boolean"},
+        {"key": "min", "name": "min", "type": "text"},
+        {"key": "max", "name": "max", "type": "text"},
+        {"key": "avg", "name": "avg", "type": "number"},
+        {"key": "median", "name": "median", "type": "number"},
+    ]
+    # Base: id (numeric), name (text), amount (numeric)
+    base_data = [
+        ["id", "bigint", 1000, 1.0, 1.0, 1000, True, "1", "1000", None, None],
+        ["name", "text", 1000, 0.98, 0.97, 970, False, None, None, None, None],
+        ["amount", "float", 1000, 0.995, 0.72, 720, False, "0.5", "999.9", 105.3, 87.2],
+    ]
+    # Current: id same, name has more nulls, amount shifted, new column "status"
+    curr_data = [
+        ["id", "bigint", 1020, 1.0, 1.0, 1020, True, "1", "1020", None, None],
+        ["name", "text", 1020, 0.95, 0.96, 979, False, None, None, None, None],
+        ["amount", "float", 1020, 0.995, 0.70, 714, False, "0.5", "1099.9", 112.7, 91.4],
+        ["status", "text", 1020, 1.0, 0.05, 51, False, None, None, None, None],
+    ]
+
+    mock_server = MagicMock()
+    mock_server._tool_profile_diff = AsyncMock(
+        return_value={
+            "base": {
+                "columns": profile_col_meta,
+                "data": base_data,
+                "limit": None,
+                "more": None,
+                "total_row_count": None,
+            },
+            "current": {
+                "columns": profile_col_meta,
+                "data": curr_data,
+                "limit": None,
+                "more": None,
+                "total_row_count": None,
+            },
+            "_warning": "Base environment not configured — comparing current against itself.",
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = ProfileDiffInput(model="customers")
+        result = await ws.profile_diff(args)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 200, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    assert result.structuredContent is not None
+    validated = ProfileDiffOutput.model_validate(result.structuredContent)
+
+    # model echoed back
+    assert validated.model == "customers"
+
+    # Union of columns: id, name, amount from base + current; status only in current
+    col_names = [c.column_name for c in validated.columns]
+    assert "id" in col_names
+    assert "name" in col_names
+    assert "amount" in col_names
+    assert "status" in col_names  # current-only column still appears
+    assert len(validated.columns) == 4  # id, name, amount, status
+
+    # id column: base + current both present
+    id_col = next(c for c in validated.columns if c.column_name == "id")
+    assert id_col.data_type == "bigint"
+    assert id_col.base is not None
+    assert id_col.current is not None
+    assert id_col.base.row_count == 1000
+    assert id_col.current.row_count == 1020
+    assert id_col.base.distinct_count == 1000
+    assert id_col.base.is_unique is True
+    assert id_col.base.not_null_proportion == 1.0
+
+    # amount column: numeric — avg and median present
+    amt_col = next(c for c in validated.columns if c.column_name == "amount")
+    assert amt_col.base is not None
+    assert amt_col.base.avg == 105.3
+    assert amt_col.base.median == 87.2
+    assert amt_col.base.min == "0.5"  # SQL casts min to text
+    assert amt_col.base.max == "999.9"
+    assert amt_col.current is not None
+    assert amt_col.current.avg == 112.7
+
+    # name column: text — avg and min/max are None (not profiled for text cols)
+    name_col = next(c for c in validated.columns if c.column_name == "name")
+    assert name_col.base is not None
+    assert name_col.base.avg is None
+    assert name_col.base.min is None
+    assert name_col.base.not_null_proportion == 0.98
+
+    # status column: only in current — base is None
+    status_col = next(c for c in validated.columns if c.column_name == "status")
+    assert status_col.base is None
+    assert status_col.current is not None
+    assert status_col.current.row_count == 1020
+
+    # _warning extracted from _warning key
+    assert validated.warning == "Base environment not configured — comparing current against itself."
+
+
+# ---------------------------------------------------------------------------
+# Test 87: get_cll widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_cll_widget_registered():
+    """get_cll appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'get_cll' is in widget mcp tool list
+    - resource URI 'ui://recce/get_cll.html' is in widget mcp resource list
+    - node_id and column are required; change_analysis is optional (default False)
+    - annotations: openWorldHint=False (reads manifest, no warehouse I/O)
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "get_cll" in tool_names
+    assert "ui://recce/get_cll.html" in resource_uris
+
+    # Verify inputSchema: node_id + column required; change_analysis optional
+    tool = next(t for t in tools if t.name == "get_cll")
+    schema = tool.inputSchema
+    assert schema is not None
+    defs = schema.get("$defs", {})
+    inner_schema = next(iter(defs.values()), schema)
+    inner_required = inner_schema.get("required", [])
+    inner_props = inner_schema.get("properties", {})
+    assert "node_id" in inner_required, "node_id must be required"
+    assert "column" in inner_required, "column must be required"
+    assert "change_analysis" not in inner_required, "change_analysis must be optional"
+    assert "node_id" in inner_props
+    assert "column" in inner_props
+    assert "change_analysis" in inner_props
+
+    # openWorldHint must be False — CLL reads manifest only, no warehouse
+    a = tool.annotations
+    assert a is not None
+    assert a.openWorldHint is False, "get_cll: expected openWorldHint=False (manifest read, no warehouse)"
+    assert a.readOnlyHint is True
+    assert a.destructiveHint is False
+
+
+# ---------------------------------------------------------------------------
+# Test 88: get_cll returns CallToolResult with correct Pydantic shape + counts
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_cll_returns_calltoolresult_with_pydantic_shape():
+    """get_cll handler returns CallToolResult with structuredContent matching GetCllOutput.
+
+    Uses a realistic CllData.model_dump shape (verified from recce/models/types.py):
+    {nodes: {node_id: {id, name, package_name, resource_type, columns: {col_name: {…}}}},
+     columns: {col_key: {…}},
+     parent_map: {key: [parents]},
+     child_map: {key: [children]}}
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent passes GetCllOutput.model_validate()
+    - node_id, column, change_analysis echoed from input
+    - node_count and edge_count computed correctly
+    - CllColumn.depends_on hydrated into GetCllColumnDep list
+    - parent_map/child_map sets converted to lists
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import GetCllInput, GetCllOutput
+
+    # Realistic jaffle-shop-scale CLL output:
+    # orders.amount depends on raw_orders.amount (passthrough)
+    # stg_orders.amount depends on raw_orders.amount (passthrough)
+    # orders.amount depends on stg_orders.amount (passthrough)
+    mock_server = MagicMock()
+    mock_server._tool_get_cll = AsyncMock(
+        return_value={
+            "nodes": {
+                "source.jaffle_shop.raw_orders": {
+                    "id": "source.jaffle_shop.raw_orders",
+                    "name": "raw_orders",
+                    "package_name": "jaffle_shop",
+                    "resource_type": "source",
+                    "source_name": "jaffle_shop",
+                    "change_status": None,
+                    "change_category": None,
+                    "impacted": None,
+                    "columns": {
+                        "amount": {
+                            "id": "source.jaffle_shop.raw_orders_amount",
+                            "table_id": "source.jaffle_shop.raw_orders",
+                            "name": "amount",
+                            "type": "numeric",
+                            "transformation_type": "source",
+                            "change_status": None,
+                            "depends_on": [],
+                        }
+                    },
+                },
+                "model.jaffle_shop.stg_orders": {
+                    "id": "model.jaffle_shop.stg_orders",
+                    "name": "stg_orders",
+                    "package_name": "jaffle_shop",
+                    "resource_type": "model",
+                    "source_name": None,
+                    "change_status": None,
+                    "change_category": None,
+                    "impacted": None,
+                    "columns": {
+                        "amount": {
+                            "id": "model.jaffle_shop.stg_orders_amount",
+                            "table_id": "model.jaffle_shop.stg_orders",
+                            "name": "amount",
+                            "type": "numeric",
+                            "transformation_type": "passthrough",
+                            "change_status": None,
+                            "depends_on": [{"node": "source.jaffle_shop.raw_orders", "column": "amount"}],
+                        }
+                    },
+                },
+                "model.jaffle_shop.orders": {
+                    "id": "model.jaffle_shop.orders",
+                    "name": "orders",
+                    "package_name": "jaffle_shop",
+                    "resource_type": "model",
+                    "source_name": None,
+                    "change_status": None,
+                    "change_category": None,
+                    "impacted": None,
+                    "columns": {
+                        "amount": {
+                            "id": "model.jaffle_shop.orders_amount",
+                            "table_id": "model.jaffle_shop.orders",
+                            "name": "amount",
+                            "type": "numeric",
+                            "transformation_type": "passthrough",
+                            "change_status": None,
+                            "depends_on": [{"node": "model.jaffle_shop.stg_orders", "column": "amount"}],
+                        }
+                    },
+                },
+            },
+            "columns": {
+                "source.jaffle_shop.raw_orders_amount": {
+                    "id": "source.jaffle_shop.raw_orders_amount",
+                    "table_id": "source.jaffle_shop.raw_orders",
+                    "name": "amount",
+                    "type": "numeric",
+                    "transformation_type": "source",
+                    "change_status": None,
+                    "depends_on": [],
+                },
+            },
+            "parent_map": {
+                "model.jaffle_shop.stg_orders": ["source.jaffle_shop.raw_orders"],
+                "model.jaffle_shop.orders": ["model.jaffle_shop.stg_orders"],
+            },
+            "child_map": {
+                "source.jaffle_shop.raw_orders": ["model.jaffle_shop.stg_orders"],
+                "model.jaffle_shop.stg_orders": ["model.jaffle_shop.orders"],
+            },
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = GetCllInput(
+            node_id="model.jaffle_shop.orders",
+            column="amount",
+            change_analysis=False,
+        )
+        result = await ws.get_cll(args)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 160, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    # structuredContent must round-trip through Pydantic
+    assert result.structuredContent is not None
+    validated = GetCllOutput.model_validate(result.structuredContent)
+
+    # Input echoed back
+    assert validated.node_id == "model.jaffle_shop.orders"
+    assert validated.column == "amount"
+    assert validated.change_analysis is False
+
+    # Counts
+    assert validated.node_count == 3
+    assert validated.edge_count == 2  # parent_map has 2 entries each with 1 parent
+
+    # Nodes normalised correctly
+    assert "model.jaffle_shop.orders" in validated.nodes
+    orders_node = validated.nodes["model.jaffle_shop.orders"]
+    assert orders_node.name == "orders"
+    assert orders_node.resource_type == "model"
+    assert "amount" in orders_node.columns
+    orders_amount = orders_node.columns["amount"]
+    assert orders_amount.transformation_type == "passthrough"
+    assert len(orders_amount.depends_on) == 1
+    assert orders_amount.depends_on[0].node == "model.jaffle_shop.stg_orders"
+    assert orders_amount.depends_on[0].column == "amount"
+
+    # Source node
+    assert "source.jaffle_shop.raw_orders" in validated.nodes
+    src_node = validated.nodes["source.jaffle_shop.raw_orders"]
+    assert src_node.resource_type == "source"
+    assert src_node.source_name == "jaffle_shop"
+    src_amount = src_node.columns["amount"]
+    assert src_amount.transformation_type == "source"
+    assert len(src_amount.depends_on) == 0
+
+    # parent_map / child_map are lists (not sets)
+    assert "model.jaffle_shop.orders" in validated.parent_map
+    assert isinstance(validated.parent_map["model.jaffle_shop.orders"], list)
+    assert "model.jaffle_shop.stg_orders" in validated.parent_map["model.jaffle_shop.orders"]
+
+    # warning is None (not provided)
+    assert validated.warning is None
+
+
+# ---------------------------------------------------------------------------
+# Test 89: impact_analysis widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_impact_analysis_widget_registered():
+    """impact_analysis appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'impact_analysis' is in widget mcp tool list
+    - resource URI 'ui://recce/impact_analysis.html' is in widget mcp resource list
+    - select, skip_value_diff, skip_downstream_value_diff are all optional
+    - annotations: openWorldHint=True (runs row_count_diff + value_diff SQL)
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "impact_analysis" in tool_names
+    assert "ui://recce/impact_analysis.html" in resource_uris
+
+    # Verify inputSchema: all args are optional
+    tool = next(t for t in tools if t.name == "impact_analysis")
+    schema = tool.inputSchema
+    assert schema is not None
+    defs = schema.get("$defs", {})
+    inner_schema = next(iter(defs.values()), schema)
+    inner_required = inner_schema.get("required", [])
+    inner_props = inner_schema.get("properties", {})
+    assert "select" not in inner_required, "select must be optional"
+    assert "skip_value_diff" not in inner_required, "skip_value_diff must be optional"
+    assert "skip_downstream_value_diff" not in inner_required, "skip_downstream_value_diff must be optional"
+    assert "select" in inner_props
+    assert "skip_value_diff" in inner_props
+    assert "skip_downstream_value_diff" in inner_props
+
+    # openWorldHint must be True — runs warehouse queries
+    a = tool.annotations
+    assert a is not None
+    assert a.openWorldHint is True, "impact_analysis: expected openWorldHint=True (runs warehouse queries)"
+    assert a.readOnlyHint is True
+    assert a.destructiveHint is False
+
+
+# ---------------------------------------------------------------------------
+# Test 90: impact_analysis returns CallToolResult with correct Pydantic shape
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_impact_analysis_returns_calltoolresult_with_pydantic_shape():
+    """impact_analysis handler returns CallToolResult with structuredContent matching ImpactAnalysisOutput.
+
+    Uses a realistic _tool_impact_analysis return shape:
+    {_guidance, classification_source, max_affected_row_count,
+     confirmed_impacted_models: [{name, change_status, materialized, row_count,
+       schema_changes, value_diff, affected_row_count, data_impact, next_action}],
+     confirmed_not_impacted_models: [name_str, ...],
+     errors: []}
+
+    Verifies:
+    - content[0].text is a short human-readable sentence (not a JSON dump)
+    - structuredContent passes ImpactAnalysisOutput.model_validate()
+    - confirmed/potential/none models normalised correctly
+    - next_action hydrated into NextAction shape
+    - _guidance extracted to guidance field (without underscore)
+    - _warning extracted to warning field
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import ImpactAnalysisInput, ImpactAnalysisOutput
+
+    mock_server = MagicMock()
+    mock_server._tool_impact_analysis = AsyncMock(
+        return_value={
+            "_guidance": (
+                "confirmed_impacted_models lists all models in the DAG blast radius. " "Use data_impact to triage."
+            ),
+            "classification_source": "lineage_dag",
+            "max_affected_row_count": 150,
+            "confirmed_impacted_models": [
+                {
+                    "name": "orders",
+                    "change_status": "modified",
+                    "materialized": "table",
+                    "row_count": {"base": 1000, "current": 1100, "delta": 100, "delta_pct": 10.0},
+                    "schema_changes": [],
+                    "value_diff": {
+                        "affected_row_count": 150,
+                        "rows_added": 100,
+                        "rows_removed": 0,
+                        "rows_changed": 50,
+                        "columns": {"amount": {"affected_row_count": 50, "base_mean": 80.0, "current_mean": 85.0}},
+                    },
+                    "affected_row_count": 150,
+                    "data_impact": "confirmed",
+                    "next_action": None,
+                },
+                {
+                    "name": "customers",
+                    "change_status": None,
+                    "materialized": "view",
+                    "row_count": None,
+                    "schema_changes": [],
+                    "value_diff": None,
+                    "affected_row_count": None,
+                    "data_impact": "potential",
+                    "next_action": {
+                        "tool": "profile_diff",
+                        "columns": None,
+                        "reason": "downstream view, value_diff skipped",
+                        "priority": "low",
+                    },
+                },
+            ],
+            "confirmed_not_impacted_models": ["payments", "stg_orders"],
+            "errors": [],
+        }
+    )
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        args = ImpactAnalysisInput()
+        result = await ws.impact_analysis(args)
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    content_text = result.content[0].text
+    assert isinstance(content_text, str)
+    assert len(content_text) < 200, f"content too long ({len(content_text)} chars): {content_text!r}"
+    assert "widget" in content_text.lower()
+
+    # structuredContent must round-trip through Pydantic
+    assert result.structuredContent is not None
+    validated = ImpactAnalysisOutput.model_validate(result.structuredContent)
+
+    # guidance echoed (from _guidance, without underscore)
+    assert validated.guidance is not None
+    assert "triage" in validated.guidance
+
+    # classification_source
+    assert validated.classification_source == "lineage_dag"
+
+    # max_affected_row_count
+    assert validated.max_affected_row_count == 150
+
+    # confirmed_impacted_models
+    assert len(validated.confirmed_impacted_models) == 2
+
+    orders = next(m for m in validated.confirmed_impacted_models if m.name == "orders")
+    assert orders.data_impact == "confirmed"
+    assert orders.change_status == "modified"
+    assert orders.materialized == "table"
+    assert orders.row_count is not None
+    assert orders.row_count.base == 1000
+    assert orders.row_count.delta == 100
+    assert orders.row_count.delta_pct == 10.0
+    assert orders.value_diff is not None
+    assert orders.value_diff.affected_row_count == 150
+    assert orders.value_diff.rows_added == 100
+    assert orders.value_diff.rows_changed == 50
+    assert orders.next_action is None
+
+    customers = next(m for m in validated.confirmed_impacted_models if m.name == "customers")
+    assert customers.data_impact == "potential"
+    assert customers.change_status is None
+    assert customers.materialized == "view"
+    assert customers.row_count is None
+    assert customers.value_diff is None
+    assert customers.next_action is not None
+    assert customers.next_action.tool == "profile_diff"
+    assert customers.next_action.priority == "low"
+    assert customers.next_action.columns is None
+
+    # confirmed_not_impacted_models
+    assert sorted(validated.confirmed_not_impacted_models) == ["payments", "stg_orders"]
+
+    # errors empty
+    assert validated.errors == []
+
+    # warning None (not provided)
+    assert validated.warning is None
+
+
+def test_schema_change_models_have_distinct_shapes():
+    """Guard against name collisions between schema_diff and impact_analysis schema models.
+
+    `SchemaChange` (model-level, for schema_diff) and `ColumnSchemaChange`
+    (column-level, for impact_analysis) used to share the same class name,
+    which silently shadowed the schema_diff model at module import time and
+    broke schema_diff serialization with a Pydantic "column / change_status
+    Field required" error. This test pins the field surfaces so any future
+    accidental shadow fails loudly.
+    """
+    from recce.widget_server import ColumnSchemaChange, SchemaChange
+
+    schema_diff_fields = set(SchemaChange.model_fields.keys())
+    impact_fields = set(ColumnSchemaChange.model_fields.keys())
+
+    assert schema_diff_fields == {"added", "removed", "type_changed", "unchanged_count"}
+    assert impact_fields == {"column", "change_status"}
+    assert SchemaChange is not ColumnSchemaChange
+
+
+# ---------------------------------------------------------------------------
+# Test 91: lineage_diff widget tool is registered with correct resource URI
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_lineage_diff_widget_registered():
+    """lineage_diff appears in widget mcp tools/list and its resource URI exists.
+
+    Verifies:
+    - tool named 'lineage_diff' is in widget mcp tool list
+    - resource URI 'ui://recce/lineage_diff.html' is in widget mcp resource list
+    - select, exclude, packages, view_mode are all optional
+    - annotations: openWorldHint=False (no warehouse query, manifest-only)
+    """
+    from recce.widget_server import mcp
+
+    tools = await mcp.list_tools()
+    resources = await mcp.list_resources()
+
+    tool_names = {t.name for t in tools}
+    resource_uris = {str(r.uri) for r in resources}
+
+    assert "lineage_diff" in tool_names
+    assert "ui://recce/lineage_diff.html" in resource_uris
+
+    tool = next(t for t in tools if t.name == "lineage_diff")
+    schema = tool.inputSchema
+    assert schema is not None
+    defs = schema.get("$defs", {})
+    inner_schema = next(iter(defs.values()), schema)
+    inner_required = inner_schema.get("required", [])
+    inner_props = inner_schema.get("properties", {})
+    assert "select" not in inner_required, "select must be optional"
+    assert "exclude" not in inner_required, "exclude must be optional"
+    assert "packages" not in inner_required, "packages must be optional"
+    assert "view_mode" not in inner_required, "view_mode must be optional"
+    for key in ("select", "exclude", "packages", "view_mode"):
+        assert key in inner_props, f"missing prop: {key}"
+
+    a = tool.annotations
+    assert a is not None
+    assert a.readOnlyHint is True
+    assert a.destructiveHint is False
+    assert a.openWorldHint is False, "lineage_diff: expected openWorldHint=False (manifest-only, no warehouse query)"
+
+
+# ---------------------------------------------------------------------------
+# Test 92: lineage_diff returns CallToolResult with correct Pydantic shape
+#          covering both under-cap and over-cap (>MAX_INLINE_NODES) branches.
+# ---------------------------------------------------------------------------
+
+
+def _make_lineage_dataframe(node_count: int) -> dict:
+    """Build a realistic _tool_lineage_diff return shape with `node_count` nodes.
+
+    DataFrame format: {columns: [{key, name, type}, ...], data: [tuple, ...]}.
+    Edges chain node_0 → node_1 → node_2 → ... (linear DAG for predictable tests).
+    """
+    node_cols = [
+        {"key": "idx", "name": "idx", "type": "integer"},
+        {"key": "id", "name": "id", "type": "text"},
+        {"key": "name", "name": "name", "type": "text"},
+        {"key": "resource_type", "name": "resource_type", "type": "text"},
+        {"key": "materialized", "name": "materialized", "type": "text"},
+        {"key": "change_status", "name": "change_status", "type": "text"},
+        {"key": "impacted", "name": "impacted", "type": "boolean"},
+    ]
+    nodes_data = []
+    for i in range(node_count):
+        change_status = "modified" if i == 0 else None
+        impacted = i == 0
+        nodes_data.append((i, f"model.recce.node_{i}", f"node_{i}", "model", "table", change_status, impacted))
+
+    edge_cols = [
+        {"key": "from", "name": "from", "type": "integer"},
+        {"key": "to", "name": "to", "type": "integer"},
+    ]
+    edges_data = [(i, i + 1) for i in range(max(0, node_count - 1))]
+
+    return {
+        "nodes": {"columns": node_cols, "data": nodes_data},
+        "edges": {"columns": edge_cols, "data": edges_data},
+    }
+
+
+@pytest.mark.asyncio
+async def test_lineage_diff_returns_calltoolresult_with_pydantic_shape():
+    """lineage_diff handler returns CallToolResult with structuredContent matching LineageDiffOutput.
+
+    Verifies BOTH branches:
+    - Under-cap (3 nodes): nodes + edges populated, exceeds_limit=False.
+    - Over-cap (11 nodes > MAX_INLINE_NODES=10): nodes=[], edges=[], exceeds_limit=True.
+    """
+    from mcp.types import CallToolResult
+
+    import recce.widget_server as ws
+    from recce.widget_server import (
+        MAX_INLINE_NODES,
+        LineageDiffInput,
+        LineageDiffOutput,
+    )
+
+    # ── Under-cap branch (3 nodes, 2 edges) ──────────────────────────
+    mock_server = MagicMock()
+    mock_server._tool_lineage_diff = AsyncMock(return_value=_make_lineage_dataframe(3))
+
+    original = ws._recce_server
+    ws._recce_server = mock_server
+    try:
+        result = await ws.lineage_diff(LineageDiffInput())
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result, CallToolResult)
+    assert len(result.content) == 1
+    text = result.content[0].text
+    assert isinstance(text, str)
+    assert len(text) < 200
+    assert "widget" in text.lower()
+
+    assert result.structuredContent is not None
+    validated = LineageDiffOutput.model_validate(result.structuredContent)
+    assert validated.node_count == 3
+    assert validated.exceeds_limit is False
+    assert validated.max_inline_nodes == MAX_INLINE_NODES == 10
+    assert len(validated.nodes) == 3
+    assert len(validated.edges) == 2
+    # First node is the modified root
+    first = next(n for n in validated.nodes if n.idx == 0)
+    assert first.id == "model.recce.node_0"
+    assert first.name == "node_0"
+    assert first.change_status == "modified"
+    assert first.impacted is True
+    # Edge alias round-trip — model_dump(by_alias=True) emits 'from'/'to' keys
+    raw_edges = result.structuredContent["edges"]
+    assert raw_edges[0] == {"from": 0, "to": 1}
+    # validated edges use python attribute names
+    assert validated.edges[0].from_idx == 0
+    assert validated.edges[0].to_idx == 1
+
+    # ── Over-cap branch (11 > 10) ────────────────────────────────────
+    mock_server2 = MagicMock()
+    mock_server2._tool_lineage_diff = AsyncMock(return_value=_make_lineage_dataframe(11))
+
+    ws._recce_server = mock_server2
+    try:
+        result2 = await ws.lineage_diff(LineageDiffInput())
+    finally:
+        ws._recce_server = original
+
+    assert isinstance(result2, CallToolResult)
+    text2 = result2.content[0].text
+    assert "exceed" in text2.lower() or "cap" in text2.lower(), f"expected over-cap message, got: {text2!r}"
+
+    validated2 = LineageDiffOutput.model_validate(result2.structuredContent)
+    assert validated2.node_count == 11
+    assert validated2.exceeds_limit is True
+    assert validated2.max_inline_nodes == 10
+    assert validated2.nodes == [], "over-cap must return empty nodes list"
+    assert validated2.edges == [], "over-cap must return empty edges list"

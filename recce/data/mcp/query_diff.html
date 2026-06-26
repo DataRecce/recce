@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Query Diff</title>
+  <style>
+    /* ── Base reset + design tokens ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+      font-size: 13px;
+      margin: 0;
+      padding: 12px 16px 20px;
+      color: var(--color-text-primary, #1a1a1a);
+      background: var(--color-background-primary, #ffffff);
+      line-height: 1.4;
+    }
+
+    /* ── Dark-mode fallback ────────────────────────────────────────── */
+    @media (prefers-color-scheme: dark) {
+      body {
+        color: var(--color-text-primary, #e5e7eb);
+        background: var(--color-background-primary, #1a1a1a);
+      }
+      .header-icon    { color: var(--color-text-secondary, #9ca3af) !important; }
+      .header-title   { color: var(--color-text-primary, #e5e7eb) !important; }
+      .header-badge   { background: var(--color-background-secondary, #3f3f46) !important;
+                        color: var(--color-text-secondary, #9ca3af) !important; }
+      .summary-bar    { color: var(--color-text-secondary, #9ca3af) !important;
+                        border-bottom-color: var(--color-border-primary, #3f3f46) !important; }
+      .filter-btn     { background: var(--color-background-secondary, #3f3f46) !important;
+                        color: var(--color-text-secondary, #9ca3af) !important;
+                        border-color: var(--color-border-primary, #52525b) !important; }
+      .filter-btn.active { background: var(--color-background-info, #1e3a8a) !important;
+                        color: #93c5fd !important;
+                        border-color: #3b82f6 !important; }
+      .warning-bar    { background: var(--color-background-warning, #78350f) !important;
+                        color: var(--color-text-warning, #fde68a) !important;
+                        border-color: #92400e !important; }
+      .badge-truncated { background: var(--color-background-warning, #78350f) !important;
+                         color: var(--color-text-warning, #fde68a) !important; }
+      .env-label      { background: var(--color-background-secondary, #3f3f46) !important;
+                        color: var(--color-text-secondary, #9ca3af) !important; }
+      .table-wrap     { border-color: var(--color-border-primary, #3f3f46) !important; }
+      .result-table   { background: var(--color-background-secondary, #27272a) !important; }
+      .th-cell        { background: var(--color-background-secondary, #27272a) !important;
+                        color: var(--color-text-secondary, #9ca3af) !important;
+                        border-bottom-color: var(--color-border-primary, #3f3f46) !important;
+                        border-right-color: var(--color-border-primary, #3f3f46) !important; }
+      .tr-row:nth-child(even) { background: var(--color-background-primary, #1a1a1a) !important; }
+      .tr-row:nth-child(odd)  { background: var(--color-background-secondary, #27272a) !important; }
+      .tr-row:hover           { background: var(--color-background-info, #1e3a8a) !important; }
+      .tr-removed             { background: rgba(239,68,68,0.12) !important; }
+      .tr-added               { background: rgba(34,197,94,0.12) !important; }
+      .tr-removed:hover       { background: rgba(239,68,68,0.22) !important; }
+      .tr-added:hover         { background: rgba(34,197,94,0.22) !important; }
+      .td-cell        { color: var(--color-text-primary, #e5e7eb) !important;
+                        border-bottom-color: var(--color-border-secondary, #3f3f46) !important;
+                        border-right-color: var(--color-border-secondary, #3f3f46) !important; }
+      .cell-null      { color: var(--color-text-secondary, #6b7280) !important; }
+      .cell-num       { color: var(--color-text-primary, #e5e7eb) !important; }
+      .cell-bool-true { color: var(--color-text-success, #4ade80) !important; }
+      .cell-bool-false { color: var(--color-text-secondary, #6b7280) !important; }
+      .status-pill-removed { background: rgba(239,68,68,0.2) !important; color: #f87171 !important; }
+      .status-pill-added   { background: rgba(34,197,94,0.2) !important;  color: #4ade80 !important; }
+      .sql-block      { background: var(--color-background-secondary, #3f3f46) !important;
+                        color: var(--color-text-secondary, #9ca3af) !important;
+                        border-color: var(--color-border-primary, #3f3f46) !important; }
+      .empty-card     { background: var(--color-background-secondary, #27272a) !important; }
+      .empty-title    { color: var(--color-text-primary, #e5e7eb) !important; }
+      .empty-hint     { color: var(--color-text-secondary, #9ca3af) !important; }
+      .error-card     { background: var(--color-background-secondary, #27272a) !important; }
+      .error-title    { color: var(--color-text-danger, #f87171) !important; }
+      .error-hint     { color: var(--color-text-secondary, #9ca3af) !important; }
+      .side-label     { color: var(--color-text-secondary, #9ca3af) !important;
+                        border-color: var(--color-border-primary, #3f3f46) !important; }
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0 8px;
+    }
+    .header-icon  { font-size: 16px; line-height: 1; color: var(--color-text-secondary, #6b7280); }
+    .header-title { font-size: 14px; font-weight: 700; color: var(--color-text-primary, #1a1a1a); flex: 1; }
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      border-radius: var(--border-radius-sm, 4px);
+      font-size: 11px;
+      font-weight: 500;
+      background: var(--color-background-secondary, #f3f4f6);
+      color: var(--color-text-secondary, #6b7280);
+      white-space: nowrap;
+    }
+
+    /* ── Warning bar ─────────────────────────────────────────────────── */
+    .warning-bar {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 8px 10px;
+      margin-bottom: 10px;
+      border-radius: var(--border-radius-sm, 4px);
+      font-size: 12px;
+      font-style: italic;
+      background: var(--color-background-warning, #fffbeb);
+      color: var(--color-text-warning, #92400e);
+      border: 1px solid var(--color-border-warning, #fcd34d);
+    }
+
+    /* ── Summary bar + filter buttons ───────────────────────────────── */
+    .summary-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--color-text-secondary, #6b7280);
+      padding: 0 0 8px;
+      border-bottom: 1px solid var(--color-border-primary, #e5e7eb);
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .badge-truncated {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 6px;
+      border-radius: var(--border-radius-sm, 4px);
+      font-size: 10px;
+      font-weight: 600;
+      background: var(--color-background-warning, #fef3c7);
+      color: var(--color-text-warning, #92400e);
+      white-space: nowrap;
+    }
+
+    /* Filter button row (join diff mode only) */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 0 10px;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: var(--border-radius-sm, 4px);
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--color-border-primary, #d1d5db);
+      background: var(--color-background-secondary, #f9fafb);
+      color: var(--color-text-secondary, #4b5563);
+      transition: all 0.1s ease;
+    }
+    .filter-btn:hover { border-color: #9ca3af; }
+    .filter-btn.active {
+      background: var(--color-background-info, #eff6ff);
+      color: #1d4ed8;
+      border-color: #93c5fd;
+      font-weight: 600;
+    }
+    .filter-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+      border-radius: 8px;
+      font-size: 10px;
+      font-weight: 700;
+      background: currentColor;
+      opacity: 0.18;
+    }
+
+    /* ── Side-by-side env labels ─────────────────────────────────────── */
+    .side-by-side {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .side-pane {}
+    .side-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-text-secondary, #6b7280);
+      border-bottom: 2px solid var(--color-border-primary, #e5e7eb);
+      padding-bottom: 4px;
+      margin-bottom: 6px;
+    }
+    .side-label.base   { border-color: #60a5fa; color: #2563eb; }
+    .side-label.curr   { border-color: #34d399; color: #059669; }
+
+    /* ── Table container — capped height with internal scroll ────────── */
+    .table-wrap {
+      max-height: 360px;
+      overflow: auto;
+      border: 1px solid var(--color-border-primary, #e5e7eb);
+      border-radius: var(--border-radius-md, 8px);
+    }
+    .result-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      background: var(--color-background-secondary, #f9fafb);
+    }
+
+    /* ── Sticky table header ─────────────────────────────────────────── */
+    .result-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .th-cell {
+      padding: 7px 10px;
+      text-align: left;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: var(--color-background-secondary, #f3f4f6);
+      color: var(--color-text-secondary, #6b7280);
+      border-bottom: 1px solid var(--color-border-primary, #e5e7eb);
+      border-right: 1px solid var(--color-border-primary, #e5e7eb);
+      white-space: nowrap;
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+    }
+    .th-cell:last-child { border-right: none; }
+    .th-status { min-width: 80px; }
+
+    /* ── Table rows ──────────────────────────────────────────────────── */
+    .tr-row:nth-child(even) { background: var(--color-background-primary, #ffffff); }
+    .tr-row:nth-child(odd)  { background: var(--color-background-secondary, #f9fafb); }
+    .tr-row:hover           { background: var(--color-background-info, #eff6ff); }
+    .tr-row:last-child .td-cell { border-bottom: none; }
+    /* Row tinting for diff status */
+    .tr-removed { background: rgba(239,68,68,0.07) !important; }
+    .tr-added   { background: rgba(34,197,94,0.07) !important; }
+    .tr-removed:hover { background: rgba(239,68,68,0.14) !important; }
+    .tr-added:hover   { background: rgba(34,197,94,0.14) !important; }
+
+    /* ── Data cells ──────────────────────────────────────────────────── */
+    .td-cell {
+      padding: 5px 10px;
+      color: var(--color-text-primary, #1a1a1a);
+      border-bottom: 1px solid var(--color-border-secondary, #f3f4f6);
+      border-right: 1px solid var(--color-border-secondary, #f3f4f6);
+      max-width: 240px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+    .td-cell:last-child { border-right: none; }
+
+    /* ── Cell type variants ──────────────────────────────────────────── */
+    .cell-null  { font-style: italic; color: var(--color-text-secondary, #9ca3af); }
+    .cell-num   { font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+                  font-variant-numeric: tabular-nums; text-align: right; }
+    .cell-bool-true  { color: var(--color-text-success, #16a34a); font-weight: 600; }
+    .cell-bool-false { color: var(--color-text-secondary, #9ca3af); }
+
+    /* ── Status pills (join diff mode) ───────────────────────────────── */
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 7px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .status-pill-removed { background: #fee2e2; color: #b91c1c; }
+    .status-pill-added   { background: #dcfce7; color: #15803d; }
+
+    /* ── SQL code block ──────────────────────────────────────────────── */
+    .sql-block {
+      display: block;
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+      font-size: 11px;
+      padding: 8px 10px;
+      margin-top: 8px;
+      border-radius: var(--border-radius-sm, 4px);
+      background: var(--color-background-secondary, #f3f4f6);
+      color: var(--color-text-secondary, #6b7280);
+      border: 1px solid var(--color-border-primary, #e5e7eb);
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 120px;
+      overflow: auto;
+    }
+
+    /* ── Empty state ─────────────────────────────────────────────────── */
+    .empty-card {
+      background: var(--color-background-secondary, #f9fafb);
+      border-radius: var(--border-radius-md, 8px);
+      padding: 32px 24px;
+      text-align: center;
+    }
+    .empty-icon  { font-size: 28px; margin-bottom: 8px; }
+    .empty-title { font-size: 14px; font-weight: 600; color: var(--color-text-primary, #1a1a1a); margin-bottom: 6px; }
+    .empty-hint  { font-size: 12px; color: var(--color-text-secondary, #6b7280); }
+
+    /* ── Error state ─────────────────────────────────────────────────── */
+    .error-card  { background: var(--color-background-secondary, #f9fafb);
+                   border-radius: var(--border-radius-md, 8px); padding: 24px; text-align: center; }
+    .error-title { font-size: 14px; font-weight: 600; color: var(--color-text-danger, #dc2626); margin-bottom: 6px; }
+    .error-hint  { font-size: 12px; color: var(--color-text-secondary, #6b7280); }
+
+    #root { min-height: 40px; }
+  </style>
+</head>
+<body>
+  <div id="root">Loading…</div>
+  <script type="module">
+    import {
+      App,
+      applyDocumentTheme,
+      applyHostStyleVariables,
+      applyHostFonts,
+    } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+
+    const app = new App({ name: "Recce Query Diff", version: "1.0.0" });
+
+    app.onhostcontextchanged = (ctx) => {
+      if (ctx.theme) applyDocumentTheme(ctx.theme);
+      if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+      if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
+    };
+
+    app.ontoolresult = ({ structuredContent }) => {
+      render(structuredContent ?? {});
+    };
+
+    app.onteardown = async () => { return {}; };
+
+    await app.connect();
+
+    const initialCtx = app.getHostContext?.();
+    if (initialCtx) {
+      if (initialCtx.theme) applyDocumentTheme(initialCtx.theme);
+      if (initialCtx.styles?.variables) applyHostStyleVariables(initialCtx.styles.variables);
+      if (initialCtx.styles?.css?.fonts) applyHostFonts(initialCtx.styles.css.fonts);
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────
+    function escapeHtml(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+    }
+
+    function renderCell(value, type) {
+      if (value === null || value === undefined) {
+        return `<span class="cell-null">—</span>`;
+      }
+      if (type === "boolean" || typeof value === "boolean") {
+        if (value === true || value === "true" || value === 1) {
+          return `<span class="cell-bool-true">&#10003;</span>`;
+        }
+        return `<span class="cell-bool-false">—</span>`;
+      }
+      if (type === "integer" || type === "number") {
+        const formatted = typeof value === "number"
+          ? value.toLocaleString(undefined, { maximumFractionDigits: 6 })
+          : escapeHtml(String(value));
+        return `<span class="cell-num">${formatted}</span>`;
+      }
+      if (type === "date" || type === "datetime" || type === "timedelta") {
+        return `<span title="${escapeHtml(String(value))}">${escapeHtml(String(value))}</span>`;
+      }
+      const str = String(value);
+      if (str.length > 80) {
+        return `<span title="${escapeHtml(str)}">${escapeHtml(str.slice(0, 80))}…</span>`;
+      }
+      return escapeHtml(str);
+    }
+
+    // Build a simple table HTML (shared by both modes)
+    function buildTable(columns, rows) {
+      if (!Array.isArray(columns) || columns.length === 0) return "";
+      const headerCells = columns
+        .map(col => `<th class="th-cell" title="${escapeHtml(col.name)} (${escapeHtml(col.type ?? 'unknown')})">${escapeHtml(col.name)}</th>`)
+        .join("");
+      const dataRows = rows.map(row => {
+        if (!Array.isArray(row)) return "";
+        const cells = columns.map((col, i) => {
+          return `<td class="td-cell">${renderCell(row[i], col.type ?? "unknown")}</td>`;
+        }).join("");
+        return `<tr class="tr-row">${cells}</tr>`;
+      }).join("");
+      return `
+        <div class="table-wrap">
+          <table class="result-table">
+            <thead><tr>${headerCells}</tr></thead>
+            <tbody>${dataRows}</tbody>
+          </table>
+        </div>`;
+    }
+
+    // ── Join diff mode rendering ──────────────────────────────────────────
+    // State for filter (only used in join diff mode)
+    let _diffRows = [];     // full list of {row, status} after parsing
+    let _diffCols = [];     // columns (excluding in_a / in_b)
+    let _activeFilter = "all";
+
+    function renderDiffMode(data) {
+      const root = document.getElementById("root");
+      const diff = data.diff;
+      const sqlTemplate = data.sql_template ?? "";
+
+      const allCols = diff.columns ?? [];
+      // Identify in_a / in_b column indices and remove them from display
+      const inAIdx = allCols.findIndex(c => c.key === "in_a" || c.name === "in_a");
+      const inBIdx = allCols.findIndex(c => c.key === "in_b" || c.name === "in_b");
+      _diffCols = allCols.filter(c => c.name !== "in_a" && c.name !== "in_b");
+      const displayColIndices = allCols.map((_, i) => i).filter(i => i !== inAIdx && i !== inBIdx);
+
+      // Parse rows and classify status
+      _diffRows = (diff.data ?? []).map(row => {
+        const inA = inAIdx >= 0 ? (row[inAIdx] === true || row[inAIdx] === "true" || row[inAIdx] === 1) : false;
+        const inB = inBIdx >= 0 ? (row[inBIdx] === true || row[inBIdx] === "true" || row[inBIdx] === 1) : false;
+        // in_a=true, in_b=false → only in base → "removed"
+        // in_a=false, in_b=true → only in current → "added"
+        // Both true should not appear (diff only includes different rows) but guard anyway
+        const status = (!inB) ? "removed" : "added";
+        const displayRow = displayColIndices.map(i => row[i]);
+        return { row: displayRow, status };
+      });
+
+      const removedCount = _diffRows.filter(r => r.status === "removed").length;
+      const addedCount   = _diffRows.filter(r => r.status === "added").length;
+      const totalDiff    = _diffRows.length;
+      const more = !!diff.more;
+      const limit = diff.limit ?? null;
+
+      // ── Header
+      const warningHtml = data.warning
+        ? `<div class="warning-bar">&#9888; ${escapeHtml(data.warning)}</div>`
+        : "";
+
+      const modeBadge = `<span class="header-badge">Join diff</span>`;
+      const header = `
+        <div class="header">
+          <span class="header-icon">&#9707;</span>
+          <span class="header-title">Query diff</span>
+          ${modeBadge}
+        </div>
+        ${warningHtml}`;
+
+      if (totalDiff === 0) {
+        const sqlHint = sqlTemplate
+          ? `<code class="sql-block">${escapeHtml(sqlTemplate)}</code>`
+          : "";
+        root.innerHTML = header + `
+          <div class="empty-card">
+            <div class="empty-icon">&#10003;</div>
+            <div class="empty-title">No differences found</div>
+            <div class="empty-hint">Base and current results are identical. ${sqlHint}</div>
+          </div>`;
+        return;
+      }
+
+      // ── Summary bar
+      const truncatedBadge = more ? `<span class="badge-truncated">Truncated to ${limit ?? totalDiff} rows</span>` : "";
+      const summaryBar = `
+        <div class="summary-bar">
+          <span>${totalDiff} differing row${totalDiff !== 1 ? "s" : ""}</span>
+          ${truncatedBadge}
+        </div>`;
+
+      // ── Filter bar
+      const filterBar = `
+        <div class="filter-bar" id="filterBar">
+          <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">All <span style="font-weight:700;margin-left:3px">${totalDiff}</span></button>
+          <button class="filter-btn" data-filter="removed" onclick="setFilter('removed')" style="color:#b91c1c">
+            Removed <span style="font-weight:700;margin-left:3px">${removedCount}</span>
+          </button>
+          <button class="filter-btn" data-filter="added" onclick="setFilter('added')" style="color:#15803d">
+            Added <span style="font-weight:700;margin-left:3px">${addedCount}</span>
+          </button>
+        </div>`;
+
+      // ── Table area placeholder (filled by renderDiffTable)
+      root.innerHTML = header + summaryBar + filterBar + `<div id="diffTable"></div>`;
+
+      // Expose filter function globally for onclick handler
+      window.setFilter = (f) => {
+        _activeFilter = f;
+        document.querySelectorAll(".filter-btn").forEach(btn => {
+          btn.classList.toggle("active", btn.dataset.filter === f);
+        });
+        renderDiffTable();
+      };
+
+      renderDiffTable();
+    }
+
+    function renderDiffTable() {
+      const container = document.getElementById("diffTable");
+      if (!container) return;
+
+      const filtered = _activeFilter === "all"
+        ? _diffRows
+        : _diffRows.filter(r => r.status === _activeFilter);
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="empty-card" style="padding:16px 24px">
+            <div class="empty-title">No ${_activeFilter} rows</div>
+          </div>`;
+        return;
+      }
+
+      const headerCells = [
+        `<th class="th-cell th-status">Status</th>`,
+        ..._diffCols.map(col =>
+          `<th class="th-cell" title="${escapeHtml(col.name)} (${escapeHtml(col.type ?? 'unknown')})">${escapeHtml(col.name)}</th>`
+        ),
+      ].join("");
+
+      const dataRows = filtered.map(({ row, status }) => {
+        const trClass = status === "removed" ? "tr-row tr-removed" : "tr-row tr-added";
+        const pill = status === "removed"
+          ? `<span class="status-pill status-pill-removed">&#8722; Removed</span>`
+          : `<span class="status-pill status-pill-added">&#43; Added</span>`;
+        const statusCell = `<td class="td-cell">${pill}</td>`;
+        const dataCells = _diffCols.map((col, i) => {
+          return `<td class="td-cell">${renderCell(row[i], col.type ?? "unknown")}</td>`;
+        }).join("");
+        return `<tr class="${trClass}">${statusCell}${dataCells}</tr>`;
+      }).join("");
+
+      container.innerHTML = `
+        <div class="table-wrap">
+          <table class="result-table">
+            <thead><tr>${headerCells}</tr></thead>
+            <tbody>${dataRows}</tbody>
+          </table>
+        </div>`;
+    }
+
+    // ── Side-by-side mode rendering ───────────────────────────────────────
+    function renderSideBySideMode(data) {
+      const root = document.getElementById("root");
+      const base = data.base;
+      const current = data.current;
+      const sqlTemplate = data.sql_template ?? "";
+
+      const warningHtml = data.warning
+        ? `<div class="warning-bar">&#9888; ${escapeHtml(data.warning)}</div>`
+        : "";
+
+      const baseCols = base?.columns ?? [];
+      const baseRows = base?.data ?? [];
+      const currCols = current?.columns ?? [];
+      const currRows = current?.data ?? [];
+      const baseMore = !!(base?.more);
+      const currMore = !!(current?.more);
+
+      const baseN = baseRows.length;
+      const currN = currRows.length;
+
+      const modeBadge = `<span class="header-badge">Side-by-side</span>`;
+      const header = `
+        <div class="header">
+          <span class="header-icon">&#9707;</span>
+          <span class="header-title">Query diff</span>
+          ${modeBadge}
+        </div>
+        ${warningHtml}`;
+
+      // Empty state: both sides have no rows
+      if (baseN === 0 && currN === 0) {
+        const sqlHint = sqlTemplate
+          ? `<code class="sql-block">${escapeHtml(sqlTemplate)}</code>`
+          : "";
+        root.innerHTML = header + `
+          <div class="empty-card">
+            <div class="empty-icon">&#128203;</div>
+            <div class="empty-title">No data to compare</div>
+            <div class="empty-hint">Both environments returned 0 rows. ${sqlHint}</div>
+          </div>`;
+        return;
+      }
+
+      // Summary bar
+      const baseTotal = base?.total_row_count ?? null;
+      const currTotal = current?.total_row_count ?? null;
+      let summaryText = `Base: ${baseN} row${baseN !== 1 ? "s" : ""}`;
+      if (baseTotal !== null && baseTotal > baseN) summaryText += ` of ${baseTotal.toLocaleString()}`;
+      summaryText += `. Current: ${currN} row${currN !== 1 ? "s" : ""}`;
+      if (currTotal !== null && currTotal > currN) summaryText += ` of ${currTotal.toLocaleString()}`;
+      summaryText += ".";
+
+      const truncatedBadges = [
+        baseMore ? `<span class="badge-truncated">Base truncated to ${base.limit ?? baseN}</span>` : "",
+        currMore ? `<span class="badge-truncated">Current truncated to ${current.limit ?? currN}</span>` : "",
+      ].join(" ");
+
+      const summaryBar = `
+        <div class="summary-bar">
+          <span>${summaryText}</span>
+          ${truncatedBadges}
+        </div>`;
+
+      const baseTable = buildTable(baseCols, baseRows);
+      const currTable = buildTable(currCols, currRows);
+
+      const sbs = `
+        <div class="side-by-side">
+          <div class="side-pane">
+            <div class="side-label base">Base</div>
+            ${baseTable || '<div class="empty-card" style="padding:12px"><div class="empty-hint">No data</div></div>'}
+          </div>
+          <div class="side-pane">
+            <div class="side-label curr">Current</div>
+            ${currTable || '<div class="empty-card" style="padding:12px"><div class="empty-hint">No data</div></div>'}
+          </div>
+        </div>`;
+
+      root.innerHTML = header + summaryBar + sbs;
+    }
+
+    // ── Main render ──────────────────────────────────────────────────────
+    function render(data) {
+      const root = document.getElementById("root");
+
+      if (!data || typeof data !== "object") {
+        root.innerHTML = `
+          <div class="error-card">
+            <div class="error-title">Widget data unavailable</div>
+            <div class="error-hint">No structured content received from the tool.</div>
+          </div>`;
+        return;
+      }
+
+      // Determine which shape we received
+      if (data.diff && typeof data.diff === "object") {
+        // Join diff mode — diff DataFrame present
+        renderDiffMode(data);
+      } else if (data.base || data.current) {
+        // Side-by-side mode
+        renderSideBySideMode(data);
+      } else {
+        // Neither present — show empty state
+        const sqlTemplate = data.sql_template ?? "";
+        const sqlHint = sqlTemplate
+          ? `<code class="sql-block">${escapeHtml(sqlTemplate)}</code>`
+          : "";
+        root.innerHTML = `
+          <div class="header">
+            <span class="header-icon">&#9707;</span>
+            <span class="header-title">Query diff</span>
+          </div>
+          <div class="empty-card">
+            <div class="empty-icon">&#128203;</div>
+            <div class="empty-title">No data to compare</div>
+            <div class="empty-hint">The query returned no results in either environment. ${sqlHint}</div>
+          </div>`;
+      }
+    }
+  </script>
+</body>
+</html>

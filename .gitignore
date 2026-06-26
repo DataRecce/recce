@@ -16,14 +16,27 @@ build
 .noai
 .DS_Store
 
+# Test / runtime artifacts (dbt run logs, hypothesis example cache).
+# `logs/` (no leading slash) matches dbt log dirs at any depth,
+# e.g. ./logs and integration_tests/dbt/logs.
+logs/
+.hypothesis/
+
 # Dependabot CLI output
 deps-*.yml
 
 recce.yml
 STATUS.md
 
-# Ignore build artifacts from frontend
-recce/data
+# Ignore the embedded frontend build output under recce/data/, EXCEPT
+# recce/data/mcp/*.html which are tracked SOURCE files (hand-authored widget HTML
+# for MCP Apps). Ignore the directory contents, then re-include the mcp/ source
+# subdir via negation. This catches nested build output (e.g.
+# recce/data/lineage/index.html) that a flat per-extension allowlist would miss.
+recce/data/**
+!recce/data/.gitkeep
+!recce/data/mcp/
+!recce/data/mcp/**
 
 # ignore Claude logs and plans at any nesting
 **/docs/plans/**/*.md
@@ -45,3 +58,4 @@ output/*
 
 .env*
 !.env.example
+.gbrain-source

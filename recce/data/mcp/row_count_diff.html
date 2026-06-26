@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Row Count Diff</title>
+  <style>
+    /* ── Base reset + design tokens ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+      font-size: 13px;
+      margin: 0;
+      padding: 12px 16px 20px;
+      color: var(--color-text-primary, #1a1a1a);
+      background: var(--color-background-primary, #ffffff);
+      line-height: 1.4;
+    }
+    /* Light-mode hardcoded fallbacks are inline above.
+       Dark-mode fallback for non-Claude hosts (OS preference respected):
+       This block must be exhaustive — covers all classes using color:/background:
+       so the widget renders correctly when SDK helpers don't fire. */
+    @media (prefers-color-scheme: dark) {
+      /* ── Base ── */
+      body {
+        color: var(--color-text-primary, #e5e7eb);
+        background: var(--color-background-primary, #1a1a1a);
+      }
+      /* ── Header ── */
+      .header-icon  { color: var(--color-text-secondary, #9ca3af) !important; }
+      .header-title { color: var(--color-text-primary, #e5e7eb) !important; }
+      .header-count { color: var(--color-text-secondary, #9ca3af) !important; }
+      /* ── Summary cards ── */
+      .card         { background: var(--color-background-secondary, #27272a) !important; }
+      .card-label   { color: var(--color-text-secondary, #9ca3af) !important; }
+      .card-value   { color: var(--color-text-primary, #e5e7eb) !important; }
+      /* Semantic card-value states: keep vivid enough on dark */
+      .card-value.warning { color: var(--color-text-warning, #fbbf24) !important; }
+      .card-value.info    { color: var(--color-text-info, #60a5fa) !important; }
+      .card-value.success { color: var(--color-text-success, #34d399) !important; }
+      /* ── Table ── */
+      th      { background: var(--color-background-secondary, #27272a) !important;
+                color: var(--color-text-secondary, #9ca3af) !important; }
+      td, th  { border-color: var(--color-border-tertiary, #3f3f46) !important; }
+      /* ── Model name cell — explicit color prevents any inherited orange tint ── */
+      td.model-name { color: var(--color-text-primary, #e5e7eb) !important;
+                      background: transparent !important; }
+      /* ── Diff deltas ── */
+      .diff-pos { color: var(--color-text-warning, #fbbf24) !important; }
+      .diff-neg { color: var(--color-text-danger, #f87171) !important; }
+      .diff-pct { color: var(--color-text-tertiary, #6b7280) !important; }
+      /* ── N/A / misc ── */
+      .na          { color: var(--color-text-tertiary, #6b7280) !important; }
+      .empty       { color: var(--color-text-secondary, #9ca3af) !important; }
+      .warning-msg { color: var(--color-text-secondary, #9ca3af) !important; }
+      /* ── Status badges — light pastels are too bright on dark; flip to dark bg + light text ── */
+      .badge-warning   { background: var(--color-background-warning, #78350f) !important;
+                         color: var(--color-text-warning, #fde68a) !important; }
+      .badge-success   { background: var(--color-background-success, #064e3b) !important;
+                         color: var(--color-text-success, #6ee7b7) !important; }
+      .badge-info      { background: var(--color-background-info, #1e3a8a) !important;
+                         color: var(--color-text-info, #93c5fd) !important; }
+      .badge-secondary { background: var(--color-background-secondary, #3f3f46) !important;
+                         color: var(--color-text-secondary, #9ca3af) !important; }
+      .badge-danger    { background: var(--color-background-danger, #7f1d1d) !important;
+                         color: var(--color-text-danger, #fca5a5) !important; }
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0 12px;
+      margin-bottom: 4px;
+    }
+    .header-icon {
+      font-size: 18px;
+      line-height: 1;
+      color: var(--color-text-secondary, #6b7280);
+    }
+    .header-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-text-primary, #1a1a1a);
+    }
+    .header-count {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--color-text-secondary, #6b7280);
+    }
+
+    /* ── Summary cards ──────────────────────────────────────────────── */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .card {
+      background: var(--color-background-secondary, #f9fafb);
+      border-radius: var(--border-radius-md, 8px);
+      padding: 10px 14px;
+    }
+    .card-label {
+      font-size: 11px;
+      color: var(--color-text-secondary, #6b7280);
+      margin-bottom: 4px;
+    }
+    .card-value {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--color-text-primary, #1a1a1a);
+    }
+    .card-value.warning { color: var(--color-text-warning, #d97706); }
+    .card-value.info    { color: var(--color-text-info, #2563eb); }
+    .card-value.success { color: var(--color-text-success, #059669); }
+
+    /* ── Table ──────────────────────────────────────────────────────── */
+    table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    th {
+      text-align: left;
+      padding: 7px 10px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--color-text-secondary, #6b7280);
+      background: var(--color-background-secondary, #f9fafb);
+      border-bottom: 1px solid var(--color-border-tertiary, #e5e7eb);
+    }
+    td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--color-border-tertiary, #e5e7eb);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    td.model-name {
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+      font-size: 12px;
+      color: var(--color-text-primary, #1a1a1a);
+      max-width: 240px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .diff-pos { color: var(--color-text-warning, #d97706); font-weight: 500; }
+    .diff-neg { color: var(--color-text-danger, #dc2626); font-weight: 500; }
+    .diff-pct { font-size: 11px; color: var(--color-text-tertiary, #9ca3af); margin-left: 4px; }
+    .na { color: var(--color-text-tertiary, #9ca3af); font-style: italic; }
+
+    /* ── Status badges ──────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: var(--border-radius-sm, 4px);
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .badge-warning {
+      background: var(--color-background-warning, #fef3c7);
+      color: var(--color-text-warning, #92400e);
+    }
+    .badge-success {
+      background: var(--color-background-success, #d1fae5);
+      color: var(--color-text-success, #065f46);
+    }
+    .badge-info {
+      background: var(--color-background-info, #dbeafe);
+      color: var(--color-text-info, #1e40af);
+    }
+    .badge-secondary {
+      background: var(--color-background-secondary, #f3f4f6);
+      color: var(--color-text-secondary, #6b7280);
+    }
+    .badge-danger {
+      background: var(--color-background-danger, #fee2e2);
+      color: var(--color-text-danger, #991b1b);
+    }
+
+    /* ── Misc ───────────────────────────────────────────────────────── */
+    .empty   { color: var(--color-text-secondary, #6b7280); padding: 16px 0; }
+    .warning-msg {
+      color: var(--color-text-secondary, #6b7280);
+      font-style: italic;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+    #root { min-height: 40px; }
+  </style>
+</head>
+<body>
+  <div id="root">Loading…</div>
+  <script type="module">
+    import {
+      App,
+      applyDocumentTheme,
+      applyHostStyleVariables,
+      applyHostFonts,
+    } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+
+    const app = new App({ name: "Recce Row Count Diff", version: "1.0.0" });
+
+    // Apply host theme on every context change (theme switch, font change, etc.)
+    app.onhostcontextchanged = (ctx) => {
+      if (ctx.theme) applyDocumentTheme(ctx.theme);
+      if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+      if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
+    };
+
+    app.ontoolresult = ({ structuredContent }) => {
+      render(structuredContent ?? {});
+    };
+
+    app.onteardown = async () => {
+      return {};
+    };
+
+    await app.connect();
+
+    // Apply theme from initial host context if available before first change event
+    const initialCtx = app.getHostContext?.();
+    if (initialCtx) {
+      if (initialCtx.theme) applyDocumentTheme(initialCtx.theme);
+      if (initialCtx.styles?.variables) applyHostStyleVariables(initialCtx.styles.variables);
+      if (initialCtx.styles?.css?.fonts) applyHostFonts(initialCtx.styles.css.fonts);
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+    }
+
+    function formatNa(meta) {
+      const status = meta?.status ?? "unknown";
+      return `<span class="na">N/A (${escapeHtml(status)})</span>`;
+    }
+
+    function formatDiff(base, curr) {
+      // CRITICAL: === null (not !value) — 0 is a valid row count
+      if (base === null || curr === null) return `<span class="na">—</span>`;
+      const d = curr - base;
+      if (d === 0) return `<span style="color:var(--color-text-secondary,#6b7280)">0</span>`;
+      const sign = d > 0 ? "+" : "";
+      const pct = base === 0 ? "∞" : `${Math.abs(d / base * 100).toFixed(1)}%`;
+      const cls = d > 0 ? "diff-pos" : "diff-neg";
+      return `<span class="${cls}">${sign}${d.toLocaleString()}</span><span class="diff-pct">(${sign}${pct})</span>`;
+    }
+
+    function getBadge(name, m) {
+      const bs = m.base_meta?.status;
+      const cs = m.curr_meta?.status;
+      // CRITICAL: === null (not !value)
+      const b = m.base;
+      const c = m.curr;
+
+      if (bs === "unsupported_resource_type" || cs === "unsupported_resource_type") {
+        return `<span class="badge badge-secondary">&#9711; Seed (unsupported)</span>`;
+      }
+      if (bs === "not_in_manifest" && cs === "ok") {
+        return `<span class="badge badge-info">&#43; New model</span>`;
+      }
+      if (cs === "not_in_manifest") {
+        return `<span class="badge badge-secondary">&#9651; Not in current</span>`;
+      }
+      if (bs === "not_in_manifest") {
+        return `<span class="badge badge-secondary">&#9651; Not in base</span>`;
+      }
+      if (bs !== "ok" || cs !== "ok") {
+        return `<span class="badge badge-danger">&#9888; ${escapeHtml(cs || bs || "error")}</span>`;
+      }
+      // Both ok
+      if (b === null || c === null) return `<span class="badge badge-secondary">&#8212; N/A</span>`;
+      if (b === c) return `<span class="badge badge-success">&#10003; Unchanged</span>`;
+      return `<span class="badge badge-warning">&#8593; Row count changed</span>`;
+    }
+
+    function render(data) {
+      const models = data.models ?? {};
+      const warning = data.warning ?? null;
+      const entries = Object.entries(models);
+
+      if (entries.length === 0) {
+        document.getElementById("root").innerHTML =
+          `<div class="header"><span class="header-icon">&#9783;</span><span class="header-title">Row count diff</span></div><p class="empty">No models found.</p>`;
+        return;
+      }
+
+      // Summary counts
+      let changed = 0, newModels = 0, unchanged = 0;
+      for (const [, m] of entries) {
+        const bs = m.base_meta?.status;
+        const cs = m.curr_meta?.status;
+        if (bs === "not_in_manifest" && cs === "ok") { newModels++; continue; }
+        if (bs === "ok" && cs === "ok") {
+          if (m.base === m.curr) unchanged++;
+          else changed++;
+        }
+      }
+      const total = entries.length;
+
+      const warningHtml = warning
+        ? `<div class="warning-msg">&#9888; ${escapeHtml(warning)}</div>` : '';
+
+      const rows = entries.map(([name, m]) => {
+        // CRITICAL: === null (not !value) — 0 is a valid row count
+        const baseStr = m.base === null ? formatNa(m.base_meta) : m.base.toLocaleString();
+        const currStr = m.curr === null ? formatNa(m.curr_meta) : m.curr.toLocaleString();
+        const diffStr = formatDiff(m.base, m.curr);
+        const badge = getBadge(name, m);
+        return `<tr>
+          <td class="model-name">${escapeHtml(name)}</td>
+          <td class="num">${baseStr}</td>
+          <td class="num">${currStr}</td>
+          <td class="num">${diffStr}</td>
+          <td>${badge}</td>
+        </tr>`;
+      });
+
+      document.getElementById("root").innerHTML = `
+        <div class="header">
+          <span class="header-icon">&#9783;</span>
+          <span class="header-title">Row count diff</span>
+          <span class="header-count">${total} model${total !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="cards">
+          <div class="card">
+            <div class="card-label">Models compared</div>
+            <div class="card-value">${total}</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Changed</div>
+            <div class="card-value${changed > 0 ? ' warning' : ''}">${changed}</div>
+          </div>
+          <div class="card">
+            <div class="card-label">New in current</div>
+            <div class="card-value${newModels > 0 ? ' info' : ''}">${newModels}</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Unchanged</div>
+            <div class="card-value${unchanged > 0 ? ' success' : ''}">${unchanged}</div>
+          </div>
+        </div>
+        ${warningHtml}
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th style="text-align:right">Base rows</th>
+                <th style="text-align:right">Current rows</th>
+                <th style="text-align:right">Delta</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>${rows.join("")}</tbody>
+          </table>
+        </div>`;
+    }
+  </script>
+</body>
+</html>

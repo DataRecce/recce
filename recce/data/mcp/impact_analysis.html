@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Impact Analysis</title>
+  <style>
+    /* ── Base reset + design tokens ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+      font-size: 13px;
+      margin: 0;
+      padding: 12px 16px 20px;
+      color: var(--color-text-primary, #1a1a1a);
+      background: var(--color-background-primary, #ffffff);
+      line-height: 1.4;
+    }
+
+    /* ── Dark-mode fallback ─────────────────────────────────────────── */
+    @media (prefers-color-scheme: dark) {
+      body {
+        color: var(--color-text-primary, #e5e7eb);
+        background: var(--color-background-primary, #1a1a1a);
+      }
+      .header-title   { color: var(--color-text-primary, #e5e7eb) !important; }
+      .badge          { background: var(--color-background-secondary, #27272a) !important;
+                        color: var(--color-text-secondary, #9ca3af) !important; }
+      .summary-bar    { background: var(--color-background-secondary, #27272a) !important;
+                        border-color: var(--color-border-primary, #3f3f46) !important; }
+      .summary-text   { color: var(--color-text-secondary, #9ca3af) !important; }
+      .summary-text strong { color: var(--color-text-primary, #e5e7eb) !important; }
+      .warning-bar    { background: #78350f !important; color: #fde68a !important;
+                        border-color: #92400e !important; }
+      .error-bar      { background: #7f1d1d !important; color: #fca5a5 !important;
+                        border-color: #991b1b !important; }
+      .dag-wrap       { border-color: var(--color-border-primary, #3f3f46) !important;
+                        background: var(--color-background-secondary, #18181b) !important; }
+      .node-card rect.card-bg   { stroke: var(--color-border-primary, #3f3f46) !important; }
+      .node-card .card-bg       { fill: var(--color-background-secondary, #27272a) !important; }
+      .node-card .header-bg     { fill: var(--color-background-primary, #18181b) !important; }
+      .node-card .node-name-txt { fill: var(--color-text-secondary, #9ca3af) !important; }
+      .node-card .metric-txt    { fill: var(--color-text-secondary, #9ca3af) !important; }
+      .node-card .action-txt    { fill: var(--color-text-secondary, #6b7280) !important; }
+      .edge-path      { stroke: var(--color-border-primary, #4b5563) !important; }
+      .layer-label    { fill: var(--color-text-secondary, #6b7280) !important; }
+      .bail-card      { background: var(--color-background-secondary, #27272a) !important;
+                        border-color: var(--color-border-primary, #3f3f46) !important; }
+      .bail-title     { color: var(--color-text-primary, #e5e7eb) !important; }
+      .bail-list li   { color: var(--color-text-secondary, #9ca3af) !important; }
+      .bail-hint      { color: var(--color-text-secondary, #6b7280) !important; }
+      .empty-card     { background: var(--color-background-secondary, #27272a) !important; }
+      .empty-title    { color: var(--color-text-primary, #e5e7eb) !important; }
+      .empty-hint     { color: var(--color-text-secondary, #9ca3af) !important; }
+      .error-card     { background: var(--color-background-secondary, #27272a) !important; }
+      .error-title    { color: var(--color-danger, #f87171) !important; }
+      .action-section { border-color: var(--color-border-primary, #3f3f46) !important; }
+      .action-group-title { color: var(--color-text-secondary, #9ca3af) !important;
+                            border-color: var(--color-border-primary, #3f3f46) !important; }
+      .action-item    { background: var(--color-background-secondary, #27272a) !important;
+                        border-color: var(--color-border-primary, #3f3f46) !important; }
+      .action-model   { color: var(--color-text-primary, #e5e7eb) !important; }
+      .action-tool    { color: var(--color-text-secondary, #9ca3af) !important; }
+      .action-reason  { color: var(--color-text-secondary, #6b7280) !important; }
+    }
+
+    /* ── Header ──────────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .header-icon  { font-size: 16px; }
+    .header-title { font-size: 14px; font-weight: 600;
+                    color: var(--color-text-primary, #1a1a1a); flex: 1; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 10px;
+      background: var(--color-background-secondary, #f4f4f5);
+      color: var(--color-text-secondary, #52525b);
+    }
+
+    /* ── Summary bar ─────────────────────────────────────────────────── */
+    .summary-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      background: var(--color-background-secondary, #f4f4f5);
+      border: 1px solid var(--color-border-primary, #e4e4e7);
+      border-radius: 6px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .summary-text { font-size: 12px; color: var(--color-text-secondary, #52525b); }
+    .summary-text strong { color: var(--color-text-primary, #1a1a1a); }
+    .summary-sep  { color: var(--color-border-primary, #d4d4d8); }
+
+    /* ── Impact status chips ─────────────────────────────────────────── */
+    .chip {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 3px;
+      vertical-align: middle;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .chip-confirmed { background: #fef3c7; color: #92400e; }
+    .chip-potential { background: #dbeafe; color: #1e40af; }
+    .chip-none      { background: #dcfce7; color: #166534; }
+    .chip-unknown   { background: var(--color-background-secondary, #f4f4f5);
+                      color: var(--color-text-secondary, #71717a); }
+
+    /* ── Warning / error bars ────────────────────────────────────────── */
+    .warning-bar {
+      padding: 6px 10px;
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      font-style: italic;
+      color: #92400e;
+    }
+    .error-bar {
+      padding: 6px 10px;
+      background: #fee2e2;
+      border: 1px solid #f87171;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      color: #991b1b;
+    }
+
+    /* ── DAG viewport ────────────────────────────────────────────────── */
+    .dag-wrap {
+      overflow-x: auto;
+      overflow-y: hidden;
+      border: 1px solid var(--color-border-primary, #e4e4e7);
+      border-radius: 8px;
+      background: var(--color-background-secondary, #fafafa);
+      padding: 8px;
+      margin-bottom: 14px;
+    }
+    .dag-svg { display: block; }
+
+    /* ── SVG node elements ───────────────────────────────────────────── */
+    .node-card .card-bg   { fill: var(--color-background-primary, #ffffff);
+                             stroke: var(--color-border-primary, #d4d4d8); stroke-width: 1; }
+    .node-card .header-bg { fill: var(--color-background-secondary, #f4f4f5); }
+    .node-card .node-name-txt { font-size: 11px; font-weight: 600;
+                                 fill: var(--color-text-secondary, #52525b); }
+    .node-card .change-tag { font-size: 9px; fill: var(--color-text-secondary, #a1a1aa); }
+    .node-card .metric-txt { font-size: 10px; fill: var(--color-text-secondary, #71717a); }
+    .node-card .action-txt { font-size: 9px; fill: var(--color-text-secondary, #9ca3af); }
+    .edge-path { fill: none; stroke: var(--color-border-primary, #94a3b8);
+                  stroke-width: 1.5; opacity: 0.65; }
+    .layer-label { font-size: 9px; fill: var(--color-text-secondary, #9ca3af); font-style: italic; }
+
+    /* ── Bail-out card ───────────────────────────────────────────────── */
+    .bail-card {
+      padding: 14px 16px;
+      background: var(--color-background-secondary, #f4f4f5);
+      border: 1px solid var(--color-border-primary, #e4e4e7);
+      border-radius: 8px;
+      margin-bottom: 14px;
+    }
+    .bail-title { font-size: 13px; font-weight: 600;
+                  color: var(--color-text-primary, #1a1a1a); margin-bottom: 8px; }
+    .bail-list  { margin: 0 0 8px 16px; padding: 0; font-size: 12px;
+                  color: var(--color-text-secondary, #52525b); list-style: disc; }
+    .bail-list li { margin-bottom: 3px; }
+    .bail-hint  { font-size: 11px; font-style: italic;
+                  color: var(--color-text-secondary, #9ca3af); }
+
+    /* ── Empty / error states ────────────────────────────────────────── */
+    .empty-card {
+      padding: 24px;
+      background: var(--color-background-secondary, #f4f4f5);
+      border-radius: 8px;
+      text-align: center;
+    }
+    .empty-title { font-weight: 600; margin-bottom: 4px; }
+    .empty-hint  { font-size: 12px; color: var(--color-text-secondary, #6b7280); }
+    .error-card  { padding: 16px; border-radius: 8px;
+                   border: 1px solid var(--color-danger, #f87171);
+                   background: var(--color-background-secondary, #f4f4f5); }
+    .error-title { font-weight: 600; color: var(--color-danger, #dc2626); margin-bottom: 4px; }
+
+    /* ── Actionable next-steps section ──────────────────────────────── */
+    .action-section {
+      border-top: 1px solid var(--color-border-primary, #e4e4e7);
+      padding-top: 12px;
+      margin-top: 2px;
+    }
+    .action-section-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--color-text-primary, #1a1a1a);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .action-group-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-text-secondary, #71717a);
+      border-bottom: 1px solid var(--color-border-primary, #e4e4e7);
+      padding-bottom: 4px;
+      margin-bottom: 6px;
+    }
+    .action-group { margin-bottom: 12px; }
+    .action-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 7px 10px;
+      background: var(--color-background-secondary, #f9f9f9);
+      border: 1px solid var(--color-border-primary, #e4e4e7);
+      border-radius: 6px;
+      margin-bottom: 5px;
+    }
+    .action-item-row { display: flex; align-items: center; gap: 6px; }
+    .action-model {
+      font-family: var(--font-mono, ui-monospace, monospace);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--color-text-primary, #1a1a1a);
+    }
+    .action-tool {
+      font-family: var(--font-mono, ui-monospace, monospace);
+      font-size: 10px;
+      color: var(--color-text-secondary, #6b7280);
+      background: var(--color-background-primary, #ffffff);
+      border: 1px solid var(--color-border-primary, #e4e4e7);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+    .action-reason {
+      font-size: 11px;
+      color: var(--color-text-secondary, #71717a);
+      font-style: italic;
+    }
+    .action-cols {
+      font-size: 10px;
+      color: var(--color-text-secondary, #9ca3af);
+      font-family: var(--font-mono, ui-monospace, monospace);
+    }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="empty-card">
+      <div class="empty-title">Loading impact analysis…</div>
+      <div class="empty-hint">Waiting for results.</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      App,
+      applyDocumentTheme,
+      applyHostStyleVariables,
+      applyHostFonts,
+    } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+
+    const app = new App({ name: "Impact Analysis", version: "1.0.0" });
+
+    app.onhostcontextchanged = (ctx) => {
+      if (ctx.theme)             applyDocumentTheme(ctx.theme);
+      if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+      if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
+    };
+
+    app.onteardown = async () => { return {}; };
+
+    // ── Constants ────────────────────────────────────────────────────
+    const BAIL_MAX_NODES = 15;
+
+    // Card layout constants
+    const CARD_W        = 230;   // model card width
+    const CARD_HEADER_H = 34;    // header height (name + change tag)
+    const CARD_BODY_H   = 44;    // body height (metric row + action hint)
+    const LAYER_GAP_X   = 80;    // horizontal gap between layers
+    const NODE_GAP_Y    = 16;    // vertical gap between cards in same layer
+    const SVG_PAD_X     = 20;
+    const SVG_PAD_Y     = 28;    // top padding for layer labels
+
+    const CARD_H = CARD_HEADER_H + CARD_BODY_H;  // total card height
+
+    // ── Helpers ──────────────────────────────────────────────────────
+
+    function escapeHtml(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+    }
+
+    function svgEl(tag, attrs = {}) {
+      const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+      return el;
+    }
+
+    function shortName(s, max = 26) {
+      if (!s) return "—";
+      return s.length > max ? s.slice(0, max - 1) + "…" : s;
+    }
+
+    function fmt(n) {
+      if (n == null) return null;
+      return n >= 1000 ? (n / 1000).toFixed(1) + "k" : String(n);
+    }
+
+    function fmtPct(p) {
+      if (p == null) return null;
+      const s = (p > 0 ? "+" : "") + p.toFixed(1) + "%";
+      return s;
+    }
+
+    // ── Impact chip color (SVG fill) ─────────────────────────────────
+    function chipColor(impact) {
+      switch (impact) {
+        case "confirmed": return { fill: "#fef3c7", text: "#92400e", label: "CONFIRMED" };
+        case "potential": return { fill: "#dbeafe", text: "#1e40af", label: "POTENTIAL" };
+        case "none":      return { fill: "#dcfce7", text: "#166534", label: "CLEAN" };
+        default:          return { fill: "#f4f4f5", text: "#71717a", label: "UNKNOWN" };
+      }
+    }
+
+    // ── Build model name → position map using BFS layer assignment ───
+    //
+    // We don't have explicit DAG edges in the output, but we can infer
+    // structure: modified models (change_status != null) are roots (layer 0),
+    // downstream models (change_status == null) are layer 1+.
+    // Within layers, order alphabetically by name.
+
+    function assignLayers(models) {
+      const layerOf = {};
+      const byName = {};
+      for (const m of models) byName[m.name] = m;
+
+      // Modified / added / removed = roots (layer 0)
+      // Downstream (change_status null) = layer 1
+      // We do a simple 2-layer split since we don't have parent info.
+      for (const m of models) {
+        layerOf[m.name] = m.change_status != null ? 0 : 1;
+      }
+      return layerOf;
+    }
+
+    function computeLayout(models) {
+      const layerOf = assignLayers(models);
+
+      // Group by layer
+      const layers = {};
+      for (const [name, layer] of Object.entries(layerOf)) {
+        if (!(layer in layers)) layers[layer] = [];
+        layers[layer].push(name);
+      }
+      for (const layer of Object.values(layers)) {
+        layer.sort();
+      }
+
+      const layerNums = Object.keys(layers).map(Number).sort((a, b) => a - b);
+      const numLayers = layerNums.length;
+
+      const layerX = {};
+      layerNums.forEach((ln, i) => {
+        layerX[ln] = SVG_PAD_X + i * (CARD_W + LAYER_GAP_X);
+      });
+
+      const nodePos = {};
+      let totalH = 0;
+      for (const ln of layerNums) {
+        let yOffset = SVG_PAD_Y;
+        for (const name of layers[ln]) {
+          nodePos[name] = { x: layerX[ln], y: yOffset, w: CARD_W, h: CARD_H };
+          yOffset += CARD_H + NODE_GAP_Y;
+        }
+        totalH = Math.max(totalH, yOffset);
+      }
+
+      const svgW = numLayers > 0
+        ? SVG_PAD_X * 2 + numLayers * CARD_W + (numLayers - 1) * LAYER_GAP_X
+        : 400;
+      const svgH = totalH + SVG_PAD_Y;
+
+      return { nodePos, layerOf, layers, layerNums, layerX, svgW, svgH };
+    }
+
+    // ── Draw a single model card ─────────────────────────────────────
+
+    function buildModelCard(model, pos) {
+      const { x, y, w, h } = pos;
+      const g = svgEl("g", { class: "node-card" });
+
+      // Card background
+      g.appendChild(svgEl("rect", {
+        class: "card-bg",
+        x, y, width: w, height: h,
+        rx: 6, ry: 6,
+      }));
+
+      // Header background
+      g.appendChild(svgEl("rect", {
+        class: "header-bg",
+        x, y, width: w, height: CARD_HEADER_H,
+        rx: 6, ry: 6,
+      }));
+      // Square off bottom corners of header
+      g.appendChild(svgEl("rect", {
+        class: "header-bg",
+        x, y: y + CARD_HEADER_H - 6, width: w, height: 6,
+      }));
+
+      // Model name
+      const nameT = svgEl("text", {
+        class: "node-name-txt",
+        x: x + 10,
+        y: y + CARD_HEADER_H / 2,
+        "dominant-baseline": "middle",
+      });
+      nameT.textContent = shortName(model.name, 24);
+      g.appendChild(nameT);
+
+      // Change status tag (right of header)
+      if (model.change_status) {
+        const tagColor = model.change_status === "added" ? "#22c55e"
+                       : model.change_status === "removed" ? "#ef4444"
+                       : "#f59e0b";
+        const tagT = svgEl("text", {
+          class: "change-tag",
+          x: x + w - 8,
+          y: y + CARD_HEADER_H / 2,
+          "text-anchor": "end",
+          "dominant-baseline": "middle",
+          fill: tagColor,
+          "font-size": "9",
+          "font-weight": "700",
+        });
+        tagT.textContent = (model.change_status || "").toUpperCase();
+        g.appendChild(tagT);
+      }
+
+      // Divider
+      g.appendChild(svgEl("line", {
+        x1: x + 6, y1: y + CARD_HEADER_H,
+        x2: x + w - 6, y2: y + CARD_HEADER_H,
+        stroke: "var(--color-border-primary, #e4e4e7)",
+        "stroke-width": "0.5",
+      }));
+
+      // Impact badge (chip)
+      const chip = chipColor(model.data_impact);
+      const chipW = 70;
+      const chipX = x + 10;
+      const chipY = y + CARD_HEADER_H + 10;
+      g.appendChild(svgEl("rect", {
+        x: chipX, y: chipY - 7,
+        width: chipW, height: 16,
+        rx: 3, fill: chip.fill,
+      }));
+      const chipT = svgEl("text", {
+        x: chipX + chipW / 2,
+        y: chipY + 1,
+        "text-anchor": "middle",
+        "dominant-baseline": "middle",
+        "font-size": "9",
+        "font-weight": "700",
+        fill: chip.text,
+      });
+      chipT.textContent = chip.label;
+      g.appendChild(chipT);
+
+      // Row count delta (if available)
+      const rc = model.row_count;
+      const vd = model.value_diff;
+      let metricText = null;
+      if (vd != null && vd.affected_row_count != null) {
+        metricText = `${vd.affected_row_count.toLocaleString()} rows affected`;
+      } else if (rc && rc.delta != null) {
+        const sign = rc.delta >= 0 ? "+" : "";
+        const pct = rc.delta_pct != null ? ` (${fmtPct(rc.delta_pct)})` : "";
+        metricText = `${sign}${rc.delta.toLocaleString()} rows${pct}`;
+      } else if (rc && rc.current != null) {
+        metricText = `${rc.current.toLocaleString()} rows`;
+      }
+
+      if (metricText) {
+        const metT = svgEl("text", {
+          class: "metric-txt",
+          x: x + chipW + 18,
+          y: chipY + 1,
+          "dominant-baseline": "middle",
+          "font-size": "10",
+        });
+        metT.textContent = metricText.length > 22 ? metricText.slice(0, 21) + "…" : metricText;
+        g.appendChild(metT);
+      }
+
+      // Next-action hint
+      if (model.next_action) {
+        const actionY = y + CARD_HEADER_H + 32;
+        const actionT = svgEl("text", {
+          class: "action-txt",
+          x: x + 10,
+          y: actionY,
+          "dominant-baseline": "middle",
+          "font-size": "9",
+          "font-style": "italic",
+        });
+        const toolLabel = model.next_action.tool || "investigate";
+        actionT.textContent = `→ ${toolLabel}`;
+        g.appendChild(actionT);
+      }
+
+      return g;
+    }
+
+    // ── Draw bezier edges between modified → downstream layers ────────
+
+    function buildEdges(models, nodePos, layerOf) {
+      const edgesGroup = svgEl("g", { class: "edges" });
+      const modifiedNames = models
+        .filter(m => m.change_status != null)
+        .map(m => m.name);
+      const downstreamNames = models
+        .filter(m => m.change_status == null)
+        .map(m => m.name);
+
+      // Draw one edge from each modified model to each downstream model
+      // (simplified: connect each modified node to each downstream node)
+      // For small graphs this works fine; bail-out handles large ones.
+      for (const srcName of modifiedNames) {
+        const srcPos = nodePos[srcName];
+        if (!srcPos) continue;
+        const srcX = srcPos.x + srcPos.w;
+        const srcY = srcPos.y + srcPos.h / 2;
+
+        for (const dstName of downstreamNames) {
+          const dstPos = nodePos[dstName];
+          if (!dstPos) continue;
+          const dstX = dstPos.x;
+          const dstY = dstPos.y + dstPos.h / 2;
+
+          const dx = (dstX - srcX) * 0.45;
+          const d = `M ${srcX} ${srcY} C ${srcX + dx} ${srcY}, ${dstX - dx} ${dstY}, ${dstX} ${dstY}`;
+          edgesGroup.appendChild(svgEl("path", { class: "edge-path", d }));
+        }
+      }
+      return edgesGroup;
+    }
+
+    // ── Layer labels ──────────────────────────────────────────────────
+
+    function buildLayerLabels(layerNums, layerX) {
+      const g = svgEl("g", { class: "layer-labels" });
+      const labels = { 0: "modified", 1: "downstream" };
+      layerNums.forEach(ln => {
+        const t = svgEl("text", {
+          class: "layer-label",
+          x: layerX[ln] + CARD_W / 2,
+          y: 12,
+          "text-anchor": "middle",
+          "dominant-baseline": "middle",
+        });
+        t.textContent = labels[ln] || `layer ${ln}`;
+        g.appendChild(t);
+      });
+      return g;
+    }
+
+    // ── Bail-out card for >15 models ──────────────────────────────────
+
+    function renderBailOut(data) {
+      const models = data.confirmed_impacted_models || [];
+      const byImpact = { confirmed: [], potential: [], none: [], unknown: [] };
+      for (const m of models) {
+        const k = m.data_impact || "unknown";
+        (byImpact[k] || byImpact.unknown).push(m.name);
+      }
+      const rows = [
+        byImpact.confirmed.length > 0
+          ? `<li><span class="chip chip-confirmed">CONFIRMED</span> ${byImpact.confirmed.length} model(s)</li>` : "",
+        byImpact.potential.length > 0
+          ? `<li><span class="chip chip-potential">POTENTIAL</span> ${byImpact.potential.length} model(s)</li>` : "",
+        byImpact.none.length > 0
+          ? `<li><span class="chip chip-none">CLEAN</span> ${byImpact.none.length} model(s)</li>` : "",
+      ].filter(Boolean).join("");
+      return `
+        <div class="bail-card">
+          <div class="bail-title">Graph too large for mini view</div>
+          <p class="summary-text" style="margin: 0 0 8px">
+            <strong>${models.length} models</strong> in blast radius — exceeds the
+            mini-DAG limit (${BAIL_MAX_NODES} models). Showing summary only.
+          </p>
+          <ul class="bail-list">${rows}</ul>
+          <p class="bail-hint">See the "What to investigate next" list below for actionable follow-ups.</p>
+        </div>`;
+    }
+
+    // ── Actionable next-steps list ────────────────────────────────────
+
+    function renderActionList(models) {
+      const withAction = models.filter(m => m.next_action != null);
+      if (withAction.length === 0) return "";
+
+      const groups = { high: [], medium: [], low: [] };
+      for (const m of withAction) {
+        const p = m.next_action.priority || "medium";
+        (groups[p] || groups.medium).push(m);
+      }
+
+      const priorityLabel = { high: "🔴 High priority", medium: "🟡 Medium priority", low: "⚪ Low priority" };
+      const priorityOrder = ["high", "medium", "low"];
+
+      let groupsHtml = "";
+      for (const p of priorityOrder) {
+        if (groups[p].length === 0) continue;
+        const items = groups[p].map(m => {
+          const na = m.next_action;
+          const colsHtml = na.columns && na.columns.length > 0
+            ? `<div class="action-cols">columns: ${escapeHtml(na.columns.slice(0, 5).join(", "))}${na.columns.length > 5 ? "…" : ""}</div>`
+            : "";
+          return `
+            <div class="action-item">
+              <div class="action-item-row">
+                <span class="action-model">${escapeHtml(m.name)}</span>
+                <span class="action-tool">↻ ${escapeHtml(na.tool)}</span>
+              </div>
+              <div class="action-reason">${escapeHtml(na.reason)}</div>
+              ${colsHtml}
+            </div>`;
+        }).join("");
+        groupsHtml += `
+          <div class="action-group">
+            <div class="action-group-title">${priorityLabel[p]}</div>
+            ${items}
+          </div>`;
+      }
+
+      return `
+        <div class="action-section">
+          <div class="action-section-title">🔍 What to investigate next</div>
+          ${groupsHtml}
+        </div>`;
+    }
+
+    // ── Main render ──────────────────────────────────────────────────
+
+    function render(data) {
+      const root = document.getElementById("root");
+      if (!data || typeof data !== "object") {
+        root.innerHTML = `
+          <div class="empty-card">
+            <div class="empty-title">No impact data</div>
+            <div class="empty-hint">No impact_analysis result received.</div>
+          </div>`;
+        return;
+      }
+
+      const {
+        confirmed_impacted_models: impacted = [],
+        confirmed_not_impacted_models: notImpacted = [],
+        max_affected_row_count: maxAffected = 0,
+        errors = [],
+        warning,
+      } = data;
+
+      // Warning bar
+      const warningHtml = warning
+        ? `<div class="warning-bar">⚠ ${escapeHtml(warning)}</div>`
+        : "";
+
+      // Error bar (non-fatal step errors)
+      const errorsHtml = errors.length > 0
+        ? `<div class="error-bar">⚠ ${errors.length} step error(s): ${
+            errors.map(e => escapeHtml(`${e.step}${e.model ? " (" + e.model + ")" : ""}: ${e.message}`)).join("; ")
+          }</div>`
+        : "";
+
+      // Empty state
+      if (impacted.length === 0 && notImpacted.length === 0) {
+        root.innerHTML = `
+          ${warningHtml}
+          <div class="empty-card">
+            <div class="empty-title">✓ No models impacted</div>
+            <div class="empty-hint">Current changes do not affect any downstream models.</div>
+          </div>`;
+        return;
+      }
+
+      // Summary counts
+      const nConfirmed = impacted.filter(m => m.data_impact === "confirmed").length;
+      const nPotential = impacted.filter(m => m.data_impact === "potential").length;
+      const nNone      = impacted.filter(m => m.data_impact === "none").length;
+
+      const headerHtml = `
+        <div class="header">
+          <span class="header-icon">💥</span>
+          <span class="header-title">Impact analysis</span>
+          <span class="badge">${impacted.length} impacted model${impacted.length !== 1 ? "s" : ""}</span>
+        </div>`;
+
+      const summaryParts = [];
+      if (nConfirmed > 0)
+        summaryParts.push(`<span class="summary-text"><strong>${nConfirmed}</strong> <span class="chip chip-confirmed">CONFIRMED</span></span>`);
+      if (nPotential > 0)
+        summaryParts.push(`<span class="summary-text"><strong>${nPotential}</strong> <span class="chip chip-potential">POTENTIAL</span></span>`);
+      if (nNone > 0)
+        summaryParts.push(`<span class="summary-text"><strong>${nNone}</strong> <span class="chip chip-none">CLEAN</span></span>`);
+      if (notImpacted.length > 0)
+        summaryParts.push(`<span class="summary-text"><strong>${notImpacted.length}</strong> not impacted</span>`);
+      if (maxAffected > 0)
+        summaryParts.push(`<span class="summary-text">max <strong>${maxAffected.toLocaleString()}</strong> rows affected</span>`);
+
+      const summaryInner = summaryParts
+        .map((part, i) => i < summaryParts.length - 1 ? part + `<span class="summary-sep">|</span>` : part)
+        .join("");
+      const summaryHtml = `<div class="summary-bar">${summaryInner}</div>`;
+
+      // Bail-out for large graphs
+      let dagOrBailHtml = "";
+      if (impacted.length > BAIL_MAX_NODES) {
+        dagOrBailHtml = renderBailOut(data);
+      } else if (impacted.length > 0) {
+        // Build layout
+        const { nodePos, layerNums, layerX, svgW, svgH } = computeLayout(impacted);
+
+        const svg = svgEl("svg", {
+          class: "dag-svg",
+          width: svgW,
+          height: svgH,
+          viewBox: `0 0 ${svgW} ${svgH}`,
+        });
+
+        svg.appendChild(buildLayerLabels(layerNums, layerX));
+        svg.appendChild(buildEdges(impacted, nodePos, {}));
+        for (const model of impacted) {
+          const pos = nodePos[model.name];
+          if (!pos) continue;
+          svg.appendChild(buildModelCard(model, pos));
+        }
+
+        const dagDiv = document.createElement("div");
+        dagDiv.className = "dag-wrap";
+        dagDiv.appendChild(svg);
+        // Serialise the dag element separately (append after setting innerHTML)
+        dagOrBailHtml = "__DAG_PLACEHOLDER__";
+        root.innerHTML = headerHtml + warningHtml + errorsHtml + summaryHtml + renderActionList(impacted);
+        const placeholder = document.getElementById("root").innerHTML;
+        root.innerHTML = headerHtml + warningHtml + errorsHtml + summaryHtml;
+        root.appendChild(dagDiv);
+        // Append action list after dag
+        const actionDiv = document.createElement("div");
+        actionDiv.innerHTML = renderActionList(impacted);
+        root.appendChild(actionDiv);
+        return;
+      }
+
+      root.innerHTML = headerHtml + warningHtml + errorsHtml + summaryHtml;
+      if (dagOrBailHtml) {
+        const div = document.createElement("div");
+        div.innerHTML = dagOrBailHtml;
+        root.appendChild(div);
+      }
+      const actionDiv = document.createElement("div");
+      actionDiv.innerHTML = renderActionList(impacted);
+      root.appendChild(actionDiv);
+    }
+
+    // ── Wire up MCP App ──────────────────────────────────────────────
+
+    app.ontoolresult = ({ structuredContent }) => {
+      try {
+        render(structuredContent);
+      } catch (err) {
+        document.getElementById("root").innerHTML = `
+          <div class="error-card">
+            <div class="error-title">Render error</div>
+            <div class="bail-hint">${escapeHtml(String(err))}</div>
+          </div>`;
+      }
+    };
+
+    await app.connect();
+
+    const initialCtx = app.getHostContext?.();
+    if (initialCtx) {
+      if (initialCtx.theme)              applyDocumentTheme(initialCtx.theme);
+      if (initialCtx.styles?.variables)  applyHostStyleVariables(initialCtx.styles.variables);
+      if (initialCtx.styles?.css?.fonts) applyHostFonts(initialCtx.styles.css.fonts);
+    }
+  </script>
+</body>
+</html>

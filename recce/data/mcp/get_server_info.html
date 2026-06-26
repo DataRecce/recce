@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Server Info</title>
+  <style>
+    /* ── Base reset + design tokens ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+      font-size: 13px;
+      margin: 0;
+      padding: 12px 16px 20px;
+      color: var(--color-text-primary, #1a1a1a);
+      background: var(--color-background-primary, #ffffff);
+      line-height: 1.4;
+    }
+    /* Light-mode hardcoded fallbacks are inline above.
+       Dark-mode fallback for non-Claude hosts (OS preference respected):
+       This block must be exhaustive — covers all classes using color:/background:
+       so the widget renders correctly when SDK helpers don't fire. */
+    @media (prefers-color-scheme: dark) {
+      /* ── Base ── */
+      body {
+        color: var(--color-text-primary, #e5e7eb);
+        background: var(--color-background-primary, #1a1a1a);
+      }
+      /* ── Header ── */
+      .header-icon  { color: var(--color-text-secondary, #9ca3af) !important; }
+      .header-title { color: var(--color-text-primary, #e5e7eb) !important; }
+      /* ── Configured pill ── */
+      .pill-configured   { background: var(--color-background-success, #064e3b) !important;
+                           color: var(--color-text-success, #6ee7b7) !important; }
+      .pill-unconfigured { background: var(--color-background-danger, #7f1d1d) !important;
+                           color: var(--color-text-danger, #fca5a5) !important; }
+      /* ── Key/value grid ── */
+      .kv-grid    { background: var(--color-background-secondary, #27272a) !important; }
+      .kv-label   { color: var(--color-text-secondary, #9ca3af) !important; }
+      .kv-value   { color: var(--color-text-primary, #e5e7eb) !important; }
+      .kv-mono    { color: var(--color-text-primary, #e5e7eb) !important; }
+      /* ── Empty state ── */
+      .empty-card   { background: var(--color-background-secondary, #27272a) !important; }
+      .empty-title  { color: var(--color-text-primary, #e5e7eb) !important; }
+      .empty-hint   { color: var(--color-text-secondary, #9ca3af) !important; }
+      /* ── Status badges — light pastels too bright on dark; flip to dark bg + light text ── */
+      .badge-warning   { background: var(--color-background-warning, #78350f) !important;
+                         color: var(--color-text-warning, #fde68a) !important; }
+      .badge-success   { background: var(--color-background-success, #064e3b) !important;
+                         color: var(--color-text-success, #6ee7b7) !important; }
+      .badge-info      { background: var(--color-background-info, #1e3a8a) !important;
+                         color: var(--color-text-info, #93c5fd) !important; }
+      .badge-secondary { background: var(--color-background-secondary, #3f3f46) !important;
+                         color: var(--color-text-secondary, #9ca3af) !important; }
+      .badge-danger    { background: var(--color-background-danger, #7f1d1d) !important;
+                         color: var(--color-text-danger, #fca5a5) !important; }
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0 12px;
+    }
+    .header-icon {
+      font-size: 18px;
+      line-height: 1;
+      color: var(--color-text-secondary, #6b7280);
+    }
+    .header-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-text-primary, #1a1a1a);
+      flex: 1;
+    }
+
+    /* ── Configured pill ─────────────────────────────────────────────── */
+    .pill {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: var(--border-radius-md, 8px);
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+    .pill-configured {
+      background: var(--color-background-success, #d1fae5);
+      color: var(--color-text-success, #065f46);
+    }
+    .pill-unconfigured {
+      background: var(--color-background-danger, #fee2e2);
+      color: var(--color-text-danger, #991b1b);
+    }
+
+    /* ── Status badges ──────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: var(--border-radius-sm, 4px);
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .badge-warning {
+      background: var(--color-background-warning, #fef3c7);
+      color: var(--color-text-warning, #92400e);
+    }
+    .badge-success {
+      background: var(--color-background-success, #d1fae5);
+      color: var(--color-text-success, #065f46);
+    }
+    .badge-info {
+      background: var(--color-background-info, #dbeafe);
+      color: var(--color-text-info, #1e40af);
+    }
+    .badge-secondary {
+      background: var(--color-background-secondary, #f3f4f6);
+      color: var(--color-text-secondary, #6b7280);
+    }
+    .badge-danger {
+      background: var(--color-background-danger, #fee2e2);
+      color: var(--color-text-danger, #991b1b);
+    }
+
+    /* ── Key/value grid ─────────────────────────────────────────────── */
+    .kv-grid {
+      background: var(--color-background-secondary, #f9fafb);
+      border-radius: var(--border-radius-md, 8px);
+      padding: 12px 14px;
+      display: grid;
+      grid-template-columns: minmax(120px, auto) 1fr;
+      gap: 8px 16px;
+      align-items: center;
+    }
+    .kv-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--color-text-secondary, #6b7280);
+    }
+    .kv-value {
+      font-size: 13px;
+      color: var(--color-text-primary, #1a1a1a);
+    }
+    .kv-mono {
+      font-family: var(--font-mono, ui-monospace, 'Cascadia Code', monospace);
+      font-size: 12px;
+      color: var(--color-text-primary, #1a1a1a);
+    }
+
+    /* ── Empty state ─────────────────────────────────────────────────── */
+    .empty-card {
+      background: var(--color-background-secondary, #f9fafb);
+      border-radius: var(--border-radius-md, 8px);
+      padding: 24px;
+      text-align: center;
+    }
+    .empty-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-text-primary, #1a1a1a);
+      margin-bottom: 6px;
+    }
+    .empty-hint {
+      font-size: 12px;
+      color: var(--color-text-secondary, #6b7280);
+    }
+
+    #root { min-height: 40px; }
+  </style>
+</head>
+<body>
+  <div id="root">Loading…</div>
+  <script type="module">
+    import {
+      App,
+      applyDocumentTheme,
+      applyHostStyleVariables,
+      applyHostFonts,
+    } from "https://unpkg.com/@modelcontextprotocol/ext-apps@0.4.0/app-with-deps";
+
+    const app = new App({ name: "Recce Server Info", version: "1.0.0" });
+
+    // Apply host theme on every context change (theme switch, font change, etc.)
+    app.onhostcontextchanged = (ctx) => {
+      if (ctx.theme) applyDocumentTheme(ctx.theme);
+      if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+      if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
+    };
+
+    app.ontoolresult = ({ structuredContent }) => {
+      render(structuredContent ?? {});
+    };
+
+    app.onteardown = async () => {
+      return {};
+    };
+
+    await app.connect();
+
+    // Apply theme from initial host context if available before first change event
+    const initialCtx = app.getHostContext?.();
+    if (initialCtx) {
+      if (initialCtx.theme) applyDocumentTheme(initialCtx.theme);
+      if (initialCtx.styles?.variables) applyHostStyleVariables(initialCtx.styles.variables);
+      if (initialCtx.styles?.css?.fonts) applyHostFonts(initialCtx.styles.css.fonts);
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+    }
+
+    function modeBadge(mode) {
+      const m = String(mode ?? "none").toLowerCase();
+      if (m === "server" || m === "local") return `<span class="badge badge-info">&#9654; ${escapeHtml(mode)}</span>`;
+      if (m === "preview" || m === "read-only") return `<span class="badge badge-secondary">&#128065; ${escapeHtml(mode)}</span>`;
+      return `<span class="badge badge-warning">&#9711; ${escapeHtml(mode)}</span>`;
+    }
+
+    function baseStatusBadge(status) {
+      if (!status) return `<span class="badge badge-secondary">&#8212; unknown</span>`;
+      const s = String(status).toLowerCase();
+      if (s === "fresh") return `<span class="badge badge-success">&#10003; fresh</span>`;
+      if (s === "stale_time") return `<span class="badge badge-warning">&#9888; stale (time)</span>`;
+      if (s === "stale_sha") return `<span class="badge badge-warning">&#9888; stale (SHA)</span>`;
+      if (s === "missing") return `<span class="badge badge-danger">&#10007; missing</span>`;
+      if (s === "single_env") return `<span class="badge badge-secondary">&#9711; single env</span>`;
+      return `<span class="badge badge-secondary">&#8212; ${escapeHtml(status)}</span>`;
+    }
+
+    function render(data) {
+      // Empty / unconfigured state
+      const mode = data.mode ?? "none";
+      if (!data.mode || mode === "none") {
+        document.getElementById("root").innerHTML = `
+          <div class="header">
+            <span class="header-icon">&#9881;</span>
+            <span class="header-title">Server info</span>
+          </div>
+          <div class="empty-card">
+            <div class="empty-title">Recce server unconfigured</div>
+            <div class="empty-hint">Use the <code>set_backend</code> tool to attach a backend</div>
+          </div>`;
+        return;
+      }
+
+      const configured = data.mode && data.mode !== "none";
+      const pillClass = configured ? "pill-configured" : "pill-unconfigured";
+      const pillLabel = configured ? "&#10003; Configured" : "&#10007; Not configured";
+
+      // Key/value rows
+      const rows = [];
+
+      rows.push(`
+        <div class="kv-label">Mode</div>
+        <div class="kv-value">${modeBadge(data.mode)}</div>`);
+
+      if (data.adapter_type != null) {
+        rows.push(`
+          <div class="kv-label">Adapter</div>
+          <div class="kv-value kv-mono">${escapeHtml(data.adapter_type)}</div>`);
+      }
+
+      // base_status
+      rows.push(`
+        <div class="kv-label">Base status</div>
+        <div class="kv-value">${baseStatusBadge(data.base_status)}</div>`);
+
+      // single_env flag
+      if (data.single_env) {
+        rows.push(`
+          <div class="kv-label">Single env</div>
+          <div class="kv-value"><span class="badge badge-warning">&#9888; Single env mode</span></div>`);
+      }
+
+      // review_mode
+      if (data.review_mode != null) {
+        rows.push(`
+          <div class="kv-label">Review mode</div>
+          <div class="kv-value">${data.review_mode
+            ? '<span class="badge badge-info">&#9654; Active</span>'
+            : '<span class="badge badge-secondary">&#8212; Inactive</span>'}</div>`);
+      }
+
+      // git info
+      if (data.git) {
+        const g = data.git;
+        if (g.branch) {
+          rows.push(`
+            <div class="kv-label">Branch</div>
+            <div class="kv-value kv-mono">${escapeHtml(g.branch)}</div>`);
+        }
+        if (g.base_branch) {
+          rows.push(`
+            <div class="kv-label">Base branch</div>
+            <div class="kv-value kv-mono">${escapeHtml(g.base_branch)}</div>`);
+        }
+        if (g.current_sha) {
+          rows.push(`
+            <div class="kv-label">Current SHA</div>
+            <div class="kv-value kv-mono">${escapeHtml(g.current_sha.slice(0, 8))}</div>`);
+        }
+        if (g.base_sha) {
+          rows.push(`
+            <div class="kv-label">Base SHA</div>
+            <div class="kv-value kv-mono">${escapeHtml(g.base_sha.slice(0, 8))}</div>`);
+        }
+      }
+
+      // pull request
+      if (data.pull_request && data.pull_request.title) {
+        const pr = data.pull_request;
+        const prLink = pr.url
+          ? `<a href="${escapeHtml(pr.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(pr.title)}</a>`
+          : escapeHtml(pr.title);
+        rows.push(`
+          <div class="kv-label">Pull request</div>
+          <div class="kv-value">${prLink}</div>`);
+      }
+
+      // support_tasks — dict of {taskSlug: bool}; show only enabled tasks
+      if (data.support_tasks && typeof data.support_tasks === "object" && !Array.isArray(data.support_tasks)) {
+        const enabledTasks = Object.entries(data.support_tasks)
+          .filter(([, enabled]) => enabled)
+          .map(([name]) => name);
+        if (enabledTasks.length > 0) {
+          const taskBadges = enabledTasks
+            .map(t => `<span class="badge badge-info">${escapeHtml(t)}</span>`)
+            .join(" ");
+          rows.push(`
+            <div class="kv-label">Supported tasks</div>
+            <div class="kv-value" style="display:flex;flex-wrap:wrap;gap:4px">${taskBadges}</div>`);
+        }
+      }
+
+      document.getElementById("root").innerHTML = `
+        <div class="header">
+          <span class="header-icon">&#9881;</span>
+          <span class="header-title">Server info</span>
+        </div>
+        <div class="pill ${pillClass}">${pillLabel}</div>
+        <div class="kv-grid">${rows.join("")}</div>`;
+    }
+  </script>
+</body>
+</html>

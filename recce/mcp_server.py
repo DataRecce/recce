@@ -50,6 +50,34 @@ SINGLE_ENV_WARNING = (
     "Run `dbt docs generate --target-path target-base` to enable diffing."
 )
 
+# When RECCE_MCP_WIDGETS=1 is set, these tools are served by `recce mcp-widget-server`
+# instead of the main `recce mcp-server`. The main server omits them from list_tools
+# and raises in call_tool if the agent calls them anyway. See recce/widget_server.py.
+WIDGET_TOOLS = {
+    "row_count_diff",
+    "schema_diff",
+    "get_server_info",
+    "list_checks",
+    "get_model",
+    "query",
+    "query_diff",
+    "value_diff",
+    "value_diff_detail",
+    "top_k_diff",
+    "histogram_diff",
+    "profile_diff",
+    "get_cll",
+    "impact_analysis",
+    "lineage_diff",
+}
+
+DEFAULT_CLOUD_REQUEST_TIMEOUT = 30
+
+
+def _widgets_enabled() -> bool:
+    """Read RECCE_MCP_WIDGETS env at call time (not import time) so tests can monkeypatch."""
+    return os.environ.get("RECCE_MCP_WIDGETS", "").strip().lower() in ("1", "true")
+
 
 class InstanceSpawningError(RuntimeError):
     """Raised when a Recce Cloud session instance is not ready yet."""
@@ -94,6 +122,7 @@ class CloudBackend:
             **kwargs.pop("headers", {}),
             "Authorization": f"Bearer {self.api_token}",
         }
+        kwargs.setdefault("timeout", DEFAULT_CLOUD_REQUEST_TIMEOUT)
         response = await asyncio.to_thread(requests.request, method, url, headers=headers, **kwargs)
         if response.status_code == 405:
             raise InstanceSpawningError()
@@ -1260,6 +1289,10 @@ class RecceMCPServer:
                     )
                 )
 
+            # When widgets enabled, defer widget-eligible tools to recce mcp-widget-server.
+            if _widgets_enabled():
+                tools = [t for t in tools if t.name not in WIDGET_TOOLS]
+
             self.mcp_logger.log_list_tools(tools)
 
             # Log available tools to console
@@ -1281,6 +1314,14 @@ class RecceMCPServer:
             logger.info(f"[MCP] Arguments: {json.dumps(log_arguments, indent=2)}")
 
             try:
+                # Widget-mode coordination: if RECCE_MCP_WIDGETS=1 the widget server owns these
+                # tools. If the agent reaches us anyway, the widget-server entry isn't wired.
+                if _widgets_enabled() and name in WIDGET_TOOLS:
+                    raise ValueError(
+                        f"Tool '{name}' is served by `recce mcp-widget-server` when RECCE_MCP_WIDGETS=1. "
+                        f"Ensure that entry is registered in your Claude Desktop config alongside `recce mcp-server`."
+                    )
+
                 # Check if tool is blocked in non-server mode
                 blocked_tools_in_non_server = {
                     "row_count_diff",
@@ -1519,26 +1560,33 @@ class RecceMCPServer:
 
         return result
 
-    async def _tool_schema_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """Get schema diff (column changes) between base and current"""
-        # Extract filter arguments
-        select = arguments.get("select")
-        exclude = arguments.get("exclude")
-        packages = arguments.get("packages")
+    def _compute_schema_changes(
+        self,
+        lineage_diff: Dict[str, Any],
+        select: Optional[str] = None,
+        exclude: Optional[str] = None,
+        packages: Optional[List[str]] = None,
+    ) -> Dict[str, Dict[str, Any]]:
+        """Compute per-model schema changes as a rich nested dict.
 
-        # Get lineage diff from adapter
-        lineage_diff = self.context.get_lineage_diff().model_dump(mode="json")
+        Returns:
+            {node_id: {
+                "added":        [{"name": str, "type": str}, ...],
+                "removed":      [{"name": str, "type": str}, ...],
+                "type_changed": [{"name": str, "base_type": str, "curr_type": str}, ...],
+                "unchanged_count": int,
+            }}
 
-        # Get all nodes from current environment
+        Used by both the low-level mcp-server (flattened to DataFrame) and the
+        FastMCP widget server (returned as structuredContent for schema_diff.html).
+        """
         current_nodes = {}
         if "current" in lineage_diff and "nodes" in lineage_diff["current"]:
             current_nodes = lineage_diff["current"]["nodes"]
 
-        # Filter to only nodes that exist in both base and current (exclude added nodes)
         base_nodes = lineage_diff.get("base", {}).get("nodes", {})
         nodes_to_compare = set(current_nodes.keys()) & set(base_nodes.keys())
 
-        # Apply filtering if arguments provided
         if select or exclude or packages:
             selected_node_ids = self.context.adapter.select_nodes(
                 select=select,
@@ -1547,34 +1595,59 @@ class RecceMCPServer:
             )
             nodes_to_compare = nodes_to_compare & selected_node_ids
 
-        # Build schema changes
-        schema_changes = []
-
+        result: Dict[str, Dict[str, Any]] = {}
         for node_id in nodes_to_compare:
-            base_node = base_nodes.get(node_id, {})
-            current_node = current_nodes.get(node_id, {})
+            base_columns = base_nodes.get(node_id, {}).get("columns", {})
+            current_columns = current_nodes.get(node_id, {}).get("columns", {})
 
-            base_columns = base_node.get("columns", {})
-            current_columns = current_node.get("columns", {})
-
-            # Get column names in base and current
             base_col_names = set(base_columns.keys())
             current_col_names = set(current_columns.keys())
 
-            # Find added columns (in current but not in base)
-            for col_name in current_col_names - base_col_names:
-                schema_changes.append((node_id, col_name, "added"))
+            added = [
+                {"name": col, "type": current_columns[col].get("type", "")}
+                for col in sorted(current_col_names - base_col_names)
+            ]
+            removed = [
+                {"name": col, "type": base_columns[col].get("type", "")}
+                for col in sorted(base_col_names - current_col_names)
+            ]
+            type_changed = []
+            unchanged_count = 0
+            for col in sorted(base_col_names & current_col_names):
+                base_type = base_columns[col].get("type")
+                curr_type = current_columns[col].get("type")
+                if base_type != curr_type:
+                    type_changed.append({"name": col, "base_type": base_type, "curr_type": curr_type})
+                else:
+                    unchanged_count += 1
 
-            # Find removed columns (in base but not in current)
-            for col_name in base_col_names - current_col_names:
-                schema_changes.append((node_id, col_name, "removed"))
+            result[node_id] = {
+                "added": added,
+                "removed": removed,
+                "type_changed": type_changed,
+                "unchanged_count": unchanged_count,
+            }
+        return result
 
-            # Find modified columns (in both but with different types)
-            for col_name in base_col_names & current_col_names:
-                base_col_type = base_columns[col_name].get("type")
-                current_col_type = current_columns[col_name].get("type")
-                if base_col_type != current_col_type:
-                    schema_changes.append((node_id, col_name, "modified"))
+    async def _tool_schema_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Get schema diff (column changes) between base and current"""
+        select = arguments.get("select")
+        exclude = arguments.get("exclude")
+        packages = arguments.get("packages")
+
+        lineage_diff = self.context.get_lineage_diff().model_dump(mode="json")
+        rich_changes = self._compute_schema_changes(lineage_diff, select=select, exclude=exclude, packages=packages)
+
+        # Flatten rich dict → (node_id, column, change_status) triples for DataFrame output.
+        # Preserves the existing low-level mcp-server response contract exactly.
+        schema_changes = []
+        for node_id, m in rich_changes.items():
+            for col in m["added"]:
+                schema_changes.append((node_id, col["name"], "added"))
+            for col in m["removed"]:
+                schema_changes.append((node_id, col["name"], "removed"))
+            for col in m["type_changed"]:
+                schema_changes.append((node_id, col["name"], "modified"))
 
         # Check if there are more than 100 rows
         limit = 100
@@ -1844,11 +1917,34 @@ class RecceMCPServer:
                     if not pk:
                         continue  # no PK → value_diff stays null
 
-                    # Get column info for building SQL
+                    # Get column info for building SQL. model_info reflects the CURRENT
+                    # relation only (get_model -> get_columns(base=False)).
                     columns_info = model_info.get("columns", {})
-                    non_pk_cols = [c for c in columns_info if c != pk]
+
+                    # Restrict the diff to columns present in BOTH the base and current
+                    # relations. The per-column expression `b."col" IS DISTINCT FROM c."col"`
+                    # references the same column on both sides, so a column that has drifted
+                    # (exists in one relation but not the other) fails the warehouse binder.
+                    # Intersect both sides, mirroring ValueDiffTask; drifted columns are
+                    # already reported via schema_changes (Step 2b). get_model(base=True)
+                    # manages its own warehouse connection for the base-side introspection.
+                    # TODO(DRC-3526 follow-up): this drift fix is covered by a mock
+                    # test (asserts drifted columns never reach the generated SQL) +
+                    # a manual Snowflake A/B, but has no real-adapter e2e. Add a
+                    # DuckDB e2e fixture with a PK where `current` has a column absent
+                    # in `base`; assert value_diff runs over the common non-PK columns
+                    # and does not raise a binder error. Mocks cannot catch the
+                    # missing-warehouse-connection class of bug.
+                    base_model_info = self.context.adapter.get_model(node_id, base=True)
+                    common_cols = set(columns_info) & set(base_model_info.get("columns", {}))
+
+                    # The PK is the FULL OUTER JOIN key — it must exist on both sides.
+                    if pk not in common_cols:
+                        continue  # PK drifted; cannot value-diff without a shared join key
+
+                    non_pk_cols = [c for c in columns_info if c != pk and c in common_cols]
                     if not non_pk_cols:
-                        continue  # only PK column, no value diff to compute
+                        continue  # only PK column (or all non-PK columns drifted), no value diff
 
                     # Build relations for base and current schemas
                     base_rel = self.context.adapter.create_relation(model["name"], base=True)
@@ -2221,7 +2317,22 @@ class RecceMCPServer:
             project_dir = arguments.get("project_dir")
             target_path = arguments.get("target_path", "target")
             target_base_path = arguments.get("target_base_path", "target-base")
-            cache_key = (project_dir, target_path, target_base_path)
+
+            # Check artifact presence on every local switch. A long-lived MCP
+            # can start in single-env mode, then the user may generate
+            # target-base/ and call set_backend(local) again with identical
+            # args. The cache key must include the effective base selection so
+            # that stale single-env contexts are not reused.
+            base_path = Path(project_dir or "./").joinpath(target_base_path)
+            target_dir = Path(project_dir or "./").joinpath(target_path)
+            effective_base = target_base_path
+            single_env = False
+            if target_dir.is_dir() and not base_path.is_dir():
+                effective_base = target_path
+                single_env = True
+            else:
+                single_env = not base_path.is_dir()
+            cache_key = (project_dir, target_path, target_base_path, effective_base, single_env)
 
             if self.context is None or self._local_cache_key != cache_key:
                 # Reset the global so RecceContext.load runs fresh against new params.
@@ -2229,17 +2340,10 @@ class RecceMCPServer:
 
                 _core.recce_context = None
 
-                # Mirror CLI single-env fallback: if target/ exists but target-base/
-                # doesn't, point both envs at target/ so load_context() doesn't fail
-                # on a missing base manifest.
-                base_path = Path(project_dir or "./").joinpath(target_base_path)
-                target_dir = Path(project_dir or "./").joinpath(target_path)
-                effective_base = target_base_path
-                if target_dir.is_dir() and not base_path.is_dir():
-                    effective_base = target_path
-                    self.single_env = True
-                else:
-                    self.single_env = not base_path.is_dir()
+                # Mirror CLI single-env fallback: if target/ exists but
+                # target-base/ doesn't, point both envs at target/ so
+                # load_context() doesn't fail on a missing base manifest.
+                self.single_env = single_env
 
                 load_kwargs = {
                     "target_path": target_path,
