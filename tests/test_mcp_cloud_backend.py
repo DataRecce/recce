@@ -162,9 +162,7 @@ async def test_cloud_backend_lineage_diff_view_all_truncates(monkeypatch):
     async def fake_request(method, path, **kwargs):
         if path == "info":
             return {"lineage": {"nodes": nodes, "edges": []}}
-        if path == "select":
-            return {"nodes": ["b"]}  # impacted set
-        return {}
+        return {"nodes": ["b"]}  # path == "select": impacted set
 
     async def fake_selected(arguments, _nodes):
         return set(nodes.keys())  # view_mode="all" selects everything

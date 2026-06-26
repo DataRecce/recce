@@ -55,7 +55,8 @@ SINGLE_ENV_WARNING = (
 # (MAX_MCP_OUTPUT_TOKENS, default 25,000 tokens). A full-project lineage on a large
 # warehouse overflowed at 527K chars (DRC-3756); the summary agent has no file
 # tools to read the SDK's file-pointer fallback, so the lineage silently vanished.
-# ~300 nodes keeps the worst-case serialized result under ~75% of the 25k cap.
+# ~300 nodes keeps the worst-case serialized result at ~58% of the 25k cap
+# (measured: ~43k chars / ~14.4k tokens for 300 long-id nodes, edges included).
 VIEW_ALL_MAX_NODES = 300
 
 
@@ -285,10 +286,8 @@ class CloudBackend:
 
         selected_nodes = {node_id: node for node_id, node in nodes.items() if node_id in selected}
 
-        # DRC-3758: bound view_mode="all" so the serialized result cannot exceed the
-        # Claude Agent SDK MCP output cap (see VIEW_ALL_MAX_NODES). Mirrors the
-        # local RecceMCPServer path. Keep changed + impacted nodes first; edges to
-        # dropped nodes are excluded by the id_to_idx guard below.
+        # DRC-3758: bound view_mode="all" (changed and impacted first) — see
+        # VIEW_ALL_MAX_NODES. Mirrors the local path; edges to dropped nodes excluded below.
         view_mode = arguments.get("view_mode", "changed_models")
         truncated = False
         total_node_count = len(selected_nodes)
@@ -651,7 +650,7 @@ class RecceMCPServer:
                                 "type": "string",
                                 "enum": ["changed_models", "all"],
                                 "default": "changed_models",
-                                "description": "View mode: 'changed_models' for only changed models (default), 'all' for all models. On large projects, 'all' is capped to the most relevant nodes (changed and impacted first); when capped, the result carries 'truncated', 'total_nodes', and 'returned_nodes'. Prefer 'changed_models', which already includes the impacted models.",
+                                "description": "View mode: 'changed_models' for only changed models (default), 'all' for all models. On large projects, 'all' is capped to the most relevant nodes (changed and impacted first); when capped, the result carries 'truncated', 'total_nodes', and 'returned_nodes'. Edges to dropped nodes are omitted to keep the graph consistent, so a returned node may have upstream/neighbors that are not shown — a capped graph's connectivity is not complete lineage. Prefer 'changed_models', which already includes the impacted models.",
                             },
                         },
                     },
@@ -1495,11 +1494,8 @@ class RecceMCPServer:
                         if materialized is not None:
                             nodes[node_id]["materialized"] = materialized
 
-        # DRC-3758: bound view_mode="all" so the serialized result cannot exceed the
-        # Claude Agent SDK MCP output cap (see VIEW_ALL_MAX_NODES). Keep the nodes
-        # that matter for analysis — changed + impacted — first, then fill to
-        # the cap. Edges to dropped nodes are excluded by the id_to_idx guard in the
-        # edge-building loop below, so the returned graph stays internally consistent.
+        # DRC-3758: bound view_mode="all" (changed and impacted first) — see
+        # VIEW_ALL_MAX_NODES. Edges to dropped nodes are excluded by the id_to_idx guard.
         truncated = False
         total_node_count = len(nodes)
         if view_mode == "all" and total_node_count > VIEW_ALL_MAX_NODES:
