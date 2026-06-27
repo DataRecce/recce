@@ -126,6 +126,78 @@ async def test_run_check_auto_approve_failure_does_not_mask_run_result(cloud_req
 
 
 @pytest.mark.asyncio
+async def test_run_backed_tool_surfaces_run_id_in_result(cloud_requests):
+    # DRC-3532: run-backed analysis tools (row_count_diff, profile_diff,
+    # value_diff, query, ...) must surface the run_id so the summary agent can
+    # cite the exact run via {{run:<run_id>}} markers. Option (i): run_id is
+    # merged into the result dict (additive — existing result fields preserved).
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(
+            200,
+            {
+                "run_id": "run-xyz",
+                "result": {"results": [{"node_id": "model.pkg.orders", "base": 100, "current": 105}]},
+            },
+        ),
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    result = await backend.call_tool("row_count_diff", {"node_names": ["orders"]})
+
+    assert result["run_id"] == "run-xyz"
+    # Existing result fields are preserved (additive, not a wrapper).
+    assert result["results"][0]["base"] == 100
+
+
+@pytest.mark.asyncio
+async def test_run_backed_tool_without_run_id_is_unchanged(cloud_requests):
+    # A run-backed response missing run_id leaves the result untouched (no new
+    # key invented) — anti-fabrication: never synthesize a run_id.
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(200, {"result": {"results": [{"node_id": "model.pkg.orders"}]}}),
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    result = await backend.call_tool("row_count_diff", {"node_names": ["orders"]})
+
+    assert "run_id" not in result
+    assert result["results"][0]["node_id"] == "model.pkg.orders"
+
+
+@pytest.mark.asyncio
+async def test_run_backed_tool_non_dict_result_is_unchanged(cloud_requests):
+    # A non-dict run-backed result (e.g. a list) is returned unchanged — run_id is only
+    # merged into dict results (isinstance guard), never wrapped onto a list.
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(200, {"run_id": "run-xyz", "result": [{"ok": True}]}),
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    result = await backend.call_tool("row_count_diff", {"node_names": ["orders"]})
+
+    assert result == [{"ok": True}]
+
+
+@pytest.mark.asyncio
+async def test_run_backed_tool_preserves_existing_run_id_key(cloud_requests):
+    # Collision guard: if the run-backed result already contains a "run_id" key
+    # (row_count_diff is keyed by model name; a dbt model literally named "run_id"),
+    # the citation run_id must NOT overwrite the real data.
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(200, {"run_id": "run-xyz", "result": {"run_id": {"base": 1, "curr": 2}}}),
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    result = await backend.call_tool("row_count_diff", {"node_names": ["run_id"]})
+
+    assert result["run_id"] == {"base": 1, "curr": 2}
+
+
+@pytest.mark.asyncio
 async def test_create_check_runs_lineage_diff_via_checks_run_endpoint(cloud_requests):
     cloud_requests.side_effect = [
         MockResponse(204),
@@ -782,7 +854,8 @@ async def test_cloud_backend_routes_run_tool_types_through_run_backed(cloud_requ
 
     result = await backend.call_tool("row_count_diff", {"node_names": ["customers"]})
 
-    assert result == {"customers": {"base": 1, "curr": 2}}
+    # run_id is now surfaced alongside the result (DRC-3532, additive).
+    assert result == {"customers": {"base": 1, "curr": 2}, "run_id": "run-1"}
     runs_call = cloud_requests.call_args_list[1]
     assert runs_call.args[1].endswith("/runs")
     assert runs_call.kwargs["json"]["type"] == "row_count_diff"
