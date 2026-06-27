@@ -3049,14 +3049,43 @@ class TestLocalModeRunBacked:
     # Isolation: existing tools without run-backed behavior unchanged
     # ------------------------------------------------------------------
 
+    @pytest.mark.parametrize(
+        "tool_method, task_cls, args",
+        [
+            ("_tool_value_diff_detail", ValueDiffDetailTask, {"model": "orders", "primary_key": "id"}),
+            ("_tool_top_k_diff", TopKDiffTask, {"model": "orders", "column_name": "status"}),
+            ("_tool_histogram_diff", HistogramDiffTask, {"model": "orders", "column_name": "status"}),
+        ],
+    )
     @pytest.mark.asyncio
-    async def test_value_diff_detail_no_run_id(self, server):
-        """value_diff_detail is NOT run-backed — result must NOT carry run_id (DRC-3634 scope boundary)."""
+    async def test_non_run_backed_tools_have_no_run_id(self, server, tool_method, task_cls, args):
+        """Tools outside the 5 rerouted run-backed locals must NOT carry run_id — the
+        tool descriptions only promise run_id for those five (DRC-3532/3634 scope boundary)."""
         mock_model = MagicMock()
         mock_model.model_dump.return_value = {"columns": ["id"], "data": [[1]]}
-        with patch.object(ValueDiffDetailTask, "execute", return_value=mock_model):
-            result = await server._tool_value_diff_detail({"model": "orders", "primary_key": "id"})
-        assert "run_id" not in result, "value_diff_detail is outside run-backed scope"
+        # histogram_diff resolves column type from model metadata before running the task;
+        # patch those lookups so the boundary assertion is the only thing under test.
+        with (
+            patch.object(task_cls, "execute", return_value=mock_model),
+            patch.object(RecceContext, "build_name_to_unique_id_index", return_value={"orders": "model.p.orders"}),
+            patch.object(
+                RecceContext,
+                "get_model",
+                return_value={"columns": {"status": {"name": "status", "type": "VARCHAR"}}},
+            ),
+        ):
+            result = await getattr(server, tool_method)(args)
+        assert "run_id" not in result, f"{tool_method} is outside the run-backed scope"
+
+    @pytest.mark.asyncio
+    async def test_run_id_does_not_clobber_model_named_run_id(self, server):
+        """Collision guard (DRC-3532): row_count_diff returns a model-name-keyed dict, so a
+        dbt model literally named ``run_id`` collides with the citation key. The model's
+        real row-count data must be preserved, NOT overwritten by the citation UUID."""
+        model_named_run_id = {"run_id": {"base": 100, "curr": 105, "base_meta": None, "curr_meta": None}}
+        with patch.object(RowCountDiffTask, "execute", return_value=model_named_run_id):
+            result = await server._tool_row_count_diff({"node_names": ["run_id"]})
+        assert result["run_id"] == {"base": 100, "curr": 105, "base_meta": None, "curr_meta": None}
 
     # ------------------------------------------------------------------
     # Error surfacing: a failing run must raise, not return a success-shaped {run_id}
