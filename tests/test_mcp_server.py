@@ -3128,3 +3128,27 @@ class TestLocalModeRunBacked:
                 await server._tool_row_count_diff({"node_names": ["orders"]})
         assert len(self._context.runs) == 1, "the failed Run must still be persisted for citation"
         assert self._context.runs[0].status == RunStatus.FAILED
+
+    @pytest.mark.asyncio
+    async def test_handler_surfaces_failed_run_as_iserror_and_persists(self, server):
+        """End-to-end through the registered MCP call_tool handler: a failing run-backed
+        tool returns an error response (isError=True) — not a success-shaped {run_id} — and
+        the FAILED Run is still persisted to context.runs for citation (DRC-3532/3634).
+
+        This covers the full handler path (_tool_run_backed_local raises -> call_tool
+        re-raises -> SDK sets isError) that the _tool_*-level tests above exercise only
+        up to the raise."""
+        from recce.models.types import RunStatus
+
+        with patch.object(
+            QueryDiffTask, "execute", side_effect=Exception('Referenced column "bad_col" not found')
+        ):
+            result = await TestCallToolHandler._invoke_call_tool(
+                server, "query_diff", {"sql_template": "SELECT bad_col", "primary_keys": ["id"]}
+            )
+        assert result.root.isError is True
+        # The original message is surfaced so _classify_db_error / the agent can see it.
+        assert "bad_col" in result.root.content[0].text
+        # The FAILED Run is still persisted for citation, not dropped.
+        assert len(self._context.runs) == 1
+        assert self._context.runs[0].status == RunStatus.FAILED
