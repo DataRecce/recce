@@ -53,13 +53,15 @@ SINGLE_ENV_WARNING = (
     "Run `dbt docs generate --target-path target-base` to enable diffing."
 )
 
-# DRC-3758: cap the node count returned by lineage_diff(view_mode="all") so the
-# serialized MCP result cannot exceed the Claude Agent SDK output cap
-# (MAX_MCP_OUTPUT_TOKENS, default 25,000 tokens). A full-project lineage on a large
-# warehouse overflowed at 527K chars (DRC-3756); the summary agent has no file
-# tools to read the SDK's file-pointer fallback, so the lineage silently vanished.
-# ~300 nodes keeps the worst-case serialized result at ~58% of the 25k cap
-# (measured: ~43k chars / ~14.4k tokens for 300 long-id nodes, edges included).
+# DRC-3758: cap the node count returned by lineage_diff(view_mode="all") to keep the
+# serialized MCP result within the Claude Agent SDK output cap (MAX_MCP_OUTPUT_TOKENS,
+# default 25,000 tokens). Only the node count is bounded — edge count is assumed to
+# scale with nodes, which holds for sparse dbt DAGs. A pathologically dense graph could
+# still exceed the cap, but the worst case that triggered this (a full-project lineage
+# overflowing at 527K chars, DRC-3756) is node-driven; the summary agent has no file
+# tools to read the SDK's file-pointer fallback, so the over-cap lineage silently
+# vanished. ~300 nodes keeps the measured worst-case serialized result at ~58% of the
+# 25k cap (~43k chars / ~14.4k tokens for 300 long-id nodes, edges included).
 VIEW_ALL_MAX_NODES = 300
 
 
@@ -660,8 +662,6 @@ class RecceMCPServer:
             result = raw_result.model_dump(mode="json")
         else:
             result = {}
-        # Surface run_id alongside the result — matching CloudBackend shape:
-        # ``result = {**result, "run_id": str(run_id)}`` (commit 98670f9e).
         return {**result, "run_id": str(run.run_id)}
 
     def _setup_handlers(self):
@@ -1731,15 +1731,11 @@ class RecceMCPServer:
 
     async def _tool_row_count_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute row count diff task"""
-        # DRC-3634: route through _tool_run_backed_local so the Run is persisted
-        # to the in-process context and the result carries run_id.
         result = await self._tool_run_backed_local("row_count_diff", arguments)
         return self._maybe_add_single_env_warning(result)
 
     async def _tool_query(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a query"""
-        # DRC-3634: route through _tool_run_backed_local so the Run is persisted
-        # to the in-process context and the result carries run_id.
         # Map the `base` flag to the run_type used by the server run_router:
         # QueryTask (is_base=False) → "query"; QueryBaseTask (is_base=True) → "query_base".
         is_base = arguments.get("base", False)
@@ -1750,22 +1746,16 @@ class RecceMCPServer:
 
     async def _tool_query_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute query diff task"""
-        # DRC-3634: route through _tool_run_backed_local so the Run is persisted
-        # to the in-process context and the result carries run_id.
         result = await self._tool_run_backed_local("query_diff", arguments)
         return self._maybe_add_single_env_warning(result)
 
     async def _tool_profile_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute profile diff task"""
-        # DRC-3634: route through _tool_run_backed_local so the Run is persisted
-        # to the in-process context and the result carries run_id.
         result = await self._tool_run_backed_local("profile_diff", arguments)
         return self._maybe_add_single_env_warning(result)
 
     async def _tool_value_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute value diff task"""
-        # DRC-3634: route through _tool_run_backed_local so the Run is persisted
-        # to the in-process context and the result carries run_id.
         result = await self._tool_run_backed_local("value_diff", arguments)
         return self._maybe_add_single_env_warning(result)
 
