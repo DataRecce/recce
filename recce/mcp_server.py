@@ -194,13 +194,15 @@ class CloudBackend:
         )
         result = run.get("result", run)
         # DRC-3532: surface run_id alongside the result so the summary agent can
-        # cite the exact run inline via {{run:<run_id>}} markers. Additive
-        # (option i): existing result fields are preserved. Only added when the
-        # response actually carries a run_id and the result is a dict, so
-        # run-less responses and non-dict results are left untouched (the agent
-        # must never synthesize a run_id it was not given).
+        # cite the exact run inline via {{run:<run_id>}} markers. Additive: only
+        # added when the response carries a run_id, the result is a dict, AND the
+        # result does not already contain a "run_id" key. The collision guard matters
+        # for row_count_diff, whose result is keyed by model name — a dbt model
+        # literally named "run_id" must keep its row-count data rather than have it
+        # overwritten by the citation UUID. Run-less / non-dict results are also left
+        # untouched (the agent must never synthesize a run_id it was not given).
         run_id = run.get("run_id")
-        if run_id is not None and isinstance(result, dict):
+        if run_id is not None and isinstance(result, dict) and "run_id" not in result:
             result = {**result, "run_id": str(run_id)}
         return result
 
@@ -662,7 +664,13 @@ class RecceMCPServer:
             result = raw_result.model_dump(mode="json")
         else:
             result = {}
-        return {**result, "run_id": str(run.run_id)}
+        # DRC-3532: surface run_id for citation, but never clobber a real result key.
+        # row_count_diff returns a model-name-keyed dict; a dbt model literally named
+        # "run_id" must keep its row-count data instead of being overwritten by the
+        # citation UUID. Mirrors the CloudBackend collision guard in _tool_run_backed.
+        if "run_id" not in result:
+            result = {**result, "run_id": str(run.run_id)}
+        return result
 
     def _setup_handlers(self):
         """Register all tool handlers"""

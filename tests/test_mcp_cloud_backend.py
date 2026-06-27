@@ -167,6 +167,37 @@ async def test_run_backed_tool_without_run_id_is_unchanged(cloud_requests):
 
 
 @pytest.mark.asyncio
+async def test_run_backed_tool_non_dict_result_is_unchanged(cloud_requests):
+    # A non-dict run-backed result (e.g. a list) is returned unchanged — run_id is only
+    # merged into dict results (isinstance guard), never wrapped onto a list.
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(200, {"run_id": "run-xyz", "result": [{"ok": True}]}),
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    result = await backend.call_tool("row_count_diff", {"node_names": ["orders"]})
+
+    assert result == [{"ok": True}]
+
+
+@pytest.mark.asyncio
+async def test_run_backed_tool_preserves_existing_run_id_key(cloud_requests):
+    # Collision guard: if the run-backed result already contains a "run_id" key
+    # (row_count_diff is keyed by model name; a dbt model literally named "run_id"),
+    # the citation run_id must NOT overwrite the real data.
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(200, {"run_id": "run-xyz", "result": {"run_id": {"base": 1, "curr": 2}}}),
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    result = await backend.call_tool("row_count_diff", {"node_names": ["run_id"]})
+
+    assert result["run_id"] == {"base": 1, "curr": 2}
+
+
+@pytest.mark.asyncio
 async def test_create_check_runs_lineage_diff_via_checks_run_endpoint(cloud_requests):
     cloud_requests.side_effect = [
         MockResponse(204),
