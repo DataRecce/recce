@@ -21,13 +21,16 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
+# DRC-3634: submit_run is the run-persistence entry point shared with the
+# recce server's run_router.  Local-mode ad-hoc diff tools import it to
+# persist Runs to the in-process RecceContext so the state exported to S3
+# at MCP-server shutdown carries the analysis runs.
+from recce.apis.run_func import submit_run as _submit_run_fn  # noqa: E402
 from recce.core import RecceContext, load_context
 from recce.exceptions import RecceException
 from recce.server import RecceServerMode
 from recce.tasks.dataframe import DataFrame
 from recce.tasks.histogram import HistogramDiffTask
-from recce.tasks.profile import ProfileDiffTask
-from recce.tasks.query import QueryDiffTask, QueryTask
 from recce.tasks.rowcount import (
     PERMISSION_DENIED_INDICATORS,
     SYNTAX_ERROR_INDICATORS,
@@ -35,7 +38,7 @@ from recce.tasks.rowcount import (
     RowCountDiffTask,
 )
 from recce.tasks.top_k import TopKDiffTask
-from recce.tasks.valuediff import ValueDiffDetailTask, ValueDiffTask
+from recce.tasks.valuediff import ValueDiffDetailTask
 from recce.util.recce_cloud import RECCE_CLOUD_API_HOST, RecceCloudException
 
 logger = logging.getLogger(__name__)
@@ -49,6 +52,17 @@ SINGLE_ENV_WARNING = (
     "Base environment not configured \u2014 comparisons show no changes. "
     "Run `dbt docs generate --target-path target-base` to enable diffing."
 )
+
+# DRC-3758: cap the node count returned by lineage_diff(view_mode="all") to keep the
+# serialized MCP result within the Claude Agent SDK output cap (MAX_MCP_OUTPUT_TOKENS,
+# default 25,000 tokens). Only the node count is bounded — edge count is assumed to
+# scale with nodes, which holds for sparse dbt DAGs. A pathologically dense graph could
+# still exceed the cap, but the worst case that triggered this (a full-project lineage
+# overflowing at 527K chars, DRC-3756) is node-driven; the summary agent has no file
+# tools to read the SDK's file-pointer fallback, so the over-cap lineage silently
+# vanished. ~300 nodes keeps the measured worst-case serialized result at ~58% of the
+# 25k cap (~43k chars / ~14.4k tokens for 300 long-id nodes, edges included).
+VIEW_ALL_MAX_NODES = 300
 
 
 class InstanceSpawningError(RuntimeError):
@@ -178,7 +192,19 @@ class CloudBackend:
             "runs",
             json={"type": run_type, "params": params, "nowait": False},
         )
-        return run.get("result", run)
+        result = run.get("result", run)
+        # DRC-3532: surface run_id alongside the result so the summary agent can
+        # cite the exact run inline via {{run:<run_id>}} markers. Additive: only
+        # added when the response carries a run_id, the result is a dict, AND the
+        # result does not already contain a "run_id" key. The collision guard matters
+        # for row_count_diff, whose result is keyed by model name — a dbt model
+        # literally named "run_id" must keep its row-count data rather than have it
+        # overwritten by the citation UUID. Run-less / non-dict results are also left
+        # untouched (the agent must never synthesize a run_id it was not given).
+        run_id = run.get("run_id")
+        if run_id is not None and isinstance(result, dict) and "run_id" not in result:
+            result = {**result, "run_id": str(run_id)}
+        return result
 
     async def _tool_list_checks(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         checks = await self._request("GET", "checks")
@@ -276,6 +302,23 @@ class CloudBackend:
         impacted = set((await self._request("POST", "select", json={"select": "state:modified+"})).get("nodes", []))
 
         selected_nodes = {node_id: node for node_id, node in nodes.items() if node_id in selected}
+
+        # DRC-3758: bound view_mode="all" (changed and impacted first) — see
+        # VIEW_ALL_MAX_NODES. Mirrors the local path; edges to dropped nodes excluded below.
+        view_mode = arguments.get("view_mode", "changed_models")
+        truncated = False
+        total_node_count = len(selected_nodes)
+        if view_mode == "all" and total_node_count > VIEW_ALL_MAX_NODES:
+
+            def _node_priority(item: tuple) -> int:
+                node_id, node = item
+                is_changed = node.get("change_status") is not None
+                is_impacted = node_id in impacted
+                return 0 if (is_changed or is_impacted) else 1
+
+            selected_nodes = dict(sorted(selected_nodes.items(), key=_node_priority)[:VIEW_ALL_MAX_NODES])
+            truncated = True
+
         id_to_idx = {node_id: idx for idx, node_id in enumerate(selected_nodes.keys())}
         nodes_df = DataFrame.from_data(
             columns={
@@ -308,10 +351,15 @@ class CloudBackend:
             if source in id_to_idx and target in id_to_idx:
                 edge_rows.append((id_to_idx[source], id_to_idx[target]))
         edges_df = DataFrame.from_data(columns={"from": "integer", "to": "integer"}, data=edge_rows)
-        return {
+        result = {
             "nodes": nodes_df.model_dump(mode="json"),
             "edges": edges_df.model_dump(mode="json"),
         }
+        if truncated:
+            result["truncated"] = True
+            result["total_nodes"] = total_node_count
+            result["returned_nodes"] = len(selected_nodes)
+        return result
 
     async def _tool_schema_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         info = await self._request("GET", "info")
@@ -558,6 +606,72 @@ class RecceMCPServer:
             return {**result, "_warning": SINGLE_ENV_WARNING}
         return result
 
+    async def _tool_run_backed_local(self, run_type: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute a run-backed diff tool in local mode (DRC-3634).
+
+        When an in-process ``RecceContext`` is available as ``default_context()``,
+        this method mirrors CloudBackend._tool_run_backed (commit 98670f9e): it
+        uses the same ``submit_run`` machinery as the recce server's run_router
+        so that the Run is persisted to ``default_context().runs`` and therefore
+        included in the S3-exported state the infra comment-builder reads.  The
+        returned dict carries ``run_id`` alongside the diff result.
+
+        When ``default_context()`` is None (e.g. the cloud-backend SSE path that
+        routes through the ``CloudBackend`` class instead), this method falls back
+        to a plain in-executor task execution and returns the result without a
+        ``run_id`` — identical to the pre-DRC-3634 behaviour.
+
+        The Run executes **once** via ``submit_run``'s thread-pool executor —
+        there is no double execution.
+        """
+        from recce.core import default_context
+
+        if default_context() is None:
+            # Fallback path: no in-process context, execute task directly.
+            from recce.apis.run_func import create_task
+            from recce.models.types import RunType
+
+            try:
+                run_type_enum = RunType(run_type)
+                task = create_task(run_type_enum, params)
+            except (ValueError, NotImplementedError):
+                raise ValueError(f"Run type '{run_type}' not supported in local mode")
+            raw_result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
+            if hasattr(raw_result, "model_dump"):
+                return raw_result.model_dump(mode="json")
+            return raw_result if isinstance(raw_result, dict) else {}
+
+        run, future = _submit_run_fn(run_type, params, triggered_by="recce_ai")
+        # Await the executor future so run.result is populated before we return.
+        await asyncio.wrap_future(future)
+        # DRC-3634: submit_run.fn swallows non-DuckDBExternalAccessBlocked errors —
+        # it records run.status=FAILED / run.error and returns None, so the awaited
+        # future resolves cleanly. Re-raise here so call_tool restores isError=True and
+        # _classify_db_error can classify the failure, instead of collapsing a FAILED
+        # run into a success-shaped {"run_id": ...} (which a citation agent would read
+        # as "ran fine, empty diff"). The persisted FAILED Run stays in context.runs.
+        from recce.models.types import RunStatus
+
+        if run.status == RunStatus.FAILED:
+            raise RecceException(run.error or f"{run_type} run failed")
+        # Normalise run.result to a plain dict (tasks may return Pydantic models).
+        raw_result = run.result
+        if raw_result is None:
+            result: Dict[str, Any] = {}
+        elif isinstance(raw_result, dict):
+            result = raw_result
+        elif hasattr(raw_result, "model_dump"):
+            result = raw_result.model_dump(mode="json")
+        else:
+            result = {}
+        # DRC-3532: surface run_id for citation, but never clobber a real result key.
+        # row_count_diff returns a model-name-keyed dict; a dbt model literally named
+        # "run_id" must keep its row-count data instead of being overwritten by the
+        # citation UUID. Mirrors the CloudBackend collision guard in _tool_run_backed.
+        if "run_id" not in result:
+            result = {**result, "run_id": str(run.run_id)}
+        return result
+
     def _setup_handlers(self):
         """Register all tool handlers"""
 
@@ -619,7 +733,7 @@ class RecceMCPServer:
                                 "type": "string",
                                 "enum": ["changed_models", "all"],
                                 "default": "changed_models",
-                                "description": "View mode: 'changed_models' for only changed models (default), 'all' for all models",
+                                "description": "View mode: 'changed_models' for only changed models (default), 'all' for all models. On large projects, 'all' is capped to the most relevant nodes (changed and impacted first); when capped, the result carries 'truncated', 'total_nodes', and 'returned_nodes'. Edges to dropped nodes are omitted to keep the graph consistent, so a returned node may have upstream/neighbors that are not shown — a capped graph's connectivity is not complete lineage. Prefer 'changed_models', which already includes the impacted models.",
                             },
                         },
                     },
@@ -864,7 +978,9 @@ class RecceMCPServer:
                                 "- 'table_not_found': IMPORTANT - Table defined in manifest but doesn't exist in database. "
                                 "This indicates stale dbt artifacts or environment misconfiguration. "
                                 "Report this to users as it requires rebuilding dbt artifacts or checking environment setup.\n"
-                                "- 'permission_denied': User lacks permission to access the table"
+                                "- 'permission_denied': User lacks permission to access the table\n\n"
+                                "The response includes a top-level 'run_id' field identifying the persisted run, "
+                                "so this exact run can be cited inline (e.g. {{run:<run_id>}})."
                             )
                             + (
                                 "\n\nNote: When base environment is not configured, this tool compares "
@@ -909,7 +1025,9 @@ class RecceMCPServer:
                         Tool(
                             name="query",
                             description="Execute a SQL query on the current environment. "
-                            "Supports Jinja templates with dbt macros like {{ ref('model_name') }}.",
+                            "Supports Jinja templates with dbt macros like {{ ref('model_name') }}. "
+                            "The response includes a top-level 'run_id' field identifying the persisted run, "
+                            "so this exact run can be cited inline (e.g. {{run:<run_id>}}).",
                             inputSchema={
                                 "type": "object",
                                 "properties": {
@@ -930,7 +1048,9 @@ class RecceMCPServer:
                             name="query_diff",
                             description=(
                                 "Execute SQL queries on both base and current environments and compare results. "
-                                "Supports primary keys for row-level comparison."
+                                "Supports primary keys for row-level comparison.\n\n"
+                                "The response includes a top-level 'run_id' field identifying the persisted run, "
+                                "so this exact run can be cited inline (e.g. {{run:<run_id>}})."
                             )
                             + (
                                 "\n\nNote: When base environment is not configured, this tool compares "
@@ -962,7 +1082,9 @@ class RecceMCPServer:
                             name="profile_diff",
                             description=(
                                 "Generate and compare statistical profiles (min, max, avg, distinct count, etc.) "
-                                "for columns in a model between base and current environments."
+                                "for columns in a model between base and current environments.\n\n"
+                                "The response includes a top-level 'run_id' field identifying the persisted run, "
+                                "so this exact run can be cited inline (e.g. {{run:<run_id>}})."
                             )
                             + (
                                 "\n\nNote: When base environment is not configured, this tool compares "
@@ -991,7 +1113,9 @@ class RecceMCPServer:
                             description=(
                                 "Compare row-level values between base and current environments using primary key join. "
                                 "Returns per-column match rates showing data quality impact. "
-                                "Use this to understand which columns changed and how many rows are affected."
+                                "Use this to understand which columns changed and how many rows are affected.\n\n"
+                                "The response includes a top-level 'run_id' field identifying the persisted run, "
+                                "so this exact run can be cited inline (e.g. {{run:<run_id>}})."
                             )
                             + (
                                 "\n\nNote: When base environment is not configured, this tool compares "
@@ -1373,7 +1497,7 @@ class RecceMCPServer:
                 self.mcp_logger.log_tool_call(name, log_arguments, result, duration_ms)
 
                 # Log outgoing response
-                response_json = json.dumps(result, indent=2)
+                response_json = json.dumps(result, separators=(",", ":"))
                 logger.info(f"[MCP] Tool response for {name} ({duration_ms:.2f}ms):")
                 # Truncate large responses for console readability
                 if len(response_json) > 1000:
@@ -1463,6 +1587,21 @@ class RecceMCPServer:
                         if materialized is not None:
                             nodes[node_id]["materialized"] = materialized
 
+        # DRC-3758: bound view_mode="all" (changed and impacted first) — see
+        # VIEW_ALL_MAX_NODES. Edges to dropped nodes are excluded by the id_to_idx guard.
+        truncated = False
+        total_node_count = len(nodes)
+        if view_mode == "all" and total_node_count > VIEW_ALL_MAX_NODES:
+
+            def _node_priority(item: tuple) -> int:
+                node_id = item[0]
+                is_changed = diff_info.get(node_id, {}).get("change_status") is not None
+                is_impacted = node_id in impacted_node_ids
+                return 0 if (is_changed or is_impacted) else 1
+
+            nodes = dict(sorted(nodes.items(), key=_node_priority)[:VIEW_ALL_MAX_NODES])
+            truncated = True
+
         # Create id to idx mapping
         id_to_idx = {node_id: idx for idx, node_id in enumerate(nodes.keys())}
 
@@ -1516,6 +1655,10 @@ class RecceMCPServer:
             "nodes": nodes_df.model_dump(mode="json"),
             "edges": edges_df.model_dump(mode="json"),
         }
+        if truncated:
+            result["truncated"] = True
+            result["total_nodes"] = total_node_count
+            result["returned_nodes"] = len(nodes)
 
         return result
 
@@ -1596,60 +1739,32 @@ class RecceMCPServer:
 
     async def _tool_row_count_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute row count diff task"""
-        task = RowCountDiffTask(params=arguments)
-
-        # Offload sync task to thread pool to avoid blocking the event loop
-        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
-
+        result = await self._tool_run_backed_local("row_count_diff", arguments)
         return self._maybe_add_single_env_warning(result)
 
     async def _tool_query(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a query"""
-        sql_template = arguments.get("sql_template")
+        # Map the `base` flag to the run_type used by the server run_router:
+        # QueryTask (is_base=False) → "query"; QueryBaseTask (is_base=True) → "query_base".
         is_base = arguments.get("base", False)
-
-        params = {"sql_template": sql_template}
-        task = QueryTask(params=params)
-        task.is_base = is_base
-
-        # Execute task
-        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
-
-        # Convert to dict if it's a model
-        if hasattr(result, "model_dump"):
-            return result.model_dump(mode="json")
-        return result
+        run_type = "query_base" if is_base else "query"
+        # params for QueryTask / QueryBaseTask accept {"sql_template": ...} only.
+        params = {"sql_template": arguments.get("sql_template")}
+        return await self._tool_run_backed_local(run_type, params)
 
     async def _tool_query_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute query diff task"""
-        task = QueryDiffTask(params=arguments)
-
-        # Execute task
-        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
-
-        # Convert to dict if it's a model
-        if hasattr(result, "model_dump"):
-            result = result.model_dump(mode="json")
+        result = await self._tool_run_backed_local("query_diff", arguments)
         return self._maybe_add_single_env_warning(result)
 
     async def _tool_profile_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute profile diff task"""
-        task = ProfileDiffTask(params=arguments)
-
-        # Execute task
-        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
-
-        # Convert to dict if it's a model
-        if hasattr(result, "model_dump"):
-            result = result.model_dump(mode="json")
+        result = await self._tool_run_backed_local("profile_diff", arguments)
         return self._maybe_add_single_env_warning(result)
 
     async def _tool_value_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute value diff task"""
-        task = ValueDiffTask(params=arguments)
-        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
-        if hasattr(result, "model_dump"):
-            result = result.model_dump(mode="json")
+        result = await self._tool_run_backed_local("value_diff", arguments)
         return self._maybe_add_single_env_warning(result)
 
     async def _tool_value_diff_detail(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
