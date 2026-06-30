@@ -302,3 +302,61 @@ describe("inlineRenderCell - Edge Cases", () => {
     expect(() => inlineRenderCell(params)).not.toThrow();
   });
 });
+
+// ============================================================================
+// Float-precision change detection (DRC-3025)
+// ============================================================================
+
+describe("inlineRenderCell - float precision", () => {
+  test("AC3: raw-mode float noise renders as a single (unchanged) value", () => {
+    const colDef: ColDefWithMetadata = {
+      field: "value",
+      context: { columnType: "number", columnRenderMode: "raw" },
+    };
+    const params = createParams(
+      { base__value: 0.1 + 0.2, current__value: 0.3 },
+      colDef,
+    );
+
+    render(<>{inlineRenderCell(params)}</>);
+
+    // Single-value path: only the current value is shown, no red/green diff.
+    expect(screen.getByText("0.3")).toBeInTheDocument();
+    expect(screen.queryByText("0.30000000000000004")).not.toBeInTheDocument();
+  });
+
+  test("raw-mode genuine difference still renders a diff", () => {
+    const colDef: ColDefWithMetadata = {
+      field: "value",
+      context: { columnType: "number", columnRenderMode: "raw" },
+    };
+    const params = createParams(
+      { base__value: 100, current__value: 100.5 },
+      colDef,
+    );
+
+    render(<>{inlineRenderCell(params)}</>);
+
+    expect(screen.getByText("100")).toBeInTheDocument();
+    expect(screen.getByText("100.5")).toBeInTheDocument();
+  });
+
+  test("AC1: formatted-mode noise within precision+1 renders single value", () => {
+    const colDef: ColDefWithMetadata = {
+      field: "value",
+      context: { columnType: "number", columnRenderMode: 2 },
+    };
+    // 3.144999 vs 3.145001 are equal at 3dp (display 2dp + 1).
+    const params = createParams(
+      { base__value: 3.144999, current__value: 3.145001 },
+      colDef,
+    );
+
+    render(<>{inlineRenderCell(params)}</>);
+
+    // Single-value path renders current formatted at 2dp ("3.15").
+    // The changed path would additionally render the base ("3.14").
+    expect(screen.getByText("3.15")).toBeInTheDocument();
+    expect(screen.queryByText("3.14")).not.toBeInTheDocument();
+  });
+});

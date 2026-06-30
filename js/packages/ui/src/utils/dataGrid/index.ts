@@ -83,10 +83,12 @@ export {
   buildMergedColumnMap,
   columnRenderedValue,
   determineRowStatus,
+  FLOAT_RELATIVE_EPSILON,
   formatSmartDecimal,
   getCellClass,
   getHeaderCellClass,
   getPrimaryKeyValue,
+  isCellChanged,
   toRenderedValue,
   validatePrimaryKeys,
 } from "./gridUtils";

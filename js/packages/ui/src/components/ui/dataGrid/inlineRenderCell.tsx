@@ -19,6 +19,7 @@ import type {
 } from "../../../api";
 import {
   formatSmartDecimal,
+  isCellChanged,
   toRenderedValue,
 } from "../../../utils/dataGrid/gridUtils";
 import { DiffText, type DiffTextProps } from "../DiffText";
@@ -120,8 +121,15 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
       columnRenderMode,
     );
 
-    // No change - render single value
-    if (row[baseKey] === row[currentKey]) {
+    // No change - render single value (float-precision-aware, see DRC-3025)
+    if (
+      !isCellChanged(
+        row[baseKey],
+        row[currentKey],
+        columnType,
+        columnRenderMode,
+      )
+    ) {
       return (
         <Typography
           component="span"

@@ -11,6 +11,7 @@
  */
 
 import type {
+  ColumnRenderMode,
   ColumnType,
   DataFrame,
   RowData,
@@ -27,6 +28,7 @@ import {
   getCellClass,
   getHeaderCellClass,
   getPrimaryKeyValue,
+  isCellChanged,
   toRenderedValue,
   validatePrimaryKeys,
 } from "../gridUtils";
@@ -786,5 +788,211 @@ describe("formatSmartDecimal", () => {
     test("formats negative Infinity", () => {
       expect(formatSmartDecimal(-Infinity)).toBe("-∞");
     });
+  });
+});
+
+// ============================================================================
+// isCellChanged Tests (DRC-3025: float-precision spurious diffs)
+// ============================================================================
+
+describe("isCellChanged", () => {
+  describe("formatted numeric mode — compare at displayed precision + 1", () => {
+    test("AC1: equal at (2dp + 1) → not changed", () => {
+      // 3.14159000001 vs 3.14159: both round to 3.142 at 3dp
+      expect(isCellChanged(3.14159000001, 3.14159, "number", 2)).toBe(false);
+    });
+
+    test("AC2 / 'one below': differ at 3dp (display 2dp) → changed", () => {
+      // 3.144 vs 3.145 are identical at 2dp but differ at 3dp.
+      // Comparing AT displayed precision (2dp) would wrongly call them equal;
+      // comparing at one-below (3dp) correctly flags the change.
+      expect(isCellChanged(3.144, 3.145, "number", 2)).toBe(true);
+    });
+
+    test("AC2: differ at 2dp → changed", () => {
+      expect(isCellChanged(3.14, 3.15, "number", 2)).toBe(true);
+    });
+
+    test("default render mode (undefined) behaves like 2dp formatting", () => {
+      expect(isCellChanged(3.14159000001, 3.14159, "number", undefined)).toBe(
+        false,
+      );
+      expect(isCellChanged(3.144, 3.145, "number", undefined)).toBe(true);
+    });
+
+    test("integer column: N+1 still safe", () => {
+      expect(isCellChanged(100, 100, "integer", 2)).toBe(false);
+      expect(isCellChanged(100, 101, "integer", 2)).toBe(true);
+    });
+
+    test("numeric strings in a numeric column are compared numerically", () => {
+      expect(isCellChanged("3.14159000001", "3.14159", "number", 2)).toBe(
+        false,
+      );
+      expect(isCellChanged("3.144", "3.145", "number", 2)).toBe(true);
+    });
+
+    test("number vs numeric-string in a numeric column → numeric compare", () => {
+      expect(isCellChanged(3.14159000001, "3.14159", "number", 2)).toBe(false);
+    });
+  });
+
+  describe("percent mode", () => {
+    test("equal within displayed percent precision → not changed", () => {
+      // 0.10000001 vs 0.1 both display as 10.00%
+      expect(isCellChanged(0.10000001, 0.1, "number", "percent")).toBe(false);
+    });
+
+    test("differ within displayed percent precision → changed", () => {
+      // 10.50% vs 10.60%
+      expect(isCellChanged(0.105, 0.106, "number", "percent")).toBe(true);
+    });
+  });
+
+  describe("raw / full-precision mode — relative epsilon", () => {
+    test("AC3: 0.1 + 0.2 vs 0.3 → not changed (float noise)", () => {
+      expect(isCellChanged(0.1 + 0.2, 0.3, "number", "raw")).toBe(false);
+    });
+
+    test("AC3: 100.0 vs 100.5 → changed (beyond epsilon)", () => {
+      expect(isCellChanged(100.0, 100.5, "number", "raw")).toBe(true);
+    });
+
+    test("large magnitudes: 1e20 vs 1e20 + 1 → not changed (relative)", () => {
+      expect(isCellChanged(1e20, 1e20 + 1, "number", "raw")).toBe(false);
+    });
+
+    test("small magnitudes within relative epsilon → not changed", () => {
+      expect(isCellChanged(1e-12, 1.0000000001e-12, "number", "raw")).toBe(
+        false,
+      );
+    });
+  });
+
+  describe("non-numeric columns keep exact equality (AC4)", () => {
+    test("different strings → changed", () => {
+      expect(isCellChanged("abc", "abd", "text", undefined)).toBe(true);
+    });
+
+    test("identical strings → not changed", () => {
+      expect(isCellChanged("abc", "abc", "text", undefined)).toBe(false);
+    });
+
+    test("booleans compared exactly", () => {
+      expect(isCellChanged(true, false, "boolean", undefined)).toBe(true);
+      expect(isCellChanged(true, true, "boolean", undefined)).toBe(false);
+    });
+
+    test("mixed type (number vs string) in non-numeric column → changed", () => {
+      expect(isCellChanged(5, "abc", "text", undefined)).toBe(true);
+    });
+  });
+
+  describe("null / undefined / NaN handling", () => {
+    test("one-sided null → changed", () => {
+      expect(isCellChanged(null, 42, "number", 2)).toBe(true);
+      expect(isCellChanged(42, null, "number", 2)).toBe(true);
+    });
+
+    test("one-sided undefined → changed", () => {
+      expect(isCellChanged(undefined, 42, "number", 2)).toBe(true);
+    });
+
+    test("both null/undefined → not changed", () => {
+      expect(isCellChanged(null, null, "number", 2)).toBe(false);
+      expect(isCellChanged(undefined, undefined, "number", 2)).toBe(false);
+    });
+
+    test("one-sided NaN → changed", () => {
+      expect(isCellChanged(NaN, 5, "number", 2)).toBe(true);
+    });
+
+    test("both NaN → not changed", () => {
+      expect(isCellChanged(NaN, NaN, "number", 2)).toBe(false);
+    });
+  });
+});
+
+// ============================================================================
+// getCellClass — float-precision behavior (DRC-3025)
+// ============================================================================
+
+describe("getCellClass — float precision", () => {
+  test("AC1: numeric noise within precision+1 → undefined (no highlight)", () => {
+    const row = createRow({
+      base__value: 3.14159000001,
+      current__value: 3.14159,
+    });
+    expect(
+      getCellClass(row, undefined, "value", false, 2, "number"),
+    ).toBeUndefined();
+  });
+
+  test("AC2 / one-below: differ at 3dp (display 2dp) → highlighted", () => {
+    const row = createRow({
+      base__value: 3.144,
+      current__value: 3.145,
+    });
+    expect(getCellClass(row, undefined, "value", false, 2, "number")).toBe(
+      "diff-cell-added",
+    );
+  });
+
+  test("AC3: raw mode float noise → undefined", () => {
+    const row = createRow({
+      base__value: 0.1 + 0.2,
+      current__value: 0.3,
+    });
+    expect(
+      getCellClass(row, undefined, "value", false, "raw", "number"),
+    ).toBeUndefined();
+  });
+
+  test("AC4: non-numeric column keeps exact equality", () => {
+    const row = createRow({
+      base__value: "abc",
+      current__value: "abd",
+    });
+    expect(
+      getCellClass(row, undefined, "value", false, undefined, "text"),
+    ).toBe("diff-cell-added");
+  });
+});
+
+// ============================================================================
+// determineRowStatus — float-precision behavior (DRC-3025)
+// ============================================================================
+
+describe("determineRowStatus — float precision", () => {
+  const columnMap: Record<string, ColumnMapEntry> = {
+    id: { key: "id", colType: "integer" },
+    value: { key: "value", colType: "number" },
+  };
+
+  test("AC1: numeric noise within precision+1 → undefined (not modified)", () => {
+    const baseRow = createRow({ id: 1, value: 3.14159000001 });
+    const currentRow = createRow({ id: 1, value: 3.14159 });
+    const renderModes: Record<string, ColumnRenderMode> = { value: 2 };
+    expect(
+      determineRowStatus(baseRow, currentRow, columnMap, ["id"], renderModes),
+    ).toBeUndefined();
+  });
+
+  test("AC2 / one-below: differ at 3dp → 'modified'", () => {
+    const baseRow = createRow({ id: 1, value: 3.144 });
+    const currentRow = createRow({ id: 1, value: 3.145 });
+    const renderModes: Record<string, ColumnRenderMode> = { value: 2 };
+    expect(
+      determineRowStatus(baseRow, currentRow, columnMap, ["id"], renderModes),
+    ).toBe("modified");
+  });
+
+  test("AC3: raw mode float noise → undefined", () => {
+    const baseRow = createRow({ id: 1, value: 0.1 + 0.2 });
+    const currentRow = createRow({ id: 1, value: 0.3 });
+    const renderModes: Record<string, ColumnRenderMode> = { value: "raw" };
+    expect(
+      determineRowStatus(baseRow, currentRow, columnMap, ["id"], renderModes),
+    ).toBeUndefined();
   });
 });
