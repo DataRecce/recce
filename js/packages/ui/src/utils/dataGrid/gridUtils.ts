@@ -173,117 +173,52 @@ export function getPrimaryKeyValue(
 // ============================================================================
 
 /**
- * Relative epsilon for raw / full-precision numeric comparison.
+ * Relative tolerance for comparing two finite numbers.
  *
- * "Float precision is not meant to be compared." Accumulated rounding error
- * (e.g. `0.1 + 0.2 !== 0.3`) sits around 1e-16 in relative magnitude, so a
- * relative tolerance of 1e-9 swallows float noise with a wide safety margin
- * while still flagging genuine differences (a 0.5% change is ~5e6 × larger).
+ * "Float precision is not meant to be compared." Floating-point representation
+ * and accumulated rounding error (e.g. `0.1 + 0.2 !== 0.3`) sits around 1e-16
+ * in relative magnitude, so a relative tolerance of 1e-9 swallows that noise
+ * with a wide safety margin while still flagging genuine differences (a 0.5%
+ * change is ~5e6 × larger). The same tolerance applies in EVERY render mode —
+ * the change-decision does not depend on a column's display precision.
  */
 export const FLOAT_RELATIVE_EPSILON = 1e-9;
 
-const NUMERIC_COLUMN_TYPES: ReadonlySet<ColumnType> = new Set<ColumnType>([
-  "number",
-  "integer",
-]);
-
 /**
- * Number of decimal places a render mode displays on the underlying value.
- * Returns `null` for "raw" mode (full precision → relative-epsilon path).
+ * Absolute floor for the both-near-zero case. When `max(|a|, |b|)` is ~0 the
+ * relative threshold collapses toward zero, so we floor it here: differences
+ * at or below 1e-12 near zero read as float noise, while a real small value
+ * (e.g. `0` vs `1e-3`) still reads as changed.
  */
-function displayedDecimals(renderMode?: ColumnRenderMode): number | null {
-  if (renderMode === "raw") return null;
-  if (typeof renderMode === "number") return renderMode;
-  // "percent" shows up to 2 fraction digits of value × 100, i.e. 2 extra
-  // decimals on the underlying fraction (12.34% ≈ 0.1234).
-  if (renderMode === "percent") return 4;
-  // "delta" and the default both format with smart 2-decimal rounding.
-  return 2;
-}
-
-/**
- * Coerces a cell value to a finite number when the column is numeric.
- * Returns `null` for nullish, NaN, non-finite, or non-numeric values so the
- * caller can fall back to exact equality.
- */
-function toComparableNumber(
-  value: unknown,
-  columnType?: ColumnType,
-): number | null {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : null;
-  }
-  if (
-    typeof value === "string" &&
-    columnType != null &&
-    NUMERIC_COLUMN_TYPES.has(columnType)
-  ) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-}
-
-function numericChanged(
-  base: number,
-  current: number,
-  renderMode?: ColumnRenderMode,
-): boolean {
-  const decimals = displayedDecimals(renderMode);
-
-  // Raw / full-precision: relative epsilon. Raw mode must NOT resurrect the
-  // spurious float-noise diff.
-  if (decimals === null) {
-    return (
-      Math.abs(base - current) >
-      FLOAT_RELATIVE_EPSILON * Math.max(Math.abs(base), Math.abs(current), 1)
-    );
-  }
-
-  // Formatted: compare at ONE digit below displayed precision, so two values
-  // that merely *display* the same (e.g. both shown as "3") are not assumed
-  // equal — the extra digit is the discriminator.
-  const factor = 10 ** (decimals + 1);
-  return Math.round(base * factor) !== Math.round(current * factor);
-}
+const FLOAT_ABSOLUTE_FLOOR = 1e-12;
 
 /**
  * Single source of truth for "did this cell change?" across the data grid.
  *
- * - Numeric cells use float-precision-aware comparison:
- *   - formatted modes (N decimals / percent / delta / default) compare at
- *     N + 1 decimals — float noise below the visible precision is ignored,
- *     but a real change one digit below the display is still caught.
- *   - raw mode uses a relative epsilon ({@link FLOAT_RELATIVE_EPSILON}).
- * - Non-numeric cells keep exact (`_.isEqual`) equality.
- * - One-sided null/undefined (and NaN-vs-number) counts as changed.
+ * - Two finite numbers are compared with a magnitude-relative epsilon
+ *   ({@link FLOAT_RELATIVE_EPSILON}) plus a tiny absolute floor for values near
+ *   zero. This is render-mode independent: float precision is never compared.
+ * - Everything else (strings, booleans, mixed types, null/undefined, NaN) keeps
+ *   exact (`_.isEqual`) equality — one-sided null/NaN counts as changed.
  *
- * @param base       Base cell value
- * @param current    Current cell value
- * @param columnType Column data type (drives numeric-string coercion)
- * @param renderMode Active column render mode (drives compared precision)
+ * @param base    Base cell value
+ * @param current Current cell value
  */
-export function isCellChanged(
-  base: unknown,
-  current: unknown,
-  columnType?: ColumnType,
-  renderMode?: ColumnRenderMode,
-): boolean {
-  const baseNullish = base === null || base === undefined;
-  const currentNullish = current === null || current === undefined;
-  if (baseNullish || currentNullish) {
-    // Changed unless BOTH sides are nullish.
-    return !(baseNullish && currentNullish);
+export function isCellChanged(base: unknown, current: unknown): boolean {
+  if (
+    typeof base === "number" &&
+    typeof current === "number" &&
+    Number.isFinite(base) &&
+    Number.isFinite(current)
+  ) {
+    const diff = Math.abs(base - current);
+    const scale = Math.max(Math.abs(base), Math.abs(current));
+    return (
+      diff > Math.max(FLOAT_RELATIVE_EPSILON * scale, FLOAT_ABSOLUTE_FLOOR)
+    );
   }
 
-  const baseNum = toComparableNumber(base, columnType);
-  const currentNum = toComparableNumber(current, columnType);
-
-  if (baseNum !== null && currentNum !== null) {
-    return numericChanged(baseNum, currentNum, renderMode);
-  }
-
-  // Non-numeric, mixed-type, or NaN on one side → exact equality.
+  // Non-numeric, mixed-type, nullish, or NaN → exact equality.
   return !_.isEqual(base, current);
 }
 
@@ -297,17 +232,12 @@ export function isCellChanged(
  * Supports two modes:
  * 1. Separate rows: baseRow and currentRow are different objects
  * 2. Merged rows: baseRow === currentRow, with values stored as base__key and current__key
- *
- * @param columnRenderModes Optional per-column render modes (keyed by column
- *   name or key), used for float-precision-aware change detection. When a
- *   column has no entry, the default formatted (2-decimal) tolerance applies.
  */
 export function determineRowStatus(
   baseRow: RowObjectType | undefined,
   currentRow: RowObjectType | undefined,
   columnMap: Record<string, ColumnMapEntry>,
   primaryKeys: string[],
-  columnRenderModes?: Record<string, ColumnRenderMode>,
 ): "added" | "removed" | "modified" | undefined {
   if (!baseRow) return "added";
   if (!currentRow) return "removed";
@@ -336,10 +266,7 @@ export function determineRowStatus(
       currentVal = currentRow[column.key];
     }
 
-    const renderMode =
-      columnRenderModes?.[name] ?? columnRenderModes?.[column.key];
-
-    if (isCellChanged(baseVal, currentVal, column.colType, renderMode)) {
+    if (isCellChanged(baseVal, currentVal)) {
       return "modified";
     }
   }
@@ -462,19 +389,12 @@ export function toRenderedValue(
 
 /**
  * Gets the CSS class for a cell based on row and column status
- *
- * @param columnRenderMode Active render mode for the column (drives
- *   float-precision-aware change detection). Defaults to formatted 2-decimal
- *   tolerance when omitted.
- * @param columnType Column data type (drives numeric-string coercion).
  */
 export function getCellClass(
   row: RowObjectType,
   columnStatus: string | undefined,
   columnKey: string,
   isBase: boolean,
-  columnRenderMode?: ColumnRenderMode,
-  columnType?: ColumnType,
 ): string | undefined {
   const rowStatus = row.__status;
 
@@ -485,9 +405,7 @@ export function getCellClass(
   const baseKey = `base__${columnKey}`.toLowerCase();
   const currentKey = `current__${columnKey}`.toLowerCase();
 
-  if (
-    isCellChanged(row[baseKey], row[currentKey], columnType, columnRenderMode)
-  ) {
+  if (isCellChanged(row[baseKey], row[currentKey])) {
     return isBase ? "diff-cell-removed" : "diff-cell-added";
   }
 

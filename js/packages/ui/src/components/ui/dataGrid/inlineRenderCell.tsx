@@ -122,14 +122,7 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
     );
 
     // No change - render single value (float-precision-aware, see DRC-3025)
-    if (
-      !isCellChanged(
-        row[baseKey],
-        row[currentKey],
-        columnType,
-        columnRenderMode,
-      )
-    ) {
+    if (!isCellChanged(row[baseKey], row[currentKey])) {
       return (
         <Typography
           component="span"
