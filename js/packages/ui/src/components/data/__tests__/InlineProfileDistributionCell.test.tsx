@@ -262,6 +262,140 @@ describe("InlineProfileDistributionCell", () => {
     expect(titles.some((t) => t.includes("2021"))).toBe(true);
   });
 
+  // --- Datetime tooltip precision selection (makeEpochFormatter) -----------
+  // These exercise the span/min-gap → precision logic under `pnpm test` (jsdom),
+  // which the root vitest config runs; the Storybook play functions that also
+  // cover it are excluded from `pnpm test` and gate no CI job.
+  const EPOCH_2021 = 1609459200; // 2021-01-01 00:00:00 UTC
+
+  // Build a datetime histogram from explicit epoch-second edge arrays, filling
+  // each density array uniformly (length = edges - 1, matching the wire shape).
+  const datetimeHistogramFrom = (
+    baseEdges: number[],
+    currentEdges: number[],
+  ): ProfileDistributionHistogramPayload => {
+    const density = (n: number) =>
+      Array.from({ length: Math.max(0, n - 1) }, () => 0.1);
+    return {
+      kind: "histogram",
+      base_bin_edges: baseEdges,
+      current_bin_edges: currentEdges,
+      base_density: density(baseEdges.length),
+      current_density: density(currentEdges.length),
+      base_total: 100,
+      current_total: 120,
+    };
+  };
+
+  const titlesOf = (container: HTMLElement): string[] =>
+    Array.from(container.querySelectorAll("title")).map(
+      (t) => t.textContent ?? "",
+    );
+
+  // The range label is the part of the tooltip before the proportion bracket,
+  // i.e. `fmt(lo)–fmt(hi)`.
+  const rangeLabel = (title: string): string => title.split(" [")[0];
+
+  it("formats intra-day datetime edges with HH:mm (minute precision) when the smallest gap is minutes", () => {
+    // 5-minute steps inside one calendar day: minute precision resolves every
+    // edge, no seconds needed.
+    const edges = Array.from({ length: 12 }, (_, i) => EPOCH_2021 + i * 300);
+    const { container } = render(
+      <InlineProfileDistributionCell
+        payload={datetimeHistogramFrom(edges, edges)}
+        columnType="timestamp"
+      />,
+    );
+    const titles = titlesOf(container);
+    // A HH:mm clock component appears...
+    expect(titles.some((t) => /\b\d{2}:\d{2}\b/.test(t))).toBe(true);
+    // ...but NOT seconds precision — the smallest gap is 5 min.
+    expect(titles.some((t) => /\d{2}:\d{2}:\d{2}/.test(t))).toBe(false);
+    // Adjacent segment labels are distinct.
+    const labels = titles.map(rangeLabel);
+    expect(new Set(labels).size).toBe(labels.length);
+  });
+
+  it("formats sub-minute datetime edges with HH:mm:ss (seconds precision)", () => {
+    // 10-second steps: minute precision would collapse adjacent edges, so the
+    // formatter must drop to seconds.
+    const edges = Array.from({ length: 12 }, (_, i) => EPOCH_2021 + i * 10);
+    const { container } = render(
+      <InlineProfileDistributionCell
+        payload={datetimeHistogramFrom(edges, edges)}
+        columnType="timestamp"
+      />,
+    );
+    const titles = titlesOf(container);
+    expect(titles.some((t) => /\d{2}:\d{2}:\d{2}/.test(t))).toBe(true);
+    const labels = titles.map(rangeLabel);
+    expect(new Set(labels).size).toBe(labels.length);
+  });
+
+  it("keys precision off the smallest merged-edge gap, not the total span, so sub-minute segments stay distinct (should-fix #1)", () => {
+    // Base edges 50s apart; current offset by 25s. The merged base∪current set
+    // has 25s adjacent gaps while the TOTAL span is ~9 min. The old span-based
+    // rule picked HH:mm and collapsed every 25s segment to an identical
+    // "…00:00–…00:00" label; min-gap selection drops to seconds and keeps them
+    // distinct.
+    const base = Array.from({ length: 11 }, (_, i) => EPOCH_2021 + i * 50);
+    const current = Array.from(
+      { length: 11 },
+      (_, i) => EPOCH_2021 + 25 + i * 50,
+    );
+    const { container } = render(
+      <InlineProfileDistributionCell
+        payload={datetimeHistogramFrom(base, current)}
+        columnType="timestamp"
+      />,
+    );
+    const titles = titlesOf(container);
+    // Span is minutes-wide, yet seconds precision is used (min gap < 60s).
+    expect(titles.some((t) => /\d{2}:\d{2}:\d{2}/.test(t))).toBe(true);
+    const labels = titles.map(rangeLabel);
+    // Every segment is a non-degenerate range: the lo and hi labels differ
+    // (no "14:30–14:30" collapse).
+    for (const label of labels) {
+      const [lo, hi] = label.split("–");
+      expect(lo).not.toBe(hi);
+    }
+    // And all rendered segment labels are mutually distinct.
+    expect(new Set(labels).size).toBe(labels.length);
+  });
+
+  it("uses date-only formatting (no clock time) when the smallest gap is a day or more", () => {
+    const edges = Array.from({ length: 12 }, (_, i) => EPOCH_2021 + i * 86400);
+    const { container } = render(
+      <InlineProfileDistributionCell
+        payload={datetimeHistogramFrom(edges, edges)}
+        columnType="timestamp"
+      />,
+    );
+    const titles = titlesOf(container);
+    expect(titles.some((t) => t.includes("2021"))).toBe(true);
+    // No clock component at all — bins are >= 1 day apart.
+    expect(titles.some((t) => /\d{2}:\d{2}/.test(t))).toBe(false);
+  });
+
+  it("no-ops gracefully (empty frame, no tooltips) when all datetime edges are non-finite", () => {
+    const nan = Array.from({ length: 12 }, () => Number.NaN);
+    const { getByRole, container } = render(
+      <InlineProfileDistributionCell
+        payload={datetimeHistogramFrom(nan, nan)}
+        columnType="timestamp"
+      />,
+    );
+    // Frame still renders so the row layout stays stable...
+    expect(getByRole("img")).toHaveAttribute(
+      "aria-label",
+      CONTINUOUS_ARIA_LABEL,
+    );
+    // ...and there are no bar tooltips (proportion brackets): no finite edges
+    // means no segments, so the empty-edge formatter path is never invoked on
+    // bogus data.
+    expect(titlesOf(container).some((t) => t.includes("[base:"))).toBe(false);
+  });
+
   it("renders an empty frame (no bars) for a degenerate empty topk slot", () => {
     const emptyRanks: ProfileDistributionTopKRanksPayload = {
       kind: "topk",

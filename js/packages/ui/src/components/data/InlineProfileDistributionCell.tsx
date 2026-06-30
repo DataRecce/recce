@@ -132,13 +132,19 @@ const ONE_DAY_SECONDS = 86400;
 
 /**
  * Build the date/timestamp edge formatter for a histogram, choosing the time
- * precision from the **bin-edge span** (the spread of both envs' edges). A
- * column whose values all land inside one calendar day would otherwise render
- * every tooltip edge as the same bare date ("Jun 5, 2026 – Jun 5, 2026"); the
- * span tells us how much clock precision the edges actually need:
- *   - span ≥ 1 day      → date only (unchanged multi-day behavior).
- *   - 1 min ≤ span < 1d → date + `HH:mm`.
- *   - span < 1 min      → date + `HH:mm:ss`.
+ * precision from the **minimum gap between adjacent merged edges** (the
+ * combined, sorted, de-duplicated base∪current edge set). A column whose values
+ * all land inside one calendar day would otherwise render every tooltip edge as
+ * the same bare date ("Jun 5, 2026 – Jun 5, 2026").
+ *
+ * Each tooltip renders `fmt(lo)–fmt(hi)` for a single MERGED segment, so the
+ * precision must resolve the SMALLEST adjacent gap, not the total span: the span
+ * can be days wide while individual quantile bins sit seconds apart, and any
+ * segment narrower than the precision unit collapses to an identical label
+ * (e.g. "14:30–14:30"). Keying off the min gap keeps adjacent labels distinct:
+ *   - min gap ≥ 1 day      → date only (unchanged multi-day behavior).
+ *   - 1 min ≤ min gap < 1d → date + `HH:mm`.
+ *   - min gap < 1 min      → date + `HH:mm:ss`.
  * The returned closure keeps the `(v: number) => string` shape the histogram
  * component expects, so the leaf cells stay time-blind.
  */
@@ -149,9 +155,18 @@ function makeEpochFormatter(
     Number.isFinite,
   );
   if (edges.length === 0) return (v) => formatEpochSeconds(v);
-  const span = Math.max(...edges) - Math.min(...edges);
-  if (span >= ONE_DAY_SECONDS) return (v) => formatEpochSeconds(v);
-  const precision: boolean | "seconds" = span < 60 ? "seconds" : true;
+  // Sorted, de-duplicated union of both envs' edges — the actual set of segment
+  // boundaries the tooltips render across.
+  const merged = Array.from(new Set(edges)).sort((a, b) => a - b);
+  // Empty/single-edge (after dedup) → no adjacent pair, nothing to disambiguate.
+  if (merged.length < 2) return (v) => formatEpochSeconds(v);
+  let minGap = Number.POSITIVE_INFINITY;
+  for (let i = 1; i < merged.length; i++) {
+    const gap = merged[i] - merged[i - 1];
+    if (gap < minGap) minGap = gap;
+  }
+  if (minGap >= ONE_DAY_SECONDS) return (v) => formatEpochSeconds(v);
+  const precision: boolean | "seconds" = minGap < 60 ? "seconds" : true;
   return (v) => formatEpochSeconds(v, precision);
 }
 

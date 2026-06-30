@@ -17,14 +17,15 @@ import { SchemaContainerMock, SchemaRowMock } from "./SchemaRowMock";
  * histogram over a timestamp column whose values all fall inside one calendar
  * day produced the information-free tooltip **"Jun 5, 2026 – Jun 5, 2026"**.
  *
- * The fix derives the tooltip precision from the **bin-edge span** (min..max of
- * both envs' edges):
- *   - span < 1 min → date + `HH:mm:ss` (seconds scale)
- *   - span < 1 day → date + `HH:mm`    (minutes / hours scale)
- *   - span ≥ 1 day → date only         (unchanged multi-day behavior)
+ * The fix derives the tooltip precision from the **smallest adjacent gap** in
+ * the merged base∪current edge set (NOT the total span — DRC-3670 should-fix
+ * #1, so sub-minute segments inside a wider span stay distinct):
+ *   - min gap < 1 min → date + `HH:mm:ss` (seconds scale)
+ *   - min gap < 1 day → date + `HH:mm`    (minutes / hours scale)
+ *   - min gap ≥ 1 day → date only         (unchanged multi-day behavior)
  *
  * These three stories render the SAME `InlineProfileDistributionCell` (so the
- * real span-selection logic runs) at the three scales. The native histogram
+ * real precision-selection logic runs) at the three scales. The native histogram
  * tooltip is an SVG `<title>` that only appears on hover, so for visual review
  * each story also surfaces the bars' tooltip strings as a visible list under
  * the chart — that's what a reviewer eyeballs in a screenshot. Hover any bar to
@@ -49,6 +50,13 @@ function readBarTooltips(root: HTMLElement | null): string[] {
     .filter((t) => t.includes("[base:"));
 }
 
+interface DemoProps {
+  payload: Parameters<typeof InlineProfileDistributionCell>[0]["payload"];
+  columnName: string;
+  title: string;
+  subtitle: string;
+}
+
 /**
  * Renders the real cell, then reads back the bars' `<title>` tooltips and lists
  * them under the chart so they're visible without hovering (for screenshots).
@@ -58,12 +66,7 @@ function DatetimeTooltipDemo({
   columnName,
   title,
   subtitle,
-}: {
-  payload: Parameters<typeof InlineProfileDistributionCell>[0]["payload"];
-  columnName: string;
-  title: string;
-  subtitle: string;
-}): ReactNode {
+}: DemoProps): ReactNode {
   const isDark = useIsDark();
   const ref = useRef<HTMLDivElement>(null);
   const [tooltips, setTooltips] = useState<string[]>([]);
@@ -119,57 +122,66 @@ function DatetimeTooltipDemo({
   );
 }
 
-export const SecondsScale: Story = {
-  name: "Seconds scale (span ≈ 11s → HH:mm:ss)",
-  render: () => (
-    <DatetimeTooltipDemo
-      payload={continuousDatetimeSeconds}
-      columnName="ingested_at"
-      title="ingest_log"
-      subtitle="TIMESTAMP — bin-edge span ≈ 11 seconds"
-    />
-  ),
-  play: async ({ canvasElement }) => {
-    const titles = readBarTooltips(within(canvasElement).getByRole("img"));
-    // Sub-minute span → labels carry HH:mm:ss, and adjacent edges differ.
-    await expect(titles.some((t) => /\d{2}:\d{2}:\d{2}/.test(t))).toBe(true);
-    await expect(new Set(titles).size).toBeGreaterThan(1);
+/**
+ * One story per scale: same demo component, differing only by fixture/labels and
+ * the precision the merged-edge min-gap should produce. `precision` drives the
+ * play assertions so each scale stays a single declarative object.
+ */
+function makeDatetimeStory(
+  cfg: DemoProps & {
+    name: string;
+    precision: "seconds" | "minutes" | "days";
   },
-};
+): Story {
+  const { name, precision, ...demo } = cfg;
+  return {
+    name,
+    render: () => <DatetimeTooltipDemo {...demo} />,
+    play: async ({ canvasElement }) => {
+      const titles = readBarTooltips(within(canvasElement).getByRole("img"));
+      const has = (re: RegExp) => titles.some((t) => re.test(t));
+      const distinct = () => expect(new Set(titles).size).toBeGreaterThan(1);
+      if (precision === "seconds") {
+        // Sub-minute min gap → HH:mm:ss, adjacent edges differ.
+        await expect(has(/\d{2}:\d{2}:\d{2}/)).toBe(true);
+        distinct();
+      } else if (precision === "minutes") {
+        // Min gap ≥ 1 min but < 1 day → HH:mm (no seconds), distinct per edge.
+        await expect(has(/\d{2}:\d{2}\b/)).toBe(true);
+        await expect(has(/\d{2}:\d{2}:\d{2}/)).toBe(false);
+        distinct();
+      } else {
+        // Min gap ≥ 1 day → date only, no clock time appended.
+        await expect(has(/\b20\d{2}\b/)).toBe(true);
+        await expect(has(/\d{2}:\d{2}/)).toBe(false);
+      }
+    },
+  };
+}
 
-export const MinutesScale: Story = {
-  name: "Minutes scale (span ≈ 22min → HH:mm)",
-  render: () => (
-    <DatetimeTooltipDemo
-      payload={continuousDatetimeMinutes}
-      columnName="checkout_at"
-      title="checkout_events"
-      subtitle="TIMESTAMP — bin-edge span ≈ 22 minutes"
-    />
-  ),
-  play: async ({ canvasElement }) => {
-    const titles = readBarTooltips(within(canvasElement).getByRole("img"));
-    // Span < 1 day but ≥ 1 min → HH:mm (no seconds), still distinct per edge.
-    await expect(titles.some((t) => /\d{2}:\d{2}\b/.test(t))).toBe(true);
-    await expect(titles.some((t) => /\d{2}:\d{2}:\d{2}/.test(t))).toBe(false);
-    await expect(new Set(titles).size).toBeGreaterThan(1);
-  },
-};
+export const SecondsScale = makeDatetimeStory({
+  name: "Seconds scale (1s gaps → HH:mm:ss)",
+  payload: continuousDatetimeSeconds,
+  columnName: "ingested_at",
+  title: "ingest_log",
+  subtitle: "TIMESTAMP — adjacent edges ≈ 1 second apart",
+  precision: "seconds",
+});
 
-export const DaysScale: Story = {
-  name: "Days scale (span ≈ 11d → date only)",
-  render: () => (
-    <DatetimeTooltipDemo
-      payload={continuousDatetimeDays}
-      columnName="signup_date"
-      title="signups"
-      subtitle="TIMESTAMP — bin-edge span ≈ 11 days"
-    />
-  ),
-  play: async ({ canvasElement }) => {
-    const titles = readBarTooltips(within(canvasElement).getByRole("img"));
-    // Span ≥ 1 day → date only, no clock time appended.
-    await expect(titles.some((t) => /\b20\d{2}\b/.test(t))).toBe(true);
-    await expect(titles.some((t) => /\d{2}:\d{2}/.test(t))).toBe(false);
-  },
-};
+export const MinutesScale = makeDatetimeStory({
+  name: "Minutes scale (60s gaps → HH:mm)",
+  payload: continuousDatetimeMinutes,
+  columnName: "checkout_at",
+  title: "checkout_events",
+  subtitle: "TIMESTAMP — adjacent edges ≈ 1 minute apart",
+  precision: "minutes",
+});
+
+export const DaysScale = makeDatetimeStory({
+  name: "Days scale (1d gaps → date only)",
+  payload: continuousDatetimeDays,
+  columnName: "signup_date",
+  title: "signups",
+  subtitle: "TIMESTAMP — adjacent edges ≈ 1 day apart",
+  precision: "days",
+});

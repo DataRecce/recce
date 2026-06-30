@@ -72,10 +72,14 @@ const CATEGORY_MAP: Record<string, TypeCategory> = {
 
   // date
   DATE: "date",
+  // ClickHouse extended-range date
+  DATE32: "date",
 
   // datetime
   TIMESTAMP: "datetime",
   DATETIME: "datetime",
+  // ClickHouse sub-second datetime (e.g. DATETIME64(3, 'UTC'))
+  DATETIME64: "datetime",
   // DuckDB sub-second timestamps
   TIMESTAMP_S: "datetime",
   TIMESTAMP_MS: "datetime",

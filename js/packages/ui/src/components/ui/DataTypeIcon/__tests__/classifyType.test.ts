@@ -98,6 +98,12 @@ describe("classifyType", () => {
     it("classifies DATE as date", () => {
       expect(classifyType("DATE")).toBe("date");
     });
+
+    // ClickHouse extended-range date (DRC-3670 review #3). Previously fell
+    // through to `unknown`, leaving raw epoch integers in the tooltip.
+    it("classifies ClickHouse DATE32 as date", () => {
+      expect(classifyType("DATE32")).toBe("date");
+    });
   });
 
   describe("datetime types", () => {
@@ -125,6 +131,18 @@ describe("classifyType", () => {
       "TIMESTAMP_MS",
       "TIMESTAMP_NS",
     ])("classifies DuckDB %s as datetime", (type) => {
+      expect(classifyType(type)).toBe("datetime");
+    });
+
+    // ClickHouse sub-second datetime (DRC-3670 review #3). Previously fell
+    // through to `unknown`; the paren-strip normalizes the precision/timezone
+    // parameters (e.g. DATETIME64(3, 'UTC') -> DATETIME64).
+    it.each([
+      "DATETIME64",
+      "DATETIME64(3)",
+      "DATETIME64(3, 'UTC')",
+      "datetime64(3, 'UTC')",
+    ])("classifies ClickHouse %s as datetime", (type) => {
       expect(classifyType(type)).toBe("datetime");
     });
   });
