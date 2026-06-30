@@ -76,6 +76,10 @@ const CATEGORY_MAP: Record<string, TypeCategory> = {
   // datetime
   TIMESTAMP: "datetime",
   DATETIME: "datetime",
+  // DuckDB sub-second timestamps
+  TIMESTAMP_S: "datetime",
+  TIMESTAMP_MS: "datetime",
+  TIMESTAMP_NS: "datetime",
   TIMESTAMP_NTZ: "datetime",
   TIMESTAMP_LTZ: "datetime",
   TIMESTAMP_TZ: "datetime",

@@ -117,6 +117,16 @@ describe("classifyType", () => {
     ])("classifies %s as datetime", (type) => {
       expect(classifyType(type)).toBe("datetime");
     });
+
+    // DuckDB sub-second timestamps (DRC-3669). Previously fell through to
+    // `unknown`, which is why the cell needed local substring heuristics.
+    it.each([
+      "TIMESTAMP_S",
+      "TIMESTAMP_MS",
+      "TIMESTAMP_NS",
+    ])("classifies DuckDB %s as datetime", (type) => {
+      expect(classifyType(type)).toBe("datetime");
+    });
   });
 
   describe("time types", () => {
@@ -127,6 +137,13 @@ describe("classifyType", () => {
       "TIME WITHOUT TIME ZONE",
     ])("classifies %s as time", (type) => {
       expect(classifyType(type)).toBe("time");
+    });
+
+    // Exact-match guard: TIME/TIMETZ must stay `time` (seconds-since-midnight),
+    // never collapse into the datetime bucket alongside TIMESTAMP_*.
+    it("keeps TIME as time, distinct from the datetime bucket", () => {
+      expect(classifyType("TIME")).toBe("time");
+      expect(classifyType("TIMETZ")).toBe("time");
     });
   });
 

@@ -8,6 +8,7 @@ import type {
   ProfileDistributionTopKRanksPayload,
 } from "../../api";
 import { formatEpochSeconds, formatTimeOfDay } from "../../utils";
+import { classifyType } from "../ui/DataTypeIcon/classifyType";
 import {
   PairedHistogramContinuous,
   type PairedHistogramContinuousData,
@@ -70,34 +71,6 @@ export interface InlineProfileDistributionCellProps {
    */
   notProfiled?: boolean;
   className?: string;
-}
-
-/**
- * Calendar-date types whose histogram edges are seconds since the Unix epoch.
- * Bare `TIME` is deliberately excluded — its edges are seconds-since-midnight,
- * not an epoch, and is handled by `isTimeOfDayType`.
- */
-function isDatetimeType(type?: string): boolean {
-  if (!type) return false;
-  const t = type.toLowerCase();
-  return (
-    t.includes("timestamp") || t.includes("datetime") || t.includes("date")
-  );
-}
-
-/**
- * Time-of-day types (`TIME`, `TIME WITH/WITHOUT TIME ZONE`). The backend's
- * `epoch()` cast emits **seconds-since-midnight** (0–86399) for these, so the
- * edges must be read as a clock time, not a calendar date — otherwise every
- * tooltip collapses to "Jan 1, 1970". Matches `time` but not
- * `timestamp`/`datetime`, which carry real epoch seconds.
- */
-function isTimeOfDayType(type?: string): boolean {
-  if (!type) return false;
-  const t = type.toLowerCase();
-  return (
-    t.includes("time") && !t.includes("timestamp") && !t.includes("datetime")
-  );
 }
 
 /**
@@ -273,11 +246,18 @@ export function InlineProfileDistributionCell({
   }
 
   if (payload.kind === "histogram") {
-    const formatValue = isTimeOfDayType(columnType)
-      ? formatTimeOfDay
-      : isDatetimeType(columnType)
-        ? makeEpochFormatter(payload)
-        : undefined;
+    // `classifyType` has no null-guard but `columnType` is optional, so guard
+    // before calling it (an unprofiled cell can render before its type is
+    // known). `time` edges are seconds-since-midnight → clock; `date`/`datetime`
+    // edges are epoch seconds → the span-aware epoch formatter; anything else
+    // gets no special formatting.
+    const category = columnType ? classifyType(columnType) : "unknown";
+    const formatValue =
+      category === "time"
+        ? formatTimeOfDay
+        : category === "date" || category === "datetime"
+          ? makeEpochFormatter(payload)
+          : undefined;
     return (
       <PairedHistogramContinuous
         data={toContinuousData(payload)}
