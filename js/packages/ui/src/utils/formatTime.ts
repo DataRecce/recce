@@ -115,19 +115,47 @@ export function formatTimeOfDay(secondsSinceMidnight: number): string {
  * Unix epoch seconds (→ calendar date), TIME edges as seconds-since-midnight
  * (→ clock time). Both edge formatters live here so the datetime-formatting
  * seam has one home.
+ *
+ * `includeTime` appends a UTC wall-clock time after the date so adjacent
+ * histogram edges that fall on the **same calendar day** stay distinguishable
+ * (otherwise an intra-day timestamp column renders the information-free tooltip
+ * "Jun 5, 2026 – Jun 5, 2026"). The caller decides the precision from the
+ * bin-edge span:
+ *   - `false`     → date only (the default; correct for multi-day spans).
+ *   - `true`      → date + `HH:mm` (minute/hour-scale spans).
+ *   - `"seconds"` → date + `HH:mm:ss` (sub-minute spans, where the minute
+ *     component alone would still collapse adjacent edges).
+ *
+ * @param sec - Unix epoch seconds.
+ * @param includeTime - Append a UTC `HH:mm` (`true`) or `HH:mm:ss`
+ *   (`"seconds"`) time; omit for date-only (`false`, default).
  */
-export function formatEpochSeconds(sec: number): string {
+export function formatEpochSeconds(
+  sec: number,
+  includeTime: boolean | "seconds" = false,
+): string {
   const d = new Date(sec * 1000);
   if (Number.isNaN(d.getTime())) return String(sec);
   // Render in UTC: the backend's epoch() cast emits UTC-based seconds, so a
   // local-timezone render would shift day-boundary edges to the wrong calendar
   // day (e.g. UTC midnight showing as the previous day west of UTC).
-  return d.toLocaleDateString(undefined, {
+  const date = d.toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
     day: "numeric",
     timeZone: "UTC",
   });
+  if (!includeTime) return date;
+  // Time components also read in UTC, for the same day-boundary reason as the
+  // date above — a local-tz clock would disagree with the UTC calendar day.
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  const hh = pad(d.getUTCHours());
+  const mm = pad(d.getUTCMinutes());
+  const time =
+    includeTime === "seconds"
+      ? `${hh}:${mm}:${pad(d.getUTCSeconds())}`
+      : `${hh}:${mm}`;
+  return `${date} ${time}`;
 }
 
 // ============================================================================

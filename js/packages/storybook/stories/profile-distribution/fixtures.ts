@@ -200,6 +200,90 @@ export const continuousEventTime = continuousFromProportions(
 );
 
 // ----------------------------------------------------------------------
+// Datetime (TIMESTAMP) intra-day scales — DRC-3670 tooltip span logic
+// ----------------------------------------------------------------------
+//
+// Three TIMESTAMP columns whose histogram edges are Unix-epoch seconds, but
+// whose VALUES cluster at different time scales. The cell derives the tooltip
+// precision from the bin-edge span (min..max of both envs' edges):
+//   - span < 1 min  → date + HH:mm:ss
+//   - span < 1 day  → date + HH:mm
+//   - span ≥ 1 day  → date only (unchanged)
+// All anchored to 2026-06-05T14:30:00Z so the rendered labels read as a
+// realistic intra-day timestamp.
+
+/** 2026-06-05T00:00:00Z, in Unix-epoch seconds. */
+const JUN_5_2026_UTC = 1780617600;
+/** 14:30:00 past midnight, in seconds — the cluster center. */
+const T_1430 = 14 * 3600 + 30 * 60;
+
+/**
+ * Middle-concentrated 11-bin shape (sums to 1.0), reused across the three
+ * datetime scales so only the edge SPACING differs between them.
+ */
+const datetimeProps = [
+  0.02, 0.04, 0.08, 0.13, 0.18, 0.2, 0.14, 0.1, 0.06, 0.03, 0.02,
+];
+
+/** 12 edges anchored at 2026-06-05T14:30:00Z, `stepSeconds` apart, with the
+ * current side shifted right by `currentShift` seconds to mimic a post-deploy
+ * drift (so base and current edges don't perfectly coincide). */
+function datetimeEdges(
+  stepSeconds: number,
+  currentShift: number,
+): { base: number[]; current: number[] } {
+  const start = JUN_5_2026_UTC + T_1430;
+  const base = Array.from({ length: 12 }, (_, i) => start + i * stepSeconds);
+  const current = base.map((e) => e + currentShift);
+  return { base, current };
+}
+
+/**
+ * SECONDS scale — edges 1s apart (≈11s total span). Date-only would collapse
+ * every tooltip to "Jun 5, 2026 – Jun 5, 2026"; the span (< 1 min) routes to
+ * the `HH:mm:ss` variant so adjacent edges read as distinct seconds.
+ */
+const datetimeSecondsEdges = datetimeEdges(1, 0);
+export const continuousDatetimeSeconds = continuousFromProportions(
+  datetimeSecondsEdges.base,
+  datetimeProps,
+  datetimeSecondsEdges.current,
+  datetimeProps,
+  4800,
+  5100,
+);
+
+/**
+ * MINUTES scale — edges 2min apart (≈22min total span). Span < 1 day but
+ * ≥ 1 min, so the cell uses the `HH:mm` variant: distinct clock minutes,
+ * seconds omitted as noise at this scale.
+ */
+const datetimeMinutesEdges = datetimeEdges(120, 25);
+export const continuousDatetimeMinutes = continuousFromProportions(
+  datetimeMinutesEdges.base,
+  datetimeProps,
+  datetimeMinutesEdges.current,
+  datetimeProps,
+  4800,
+  5100,
+);
+
+/**
+ * DAYS scale — edges 1 day apart (≈11 day total span). Span ≥ 1 day, so the
+ * cell keeps the unchanged date-only formatting (`Jun 5 … Jun 16`); a time
+ * component would be noise.
+ */
+const datetimeDaysEdges = datetimeEdges(86400, 4 * 3600);
+export const continuousDatetimeDays = continuousFromProportions(
+  datetimeDaysEdges.base,
+  datetimeProps,
+  datetimeDaysEdges.current,
+  datetimeProps,
+  4800,
+  5100,
+);
+
+// ----------------------------------------------------------------------
 // Discrete (top-K) — gap-on-absent
 // ----------------------------------------------------------------------
 

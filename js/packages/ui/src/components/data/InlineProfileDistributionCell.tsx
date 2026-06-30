@@ -153,6 +153,35 @@ function formatDiscreteValue(v: unknown): string {
   return String(v);
 }
 
+/** One UTC day, in seconds — the threshold below which intra-day edges need a
+ * time component to stay distinct. */
+const ONE_DAY_SECONDS = 86400;
+
+/**
+ * Build the date/timestamp edge formatter for a histogram, choosing the time
+ * precision from the **bin-edge span** (the spread of both envs' edges). A
+ * column whose values all land inside one calendar day would otherwise render
+ * every tooltip edge as the same bare date ("Jun 5, 2026 – Jun 5, 2026"); the
+ * span tells us how much clock precision the edges actually need:
+ *   - span ≥ 1 day      → date only (unchanged multi-day behavior).
+ *   - 1 min ≤ span < 1d → date + `HH:mm`.
+ *   - span < 1 min      → date + `HH:mm:ss`.
+ * The returned closure keeps the `(v: number) => string` shape the histogram
+ * component expects, so the leaf cells stay time-blind.
+ */
+function makeEpochFormatter(
+  p: ProfileDistributionHistogramPayload,
+): (v: number) => string {
+  const edges = [...p.base_bin_edges, ...p.current_bin_edges].filter(
+    Number.isFinite,
+  );
+  if (edges.length === 0) return (v) => formatEpochSeconds(v);
+  const span = Math.max(...edges) - Math.min(...edges);
+  if (span >= ONE_DAY_SECONDS) return (v) => formatEpochSeconds(v);
+  const precision: boolean | "seconds" = span < 60 ? "seconds" : true;
+  return (v) => formatEpochSeconds(v, precision);
+}
+
 function toContinuousData(
   p: ProfileDistributionHistogramPayload,
 ): PairedHistogramContinuousData {
@@ -247,7 +276,7 @@ export function InlineProfileDistributionCell({
     const formatValue = isTimeOfDayType(columnType)
       ? formatTimeOfDay
       : isDatetimeType(columnType)
-        ? formatEpochSeconds
+        ? makeEpochFormatter(payload)
         : undefined;
     return (
       <PairedHistogramContinuous
