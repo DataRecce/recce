@@ -236,16 +236,17 @@ def as_manifest(m: WritableManifest) -> Manifest:
         return result
 
 
-# Highest schema versions emitted by dbt 1.x; dbt v2 / Fusion jumps to v20, so
-# "above this ceiling" means "v2 / Fusion era". The ceiling is deliberately fixed,
-# not the running dbt's version: a v12 manifest under dbt 1.6 is not Fusion and
-# must keep dbt's own "running a different version of dbt?" error.
+# Highest schema versions dbt 1.x ever emits; dbt v2 / Fusion jumps straight to
+# v20, so anything above these is a Fusion artifact. Do not tie the ceiling to
+# what the installed dbt is compatible with: under dbt 1.6 a v12 manifest is
+# already incompatible, but it comes from dbt 1.x and should surface dbt's own
+# version-mismatch error, not be reported as Fusion.
 _DBT1X_MAX_SCHEMA = {"manifest": 12, "catalog": 1}
 
 
 def _guard_unsupported_schema(artifact: str, found_version_url):
-    """Raise a clear Recce error if `found_version_url` is a dbt v2 / Fusion schema
-    (above the dbt 1.x ceiling). No-op otherwise."""
+    """Raise UnsupportedDbtSchemaError if `found_version_url` is a dbt v2 / Fusion
+    schema (above the dbt 1.x ceiling); no-op otherwise."""
     # dbt_schema_version looks like "https://schemas.getdbt.com/dbt/manifest/v12.json"
     match = re.search(r"/v(\d+)\.json", str(found_version_url))
     found = int(match.group(1)) if match else None
