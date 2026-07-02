@@ -55,14 +55,46 @@ describe("formatEpochSeconds", () => {
   const startOfDayUtc = 1609459200;
   const endOfDayUtc = startOfDayUtc + 23 * 3600;
 
-  it("renders the date in UTC, so a day's edges stay on one calendar day", () => {
-    // Both timestamps are the same day in UTC. Without the `timeZone: "UTC"`
-    // pin they would split across two local calendar days on any host with a
-    // non-zero UTC offset (west OR east), so this invariant catches the pin's
-    // removal everywhere except a host already running at UTC.
+  it("collapses a day's edges to one date when time is omitted (multi-day default)", () => {
+    // Both timestamps are the same day in UTC, so date-only formatting renders
+    // them identically — the correct behavior for a histogram whose bin-edge
+    // span is ≥ 1 day (AC5). The `timeZone: "UTC"` pin is what keeps them on a
+    // single calendar day; without it they'd split across two local days on any
+    // host with a non-zero UTC offset.
     expect(formatEpochSeconds(endOfDayUtc)).toBe(
       formatEpochSeconds(startOfDayUtc),
     );
+  });
+
+  it("renders distinct HH:mm labels for intra-day edges (includeTime=true)", () => {
+    // 14:32 vs 14:35 on the same UTC day. Date-only collapses these to one
+    // information-free "Jan 1, 2021 – Jan 1, 2021" range; the minute-scale time
+    // variant keeps adjacent edges distinct (AC4).
+    const t1 = startOfDayUtc + 14 * 3600 + 32 * 60;
+    const t2 = startOfDayUtc + 14 * 3600 + 35 * 60;
+    const a = formatEpochSeconds(t1, true);
+    const b = formatEpochSeconds(t2, true);
+    expect(a).not.toBe(b);
+    expect(a).toContain("14:32");
+    expect(b).toContain("14:35");
+    // Still carries the date prefix — the time is appended, not a replacement.
+    expect(a).toContain("2021");
+  });
+
+  it("renders distinct HH:mm:ss labels for second-scale edges (includeTime='seconds')", () => {
+    // 00:00:05 vs 00:00:09 — only a second apart. The minute variant would
+    // collapse both to "00:00"; the seconds variant keeps them distinct (AC4).
+    const a = formatEpochSeconds(startOfDayUtc + 5, "seconds");
+    const b = formatEpochSeconds(startOfDayUtc + 9, "seconds");
+    expect(a).not.toBe(b);
+    expect(a).toContain("00:00:05");
+    expect(b).toContain("00:00:09");
+  });
+
+  it("reads the appended time in UTC, not the host-local zone (AC6)", () => {
+    // 23:00 UTC. A local-tz clock would print a different hour on any host with
+    // a non-zero offset, and could even disagree with the UTC calendar day.
+    expect(formatEpochSeconds(endOfDayUtc, true)).toContain("23:00");
   });
 
   it("renders the correct UTC calendar day (not the host-local one)", () => {
