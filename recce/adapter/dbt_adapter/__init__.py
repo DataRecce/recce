@@ -236,11 +236,10 @@ def as_manifest(m: WritableManifest) -> Manifest:
         return result
 
 
-# Highest artifact schema versions emitted by dbt 1.x. dbt v2 / Fusion jumps straight
-# to v20, leaving a gap, so "above the 1.x ceiling" cleanly means "v2 / Fusion era".
-# The ceiling is FIXED (not the running dbt's version): an artifact merely too new for
-# the installed dbt 1.x — e.g. a v12 manifest under dbt 1.6 — is not Fusion and must
-# keep dbt's own "running a different version of dbt?" error.
+# Highest schema versions emitted by dbt 1.x; dbt v2 / Fusion jumps to v20, so
+# "above this ceiling" means "v2 / Fusion era". The ceiling is deliberately fixed,
+# not the running dbt's version: a v12 manifest under dbt 1.6 is not Fusion and
+# must keep dbt's own "running a different version of dbt?" error.
 _DBT1X_MAX_SCHEMA = {"manifest": 12, "catalog": 1}
 
 
