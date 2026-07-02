@@ -111,4 +111,33 @@ describe("computeWholeModelImpact", () => {
     expect(result.wholeModelImpactedNodeIds).toEqual(new Set(["a", "b"]));
     expect(result.wholeModelChangedNodeIds).toEqual(new Set(["a"]));
   });
+
+  it("does not bleed impact across disconnected components", () => {
+    // Component 1: a (changed) -> b
+    // Component 2: x -> y  (no change, no edge to component 1)
+    // The wave from `a` must stay inside its own component.
+    const graph = makeGraph([
+      ["a", "b"],
+      ["x", "y"],
+    ]);
+    const cll = makeCll(["a"], ["a", "b", "x", "y"]);
+    const result = computeWholeModelImpact(graph as any, cll as any);
+    expect(result.wholeModelImpactedNodeIds).toEqual(new Set(["a", "b"]));
+    expect(result.wholeModelChangedNodeIds).toEqual(new Set(["a"]));
+    expect(result.wholeModelImpactedNodeIds.has("x")).toBe(false);
+    expect(result.wholeModelImpactedNodeIds.has("y")).toBe(false);
+  });
+
+  it("handles a changed node absent from the lineage graph", () => {
+    // `ghost` is flagged breaking in the CLL but has no node in the
+    // lineage graph (CLL/graph can drift). It should still seed both sets,
+    // and the missing-node guard must skip its BFS expansion without throwing.
+    const graph = makeGraph([["a", "b"]]);
+    const cll = makeCll(["ghost"], ["a", "b", "ghost"]);
+    const result = computeWholeModelImpact(graph as any, cll as any);
+    expect(result.wholeModelChangedNodeIds).toEqual(new Set(["ghost"]));
+    expect(result.wholeModelImpactedNodeIds).toEqual(new Set(["ghost"]));
+    // No graph node for `ghost`, so nothing downstream is reached.
+    expect(result.wholeModelImpactedNodeIds.has("b")).toBe(false);
+  });
 });
