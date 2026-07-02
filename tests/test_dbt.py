@@ -13,7 +13,6 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 
 
 def _fusion_artifact(kind: str) -> dict:
-    # dbt v2 / Fusion emits schema v20; dbt 1.x tops out at manifest v12 / catalog v1.
     return {
         "metadata": {"dbt_schema_version": f"https://schemas.getdbt.com/dbt/{kind}/v20.json"},
     }
@@ -98,9 +97,8 @@ class TestFusionManifestFailLoud(TestCase):
         _guard_unsupported_schema("catalog", "https://schemas.getdbt.com/dbt/catalog/v1.json")
 
     def test_old_incompatible_artifact_keeps_dbt_error(self):
-        # An artifact at or below the 1.x ceiling that dbt still rejects (too old)
-        # must fall through to dbt's own IncompatibleSchemaError, not be mislabeled
-        # as Fusion.
+        # v1 / v0 sit below the 1.x ceiling but dbt still rejects them as too old —
+        # the guard must stay silent, not mislabel them as Fusion.
         from recce.adapter.dbt_adapter import IncompatibleSchemaError
 
         for loader, kind, version in [(load_manifest, "manifest", 1), (load_catalog, "catalog", 0)]:
