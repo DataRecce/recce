@@ -77,7 +77,7 @@ describe("wholeModelTreatment tokens", () => {
       const mode = isDark ? "dark" : "light";
       it(`maps the green/additive palette in ${mode} mode`, () => {
         const res = pickGraphBadge(
-          { ...BASE, changeCategory: "non_breaking" },
+          { ...BASE, changeCategory: "non_breaking" }, // wire-enum-ok
           isDark,
         );
         expect(res?.kind).toBe("additive");
@@ -96,7 +96,7 @@ describe("wholeModelTreatment tokens", () => {
       const mode = isDark ? "dark" : "light";
       it(`reuses the brown/changed palette in ${mode} mode`, () => {
         const res = pickGraphBadge(
-          { ...BASE, changeCategory: "partial_breaking" },
+          { ...BASE, changeCategory: "partial_breaking" }, // wire-enum-ok
           isDark,
         );
         expect(res?.kind).toBe("column-changed");
