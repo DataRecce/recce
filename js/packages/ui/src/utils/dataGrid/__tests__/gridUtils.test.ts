@@ -882,6 +882,36 @@ describe("isCellChanged", () => {
       expect(isCellChanged(NaN, NaN)).toBe(false);
     });
   });
+
+  describe("nested floats inside object/array cells (JSON/ARRAY/STRUCT)", () => {
+    test("object cell differing only by float noise → not changed", () => {
+      expect(isCellChanged({ x: 0.1 + 0.2 }, { x: 0.3 })).toBe(false);
+    });
+
+    test("object cell with a genuine nested change → changed", () => {
+      expect(isCellChanged({ x: 0.3 }, { x: 0.5 })).toBe(true);
+    });
+
+    test("array cell differing only by float noise → not changed", () => {
+      expect(isCellChanged([1, 0.1 + 0.2, 3], [1, 0.3, 3])).toBe(false);
+    });
+
+    test("array cell with a genuine nested change → changed", () => {
+      expect(isCellChanged([1, 0.3, 3], [1, 0.5, 3])).toBe(true);
+    });
+
+    test("deeply nested float noise → not changed", () => {
+      expect(
+        isCellChanged({ a: { b: [0.1 + 0.2] } }, { a: { b: [0.3] } }),
+      ).toBe(false);
+    });
+
+    test("nested non-numeric change is still detected exactly", () => {
+      expect(isCellChanged({ x: 0.3, s: "abc" }, { x: 0.3, s: "abd" })).toBe(
+        true,
+      );
+    });
+  });
 });
 
 // ============================================================================

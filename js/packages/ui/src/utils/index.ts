@@ -86,7 +86,6 @@ export {
   defaultRenderComponents,
   defaultSimpleRenderComponents,
   determineRowStatus,
-  FLOAT_RELATIVE_EPSILON,
   formatSmartDecimal,
   type GridColumnsConfig,
   getCellClass,

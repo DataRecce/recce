@@ -83,7 +83,6 @@ export {
   buildMergedColumnMap,
   columnRenderedValue,
   determineRowStatus,
-  FLOAT_RELATIVE_EPSILON,
   formatSmartDecimal,
   getCellClass,
   getHeaderCellClass,

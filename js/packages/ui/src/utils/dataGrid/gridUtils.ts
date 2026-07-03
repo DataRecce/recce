@@ -181,8 +181,11 @@ export function getPrimaryKeyValue(
  * with a wide safety margin while still flagging genuine differences (a 0.5%
  * change is ~5e6 × larger). The same tolerance applies in EVERY render mode —
  * the change-decision does not depend on a column's display precision.
+ *
+ * Module-private: consumed only by {@link floatComparator}, which closes over
+ * it. Not exported — there are no external tolerance consumers.
  */
-export const FLOAT_RELATIVE_EPSILON = 1e-9;
+const FLOAT_RELATIVE_EPSILON = 1e-9;
 
 /**
  * Absolute floor for the both-near-zero case. When `max(|a|, |b|)` is ~0 the
@@ -193,18 +196,20 @@ export const FLOAT_RELATIVE_EPSILON = 1e-9;
 const FLOAT_ABSOLUTE_FLOOR = 1e-12;
 
 /**
- * Single source of truth for "did this cell change?" across the data grid.
+ * `_.isEqualWith` customizer applying the magnitude-relative epsilon at every
+ * numeric leaf.
  *
- * - Two finite numbers are compared with a magnitude-relative epsilon
- *   ({@link FLOAT_RELATIVE_EPSILON}) plus a tiny absolute floor for values near
- *   zero. This is render-mode independent: float precision is never compared.
- * - Everything else (strings, booleans, mixed types, null/undefined, NaN) keeps
- *   exact (`_.isEqual`) equality — one-sided null/NaN counts as changed.
- *
- * @param base    Base cell value
- * @param current Current cell value
+ * - Two finite numbers → returns whether they are equal within the epsilon
+ *   ({@link FLOAT_RELATIVE_EPSILON}) plus a tiny absolute floor near zero, so
+ *   float precision is never compared (render-mode independent).
+ * - Everything else → returns `undefined`, which tells lodash to fall back to
+ *   its default deep-equal. That default recurses into objects/arrays and
+ *   re-invokes this customizer at each nested value, so floats buried inside
+ *   JSON/ARRAY/STRUCT cells get the same tolerance as top-level scalars, while
+ *   strings, booleans, mixed types, one-sided null/undefined, and NaN keep
+ *   exact equality.
  */
-export function isCellChanged(base: unknown, current: unknown): boolean {
+function floatComparator(base: unknown, current: unknown): boolean | undefined {
   if (
     typeof base === "number" &&
     typeof current === "number" &&
@@ -214,12 +219,27 @@ export function isCellChanged(base: unknown, current: unknown): boolean {
     const diff = Math.abs(base - current);
     const scale = Math.max(Math.abs(base), Math.abs(current));
     return (
-      diff > Math.max(FLOAT_RELATIVE_EPSILON * scale, FLOAT_ABSOLUTE_FLOOR)
+      diff <= Math.max(FLOAT_RELATIVE_EPSILON * scale, FLOAT_ABSOLUTE_FLOOR)
     );
   }
 
-  // Non-numeric, mixed-type, nullish, or NaN → exact equality.
-  return !_.isEqual(base, current);
+  // Non-numeric, mixed-type, nullish, or NaN → defer to lodash deep-equal.
+  return undefined;
+}
+
+/**
+ * Single source of truth for "did this cell change?" across the data grid.
+ *
+ * One deep traversal via `_.isEqualWith`: the {@link floatComparator}
+ * customizer applies the magnitude-relative epsilon at every numeric leaf —
+ * top-level scalars and floats nested inside object/array cells alike — and
+ * defers to exact equality for everything else.
+ *
+ * @param base    Base cell value
+ * @param current Current cell value
+ */
+export function isCellChanged(base: unknown, current: unknown): boolean {
+  return !_.isEqualWith(base, current, floatComparator);
 }
 
 // ============================================================================
