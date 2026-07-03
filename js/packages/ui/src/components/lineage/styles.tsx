@@ -711,7 +711,8 @@ export const changeStatusBackgroundsDark: Record<
  * CLL palette — muted brown/yellow variant used only inside the new CLL
  * experience (LineageNode, LineageColumnNode, LineageEdge, LineageCanvas
  * minimap, LineageLegend). Mirrors the `.cll-experience` overrides in
- * ../schema/style.css; keep both sides in sync (no build-time check).
+ * ../schema/style.css; the two are kept in sync by the guard test
+ * __tests__/cllPaletteSync.test.ts (fails CI on drift).
  */
 export const cllChangeStatusColors: Record<
   ChangeStatus | "unchanged" | "impacted",
@@ -749,7 +750,7 @@ export const cllChangeStatusBackgroundsDark: Record<
 /**
  * Impacted accent + badge palette. Mirrors `--schema-color-impacted-accent`
  * and `--schema-badge-impacted-{bg,fg}` in ../schema/style.css under
- * `.cll-experience` — keep both in sync by hand (no build-time check).
+ * `.cll-experience` — kept in sync by __tests__/cllPaletteSync.test.ts.
  */
 const IMPACTED_HUE_LIGHT = "252 211 77"; // matches cllChangeStatusColors.impacted
 
@@ -772,7 +773,7 @@ export const cllImpactedBadgeFg = {
 /**
  * Changed accent + badge palette. Mirrors `--schema-color-changed-accent`
  * and `--schema-badge-changed-{bg,fg}` in ../schema/style.css under
- * `.cll-experience` — keep both in sync by hand (no build-time check).
+ * `.cll-experience` — kept in sync by __tests__/cllPaletteSync.test.ts.
  */
 export const cllChangedAccent = cllChangeStatusColors.modified;
 
@@ -788,8 +789,8 @@ export const cllChangedBadgeFg = {
 
 /**
  * Additive accent + badge palette. Mirrors `--schema-color-added-accent`
- * and `--schema-badge-added-{bg,fg}` in ../schema/style.css — keep both in
- * sync by hand (no build-time check).
+ * and `--schema-badge-added-{bg,fg}` in ../schema/style.css — kept in sync
+ * by __tests__/cllPaletteSync.test.ts.
  */
 export const cllAdditiveAccent = {
   light: cllChangeStatusColors.added,

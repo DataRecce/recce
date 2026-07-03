@@ -200,6 +200,84 @@ export const continuousEventTime = continuousFromProportions(
 );
 
 // ----------------------------------------------------------------------
+// Datetime (TIMESTAMP) intra-day scales — DRC-3670 tooltip span logic
+// ----------------------------------------------------------------------
+//
+// Three TIMESTAMP columns whose histogram edges are Unix-epoch seconds, but
+// whose VALUES cluster at different time scales. The cell derives the tooltip
+// precision from the SMALLEST adjacent gap in the merged base∪current edge set
+// (not the total span — see DRC-3670 should-fix #1):
+//   - min gap < 1 min  → date + HH:mm:ss
+//   - min gap < 1 day  → date + HH:mm
+//   - min gap ≥ 1 day  → date only (unchanged)
+// All anchored to 2026-06-05T14:30:00Z so the rendered labels read as a
+// realistic intra-day timestamp.
+
+/** 2026-06-05T00:00:00Z, in Unix-epoch seconds. */
+const JUN_5_2026_UTC = 1780617600;
+/** 14:30:00 past midnight, in seconds — the cluster center. */
+const T_1430 = 14 * 3600 + 30 * 60;
+
+/**
+ * Middle-concentrated 11-bin shape (sums to 1.0), reused across the three
+ * datetime scales so only the edge SPACING differs between them.
+ */
+const datetimeProps = [
+  0.02, 0.04, 0.08, 0.13, 0.18, 0.2, 0.14, 0.1, 0.06, 0.03, 0.02,
+];
+
+/**
+ * Build a TIMESTAMP histogram fixture whose 11 quantile bins span `spanSeconds`,
+ * anchored at `anchorEpoch` (default 2026-06-05T14:30:00Z). Edges sit
+ * `spanSeconds / 11` apart; the current side is shifted right by `currentShift`
+ * seconds to mimic a post-deploy drift (0 ⇒ the two envs coincide). The shared
+ * `datetimeProps` shape keeps every scale visually identical, so only the
+ * spacing — and therefore the precision the cell derives from the smallest
+ * adjacent merged-edge gap — changes between scales.
+ */
+function makeContinuousDatetimeFixture({
+  spanSeconds,
+  currentShift = 0,
+  anchorEpoch = JUN_5_2026_UTC + T_1430,
+}: {
+  spanSeconds: number;
+  currentShift?: number;
+  anchorEpoch?: number;
+}): ProfileDistributionHistogramPayload {
+  const bins = datetimeProps.length; // 11 bins → 12 edges
+  const step = spanSeconds / bins;
+  const base = Array.from(
+    { length: bins + 1 },
+    (_, i) => anchorEpoch + i * step,
+  );
+  const current = base.map((e) => e + currentShift);
+  return continuousFromProportions(
+    base,
+    datetimeProps,
+    current,
+    datetimeProps,
+    4800,
+    5100,
+  );
+}
+
+// SECONDS scale — 1s gaps → sub-minute min gap → date + `HH:mm:ss`.
+export const continuousDatetimeSeconds = makeContinuousDatetimeFixture({
+  spanSeconds: 11,
+});
+
+// MINUTES scale — current drifted 60s → uniform 60s gaps → date + `HH:mm`.
+export const continuousDatetimeMinutes = makeContinuousDatetimeFixture({
+  spanSeconds: 22 * 60,
+  currentShift: 60,
+});
+
+// DAYS scale — 1-day gaps → min gap ≥ 1 day → date only (unchanged).
+export const continuousDatetimeDays = makeContinuousDatetimeFixture({
+  spanSeconds: 11 * 86400,
+});
+
+// ----------------------------------------------------------------------
 // Discrete (top-K) — gap-on-absent
 // ----------------------------------------------------------------------
 

@@ -34,6 +34,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { colors } from "../../../theme/colors";
 import { DIM_FILTER } from "../config/zoomConstants";
 import {
   getIconForMaterialization,
@@ -367,10 +368,16 @@ function LineageNodeComponent({
   const borderWidth = "2px";
   const borderColor = colorChangeStatus;
 
+  // Themed surface + text colors, sourced from the shared `colors` design
+  // tokens (the codebase's dark-mode mechanism) and selected by the `isDark`
+  // prop — rather than inline hex literals. The dark card surface uses
+  // neutral[800] (#262626), matching the sibling LineageColumnNode card.
+  const paperBg = isDark ? colors.neutral[800] : colors.white;
+  const primaryText = isDark ? colors.white : colors.black;
+  const invertedText = isDark ? colors.black : colors.white;
+
   // Node background color logic
   const nodeBackgroundColor = (() => {
-    const paperBg = isDark ? "#1e1e1e" : "#ffffff";
-
     if (showContent) {
       if (selectMode === "selecting") {
         return isSelected ? colorChangeStatus : paperBg;
@@ -392,9 +399,6 @@ function LineageNodeComponent({
 
   // Text color logic
   const titleColor = (() => {
-    const primaryText = isDark ? "#ffffff" : "#000000";
-    const invertedText = isDark ? "#000000" : "#ffffff";
-
     if (selectMode === "selecting") {
       return isSelected ? invertedText : primaryText;
     }
@@ -405,9 +409,6 @@ function LineageNodeComponent({
   })();
 
   const iconColor = (() => {
-    const primaryText = isDark ? "#ffffff" : "#000000";
-    const invertedText = isDark ? "#000000" : "#ffffff";
-
     if (selectMode === "selecting") {
       return isSelected ? invertedText : primaryText;
     }
@@ -418,9 +419,6 @@ function LineageNodeComponent({
   })();
 
   const changeStatusIconColor = (() => {
-    const primaryText = isDark ? "#ffffff" : "#000000";
-    const invertedText = isDark ? "#000000" : "#ffffff";
-
     if (selectMode === "selecting") {
       return isSelected ? invertedText : colorChangeStatus;
     }

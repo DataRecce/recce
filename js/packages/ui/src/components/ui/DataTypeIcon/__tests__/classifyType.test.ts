@@ -98,6 +98,12 @@ describe("classifyType", () => {
     it("classifies DATE as date", () => {
       expect(classifyType("DATE")).toBe("date");
     });
+
+    // ClickHouse extended-range date (DRC-3670 review #3). Previously fell
+    // through to `unknown`, leaving raw epoch integers in the tooltip.
+    it("classifies ClickHouse DATE32 as date", () => {
+      expect(classifyType("DATE32")).toBe("date");
+    });
   });
 
   describe("datetime types", () => {
@@ -117,6 +123,28 @@ describe("classifyType", () => {
     ])("classifies %s as datetime", (type) => {
       expect(classifyType(type)).toBe("datetime");
     });
+
+    // DuckDB sub-second timestamps (DRC-3669). Previously fell through to
+    // `unknown`, which is why the cell needed local substring heuristics.
+    it.each([
+      "TIMESTAMP_S",
+      "TIMESTAMP_MS",
+      "TIMESTAMP_NS",
+    ])("classifies DuckDB %s as datetime", (type) => {
+      expect(classifyType(type)).toBe("datetime");
+    });
+
+    // ClickHouse sub-second datetime (DRC-3670 review #3). Previously fell
+    // through to `unknown`; the paren-strip normalizes the precision/timezone
+    // parameters (e.g. DATETIME64(3, 'UTC') -> DATETIME64).
+    it.each([
+      "DATETIME64",
+      "DATETIME64(3)",
+      "DATETIME64(3, 'UTC')",
+      "datetime64(3, 'UTC')",
+    ])("classifies ClickHouse %s as datetime", (type) => {
+      expect(classifyType(type)).toBe("datetime");
+    });
   });
 
   describe("time types", () => {
@@ -127,6 +155,13 @@ describe("classifyType", () => {
       "TIME WITHOUT TIME ZONE",
     ])("classifies %s as time", (type) => {
       expect(classifyType(type)).toBe("time");
+    });
+
+    // Exact-match guard: TIME/TIMETZ must stay `time` (seconds-since-midnight),
+    // never collapse into the datetime bucket alongside TIMESTAMP_*.
+    it("keeps TIME as time, distinct from the datetime bucket", () => {
+      expect(classifyType("TIME")).toBe("time");
+      expect(classifyType("TIMETZ")).toBe("time");
     });
   });
 
