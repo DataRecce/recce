@@ -241,6 +241,139 @@ describe("buildDiffRows", () => {
   });
 
   // ============================================================================
+  // Float-precision row status (DRC-3025) — detectModifications must route
+  // through isCellChanged, not raw _.isEqual, so float noise is not "modified".
+  // ============================================================================
+
+  describe("float-precision row status (DRC-3025)", () => {
+    test("float noise (0.1 + 0.2 vs 0.3) → row NOT modified", () => {
+      const baseMap: Record<string, RowObjectType | undefined> = {
+        "1": createRow(
+          { id: 1, name: "Alice", value: 0.1 + 0.2 },
+          undefined,
+          1,
+        ),
+      };
+      const currentMap: Record<string, RowObjectType | undefined> = {
+        "1": createRow({ id: 1, name: "Alice", value: 0.3 }, undefined, 1),
+      };
+
+      const columnMap: Record<string, DiffColumnMapEntry> = {
+        id: createColumnMapEntry("id", "integer"),
+        name: createColumnMapEntry("name", "text"),
+        value: createColumnMapEntry("value", "number"),
+      };
+
+      const result = buildDiffRows({
+        baseMap,
+        currentMap,
+        baseColumns: standardColumns,
+        currentColumns: standardColumns,
+        columnMap,
+        primaryKeys: ["id"],
+      });
+
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].__status).toBeUndefined();
+      expect(result.rowStats.modified).toBe(0);
+      // Column status must NOT be mutated to "modified" for float noise
+      expect(columnMap.value.status).toBeUndefined();
+    });
+
+    test("float noise is dropped by changedOnly filter (not counted as modified)", () => {
+      const baseMap: Record<string, RowObjectType | undefined> = {
+        "1": createRow(
+          { id: 1, name: "Alice", value: 0.1 + 0.2 },
+          undefined,
+          1,
+        ),
+      };
+      const currentMap: Record<string, RowObjectType | undefined> = {
+        "1": createRow({ id: 1, name: "Alice", value: 0.3 }, undefined, 1),
+      };
+
+      const columnMap: Record<string, DiffColumnMapEntry> = {
+        id: createColumnMapEntry("id", "integer"),
+        name: createColumnMapEntry("name", "text"),
+        value: createColumnMapEntry("value", "number"),
+      };
+
+      const result = buildDiffRows({
+        baseMap,
+        currentMap,
+        baseColumns: standardColumns,
+        currentColumns: standardColumns,
+        columnMap,
+        primaryKeys: ["id"],
+        changedOnly: true,
+      });
+
+      expect(result.rows).toHaveLength(0);
+      expect(result.rowStats.modified).toBe(0);
+    });
+
+    test("genuine numeric change is still flagged modified", () => {
+      const baseMap: Record<string, RowObjectType | undefined> = {
+        "1": createRow({ id: 1, name: "Alice", value: 100.0 }, undefined, 1),
+      };
+      const currentMap: Record<string, RowObjectType | undefined> = {
+        "1": createRow({ id: 1, name: "Alice", value: 100.5 }, undefined, 1),
+      };
+
+      const columnMap: Record<string, DiffColumnMapEntry> = {
+        id: createColumnMapEntry("id", "integer"),
+        name: createColumnMapEntry("name", "text"),
+        value: createColumnMapEntry("value", "number"),
+      };
+
+      const result = buildDiffRows({
+        baseMap,
+        currentMap,
+        baseColumns: standardColumns,
+        currentColumns: standardColumns,
+        columnMap,
+        primaryKeys: ["id"],
+      });
+
+      expect(result.rows[0].__status).toBe("modified");
+      expect(result.rowStats.modified).toBe(1);
+      expect(columnMap.value.status).toBe("modified");
+    });
+
+    test("float noise via MergeColumnMapEntry (querydiff path) → NOT modified", () => {
+      const baseMap: Record<string, RowObjectType | undefined> = {
+        "1": createRow(
+          { id: 1, name: "Alice", value: 0.1 + 0.2 },
+          undefined,
+          1,
+        ),
+      };
+      const currentMap: Record<string, RowObjectType | undefined> = {
+        "1": createRow({ id: 1, name: "Alice", value: 0.3 }, undefined, 1),
+      };
+
+      const columnMap: Record<string, DiffColumnMapEntry> = {
+        id: createMergeColumnMapEntry("id", "integer"),
+        name: createMergeColumnMapEntry("name", "text"),
+        value: createMergeColumnMapEntry("value", "number"),
+      };
+
+      const result = buildDiffRows({
+        baseMap,
+        currentMap,
+        baseColumns: standardColumns,
+        currentColumns: standardColumns,
+        columnMap,
+        primaryKeys: ["id"],
+      });
+
+      expect(result.rows[0].__status).toBeUndefined();
+      expect(result.rowStats.modified).toBe(0);
+      expect(columnMap.value.status).toBeUndefined();
+    });
+  });
+
+  // ============================================================================
   // Row Value Population Tests
   // ============================================================================
 

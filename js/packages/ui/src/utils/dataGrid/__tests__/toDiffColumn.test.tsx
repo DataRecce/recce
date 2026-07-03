@@ -188,6 +188,19 @@ describe("createCellClassBase", () => {
     const row = createRow({});
     expect(cellClassFn(createCellClassParams(row))).toBeUndefined();
   });
+
+  // DRC-3025: float noise must not highlight the base cell (uses isCellChanged)
+  test("float noise (0.1 + 0.2 vs 0.3) → undefined (no highlight)", () => {
+    const cellClassFn = createCellClassBase("value", "");
+    const row = createRow({ base__value: 0.1 + 0.2, current__value: 0.3 });
+    expect(cellClassFn(createCellClassParams(row))).toBeUndefined();
+  });
+
+  test("genuine float change (100.0 vs 100.5) → still 'diff-cell-removed'", () => {
+    const cellClassFn = createCellClassBase("value", "");
+    const row = createRow({ base__value: 100.0, current__value: 100.5 });
+    expect(cellClassFn(createCellClassParams(row))).toBe("diff-cell-removed");
+  });
 });
 
 // ============================================================================
@@ -222,6 +235,19 @@ describe("createCellClassCurrent", () => {
     const cellClassFn = createCellClassCurrent("value", "");
     const row = createRow({ base__value: 100, current__value: 100 });
     expect(cellClassFn(createCellClassParams(row))).toBeUndefined();
+  });
+
+  // DRC-3025: float noise must not highlight the current cell (uses isCellChanged)
+  test("float noise (0.1 + 0.2 vs 0.3) → undefined (no highlight)", () => {
+    const cellClassFn = createCellClassCurrent("value", "");
+    const row = createRow({ base__value: 0.1 + 0.2, current__value: 0.3 });
+    expect(cellClassFn(createCellClassParams(row))).toBeUndefined();
+  });
+
+  test("genuine float change (100.0 vs 100.5) → still 'diff-cell-added'", () => {
+    const cellClassFn = createCellClassCurrent("value", "");
+    const row = createRow({ base__value: 100.0, current__value: 100.5 });
+    expect(cellClassFn(createCellClassParams(row))).toBe("diff-cell-added");
   });
 });
 

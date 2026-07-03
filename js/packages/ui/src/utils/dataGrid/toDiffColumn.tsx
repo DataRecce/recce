@@ -7,9 +7,8 @@
  */
 
 import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
-import _ from "lodash";
 import type { ColumnRenderMode, ColumnType, RowObjectType } from "../../api";
-import { getHeaderCellClass } from "./gridUtils";
+import { getHeaderCellClass, isCellChanged } from "./gridUtils";
 import type {
   DataFrameColumnGroupHeaderProps,
   DiffColumnRenderComponents,
@@ -90,7 +89,7 @@ export function createCellClassBase(
     const baseKey = `base__${columnName}`.toLowerCase();
     const currentKey = `current__${columnName}`.toLowerCase();
 
-    if (!_.isEqual(row[baseKey], row[currentKey])) {
+    if (isCellChanged(row[baseKey], row[currentKey])) {
       return "diff-cell-removed";
     }
 
@@ -123,7 +122,7 @@ export function createCellClassCurrent(
     const baseKey = `base__${columnName}`.toLowerCase();
     const currentKey = `current__${columnName}`.toLowerCase();
 
-    if (!_.isEqual(row[baseKey], row[currentKey])) {
+    if (isCellChanged(row[baseKey], row[currentKey])) {
       return "diff-cell-added";
     }
 

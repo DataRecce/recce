@@ -6,11 +6,15 @@
  * and valuediff (joined DataFrame with in_a/in_b) scenarios.
  */
 
-import _ from "lodash";
 import type { DataFrame, RowObjectType } from "../../api";
 import { mergeKeysWithStatus } from "../mergeKeys";
 import { keyToNumber } from "../transforms";
-import { ColumnMapEntry, MergeColumnMapEntry, RowStats } from "./gridUtils";
+import {
+  ColumnMapEntry,
+  isCellChanged,
+  MergeColumnMapEntry,
+  RowStats,
+} from "./gridUtils";
 
 // Re-export types from gridUtils for convenience
 export type { RowStats };
@@ -183,7 +187,7 @@ function detectModifications(
     const baseValue = baseRow[baseKey];
     const currentValue = currentRow[currentKey];
 
-    if (!_.isEqual(baseValue, currentValue)) {
+    if (isCellChanged(baseValue, currentValue)) {
       isModified = true;
       // Mutate column status to track which columns have modifications
       column.status = "modified";
