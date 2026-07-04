@@ -67,7 +67,7 @@ export function SchemaLegend() {
       isWholeModelChanged: false,
       isWholeModelImpacted: false,
       isImpacted: true,
-      changeCategory: "non_breaking",
+      changeCategory: "non_breaking", // wire-enum-ok: pickGraphBadge keys the additive badge off the legacy ChangeCategory enum
     },
     isDark,
   );

@@ -1,6 +1,7 @@
 import { SchemaLegend } from "@datarecce/ui/components";
 import { ScreenshotDataGrid } from "@datarecce/ui/primitives";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { mockServerFlags } from "../../.storybook/mocks/handlers";
 import {
   definitionChangedRows,
   generateWideSchema,
@@ -111,5 +112,29 @@ export const WideSchema: Story = {
     rowHeight: 35,
     getRowClass,
     className: "rdg-light",
+  },
+};
+
+/**
+ * DRC-3466 — with `new_cll_experience` on, the legend also documents the
+ * `[ALL]` whole-model and `[ADD]` additive badges (reusing the lineage-graph /
+ * NodeView treatment tokens). This story turns the flag on so the legend's two
+ * extra entries are visible for review.
+ */
+export const LegendWithWholeModelAndAdditive: Story = {
+  name: "Legend — [ALL] + [ADD] badges (new_cll_experience on)",
+  args: {
+    style: GRID_STYLE,
+    columns: schemaColumns,
+    rows: mixedDiffRows,
+    rowHeight: 35,
+    getRowClass,
+    className: "rdg-light",
+  },
+  beforeEach: () => {
+    mockServerFlags.new_cll_experience = true;
+    return () => {
+      mockServerFlags.new_cll_experience = false;
+    };
   },
 };
