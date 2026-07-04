@@ -2,6 +2,7 @@ import { theme } from "@datarecce/ui/theme";
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 import type { Preview } from "@storybook/react-vite";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "chartjs-adapter-date-fns";
 import { useEffect } from "react";
 
@@ -21,6 +22,13 @@ if (typeof window !== "undefined") {
 // The @datarecce/ui theme uses CSS-variables mode with `colorSchemeSelector:
 // "class"`, so a single theme drives both light and dark modes — the global
 // decorator below toggles the `.dark` class on <html>.
+
+// Components that read server flags (e.g. SchemaLegend via useRecceServerFlag)
+// use react-query, so stories need a QueryClient in context. Retries off so
+// mocked-endpoint stories settle immediately.
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
 
 const preview: Preview = {
   parameters: {
@@ -61,10 +69,12 @@ const preview: Preview = {
       }, [isDark]);
 
       return (
-        <MuiThemeProvider theme={theme}>
-          <CssBaseline />
-          <Story />
-        </MuiThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <MuiThemeProvider theme={theme}>
+            <CssBaseline />
+            <Story />
+          </MuiThemeProvider>
+        </QueryClientProvider>
       );
     },
   ],
