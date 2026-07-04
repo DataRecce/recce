@@ -442,38 +442,31 @@ describe("createDataGrid - profile_diff with schema differences", () => {
 // ============================================================================
 // 6. Profile Diff of an UNCHANGED table — DRC-3025 real scenario
 //
-// The reported bug: a profile diff of a table that did not change shows
-// phantom "modified" rows because a float stat (e.g. avg/mean) differs only in
-// its raw floating-point tail (0.1 + 0.2 !== 0.3). This drives createDataGrid
-// through the SAME production path the app uses — profile_diff → toDataDiffGrid
-// → buildDiffRows → isCellChanged — and asserts the row reads UNCHANGED. Raw
-// stat values are compared, so display precision (2 vs 5 decimals) is
-// irrelevant by construction: isCellChanged never sees the rendered string.
+// The reported bug: a profile diff of a table that did not change shows phantom
+// "modified" rows because a float stat (avg/mean) differs only in its raw
+// floating-point tail (0.1 + 0.2 !== 0.3).
+//
+// ROOT CAUSE (backend): agate NUMBER stats arrive as Decimal, and pydantic v2
+// serializes Decimal as a JSON *string*. So the stat reached this grid as the
+// string "0.30000000000000004" vs "0.3" — and isCellChanged's numeric epsilon
+// only fires on NUMBERS, so two unequal strings read "modified". The fix is in
+// the backend (`recce/tasks/dataframe.py` from_agate: NUMBER Decimals are
+// coerced to float), proven by `tests/tasks/test_dataframe_number_serialization.py`.
+//
+// These tests therefore split into two shapes:
+//  - PRODUCTION shape AFTER the backend fix (numbers) → row reads UNCHANGED.
+//  - The pre-fix STRING shape → row still reads MODIFIED. This is intentional:
+//    the frontend comparator does NOT (by DRC-3025's design, cf. the
+//    `isCellChanged(5, "5")` case in gridUtils.test.ts) numerically compare
+//    stringified numbers — which is exactly WHY the fix lives in the backend.
+//    If NUMBER stats ever regress to strings on the wire, this guard trips.
 // ============================================================================
 
 describe("createDataGrid - profile_diff float-noise reads unchanged (DRC-3025)", () => {
-  // A profile with a float stat column (AVG). The base/current values differ
-  // only by float-representation noise for CUSTOMER_ID, and by a genuine amount
-  // for AMOUNT (the control).
   const STAT_COLUMNS = [
     { key: "COLUMN_NAME", name: "COLUMN_NAME", type: "text" },
-    { key: "AVG", name: "AVG", type: "float" },
+    { key: "AVG", name: "AVG", type: "number" },
   ] as const;
-
-  const baseData = makeDataFrame(
-    [...STAT_COLUMNS],
-    [
-      ["CUSTOMER_ID", 0.1 + 0.2], // 0.30000000000000004 — float noise vs 0.3
-      ["AMOUNT", 100.0], // genuine change control
-    ],
-  );
-  const currentData = makeDataFrame(
-    [...STAT_COLUMNS],
-    [
-      ["CUSTOMER_ID", 0.3],
-      ["AMOUNT", 100.5],
-    ],
-  );
 
   function rowFor(
     result: NonNullable<ReturnType<typeof createDataGrid>>,
@@ -485,39 +478,70 @@ describe("createDataGrid - profile_diff float-noise reads unchanged (DRC-3025)",
     });
   }
 
-  test("inline: float-noise-only stat row is NOT modified", () => {
-    const run = makeProfileDiffRun({ base: baseData, current: currentData });
+  // ---- Production shape AFTER the backend fix: NUMBER stats are JS numbers ----
+  // CUSTOMER_ID's avg differs only by float noise; AMOUNT genuinely changes.
+  const numberBase = makeDataFrame(
+    [...STAT_COLUMNS],
+    [
+      ["CUSTOMER_ID", 0.1 + 0.2], // 0.30000000000000004 — float noise vs 0.3
+      ["AMOUNT", 100.0], // genuine change control
+    ],
+  );
+  const numberCurrent = makeDataFrame(
+    [...STAT_COLUMNS],
+    [
+      ["CUSTOMER_ID", 0.3],
+      ["AMOUNT", 100.5],
+    ],
+  );
+
+  test("numbers (post-fix shape), inline: float-noise stat row is NOT modified", () => {
+    const run = makeProfileDiffRun({
+      base: numberBase,
+      current: numberCurrent,
+    });
     const result = createDataGrid(run, { displayMode: "inline" })!;
-
-    const noiseRow = rowFor(result, "CUSTOMER_ID");
-    expect(noiseRow).toBeDefined();
-    expect(noiseRow!.__status).not.toBe("modified");
+    expect(rowFor(result, "CUSTOMER_ID")!.__status).not.toBe("modified");
   });
 
-  test("inline: genuine stat change is still modified (control)", () => {
-    const run = makeProfileDiffRun({ base: baseData, current: currentData });
+  test("numbers (post-fix shape), side_by_side: float-noise stat row is NOT modified", () => {
+    const run = makeProfileDiffRun({
+      base: numberBase,
+      current: numberCurrent,
+    });
+    const result = createDataGrid(run, { displayMode: "side_by_side" })!;
+    expect(rowFor(result, "CUSTOMER_ID")!.__status).not.toBe("modified");
+  });
+
+  test("numbers (post-fix shape): genuine stat change is still modified (control)", () => {
+    const run = makeProfileDiffRun({
+      base: numberBase,
+      current: numberCurrent,
+    });
     const result = createDataGrid(run, { displayMode: "inline" })!;
-
-    const changedRow = rowFor(result, "AMOUNT");
-    expect(changedRow).toBeDefined();
-    expect(changedRow!.__status).toBe("modified");
+    expect(rowFor(result, "AMOUNT")!.__status).toBe("modified");
   });
 
-  test("side_by_side: float-noise-only stat row is NOT modified", () => {
-    const run = makeProfileDiffRun({ base: baseData, current: currentData });
-    const result = createDataGrid(run, { displayMode: "side_by_side" })!;
+  // ---- Pre-fix wire shape: NUMBER stats as Decimal-serialized STRINGS --------
+  // The exact bytes the OLD pipeline produced. The frontend cannot epsilon-
+  // compare strings, so this row reads MODIFIED — documenting why the fix must
+  // live in the backend (which now emits numbers, see the tests above + the
+  // Python serialization test).
+  const stringBase = makeDataFrame(
+    [...STAT_COLUMNS],
+    [["CUSTOMER_ID", "0.30000000000000004"]],
+  );
+  const stringCurrent = makeDataFrame(
+    [...STAT_COLUMNS],
+    [["CUSTOMER_ID", "0.3"]],
+  );
 
-    const noiseRow = rowFor(result, "CUSTOMER_ID");
-    expect(noiseRow).toBeDefined();
-    expect(noiseRow!.__status).not.toBe("modified");
-  });
-
-  test("side_by_side: genuine stat change is still modified (control)", () => {
-    const run = makeProfileDiffRun({ base: baseData, current: currentData });
-    const result = createDataGrid(run, { displayMode: "side_by_side" })!;
-
-    const changedRow = rowFor(result, "AMOUNT");
-    expect(changedRow).toBeDefined();
-    expect(changedRow!.__status).toBe("modified");
+  test("strings (pre-fix wire shape): float-noise stat row reads MODIFIED — the frontend cannot fix this, the backend must emit numbers", () => {
+    const run = makeProfileDiffRun({
+      base: stringBase,
+      current: stringCurrent,
+    });
+    const result = createDataGrid(run, { displayMode: "inline" })!;
+    expect(rowFor(result, "CUSTOMER_ID")!.__status).toBe("modified");
   });
 });
