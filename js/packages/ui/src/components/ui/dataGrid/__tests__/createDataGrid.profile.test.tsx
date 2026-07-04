@@ -438,3 +438,86 @@ describe("createDataGrid - profile_diff with schema differences", () => {
     expect(removedRow!.__status).toBe("removed");
   });
 });
+
+// ============================================================================
+// 6. Profile Diff of an UNCHANGED table — DRC-3025 real scenario
+//
+// The reported bug: a profile diff of a table that did not change shows
+// phantom "modified" rows because a float stat (e.g. avg/mean) differs only in
+// its raw floating-point tail (0.1 + 0.2 !== 0.3). This drives createDataGrid
+// through the SAME production path the app uses — profile_diff → toDataDiffGrid
+// → buildDiffRows → isCellChanged — and asserts the row reads UNCHANGED. Raw
+// stat values are compared, so display precision (2 vs 5 decimals) is
+// irrelevant by construction: isCellChanged never sees the rendered string.
+// ============================================================================
+
+describe("createDataGrid - profile_diff float-noise reads unchanged (DRC-3025)", () => {
+  // A profile with a float stat column (AVG). The base/current values differ
+  // only by float-representation noise for CUSTOMER_ID, and by a genuine amount
+  // for AMOUNT (the control).
+  const STAT_COLUMNS = [
+    { key: "COLUMN_NAME", name: "COLUMN_NAME", type: "text" },
+    { key: "AVG", name: "AVG", type: "float" },
+  ] as const;
+
+  const baseData = makeDataFrame(
+    [...STAT_COLUMNS],
+    [
+      ["CUSTOMER_ID", 0.1 + 0.2], // 0.30000000000000004 — float noise vs 0.3
+      ["AMOUNT", 100.0], // genuine change control
+    ],
+  );
+  const currentData = makeDataFrame(
+    [...STAT_COLUMNS],
+    [
+      ["CUSTOMER_ID", 0.3],
+      ["AMOUNT", 100.5],
+    ],
+  );
+
+  function rowFor(
+    result: NonNullable<ReturnType<typeof createDataGrid>>,
+    colName: string,
+  ) {
+    return result.rows.find((r) => {
+      const name = (r.column_name as string) ?? (r.COLUMN_NAME as string);
+      return name === colName;
+    });
+  }
+
+  test("inline: float-noise-only stat row is NOT modified", () => {
+    const run = makeProfileDiffRun({ base: baseData, current: currentData });
+    const result = createDataGrid(run, { displayMode: "inline" })!;
+
+    const noiseRow = rowFor(result, "CUSTOMER_ID");
+    expect(noiseRow).toBeDefined();
+    expect(noiseRow!.__status).not.toBe("modified");
+  });
+
+  test("inline: genuine stat change is still modified (control)", () => {
+    const run = makeProfileDiffRun({ base: baseData, current: currentData });
+    const result = createDataGrid(run, { displayMode: "inline" })!;
+
+    const changedRow = rowFor(result, "AMOUNT");
+    expect(changedRow).toBeDefined();
+    expect(changedRow!.__status).toBe("modified");
+  });
+
+  test("side_by_side: float-noise-only stat row is NOT modified", () => {
+    const run = makeProfileDiffRun({ base: baseData, current: currentData });
+    const result = createDataGrid(run, { displayMode: "side_by_side" })!;
+
+    const noiseRow = rowFor(result, "CUSTOMER_ID");
+    expect(noiseRow).toBeDefined();
+    expect(noiseRow!.__status).not.toBe("modified");
+  });
+
+  test("side_by_side: genuine stat change is still modified (control)", () => {
+    const run = makeProfileDiffRun({ base: baseData, current: currentData });
+    const result = createDataGrid(run, { displayMode: "side_by_side" })!;
+
+    const changedRow = rowFor(result, "AMOUNT");
+    expect(changedRow).toBeDefined();
+    expect(changedRow!.__status).toBe("modified");
+  });
+});
