@@ -90,29 +90,9 @@ class DataFrame(BaseModel):
                 col_type = DataFrameColumnType.UNKNOWN
             columns.append(DataFrameColumn(key=col_name, name=col_name, type=col_type))
 
-        def _convert(col_type, v):
-            if not isinstance(v, Decimal):
-                return v
-            # Non-finite Decimals (NaN/Infinity) are not JSON-serializable, so
-            # convert them to float regardless of column type (GitHub issue #476).
-            if not v.is_finite():
-                return float(v)
-            # NUMBER columns are floating aggregates (avg, stddev, percentiles, …).
-            # Pydantic v2 serializes Decimal as a JSON *string*, so an unchanged
-            # table whose stat is e.g. Decimal("0.30000000000000004") would reach
-            # the frontend as the string "0.30000000000000004" and compare unequal
-            # to "0.3" — a phantom float diff (DRC-3025). A NUMBER stat is a real
-            # number, and these are shown at 2-5 decimals, so float64 is the correct
-            # display-precision wire type: coerce it here, at the source, so the
-            # value is a number end-to-end and the grid's epsilon comparison applies.
-            # INTEGER columns are intentionally left as-is: they compare exactly (no
-            # float noise) and float64 would lose precision above 2**53.
-            if col_type == DataFrameColumnType.NUMBER:
-                return float(v)
-            return v
-
         def _row_values(row):
-            return tuple(_convert(col.type, v) for col, v in zip(columns, row.values()))
+            # If the value is Decimal, check if it's finite. If not, convert it to float(xxx) (GitHub issue #476)
+            return tuple([float(v) if isinstance(v, Decimal) and not v.is_finite() else v for v in row.values()])
 
         data = [_row_values(row) for row in table.rows]
         df = DataFrame(

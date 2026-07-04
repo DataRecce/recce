@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import List, Optional
 
 from pydantic import BaseModel
@@ -6,7 +7,7 @@ from ..core import default_context
 from ..exceptions import RecceException
 from ..models import Check
 from .core import CheckValidator, Task, TaskResultDiffer
-from .dataframe import DataFrame
+from .dataframe import DataFrame, DataFrameColumnType
 
 PROFILE_COLUMN_JINJA_TEMPLATE = r"""
 {# Conditions -------------------------------------------- #}
@@ -159,6 +160,45 @@ class ProfileResult(BaseModel):
     current: DataFrame
 
 
+def _coerce_number_stats_to_float(df: DataFrame) -> DataFrame:
+    """Coerce finite Decimal values in NUMBER-typed columns to float, in place.
+
+    Profile stats are computed aggregates (avg, stddev, percentiles, proportions
+    …) where floating-point representation noise (``0.1 + 0.2 != 0.3``) is
+    meaningless and must not read as a change. agate returns them as ``Decimal``,
+    and pydantic v2 serializes ``Decimal`` as a JSON *string*, which the grid
+    compares exactly — so an unchanged table's avg reaches the frontend as
+    ``"0.30000000000000004"`` vs ``"0.3"`` and reads "modified" (DRC-3025).
+    Coercing NUMBER stats to float here makes them real numbers end-to-end so the
+    grid's magnitude-relative epsilon applies.
+
+    This is deliberately scoped to the profile path and NOT done in the shared
+    ``DataFrame.from_agate``: query / query_diff / value_diff NUMBER columns are
+    exact warehouse DECIMAL/NUMERIC *data* values whose precision must be
+    preserved and compared exactly. Coercing those to float64 would hide a
+    genuine high-precision change (e.g. ``12345678901234567.89`` vs ``…90``
+    collapse to the same float) and corrupt the displayed value.
+
+    INTEGER columns are left untouched (already ``int``; exact-compare; float64
+    would lose precision above ``2**53``). Non-finite Decimals were already
+    converted to float by ``from_agate`` (GitHub #476).
+    """
+    number_indexes = [i for i, col in enumerate(df.columns) if col.type == DataFrameColumnType.NUMBER]
+    if not number_indexes:
+        return df
+
+    coerced_rows = []
+    for row in df.data:
+        values = list(row)
+        for i in number_indexes:
+            value = values[i]
+            if isinstance(value, Decimal) and value.is_finite():
+                values[i] = float(value)
+        coerced_rows.append(tuple(values))
+    df.data = coerced_rows
+    return df
+
+
 class ProfileDiffTask(Task):
 
     def __init__(self, params):
@@ -205,7 +245,7 @@ class ProfileDiffTask(Task):
                 tables.append(table)
                 completed = completed + 1
                 self.check_cancel()
-            base = DataFrame.from_agate(merge_tables(tables))
+            base = _coerce_number_stats_to_float(DataFrame.from_agate(merge_tables(tables)))
 
             tables: List[agate.Table] = []
             for column in curr_columns:
@@ -215,7 +255,7 @@ class ProfileDiffTask(Task):
                 tables.append(table)
                 completed = completed + 1
                 self.check_cancel()
-            current = DataFrame.from_agate(merge_tables(tables))
+            current = _coerce_number_stats_to_float(DataFrame.from_agate(merge_tables(tables)))
 
             if len(base.columns) == 0 and len(current.columns) != 0:
                 base.columns = current.columns
@@ -311,5 +351,5 @@ class ProfileTask(ProfileDiffTask):
                 tables.append(table)
                 completed = completed + 1
                 self.check_cancel()
-            current = DataFrame.from_agate(merge_tables(tables))
+            current = _coerce_number_stats_to_float(DataFrame.from_agate(merge_tables(tables)))
             return ProfileResult(current=current)

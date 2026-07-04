@@ -450,8 +450,10 @@ describe("createDataGrid - profile_diff with schema differences", () => {
 // serializes Decimal as a JSON *string*. So the stat reached this grid as the
 // string "0.30000000000000004" vs "0.3" — and isCellChanged's numeric epsilon
 // only fires on NUMBERS, so two unequal strings read "modified". The fix is in
-// the backend (`recce/tasks/dataframe.py` from_agate: NUMBER Decimals are
-// coerced to float), proven by `tests/tasks/test_dataframe_number_serialization.py`.
+// the backend PROFILE path (`recce/tasks/profile.py` `_coerce_number_stats_to_float`:
+// finite NUMBER-column Decimals are coerced to float — scoped to profile stats so
+// query/query_diff/value_diff DECIMAL data stays exact), proven by
+// `tests/tasks/test_dataframe_number_serialization.py`.
 //
 // These tests therefore split into two shapes:
 //  - PRODUCTION shape AFTER the backend fix (numbers) → row reads UNCHANGED.
