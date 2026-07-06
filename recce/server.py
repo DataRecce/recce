@@ -479,6 +479,92 @@ async def readiness_gate(request: Request, call_next):
     return await call_next(request)
 
 
+# Run types that execute a warehouse query. Blocked outside full "server" mode,
+# mirroring the blocked-tool set in mcp_server.py so REST and MCP agree.
+_QUERY_RUN_TYPES = frozenset(
+    {
+        "query",
+        "query_base",
+        "query_diff",
+        "value_diff",
+        "value_diff_detail",
+        "profile",
+        "profile_diff",
+        "profile_distribution",
+        "row_count",
+        "row_count_diff",
+        "top_k_diff",
+        "histogram_diff",
+    }
+)
+
+
+def _mode_block_reason(method, path, run_type, read_only, preview):
+    """Return a denial reason if server mode disallows the request, else None.
+
+    Preview (metadata-only) blocks query execution. Read-only additionally
+    blocks all state and checklist writes. Matches cli.py: read-only = "No run
+    query, no checklist"; preview = "No run query".
+    """
+    if not (read_only or preview):
+        return None
+
+    # Query execution — blocked in both preview and read-only.
+    if method == "POST" and path == "/api/runs" and run_type in _QUERY_RUN_TYPES:
+        return f"run type '{run_type}' executes a query"
+    if method == "POST" and path.startswith("/api/checks/") and path.endswith("/run"):
+        return "running a check executes a query"
+
+    # State and checklist writes — blocked in read-only only.
+    if read_only:
+        if method == "POST" and path in ("/api/save", "/api/save-as", "/api/rename", "/api/export"):
+            return "modifying server state"
+        if method in ("POST", "PATCH", "PUT", "DELETE") and path.startswith("/api/checks"):
+            return "modifying the checklist"
+    return None
+
+
+@app.middleware("http")
+async def enforce_server_mode(request: Request, call_next):
+    """Server-side enforcement of read-only / preview restrictions.
+
+    The frontend hides disallowed actions, but that is cosmetic. This gate is
+    the real security boundary for shared instances: without it, callers can
+    run arbitrary SQL and mutate state via the REST API regardless of mode.
+    """
+    flag = getattr(request.app.state, "flag", None) or {}
+    read_only = flag.get("read_only", False)
+    preview = flag.get("preview", False)
+
+    if read_only or preview:
+        method = request.method
+        path = request.url.path
+        run_type = None
+        # Only POST /api/runs needs body inspection; read it, then replay the
+        # bytes so the downstream handler can still parse the request.
+        if method == "POST" and path == "/api/runs":
+            body = await request.body()
+
+            async def _replay():
+                return {"type": "http.request", "body": body, "more_body": False}
+
+            request._receive = _replay
+            try:
+                run_type = json.loads(body or b"{}").get("type")
+            except (ValueError, AttributeError):
+                run_type = None
+
+        reason = _mode_block_reason(method, path, run_type, read_only, preview)
+        if reason:
+            mode = "read-only" if read_only else "preview"
+            return JSONResponse(
+                {"detail": f"This action is not allowed in {mode} mode ({reason})."},
+                status_code=403,
+            )
+
+    return await call_next(request)
+
+
 @app.middleware("http")
 async def disable_cache(request: Request, call_next):
     response = await call_next(request)
