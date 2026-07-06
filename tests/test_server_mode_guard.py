@@ -24,6 +24,9 @@ def test_preview_blocks_query_execution_only():
     assert _blocked("POST", "/api/runs", "query", preview=True)
     assert _blocked("POST", "/api/runs", "value_diff", preview=True)
     assert _blocked("POST", "/api/checks/abc/run", preview=True)
+    # Exporting a run re-executes its SQL (run_api._execute_export_query), so it
+    # is query execution and must be blocked in preview.
+    assert _blocked("GET", "/api/runs/abc/export", preview=True)
     # Metadata runs stay allowed in preview (matches MCP keeping lineage/schema).
     assert not _blocked("POST", "/api/runs", "lineage_diff", preview=True)
     assert not _blocked("POST", "/api/runs", "schema_diff", preview=True)
@@ -43,6 +46,7 @@ def test_read_only_blocks_queries_and_writes():
     assert _blocked("POST", "/api/save-as", read_only=True)
     assert _blocked("POST", "/api/rename", read_only=True)
     assert _blocked("POST", "/api/export", read_only=True)
+    assert _blocked("GET", "/api/runs/abc/export", read_only=True)
     # Metadata runs and reads remain allowed even in read-only.
     assert not _blocked("POST", "/api/runs", "lineage_diff", read_only=True)
     assert not _blocked("GET", "/api/runs", read_only=True)

@@ -514,6 +514,10 @@ def _mode_block_reason(method, path, run_type, read_only, preview):
         return f"run type '{run_type}' executes a query"
     if method == "POST" and path.startswith("/api/checks/") and path.endswith("/run"):
         return "running a check executes a query"
+    # Exporting a run re-executes its SQL against the warehouse (see
+    # run_api._execute_export_query), so it is query execution, not a plain read.
+    if method == "GET" and path.startswith("/api/runs/") and path.endswith("/export"):
+        return "exporting a run re-executes its query"
 
     # State and checklist writes — blocked in read-only only.
     if read_only:
