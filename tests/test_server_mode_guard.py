@@ -3,6 +3,8 @@
 Mirrors the blocked-tool logic in mcp_server.py. See DRC-3828.
 """
 
+import json
+
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
@@ -62,8 +64,11 @@ def _client(flag):
 
     @app.post("/api/runs")
     async def runs(request: Request):
-        body = await request.json()  # proves the replayed body survived the gate
-        return {"echoed_type": body.get("type")}
+        raw = await request.body()  # proves the body survived the gate
+        try:
+            return {"echoed_type": json.loads(raw).get("type")}
+        except ValueError:
+            return {"echoed_type": None}
 
     return TestClient(app)
 
@@ -80,3 +85,12 @@ def test_middleware_allows_metadata_run_and_preserves_body():
     resp = _client({"read_only": True}).post("/api/runs", json={"type": "lineage_diff"})
     assert resp.status_code == 200
     assert resp.json() == {"echoed_type": "lineage_diff"}
+
+
+def test_middleware_tolerates_malformed_body():
+    # A non-JSON body must not crash the gate; run_type stays None, so the
+    # request is not treated as a query and passes through (not 403).
+    resp = _client({"read_only": True}).post(
+        "/api/runs", content=b"not json", headers={"Content-Type": "application/json"}
+    )
+    assert resp.status_code == 200

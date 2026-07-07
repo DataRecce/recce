@@ -544,15 +544,10 @@ async def enforce_server_mode(request: Request, call_next):
         method = request.method
         path = request.url.path
         run_type = None
-        # Only POST /api/runs needs body inspection; read it, then replay the
-        # bytes so the downstream handler can still parse the request.
+        # Only POST /api/runs needs body inspection. Starlette's BaseHTTPMiddleware
+        # buffers the body, so reading it here does not starve the downstream handler.
         if method == "POST" and path == "/api/runs":
             body = await request.body()
-
-            async def _replay():
-                return {"type": "http.request", "body": body, "more_body": False}
-
-            request._receive = _replay
             try:
                 run_type = json.loads(body or b"{}").get("type")
             except (ValueError, AttributeError):
