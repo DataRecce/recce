@@ -169,6 +169,101 @@ export function getPrimaryKeyValue(
 }
 
 // ============================================================================
+// Cell Change Detection (DRC-3025: type-dispatched comparison)
+// ============================================================================
+
+/**
+ * Relative tolerance for comparing two approximate floats. Genuine DOUBLE
+ * columns and computed profile aggregates (avg/median/proportions) carry
+ * IEEE-754 rounding noise on the order of 1e-15..1e-16 in relative magnitude, so
+ * a relative tolerance of 1e-9 swallows that noise with a wide safety margin
+ * while still flagging genuine differences (a 0.5% change is ~5e6 × larger).
+ *
+ * Module-private: consumed only by {@link floatComparator}. Not exported.
+ */
+const FLOAT_RELATIVE_EPSILON = 1e-9;
+
+/**
+ * Absolute floor for the both-near-zero case. When `max(|a|, |b|)` is ~0 the
+ * relative threshold collapses toward zero, so we floor it here: differences at
+ * or below 1e-12 near zero read as float noise, while a real small value (e.g.
+ * `0` vs `1e-3`) still reads as changed.
+ */
+const FLOAT_ABSOLUTE_FLOOR = 1e-12;
+
+/** True when two finite numbers are equal within the magnitude-relative epsilon. */
+function withinFloatEpsilon(a: number, b: number): boolean {
+  const diff = Math.abs(a - b);
+  const scale = Math.max(Math.abs(a), Math.abs(b));
+  return diff <= Math.max(FLOAT_RELATIVE_EPSILON * scale, FLOAT_ABSOLUTE_FLOOR);
+}
+
+/**
+ * `_.isEqualWith` customizer applying the magnitude-relative epsilon at every
+ * numeric leaf of a FLOAT-typed cell.
+ *
+ * Numeric values arrive from the backend as exact strings (agate flattens
+ * DECIMAL and DOUBLE alike to strings — DRC-3025), so the two float cases are:
+ * - Two numeric STRINGS (the top-level cell value) → `parseFloat` both and
+ *   compare within epsilon. Lossless at aggregate magnitudes.
+ * - Two finite NUMBERS (floats nested inside a JSON/ARRAY/STRUCT cell, already
+ *   parsed) → compare within epsilon directly.
+ *
+ * Everything else → `undefined`, deferring to lodash's default deep-equal, which
+ * recurses into objects/arrays and re-invokes this customizer at each nested
+ * value. Non-numeric strings, booleans, mixed types, one-sided null/undefined,
+ * and NaN therefore keep exact equality.
+ */
+function floatComparator(base: unknown, current: unknown): boolean | undefined {
+  if (
+    typeof base === "number" &&
+    typeof current === "number" &&
+    Number.isFinite(base) &&
+    Number.isFinite(current)
+  ) {
+    return withinFloatEpsilon(base, current);
+  }
+
+  if (typeof base === "string" && typeof current === "string") {
+    const b = parseFloat(base);
+    const c = parseFloat(current);
+    if (Number.isFinite(b) && Number.isFinite(c)) {
+      return withinFloatEpsilon(b, c);
+    }
+  }
+
+  // Non-numeric, mixed-type, nullish, or NaN → defer to lodash deep-equal.
+  return undefined;
+}
+
+/**
+ * Single source of truth for "did this cell change?" across the data grid.
+ *
+ * Dispatches on the column's comparison type:
+ * - `"float"` (approximate: DOUBLE/FLOAT data columns and computed profile
+ *   aggregates) → one deep traversal via `_.isEqualWith` with
+ *   {@link floatComparator}, so float precision is never compared — top-level
+ *   numeric strings and floats nested inside JSON/ARRAY/STRUCT cells alike.
+ * - everything else (`"number"`/decimal, `"integer"`, `"text"`, …, or an
+ *   unknown/absent type) → exact deep-equal. A DECIMAL column is `"number"`, so
+ *   a 1-cent change is never float-collapsed (the cycle-4 guard).
+ *
+ * @param base    Base cell value
+ * @param current Current cell value
+ * @param colType Column comparison type; only `"float"` enables the epsilon
+ */
+export function isCellChanged(
+  base: unknown,
+  current: unknown,
+  colType?: ColumnType,
+): boolean {
+  if (colType === "float") {
+    return !_.isEqualWith(base, current, floatComparator);
+  }
+  return !_.isEqual(base, current);
+}
+
+// ============================================================================
 // Row Status Detection
 // ============================================================================
 
@@ -212,7 +307,7 @@ export function determineRowStatus(
       currentVal = currentRow[column.key];
     }
 
-    if (!_.isEqual(baseVal, currentVal)) {
+    if (isCellChanged(baseVal, currentVal, column.colType)) {
       return "modified";
     }
   }
@@ -319,7 +414,7 @@ export function toRenderedValue(
   } else if (typeof value === "number") {
     renderedValue = columnRenderedValue(value, columnRenderMode);
   } else {
-    if (columnType === "number") {
+    if (columnType === "number" || columnType === "float") {
       renderedValue = columnRenderedValue(parseFloat(value), columnRenderMode);
     } else {
       renderedValue = String(value);
@@ -341,6 +436,7 @@ export function getCellClass(
   columnStatus: string | undefined,
   columnKey: string,
   isBase: boolean,
+  colType?: ColumnType,
 ): string | undefined {
   const rowStatus = row.__status;
 
@@ -351,7 +447,7 @@ export function getCellClass(
   const baseKey = `base__${columnKey}`.toLowerCase();
   const currentKey = `current__${columnKey}`.toLowerCase();
 
-  if (!_.isEqual(row[baseKey], row[currentKey])) {
+  if (isCellChanged(row[baseKey], row[currentKey], colType)) {
     return isBase ? "diff-cell-removed" : "diff-cell-added";
   }
 

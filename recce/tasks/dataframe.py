@@ -6,11 +6,47 @@ from enum import Enum
 if t.TYPE_CHECKING:
     import agate
     import pandas
+
 from pydantic import BaseModel, Field
+
+# Warehouse DB type strings (from catalog.json) grouped by comparison semantics.
+# Approximate float types carry IEEE-754 noise and must be compared with an
+# epsilon on the frontend; exact-decimal and integer types must be compared
+# exactly (a 1-cent DECIMAL change is a real change — never float-collapse it).
+_FLOAT_DB_TYPES = frozenset(
+    {"DOUBLE", "DOUBLE PRECISION", "FLOAT", "FLOAT4", "FLOAT8", "REAL", "BINARY_FLOAT", "BINARY_DOUBLE"}
+)
+_INTEGER_DB_TYPES = frozenset(
+    {
+        "INT",
+        "INTEGER",
+        "BIGINT",
+        "SMALLINT",
+        "TINYINT",
+        "HUGEINT",
+        "INT2",
+        "INT4",
+        "INT8",
+        "INT16",
+        "INT64",
+        "INT128",
+        "UINTEGER",
+        "UBIGINT",
+        "USMALLINT",
+        "UTINYINT",
+        "UHUGEINT",
+    }
+)
+_EXACT_DECIMAL_DB_PREFIXES = ("DECIMAL", "NUMERIC", "NUMBER", "DEC")
 
 
 class DataFrameColumnType(Enum):
     NUMBER = "number"
+    # Approximate float column (DOUBLE/FLOAT/REAL, or a computed profile
+    # aggregate). Values stay exact strings on the wire; only this label tells
+    # the frontend to compare them with a magnitude-relative epsilon rather than
+    # exact string-inequality. Distinct from NUMBER, which stays exact.
+    FLOAT = "float"
     INTEGER = "integer"
     TEXT = "text"
     BOOLEAN = "boolean"
@@ -35,6 +71,31 @@ class DataFrameColumnType(Enum):
         except ValueError:
             return cls.UNKNOWN
 
+    @classmethod
+    def from_db_type(cls, db_type: str) -> t.Optional["DataFrameColumnType"]:
+        """Map a warehouse DB type string (from catalog.json) to its comparison type.
+
+        Only NUMERIC db types get a confident comparison mapping:
+        - DECIMAL/NUMERIC/NUMBER -> NUMBER  (exact — the cycle-4 guard: never
+          float-collapse a high-precision decimal)
+        - DOUBLE/FLOAT/REAL      -> FLOAT   (approximate — epsilon on compare)
+        - INT variants           -> INTEGER
+
+        Non-numeric or unrecognized types return None, telling the caller to keep
+        whatever type `from_agate` already inferred (safe, exact by default).
+        """
+        if not db_type:
+            return None
+        # Strip precision/scale e.g. "DECIMAL(38,2)" -> "DECIMAL", uppercase.
+        base = db_type.split("(")[0].strip().upper()
+        if base in _FLOAT_DB_TYPES:
+            return cls.FLOAT
+        if base in _INTEGER_DB_TYPES:
+            return cls.INTEGER
+        if base.startswith(_EXACT_DECIMAL_DB_PREFIXES):
+            return cls.NUMBER
+        return None
+
 
 class DataFrameColumn(BaseModel):
     key: t.Optional[str] = None
@@ -54,6 +115,26 @@ class DataFrame(BaseModel):
     limit: t.Optional[int] = Field(None, description="Limit the number of rows returned")
     more: t.Optional[bool] = Field(None, description="Whether there are more rows to fetch")
     total_row_count: t.Optional[int] = Field(None, description="Total row count from the full query (before limit)")
+
+    def stamp_column_types(self, type_map: t.Dict[str, "DataFrameColumnType"]) -> "DataFrame":
+        """Override column comparison types by name, in place.
+
+        `type_map` keys are column names (matched case-insensitively); each matched
+        column's `type` is replaced. Columns absent from the map keep the type
+        `from_agate`/`from_pandas` already inferred — this is the exact fallback for
+        ad-hoc/expression columns and any column when the catalog is absent (AC9).
+        Only the column-level label changes; row values are untouched.
+
+        Returns self so callers can chain.
+        """
+        if not type_map:
+            return self
+        lowered = {name.lower(): col_type for name, col_type in type_map.items()}
+        for column in self.columns:
+            new_type = lowered.get(column.name.lower())
+            if new_type is not None:
+                column.type = new_type
+        return self
 
     @staticmethod
     def from_agate(table: "agate.Table", limit: t.Optional[int] = None, more: t.Optional[bool] = None):

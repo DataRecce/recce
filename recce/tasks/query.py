@@ -199,6 +199,14 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         current_df = DataFrame.from_agate(current, limit=limit, more=current_more)
         current_df.total_row_count = current_total
 
+        # A model-backed diff (current_model set) produces the model's own columns →
+        # stamp their catalog DECIMAL-vs-DOUBLE type so floats compare with an epsilon
+        # and decimals exactly. Ad-hoc SQL diffs (no current_model) keep the exact
+        # from_agate type (AC9). (DRC-3025)
+        if self.params.current_model:
+            base_df = self._stamp_catalog_types(dbt_adapter, base_df, self.params.current_model)
+            current_df = self._stamp_catalog_types(dbt_adapter, current_df, self.params.current_model)
+
         # Normalize primary_keys if present (for non-join diff, use current columns as reference)
         if self.params.primary_keys:
             column_keys = [col.key for col in current_df.columns]
@@ -315,6 +323,10 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         diff_df = DataFrame.from_agate(table)
         # Normalize in_a/in_b columns to lowercase for cross-warehouse consistency
         diff_df = normalize_boolean_flag_columns(diff_df)
+        # Model-backed diff → stamp catalog types (see _query_diff). Ad-hoc SQL diffs
+        # keep the exact from_agate type (AC9). (DRC-3025)
+        if self.params.current_model:
+            diff_df = self._stamp_catalog_types(dbt_adapter, diff_df, self.params.current_model)
 
         # Normalize primary_keys to match actual column keys from warehouse
         column_keys = [col.key for col in diff_df.columns]

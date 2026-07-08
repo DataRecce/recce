@@ -50,6 +50,11 @@ export type RowObjectType = Record<string, RowDataTypes> & {
  */
 export type ColumnType =
   | "number"
+  // Approximate float (DOUBLE/FLOAT/REAL data columns, or computed profile
+  // aggregates). Values still arrive as exact numeric strings; this label tells
+  // the grid to compare them with a magnitude-relative epsilon instead of exact
+  // string-inequality, so IEEE-754 noise does not read as a change (DRC-3025).
+  | "float"
   | "integer"
   | "text"
   | "boolean"

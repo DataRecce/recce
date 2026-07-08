@@ -53,6 +53,27 @@ class ValueDiffMixin:
         """Map a user-supplied identifier to its physical catalog name, or return as-is."""
         return lookup.get(identifier.lower(), identifier)
 
+    @staticmethod
+    def _stamp_catalog_types(dbt_adapter, df: DataFrame, model: str, base: bool = False) -> DataFrame:
+        """Stamp each model-backed result column with its catalog comparison type.
+
+        Columns whose catalog DB type is DOUBLE/FLOAT/REAL become FLOAT
+        (approximate → epsilon compare on the frontend); DECIMAL/NUMERIC stay
+        NUMBER (exact — the cycle-4 guard against float-collapsing a real decimal
+        change); INT variants become INTEGER. Columns with no catalog match
+        (ad-hoc/expression columns, or every column when the catalog is absent)
+        keep their `from_agate` type and compare exactly (AC9).
+        """
+        from .dataframe import DataFrameColumnType
+
+        db_types = dbt_adapter.catalog_column_types(model, base=base)
+        type_map = {}
+        for name, db_type in db_types.items():
+            comparison_type = DataFrameColumnType.from_db_type(db_type)
+            if comparison_type is not None:
+                type_map[name] = comparison_type
+        return df.stamp_column_types(type_map)
+
     def _verify_primary_key(self, dbt_adapter, primary_key: Union[str, List[str]], model: str):
         self.update_progress(message=f"Verify primary key: {primary_key}")
         composite = True if isinstance(primary_key, List) else False
@@ -510,6 +531,10 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
         result_df = DataFrame.from_agate(table)
         # Normalize in_a/in_b columns to lowercase for cross-warehouse consistency
         result_df = normalize_boolean_flag_columns(result_df)
+        # Result columns are this model's columns → stamp their true DECIMAL-vs-DOUBLE
+        # type from the catalog so the frontend compares floats with an epsilon and
+        # decimals exactly (DRC-3025).
+        result_df = self._stamp_catalog_types(dbt_adapter, result_df, model)
 
         # Normalize primary_key to match actual column keys from result
         column_keys = [col.key for col in result_df.columns]

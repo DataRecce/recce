@@ -27,6 +27,7 @@ import {
   getCellClass,
   getHeaderCellClass,
   getPrimaryKeyValue,
+  isCellChanged,
   toRenderedValue,
   validatePrimaryKeys,
 } from "../gridUtils";
@@ -786,5 +787,159 @@ describe("formatSmartDecimal", () => {
     test("formats negative Infinity", () => {
       expect(formatSmartDecimal(-Infinity)).toBe("-∞");
     });
+  });
+});
+
+// ============================================================================
+// isCellChanged Tests (DRC-3025: type-dispatched exact-vs-epsilon comparison)
+//
+// Backend serializes every numeric value as an exact STRING; the column's
+// comparison type ("float" vs "number"/…) decides whether the frontend
+// epsilon-compares (approximate floats) or exact-compares (everything else).
+// ============================================================================
+
+describe("isCellChanged (DRC-3025)", () => {
+  describe("FLOAT columns — magnitude-relative epsilon on numeric strings", () => {
+    test("AC1: avg float noise '0.30000000000000004' vs '0.3' → unchanged", () => {
+      expect(isCellChanged("0.30000000000000004", "0.3", "float")).toBe(false);
+    });
+
+    test("AC2: DOUBLE data column with float noise → unchanged", () => {
+      expect(isCellChanged("1000000.0000001", "1000000.0000002", "float")).toBe(
+        false,
+      );
+    });
+
+    test("AC5: genuine aggregate change '100.0' vs '100.9' → changed", () => {
+      expect(isCellChanged("100.0", "100.9", "float")).toBe(true);
+    });
+
+    test("identical float strings → unchanged", () => {
+      expect(isCellChanged("0.3", "0.3", "float")).toBe(false);
+    });
+
+    test("near-zero floor: '0' vs '0.001' → changed (real small value)", () => {
+      expect(isCellChanged("0", "0.001", "float")).toBe(true);
+    });
+
+    test("integer-valued float strings compare within epsilon", () => {
+      expect(isCellChanged("100", "100", "float")).toBe(false);
+      expect(isCellChanged("100", "101", "float")).toBe(true);
+    });
+
+    test("one-sided null in a float cell → changed", () => {
+      expect(isCellChanged(null, "0.3", "float")).toBe(true);
+      expect(isCellChanged("0.3", null, "float")).toBe(true);
+    });
+
+    test("non-numeric strings in a float cell keep exact equality", () => {
+      expect(isCellChanged("abc", "abc", "float")).toBe(false);
+      expect(isCellChanged("abc", "abd", "float")).toBe(true);
+    });
+  });
+
+  describe("AC7: nested floats inside JSON/ARRAY/STRUCT float cells", () => {
+    test("object cell differing only by float noise → unchanged", () => {
+      expect(isCellChanged({ x: 0.1 + 0.2 }, { x: 0.3 }, "float")).toBe(false);
+    });
+
+    test("object cell with a genuine nested change → changed", () => {
+      expect(isCellChanged({ x: 0.3 }, { x: 0.5 }, "float")).toBe(true);
+    });
+
+    test("array cell differing only by float noise → unchanged", () => {
+      expect(isCellChanged([1, 0.1 + 0.2, 3], [1, 0.3, 3], "float")).toBe(
+        false,
+      );
+    });
+
+    test("deeply nested float noise → unchanged", () => {
+      expect(
+        isCellChanged({ a: { b: [0.1 + 0.2] } }, { a: { b: [0.3] } }, "float"),
+      ).toBe(false);
+    });
+
+    test("nested non-numeric change is still detected exactly", () => {
+      expect(
+        isCellChanged({ x: 0.3, s: "abc" }, { x: 0.3, s: "abd" }, "float"),
+      ).toBe(true);
+    });
+  });
+
+  describe("NUMBER / other columns — exact compare (cycle-4 guard)", () => {
+    test("AC6: exact decimals '19.99' vs '19.99' → unchanged", () => {
+      expect(isCellChanged("19.99", "19.99", "number")).toBe(false);
+    });
+
+    test("AC6: 1-cent decimal change '19.99' vs '19.98' → changed", () => {
+      expect(isCellChanged("19.99", "19.98", "number")).toBe(true);
+    });
+
+    test("AC3: high-precision DECIMAL 1-cent change is never float-collapsed", () => {
+      expect(
+        isCellChanged("12345678901234567.89", "12345678901234567.90", "number"),
+      ).toBe(true);
+    });
+
+    test("integer column exact compare", () => {
+      expect(isCellChanged("100", "100", "integer")).toBe(false);
+      expect(isCellChanged("100", "101", "integer")).toBe(true);
+    });
+
+    test("text column exact compare", () => {
+      expect(isCellChanged("abc", "abc", "text")).toBe(false);
+      expect(isCellChanged("abc", "abd", "text")).toBe(true);
+    });
+  });
+
+  describe("AC9: fallbacks are exact (never epsilon)", () => {
+    test("absent colType → exact string compare, float noise reads changed", () => {
+      // Ad-hoc/expression columns and catalog-absent cases arrive without the
+      // 'float' label, so they must NOT be smoothed.
+      expect(isCellChanged("0.30000000000000004", "0.3")).toBe(true);
+    });
+
+    test("unknown colType → exact", () => {
+      expect(isCellChanged("0.30000000000000004", "0.3", "unknown")).toBe(true);
+    });
+  });
+});
+
+// ============================================================================
+// determineRowStatus routes column colType through isCellChanged (AC2/AC3/AC8)
+// ============================================================================
+
+describe("determineRowStatus (DRC-3025 colType routing)", () => {
+  const floatColumnMap: Record<string, ColumnMapEntry> = {
+    id: { key: "id", colType: "integer" },
+    revenue: { key: "revenue", colType: "float" }, // DOUBLE data column
+  };
+
+  test("AC2: float-noise-only diff in a FLOAT column → not modified", () => {
+    const baseRow = createRow({ id: 1, revenue: "0.30000000000000004" });
+    const currentRow = createRow({ id: 1, revenue: "0.3" });
+    expect(
+      determineRowStatus(baseRow, currentRow, floatColumnMap, ["id"]),
+    ).toBeUndefined();
+  });
+
+  test("AC5: genuine diff in a FLOAT column → modified", () => {
+    const baseRow = createRow({ id: 1, revenue: "0.3" });
+    const currentRow = createRow({ id: 1, revenue: "0.9" });
+    expect(
+      determineRowStatus(baseRow, currentRow, floatColumnMap, ["id"]),
+    ).toBe("modified");
+  });
+
+  test("AC3: 1-cent diff in a NUMBER (DECIMAL) column → modified (not float-collapsed)", () => {
+    const decimalColumnMap: Record<string, ColumnMapEntry> = {
+      id: { key: "id", colType: "integer" },
+      price: { key: "price", colType: "number" },
+    };
+    const baseRow = createRow({ id: 1, price: "19.99" });
+    const currentRow = createRow({ id: 1, price: "19.98" });
+    expect(
+      determineRowStatus(baseRow, currentRow, decimalColumnMap, ["id"]),
+    ).toBe("modified");
   });
 });
