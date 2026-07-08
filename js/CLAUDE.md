@@ -15,6 +15,15 @@ For repo-wide guidance see `../CLAUDE.md` and `../AGENTS.md`.
 - Tests: `pnpm test` (Vitest + React Testing Library).
 - Run all checks from `js/`: `pnpm lint:fix && pnpm type:check && pnpm test`.
 
+### TypeScript: native 7 for `tsc`, JS 6 for the API
+
+The `typescript` dependency is intentionally an alias, and there are **two** TypeScript packages — don't "simplify" this back to a plain `typescript` dependency:
+
+- `typescript` → `npm:@typescript/typescript6` — the JS-based 6.x compiler. It ships the programmatic API (`require('typescript')`), which **Next's build-time type check and tsdown's `.d.ts` generation both require**. TypeScript 7 is a native (Go) rewrite that ships **no** API until 7.1, so those tools break on a bare `typescript@7`.
+- `typescript-7` → `npm:typescript@7` — the native compiler. Its `tsc` binary is what `pnpm type:check` runs, so type-checking (locally and in CI's `release-ui.yaml`) is the fast native one. `@typescript/typescript6` exposes its binary as `tsc6` to avoid a name clash.
+
+Three pins must move together: the two `devDependencies` (root + `packages/ui`) and the `typescript:` override in `pnpm-workspace.yaml`. Net effect: fast native type-check, JS-API compiler still available for everything that needs it.
+
 ## Build Before Backend Validation
 
 Run `pnpm run build` before launching `recce server` whenever frontend changes need to be validated end-to-end — the Python package serves the static build from `recce/data/`.
