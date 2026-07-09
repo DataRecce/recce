@@ -125,4 +125,26 @@ describe("wholeModelTreatment tokens", () => {
       });
     }
   });
+
+  // DRC-3813: a node whose own SQL is unchanged (change_category
+  // "non_breaking" / additive) but which the backend flagged impacted
+  // (e.g. a downstream that only references a changed upstream column in a
+  // WHERE/JOIN clause) must surface the more-actionable amber
+  // column-impacted badge, NOT the benign green additive one. The impact
+  // signal outranks a harmless own additive change. (partial_breaking still
+  // wins over impact — see "column-changed" above — per the changed-wins
+  // doctrine; only non_breaking yields.)
+  describe("graph badge — impacted outranks additive", () => {
+    for (const isDark of [false, true] as const) {
+      const mode = isDark ? "dark" : "light";
+      it(`resolves column-impacted (amber), not additive, in ${mode} mode`, () => {
+        const res = pickGraphBadge(
+          { ...BASE, changeCategory: "non_breaking", isImpacted: true }, // wire-enum-ok
+          isDark,
+        );
+        expect(res?.kind).toBe("column-impacted");
+        expect(res?.tokens.badgeBorder).toBe(cllImpactedAccent[mode]);
+      });
+    }
+  });
 });
