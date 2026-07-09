@@ -160,9 +160,14 @@ function classifyGraphBadge(inputs: TreatmentInputs): GraphBadgeKind | null {
   // Whole-model kinds short-circuit the badge — their signal lives on the
   // NodeView title chip + stripe instead.
   if (inputs.isWholeModelChanged || inputs.isWholeModelImpacted) return null;
-  if (inputs.changeCategory === "non_breaking") return "additive";
+  // Precedence: own column change (partial_breaking) > impact > own additive
+  // change (non_breaking). isImpacted must outrank "non_breaking" so a node
+  // that is impacted upstream but only additively changed itself surfaces the
+  // actionable column-impacted badge rather than the benign additive one
+  // (DRC-3813). partial_breaking still wins over impact per changed-wins (Q11).
   if (inputs.changeCategory === "partial_breaking") return "column-changed";
   if (inputs.isImpacted) return "column-impacted";
+  if (inputs.changeCategory === "non_breaking") return "additive";
   return null;
 }
 
