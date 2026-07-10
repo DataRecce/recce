@@ -1859,6 +1859,29 @@ class TestMCPServerSingleEnv:
                 note_text not in tool.description
             ), f"Tool '{tool.name}' should not have single-env note in normal mode"
 
+    @pytest.mark.asyncio
+    async def test_select_param_descriptions_warn_selector_grammar(self, mcp_server):
+        """Every tool exposing a `select` param must warn about dbt selector grammar:
+        a comma is intersection, so comma-joining distinct model names silently returns empty."""
+        from mcp.types import ListToolsRequest
+
+        server, _ = mcp_server
+        handler = server.server.request_handlers[ListToolsRequest]
+        result = await handler(ListToolsRequest(method="tools/list"))
+        tools = result.root.tools
+
+        checked = 0
+        for tool in tools:
+            select = tool.inputSchema.get("properties", {}).get("select")
+            if select is None:
+                continue
+            checked += 1
+            assert (
+                "intersection (AND)" in select["description"]
+            ), f"Tool '{tool.name}' select description must warn about comma=intersection"
+
+        assert checked >= 5, f"expected >=5 tools with a select param, found {checked}"
+
 
 class TestErrorClassification:
     """Test the _classify_db_error method and call_tool error handling"""
@@ -3140,9 +3163,7 @@ class TestLocalModeRunBacked:
         up to the raise."""
         from recce.models.types import RunStatus
 
-        with patch.object(
-            QueryDiffTask, "execute", side_effect=Exception('Referenced column "bad_col" not found')
-        ):
+        with patch.object(QueryDiffTask, "execute", side_effect=Exception('Referenced column "bad_col" not found')):
             result = await TestCallToolHandler._invoke_call_tool(
                 server, "query_diff", {"sql_template": "SELECT bad_col", "primary_keys": ["id"]}
             )
