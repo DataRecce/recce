@@ -1069,10 +1069,10 @@ describe("toDataDiffGrid - Display Modes", () => {
     if (valueColumnGroup && "children" in valueColumnGroup) {
       expect(valueColumnGroup.children).toHaveLength(2);
       expect(
-        (valueColumnGroup.children?.[0] as ColDef<RowObjectType>).field,
+        (valueColumnGroup.children[0] as ColDef<RowObjectType>).field,
       ).toBe("base__value");
       expect(
-        (valueColumnGroup.children?.[1] as ColDef<RowObjectType>).field,
+        (valueColumnGroup.children[1] as ColDef<RowObjectType>).field,
       ).toBe("current__value");
     }
   });
