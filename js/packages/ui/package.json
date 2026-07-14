@@ -175,14 +175,14 @@
     "yaml": "^2.8.0"
   },
   "devDependencies": {
-    "@tailwindcss/cli": "^4.2.4",
-    "@tailwindcss/postcss": "^4.2.4",
-    "@tsdown/css": "^0.22.0",
-    "postcss": "^8.5.15",
-    "read-excel-file": "^9.0.6",
-    "tailwindcss": "^4.2.4",
-    "tsdown": "^0.22.0",
-    "typedoc": "^0.28.19",
+    "@tailwindcss/cli": "^4.3.2",
+    "@tailwindcss/postcss": "^4.3.2",
+    "@tsdown/css": "^0.22.4",
+    "postcss": "^8.5.16",
+    "read-excel-file": "^9.3.0",
+    "tailwindcss": "^4.3.2",
+    "tsdown": "^0.22.4",
+    "typedoc": "^0.28.20",
     "typedoc-plugin-markdown": "^4.11.0",
     "typescript": "^6.0.3"
   },

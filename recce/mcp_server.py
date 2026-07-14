@@ -53,6 +53,15 @@ SINGLE_ENV_WARNING = (
     "Run `dbt docs generate --target-path target-base` to enable diffing."
 )
 
+# Guards against agents comma-joining distinct model names in `select`, which dbt reads
+# as an intersection and silently resolves to an empty diff (looks like "no changes").
+SELECTOR_SYNTAX_NOTE = (
+    "Combine selectors with a SPACE for union (OR) or a COMMA for intersection (AND); "
+    "this applies to all selector arguments. "
+    "When targeting by model name: comma-joining distinct names matches nothing "
+    "(no node is all of them at once), and bare names match exactly (use 'name*' for prefix matching)."
+)
+
 # DRC-3758: cap the node count returned by lineage_diff(view_mode="all") to keep the
 # serialized MCP result within the Claude Agent SDK output cap (MAX_MCP_OUTPUT_TOKENS,
 # default 25,000 tokens). Only the node count is bounded — edge count is assumed to
@@ -717,7 +726,8 @@ class RecceMCPServer:
                                     "Valid state selectors: state:new, state:old, state:modified, state:unmodified. "
                                     "Use '+' suffix for downstream: state:modified+ "
                                     "NOTE: 'state:added' is INVALID - use 'state:new'. "
-                                    "Example: '1+state:modified+' for modified models with 1 upstream"
+                                    "Example: '1+state:modified+' for modified models with 1 upstream. "
+                                    + SELECTOR_SYNTAX_NOTE
                                 ),
                             },
                             "exclude": {
@@ -752,7 +762,7 @@ class RecceMCPServer:
                                 "description": (
                                     "dbt selector syntax to filter models. "
                                     "Valid state selectors: state:new, state:old, state:modified, state:unmodified. "
-                                    "NOTE: 'state:added' is INVALID - use 'state:new'."
+                                    "NOTE: 'state:added' is INVALID - use 'state:new'. " + SELECTOR_SYNTAX_NOTE
                                 ),
                             },
                             "exclude": {
@@ -935,7 +945,7 @@ class RecceMCPServer:
                                 "description": (
                                     "dbt selector syntax to filter models. "
                                     "Valid state selectors: state:new, state:old, state:modified, state:unmodified. "
-                                    "NOTE: 'state:added' is INVALID - use 'state:new'."
+                                    "NOTE: 'state:added' is INVALID - use 'state:new'. " + SELECTOR_SYNTAX_NOTE
                                 ),
                             },
                             "exclude": {
@@ -1009,7 +1019,8 @@ class RecceMCPServer:
                                             "Sub-selectors: state:modified.body, .configs, .relation, .persisted_descriptions, .macros, .contract. "
                                             "Use '+' suffix for downstream deps: state:modified+ "
                                             "IMPORTANT: 'state:added' is INVALID - use 'state:new' instead. "
-                                            "Example: 'state:new,config.materialized:table' or 'state:modified+'"
+                                            "Example: 'state:new,config.materialized:table' or 'state:modified+'. "
+                                            + SELECTOR_SYNTAX_NOTE
                                         ),
                                     },
                                     "exclude": {
@@ -1365,7 +1376,8 @@ class RecceMCPServer:
                                     "description": (
                                         "dbt selector syntax. Default: data-affecting changes only "
                                         "(body + macros + contract and their downstream). "
-                                        "Use 'state:modified+' to include all changes including config."
+                                        "Use 'state:modified+' to include all changes including config. "
+                                        + SELECTOR_SYNTAX_NOTE
                                     ),
                                 },
                                 "skip_value_diff": {
