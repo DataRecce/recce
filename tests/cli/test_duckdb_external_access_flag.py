@@ -10,6 +10,7 @@ follow the safe adapter default (external access disabled) and have no opt-out
 flag.
 """
 
+import importlib.util
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -17,6 +18,13 @@ from click.testing import CliRunner
 
 from recce.cli import cli
 from recce.util import SingletonMeta
+
+# mcp-server imports recce.mcp_server (the optional `mcp` extra) before it reaches
+# the flag/config resolution, so the resolution tests only apply when mcp is installed.
+requires_mcp = pytest.mark.skipif(
+    importlib.util.find_spec("mcp") is None,
+    reason="requires the optional 'mcp' extra",
+)
 
 
 def test_flag_present_in_server_help():
@@ -72,18 +80,21 @@ def _mcp_external_access_kwarg(runner, extra_args=None, recce_yml=None):
     return mock_run.call_args.kwargs["duckdb_external_access"]
 
 
+@requires_mcp
 def test_mcp_server_default_blocked(reset_recce_config):
     """mcp-server without flag/config resolves to blocked (default)."""
     resolved = _mcp_external_access_kwarg(CliRunner())
     assert resolved is False
 
 
+@requires_mcp
 def test_mcp_server_flag_enables(reset_recce_config):
     """mcp-server with --duckdb-external-access resolves to enabled."""
     resolved = _mcp_external_access_kwarg(CliRunner(), extra_args=["--duckdb-external-access"])
     assert resolved is True
 
 
+@requires_mcp
 def test_mcp_server_recce_yml_enables(reset_recce_config):
     """mcp-server with duckdb_external_access: true in recce.yml (no flag) resolves to enabled."""
     resolved = _mcp_external_access_kwarg(CliRunner(), recce_yml="duckdb_external_access: true\n")
