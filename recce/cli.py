@@ -2693,6 +2693,17 @@ def read_only(ctx, state_file=None, **kwargs):
     type=click.STRING,
     help="Recce Cloud session ID for cloud MCP mode",
 )
+@click.option(
+    "--duckdb-external-access",
+    is_flag=True,
+    default=False,
+    help=(
+        "Allow recce's DuckDB session to access external state "
+        "(local files via read_csv/COPY TO, HTTP via httpfs/ATTACH, "
+        "and INSTALL/LOAD of extensions). Default: blocked. "
+        "Only enable if you trust every user who can reach this server."
+    ),
+)
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -2777,6 +2788,10 @@ def mcp_server(state_file, sse, host, port, **kwargs):
 
     # Initialize Recce Config
     RecceConfig(config_file=kwargs.get("config"))
+
+    kwargs["duckdb_external_access"] = kwargs.get("duckdb_external_access", False) or bool(
+        RecceConfig().get("duckdb_external_access", False)
+    )
 
     handle_debug_flag(**kwargs)
 
