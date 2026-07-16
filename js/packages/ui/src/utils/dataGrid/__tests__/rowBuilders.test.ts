@@ -1099,3 +1099,68 @@ describe("buildDiffRows", () => {
     });
   });
 });
+
+// ============================================================================
+// buildDiffRows routes column colType through isCellChanged (DRC-3025 AC2/AC8)
+// ============================================================================
+
+describe("buildDiffRows (DRC-3025 colType routing)", () => {
+  const floatColumns: DataFrame["columns"] = [
+    { name: "id", key: "id", type: "integer" },
+    { name: "revenue", key: "revenue", type: "float" },
+  ];
+
+  test("AC2: float-noise-only diff in a FLOAT column is not flagged modified", () => {
+    const baseMap: Record<string, RowObjectType | undefined> = {
+      "1": createRow({ id: 1, revenue: "0.30000000000000004" }, undefined, 1),
+    };
+    const currentMap: Record<string, RowObjectType | undefined> = {
+      "1": createRow({ id: 1, revenue: "0.3" }, undefined, 1),
+    };
+    const columnMap: Record<string, DiffColumnMapEntry> = {
+      id: createColumnMapEntry("id", "integer"),
+      revenue: createColumnMapEntry("revenue", "float"),
+    };
+
+    const result = buildDiffRows({
+      baseMap,
+      currentMap,
+      baseColumns: floatColumns,
+      currentColumns: floatColumns,
+      columnMap,
+      primaryKeys: ["id"],
+    });
+
+    expect(result.rows[0].__status).toBeUndefined();
+    expect(result.rowStats.modified).toBe(0);
+  });
+
+  test("AC3: 1-cent diff in a NUMBER (DECIMAL) column is flagged modified", () => {
+    const decimalColumns: DataFrame["columns"] = [
+      { name: "id", key: "id", type: "integer" },
+      { name: "price", key: "price", type: "number" },
+    ];
+    const baseMap: Record<string, RowObjectType | undefined> = {
+      "1": createRow({ id: 1, price: "19.99" }, undefined, 1),
+    };
+    const currentMap: Record<string, RowObjectType | undefined> = {
+      "1": createRow({ id: 1, price: "19.98" }, undefined, 1),
+    };
+    const columnMap: Record<string, DiffColumnMapEntry> = {
+      id: createColumnMapEntry("id", "integer"),
+      price: createColumnMapEntry("price", "number"),
+    };
+
+    const result = buildDiffRows({
+      baseMap,
+      currentMap,
+      baseColumns: decimalColumns,
+      currentColumns: decimalColumns,
+      columnMap,
+      primaryKeys: ["id"],
+    });
+
+    expect(result.rows[0].__status).toBe("modified");
+    expect(result.rowStats.modified).toBe(1);
+  });
+});

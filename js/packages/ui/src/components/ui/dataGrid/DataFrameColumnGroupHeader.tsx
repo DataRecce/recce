@@ -202,31 +202,33 @@ export function DataFrameColumnGroupHeader({
       )}
 
       {/* Precision menu for number columns (only for non-PK columns) */}
-      {!isPK && columnType === "number" && selectOptions.length > 0 && (
-        <>
-          <IconButton
-            aria-label="Options"
-            size="small"
-            className="!size-4 !min-w-4"
-            onClick={handleMenuClick}
-          >
-            <VscKebabVertical />
-          </IconButton>
-          <Menu anchorEl={anchorEl} open={menuOpen} onClose={handleMenuClose}>
-            {selectOptions.map((o) => (
-              <MenuItem
-                key={o.value}
-                onClick={() => {
-                  o.onClick();
-                  handleMenuClose();
-                }}
-              >
-                {o.value}
-              </MenuItem>
-            ))}
-          </Menu>
-        </>
-      )}
+      {!isPK &&
+        (columnType === "number" || columnType === "float") &&
+        selectOptions.length > 0 && (
+          <>
+            <IconButton
+              aria-label="Options"
+              size="small"
+              className="!size-4 !min-w-4"
+              onClick={handleMenuClick}
+            >
+              <VscKebabVertical />
+            </IconButton>
+            <Menu anchorEl={anchorEl} open={menuOpen} onClose={handleMenuClose}>
+              {selectOptions.map((o) => (
+                <MenuItem
+                  key={o.value}
+                  onClick={() => {
+                    o.onClick();
+                    handleMenuClose();
+                  }}
+                >
+                  {o.value}
+                </MenuItem>
+              ))}
+            </Menu>
+          </>
+        )}
     </Box>
   );
 }

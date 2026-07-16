@@ -138,7 +138,9 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
     // For delta modes, calculate the change for numeric columns
     if (
       isDeltaMode &&
-      (columnType === "number" || columnType === "integer") &&
+      (columnType === "number" ||
+        columnType === "float" ||
+        columnType === "integer") &&
       hasBase &&
       hasCurrent
     ) {

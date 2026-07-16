@@ -6,7 +6,19 @@ from ..core import default_context
 from ..exceptions import RecceException
 from ..models import Check
 from .core import CheckValidator, Task, TaskResultDiffer
-from .dataframe import DataFrame
+from .dataframe import DataFrame, DataFrameColumnType
+
+# Profile aggregate columns that recce COMPUTES as approximate floats
+# (avg/median are DOUBLE; the proportions are ratios). They carry IEEE-754 noise
+# (e.g. 0.30000000000000004 vs 0.3), so they are stamped FLOAT — approximate by
+# construction — and compared with an epsilon on the frontend. min/max/counts
+# stay exact. (DRC-3025)
+PROFILE_FLOAT_AGGREGATES = {
+    "avg": DataFrameColumnType.FLOAT,
+    "median": DataFrameColumnType.FLOAT,
+    "not_null_proportion": DataFrameColumnType.FLOAT,
+    "distinct_proportion": DataFrameColumnType.FLOAT,
+}
 
 PROFILE_COLUMN_JINJA_TEMPLATE = r"""
 {# Conditions -------------------------------------------- #}
@@ -205,7 +217,7 @@ class ProfileDiffTask(Task):
                 tables.append(table)
                 completed = completed + 1
                 self.check_cancel()
-            base = DataFrame.from_agate(merge_tables(tables))
+            base = DataFrame.from_agate(merge_tables(tables)).stamp_column_types(PROFILE_FLOAT_AGGREGATES)
 
             tables: List[agate.Table] = []
             for column in curr_columns:
@@ -215,7 +227,7 @@ class ProfileDiffTask(Task):
                 tables.append(table)
                 completed = completed + 1
                 self.check_cancel()
-            current = DataFrame.from_agate(merge_tables(tables))
+            current = DataFrame.from_agate(merge_tables(tables)).stamp_column_types(PROFILE_FLOAT_AGGREGATES)
 
             if len(base.columns) == 0 and len(current.columns) != 0:
                 base.columns = current.columns
@@ -311,5 +323,5 @@ class ProfileTask(ProfileDiffTask):
                 tables.append(table)
                 completed = completed + 1
                 self.check_cancel()
-            current = DataFrame.from_agate(merge_tables(tables))
+            current = DataFrame.from_agate(merge_tables(tables)).stamp_column_types(PROFILE_FLOAT_AGGREGATES)
             return ProfileResult(current=current)
