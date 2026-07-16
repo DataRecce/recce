@@ -265,6 +265,17 @@ class CLLPerformanceTracking:
         self.other_error_nodes = 0
 
 
+def _normalize_pivot_name(name: str) -> str:
+    """Normalize a PIVOT value/column name for matching.
+
+    sqlglot names generated pivot columns differently across dialects and
+    versions (e.g. ``JAN`` for an explicit projection vs. ``'jan'`` for a
+    ``select *`` expansion), so strip surrounding quotes and upper-case before
+    comparing. Matching is structural — never against the synthetic alias.
+    """
+    return name.strip("'\"").upper()
+
+
 def _dedeup_depends_on(depends_on: List[CllColumnDep]) -> List[CllColumnDep]:
     # deduplicate the depends_on list
     dedup_set = set()
@@ -327,9 +338,10 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
     table_alias_map = {t.alias_or_name: t.name for t in scope.tables}
     select = scope.expression
 
-    def source_column_dependency(ref_column: exp.Column) -> Optional[CllColumn]:
-        column_name = ref_column.name
-        table_name = ref_column.table if ref_column.table != "" else next(iter(table_alias_map.values()))
+    def _resolve_source_column(column_name: str, table_name: str) -> Optional[CllColumn]:
+        """Resolve a column against a real entry in ``scope.sources`` (a base
+        table or a sub-Scope). Returns None when ``table_name`` is not a
+        registered source — e.g. a PIVOT's synthetic alias, handled below."""
         source = scope.sources.get(table_name, None)  # transformation_type: exp.Table | Scope
         if isinstance(source, Scope):
             ref_cll_result = _resolve_scope_cll(source, scope_cll_map)
@@ -345,6 +357,72 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
             )
         else:
             return None
+
+    # Per-scope PIVOT map (DRC-3809). `qualify` points a pivoted query's
+    # projections at the pivot's table alias (`P`, or a synthesized `_0` /
+    # `_q_0` when unaliased), but sqlglot never registers that alias in
+    # `scope.sources` — the `Pivot` hangs off the base table's
+    # `.args["pivots"]`. Without help, every projected pivot column falls
+    # through to the phantom-alias fallback below, losing both column- and
+    # model-level lineage. Build a map keyed by the pivot alias so those
+    # projections resolve back to the real pre-pivot source columns. Keyed off
+    # the pivot node's *structure*, never the alias string (version-dependent).
+    pivot_map: Dict[str, dict] = {}
+    for base_source in scope.sources.values():
+        if not isinstance(base_source, exp.Table):
+            continue
+        for pivot in base_source.args.get("pivots") or []:
+            alias = pivot.alias
+            if not alias:
+                continue
+            # Source columns the pivot consumes: the measure aggregate(s) and
+            # the pivoted-for dimension column(s). Both already reference the
+            # base alias, so they resolve through the normal source logic.
+            consumed_deps: List[CllColumnDep] = []
+            for measure in pivot.expressions:
+                for col in measure.find_all(exp.Column):
+                    resolved = _resolve_source_column(col.name, col.table)
+                    if resolved is not None:
+                        consumed_deps.extend(resolved.depends_on)
+            value_names: set = set()
+            for field in pivot.args.get("fields") or []:
+                if not isinstance(field, exp.In):
+                    continue
+                for col in field.this.find_all(exp.Column):
+                    resolved = _resolve_source_column(col.name, col.table)
+                    if resolved is not None:
+                        consumed_deps.extend(resolved.depends_on)
+                for value in field.expressions:
+                    value_names.add(_normalize_pivot_name(value.output_name))
+            pivot_map[alias] = {
+                "base": base_source,
+                "consumed_deps": _dedeup_depends_on(consumed_deps),
+                "value_names": value_names,
+            }
+
+    def source_column_dependency(ref_column: exp.Column) -> Optional[CllColumn]:
+        column_name = ref_column.name
+        table_name = ref_column.table if ref_column.table != "" else next(iter(table_alias_map.values()))
+        resolved = _resolve_source_column(column_name, table_name)
+        if resolved is not None:
+            return resolved
+        pivot = pivot_map.get(table_name)
+        if pivot is not None:
+            if _normalize_pivot_name(column_name) in pivot["value_names"]:
+                # Generated value column: derived from the measure + dimension
+                # source columns the pivot consumes.
+                return CllColumn(
+                    name=column_name,
+                    transformation_type="derived",
+                    depends_on=list(pivot["consumed_deps"]),
+                )
+            # Pass-through column: copied unchanged from the base relation.
+            return CllColumn(
+                name=column_name,
+                transformation_type="passthrough",
+                depends_on=[CllColumnDep(node=pivot["base"].name, column=column_name)],
+            )
+        return None
 
     def subquery_cll(subquery: exp.Subquery) -> Optional[CllResult]:
         select = subquery.find(exp.Select)
@@ -493,6 +571,12 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                     m2c.extend(source_column_dependency(ref_column).depends_on)
                 elif selected_column_dependency(ref_column) is not None:
                     m2c.extend(selected_column_dependency(ref_column).depends_on)
+
+    # PIVOT (DRC-3809): the measure + dimension columns a pivot consumes are
+    # model-level source provenance, analogous to group-by / where columns.
+    # Without this, a pivoted query loses ALL model-level lineage.
+    for pivot in pivot_map.values():
+        m2c.extend(pivot["consumed_deps"])
 
     for source in scope.sources.values():
         if not isinstance(source, Scope):

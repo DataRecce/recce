@@ -885,3 +885,53 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert_column(result, "customer_name", "passthrough", [("customers", "customer_name")])
         assert_column(result, "first_order_id", "renamed", [("orders", "order_id")])
         assert_column(result, "first_order_date", "renamed", [("orders", "ordered_at")])
+
+    def test_pivot(self):
+        """PIVOT (DRC-3809): generated value columns must resolve to their
+        pre-pivot source columns, not a phantom pivot-alias node.
+
+        sqlglot points every projected column at the pivot's table alias
+        (``P``, or a synthesized ``_0`` / ``_q_0`` when unaliased), which it
+        never registers in ``scope.sources``. The fix keys off the pivot
+        node's structure, so it is immune to that alias-string drift across
+        sqlglot versions.
+        """
+        schema = {"t1": {"id": "int", "month": "varchar", "rev": "int"}}
+
+        # AC-1 + AC-2: Snowflake explicit-alias. qualify upper-cases snowflake
+        # identifiers, so expected node/column names are upper-case.
+        sql = """
+        select id, jan, feb from t1 pivot (sum(rev) for month in ('jan','feb')) as p
+        """
+        result = cll(sql, schema=schema, dialect="snowflake")
+        # AC-1: model-level lineage preserved to the columns the PIVOT consumes.
+        assert_model(result, [("T1", "REV"), ("T1", "MONTH")])
+        # AC-2: value columns are derived from measure+dimension; ID passes through.
+        assert_column(result, "JAN", "derived", [("T1", "REV"), ("T1", "MONTH")])
+        assert_column(result, "FEB", "derived", [("T1", "REV"), ("T1", "MONTH")])
+        assert_column(result, "ID", "passthrough", [("T1", "ID")])
+        # No phantom pivot-alias node anywhere.
+        m2c, c2c = result
+        assert all(d.node not in ("P", "_0", "_Q_0", "_q_0") for d in m2c), m2c
+        for col in c2c.values():
+            assert all(d.node not in ("P", "_0", "_Q_0", "_q_0") for d in col.depends_on), col
+
+        # select * (no explicit alias): guards the synthesized-alias path.
+        # Same expected lineage; the output value column keys are the pivot
+        # literals, but they must still resolve to T1.REV / T1.MONTH.
+        sql = """
+        select * from t1 pivot (sum(rev) for month in ('jan','feb'))
+        """
+        result = cll(sql, schema=schema, dialect="snowflake")
+        assert_model(result, [("T1", "REV"), ("T1", "MONTH")])
+        assert_column(result, "ID", "passthrough", [("T1", "ID")])
+        m2c, c2c = result
+        assert all(d.node not in ("P", "_0", "_Q_0", "_q_0") for d in m2c), m2c
+        # The two generated value columns (keyed by the pivot literals) are
+        # derived from the measure + dimension source columns, phantom-free.
+        value_cols = [c for name, c in c2c.items() if name.upper() != "ID"]
+        assert len(value_cols) == 2, list(c2c.keys())
+        for col in value_cols:
+            assert col.transformation_type == "derived", col
+            deps = {(d.node, d.column) for d in col.depends_on}
+            assert deps == {("T1", "REV"), ("T1", "MONTH")}, col
