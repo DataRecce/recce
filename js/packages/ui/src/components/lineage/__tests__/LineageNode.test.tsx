@@ -782,6 +782,25 @@ describe("LineageNode", () => {
       ).not.toBeInTheDocument();
     });
 
+    it("non_breaking + impacted renders the amber column-impacted badge, not the green additive one (DRC-3813)", () => {
+      // Downstream node whose own SQL is unchanged (additive/non_breaking)
+      // but which the backend flagged impacted because it references a
+      // changed upstream column only in a WHERE/JOIN clause. The impact
+      // signal must win over the benign own additive change.
+      const props = createMockNodeProps({
+        changeCategory: "non_breaking",
+        isImpacted: true,
+        newCllExperience: true,
+      });
+      render(<LineageNode {...props} />);
+      const badge = screen.getByTestId("column-impacted-badge");
+      expect(badge).toBeInTheDocument();
+      expect(badge.textContent).toBe("COLUMN");
+      expect(
+        screen.queryByTestId("whole-model-additive-badge"),
+      ).not.toBeInTheDocument();
+    });
+
     it("partial_breaking own change wins over column impact (own change preferred)", () => {
       const props = createMockNodeProps({
         isImpacted: true,
