@@ -375,7 +375,9 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
       showContent={showContent}
       // Action display props
       actionTag={actionTag}
-      showChangeAnalysis={isShowingChangeAnalysis}
+      showChangeAnalysis={
+        isShowingChangeAnalysis || changeCategory !== undefined
+      }
       changeCategory={changeCategory}
       runsAggregatedTag={runsAggregatedTag}
       // Layout props
