@@ -309,7 +309,7 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
   // Computed state
   const changeCategory = resolveChangeCategory(
     cll?.current.nodes[id]?.change_category,
-    data.change?.category,
+    newCllExperience ? undefined : data.change?.category,
   );
   const isHighlighted = isNodeHighlighted(id);
   const isSelected = isNodeSelected(id);
@@ -376,7 +376,8 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
       // Action display props
       actionTag={actionTag}
       showChangeAnalysis={
-        isShowingChangeAnalysis || changeCategory !== undefined
+        isShowingChangeAnalysis ||
+        (!newCllExperience && changeCategory !== undefined)
       }
       changeCategory={changeCategory}
       runsAggregatedTag={runsAggregatedTag}
