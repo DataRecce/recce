@@ -112,7 +112,7 @@ describe("GraphNode", () => {
 
     expect(mockLineageNode).toHaveBeenCalledWith(
       expect.objectContaining({
-        changeCategory: "non_breaking",
+        changeCategory: "non_breaking", // wire-enum-ok
         showChangeAnalysis: true,
       }),
     );
@@ -156,7 +156,7 @@ describe("GraphNode", () => {
 
     expect(mockLineageNode).toHaveBeenCalledWith(
       expect.objectContaining({
-        changeCategory: "partial_breaking",
+        changeCategory: "partial_breaking", // wire-enum-ok
         showChangeAnalysis: false,
       }),
     );
