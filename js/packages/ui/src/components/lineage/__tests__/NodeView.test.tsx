@@ -121,6 +121,41 @@ function renderNodeView(
 // ============================================================================
 
 describe("NodeView", () => {
+  describe("change category", () => {
+    test.each([
+      ["breaking", "Model-Wide Change"], // wire-enum-ok
+      ["partial_breaking", "Column Change"], // wire-enum-ok
+      ["non_breaking", "Additive Change"], // wire-enum-ok
+      ["unknown", "Unknown"],
+    ])("renders the %s category chip", (category, label) => {
+      const node = createNode("model");
+      node.data.change = { category };
+
+      renderNodeView(node);
+
+      expect(screen.getByText(label)).toBeInTheDocument();
+    });
+
+    test("does not render a category chip without category data", () => {
+      renderNodeView(createNode("model"));
+
+      expect(
+        screen.queryByTestId("change-category-chip"),
+      ).not.toBeInTheDocument();
+    });
+
+    test("leaves category treatment to the new CLL experience", () => {
+      const node = createNode("model");
+      node.data.change = { category: "unknown" };
+
+      renderNodeView(node, undefined, { newCllExperience: true });
+
+      expect(
+        screen.queryByTestId("change-category-chip"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("source node schema display", () => {
     test("renders column schema for source nodes", () => {
       renderNodeView(createNode("source", testColumns), testColumns);

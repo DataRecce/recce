@@ -31,9 +31,9 @@ import {
 import { useThemeColors } from "../../hooks";
 import { deltaPercentageString } from "../../utils";
 import { findByRunType } from "../run";
+import { resolveChangeCategory } from "./changeCategory";
 import {
   ActionTag,
-  type ChangeCategory,
   LineageNode,
   type NodeChangeStatus,
   type SelectMode,
@@ -307,8 +307,10 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
   );
 
   // Computed state
-  const changeCategory = cll?.current.nodes[id]
-    ?.change_category as ChangeCategory;
+  const changeCategory = resolveChangeCategory(
+    cll?.current.nodes[id]?.change_category,
+    data.change?.category,
+  );
   const isHighlighted = isNodeHighlighted(id);
   const isSelected = isNodeSelected(id);
   const isFocusedByImpactRadius =

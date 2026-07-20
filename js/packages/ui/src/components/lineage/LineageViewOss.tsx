@@ -131,6 +131,13 @@ import { LineageViewTopBarOss as LineageViewTopBar } from "./topbar/LineageViewT
 /** Hide MiniMap when node count exceeds this threshold to reduce DOM pressure */
 export const MINIMAP_NODE_THRESHOLD = 500;
 
+export function nextFocusedNodeId(
+  currentNodeId: string | undefined,
+  clickedNodeId: string,
+): string | undefined {
+  return currentNodeId === clickedNodeId ? undefined : clickedNodeId;
+}
+
 /**
  * Compute impacted node IDs and column IDs in a single pass over the CLL data.
  *
@@ -851,7 +858,7 @@ export function PrivateLineageView(
 
     closeContextMenu();
     if (!selectMode) {
-      setFocusedNodeId(node.id);
+      setFocusedNodeId(nextFocusedNodeId(focusedNodeId, node.id));
       setFocusedHistory([]);
     } else if (selectMode === "action_result") {
       const action = multiNodeAction.actionState.actions[node.id];
