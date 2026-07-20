@@ -4,6 +4,10 @@ import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
+import {
+  CHANGE_CATEGORY_DETAILS,
+  CHANGE_CATEGORY_LABELS,
+} from "../changeCategory";
 import { changeStatusColors, cllChangeStatusColors } from "../styles";
 
 /**
@@ -302,6 +306,48 @@ export function LineageLegend({
             content
           );
         })}
+
+      {variant === "changeStatus" && !newCllExperience && (
+        <Box
+          sx={{
+            mt: 1,
+            pt: 1,
+            borderTop: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              display: "block",
+              fontWeight: 600,
+              mb: 0.5,
+              color: "text.secondary",
+            }}
+          >
+            Change Categories
+          </Typography>
+          {CHANGE_CATEGORY_DETAILS.map(({ category, description }) => {
+            const content = (
+              <Typography
+                key={category}
+                variant="body2"
+                sx={{ fontWeight: 600, mb: "2px" }}
+              >
+                {CHANGE_CATEGORY_LABELS[category]}
+              </Typography>
+            );
+
+            return showTooltips ? (
+              <Tooltip key={category} title={description} placement="right">
+                {content}
+              </Tooltip>
+            ) : (
+              content
+            );
+          })}
+        </Box>
+      )}
 
       {variant === "transformation" &&
         (items as TransformationLegendItem[]).map((item) => {

@@ -2,6 +2,7 @@
 
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
@@ -18,6 +19,7 @@ import { IoClose } from "react-icons/io5";
 import type { NodeData } from "../../api/info";
 import { DisableTooltipMessages } from "../../constants";
 import { useThemeColors } from "../../hooks";
+import { getChangeCategoryLabel } from "./changeCategory";
 import type { ChangeCategory } from "./nodes";
 import { TreatmentChip } from "./TreatmentChip";
 import { getTitleRowTooltip, pickTitleChip } from "./wholeModelTreatment";
@@ -656,6 +658,9 @@ export function NodeView<TNode extends NodeViewNodeData>({
     },
     treatmentInputs,
   );
+  const changeCategoryLabel = newCllExperience
+    ? undefined
+    : getChangeCategoryLabel(node.data.change?.category);
 
   return (
     <Box
@@ -730,6 +735,15 @@ export function NodeView<TNode extends NodeViewNodeData>({
           <Box sx={{ color: "text.secondary", flexShrink: 0 }}>
             <ResourceTypeTag node={node} />
           </Box>
+        )}
+        {changeCategoryLabel && (
+          <Chip
+            data-testid="change-category-chip"
+            label={changeCategoryLabel}
+            size="small"
+            variant="outlined"
+            sx={{ flexShrink: 0 }}
+          />
         )}
         <IconButton size="small" onClick={onCloseNode} sx={{ flexShrink: 0 }}>
           <IoClose />

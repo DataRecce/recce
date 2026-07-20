@@ -35,6 +35,7 @@ import {
   useState,
 } from "react";
 import { colors } from "../../../theme/colors";
+import { getChangeCategoryLabel } from "../changeCategory";
 import { DIM_FILTER } from "../config/zoomConstants";
 import {
   getIconForMaterialization,
@@ -172,13 +173,6 @@ export interface LineageNodeProps {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-
-const CHANGE_CATEGORY_LABELS: Record<ChangeCategory, string> = {
-  breaking: "Model-Wide Change",
-  non_breaking: "Additive Change",
-  partial_breaking: "Column Change",
-  unknown: "Unknown",
-};
 
 const DEFAULT_COLUMN_HEIGHT = 28;
 
@@ -476,7 +470,7 @@ function LineageNodeComponent({
     showChangeAnalysis &&
     changeCategory &&
     (!newCllExperience || changeCategory === "unknown")
-      ? CHANGE_CATEGORY_LABELS[changeCategory]
+      ? getChangeCategoryLabel(changeCategory)
       : null;
 
   return (
