@@ -46,13 +46,12 @@ describe("classifyType", () => {
       expect(classifyType(type)).toBe("number");
     });
 
-    it.each([
-      "NUMBER(38,2)",
-      "NUMERIC(10,2)",
-      "DECIMAL(18,4)",
-    ])("classifies %s (with params) as number", (type) => {
-      expect(classifyType(type)).toBe("number");
-    });
+    it.each(["NUMBER(38,2)", "NUMERIC(10,2)", "DECIMAL(18,4)"])(
+      "classifies %s (with params) as number",
+      (type) => {
+        expect(classifyType(type)).toBe("number");
+      },
+    );
   });
 
   describe("text types", () => {
@@ -76,12 +75,12 @@ describe("classifyType", () => {
       expect(classifyType(type)).toBe("text");
     });
 
-    it.each([
-      "VARCHAR(256)",
-      "CHAR(10)",
-    ])("classifies %s (with params) as text", (type) => {
-      expect(classifyType(type)).toBe("text");
-    });
+    it.each(["VARCHAR(256)", "CHAR(10)"])(
+      "classifies %s (with params) as text",
+      (type) => {
+        expect(classifyType(type)).toBe("text");
+      },
+    );
   });
 
   describe("boolean types", () => {
@@ -126,13 +125,12 @@ describe("classifyType", () => {
 
     // DuckDB sub-second timestamps (DRC-3669). Previously fell through to
     // `unknown`, which is why the cell needed local substring heuristics.
-    it.each([
-      "TIMESTAMP_S",
-      "TIMESTAMP_MS",
-      "TIMESTAMP_NS",
-    ])("classifies DuckDB %s as datetime", (type) => {
-      expect(classifyType(type)).toBe("datetime");
-    });
+    it.each(["TIMESTAMP_S", "TIMESTAMP_MS", "TIMESTAMP_NS"])(
+      "classifies DuckDB %s as datetime",
+      (type) => {
+        expect(classifyType(type)).toBe("datetime");
+      },
+    );
 
     // ClickHouse sub-second datetime (DRC-3670 review #3). Previously fell
     // through to `unknown`; the paren-strip normalizes the precision/timezone
@@ -181,16 +179,12 @@ describe("classifyType", () => {
   });
 
   describe("json types", () => {
-    it.each([
-      "JSON",
-      "JSONB",
-      "VARIANT",
-      "OBJECT",
-      "STRUCT",
-      "MAP",
-    ])("classifies %s as json", (type) => {
-      expect(classifyType(type)).toBe("json");
-    });
+    it.each(["JSON", "JSONB", "VARIANT", "OBJECT", "STRUCT", "MAP"])(
+      "classifies %s as json",
+      (type) => {
+        expect(classifyType(type)).toBe("json");
+      },
+    );
   });
 
   describe("array types", () => {

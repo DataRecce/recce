@@ -154,19 +154,20 @@ describe("LineageEdge", () => {
       unchanged: cllChangeStatusColors.unchanged,
     };
 
-    it.each(
-      Object.entries(statusColors),
-    )("applies %s status stroke color", (status, expectedColor) => {
-      const props = createMockEdgeProps(
-        {},
-        { changeStatus: status as EdgeChangeStatus },
-      );
+    it.each(Object.entries(statusColors))(
+      "applies %s status stroke color",
+      (status, expectedColor) => {
+        const props = createMockEdgeProps(
+          {},
+          { changeStatus: status as EdgeChangeStatus },
+        );
 
-      render(<LineageEdge {...props} />);
+        render(<LineageEdge {...props} />);
 
-      const edge = screen.getByTestId("base-edge");
-      expect(edge.style.stroke).toBe(expectedColor);
-    });
+        const edge = screen.getByTestId("base-edge");
+        expect(edge.style.stroke).toBe(expectedColor);
+      },
+    );
 
     it("defaults to unchanged status when not provided", () => {
       const props = createMockEdgeProps();

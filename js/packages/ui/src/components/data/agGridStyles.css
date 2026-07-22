@@ -9,9 +9,8 @@
  * - Sticky headers when scrolling vertically
  */
 
-/* AG Grid Viewport - uses AG Grid's theme variable */
-.ag-body-viewport,
-.ag-center-cols-viewport {
+/* AG Grid scrolling container - uses AG Grid's theme variable */
+.ag-grid-scrolling-container {
   background-color: var(--ag-background-color);
 }
 
