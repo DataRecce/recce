@@ -213,21 +213,22 @@ describe("LineageColumnNode", () => {
       unknown: "U",
     };
 
-    it.each(
-      Object.entries(transformationLetters),
-    )("shows %s chip for %s transformation", (type, letter) => {
-      const props = createMockColumnNodeProps(
-        {},
-        {
-          transformationType: type as ColumnTransformationType,
-          changeStatus: undefined, // Change status takes precedence
-        },
-      );
+    it.each(Object.entries(transformationLetters))(
+      "shows %s chip for %s transformation",
+      (type, letter) => {
+        const props = createMockColumnNodeProps(
+          {},
+          {
+            transformationType: type as ColumnTransformationType,
+            changeStatus: undefined, // Change status takes precedence
+          },
+        );
 
-      render(<LineageColumnNode {...props} />);
+        render(<LineageColumnNode {...props} />);
 
-      expect(screen.getByText(letter)).toBeInTheDocument();
-    });
+        expect(screen.getByText(letter)).toBeInTheDocument();
+      },
+    );
 
     it("shows transformation type by default even when change status is present", () => {
       const props = createMockColumnNodeProps(

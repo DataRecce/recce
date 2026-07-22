@@ -92,26 +92,26 @@ describe("SetupConnectionBanner", () => {
       { mode: "read only", shouldRender: false },
     ];
 
-    it.each(modeTestCases)("renders=$shouldRender when mode is '$mode'", ({
-      mode,
-      shouldRender,
-    }) => {
-      const { container } = renderComponent({
-        featureToggles: {
-          ...defaultFeatureToggles,
-          mode,
-        },
-      });
+    it.each(modeTestCases)(
+      "renders=$shouldRender when mode is '$mode'",
+      ({ mode, shouldRender }) => {
+        const { container } = renderComponent({
+          featureToggles: {
+            ...defaultFeatureToggles,
+            mode,
+          },
+        });
 
-      if (shouldRender) {
-        expect(
-          screen.getByText(
-            "Query functions disabled without a data warehouse connection.",
-          ),
-        ).toBeInTheDocument();
-      } else {
-        expect(container).toBeEmptyDOMElement();
-      }
-    });
+        if (shouldRender) {
+          expect(
+            screen.getByText(
+              "Query functions disabled without a data warehouse connection.",
+            ),
+          ).toBeInTheDocument();
+        } else {
+          expect(container).toBeEmptyDOMElement();
+        }
+      },
+    );
   });
 });
