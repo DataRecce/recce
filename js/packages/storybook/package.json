@@ -21,7 +21,7 @@
     "@storybook/addon-vitest": "^10.5.2",
     "@storybook/react": "^10.5.2",
     "@storybook/react-vite": "^10.5.2",
-    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/jest-dom": "7.0.0",
     "@testing-library/react": "16.3.2",
     "@vitejs/plugin-react": "^6.0.3",
     "@vitest/browser-playwright": "^4.1.10",
