@@ -13,23 +13,23 @@
   },
   "dependencies": {
     "@datarecce/ui": "workspace:*",
-    "@tanstack/react-query": "5.101.2"
+    "@tanstack/react-query": "5.101.4"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
-    "@storybook/addon-docs": "^10.5.2",
-    "@storybook/addon-vitest": "^10.5.2",
-    "@storybook/react": "^10.5.2",
-    "@storybook/react-vite": "^10.5.2",
+    "@storybook/addon-docs": "^10.5.3",
+    "@storybook/addon-vitest": "^10.5.3",
+    "@storybook/react": "^10.5.3",
+    "@storybook/react-vite": "^10.5.3",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",
-    "@vitejs/plugin-react": "^6.0.3",
+    "@vitejs/plugin-react": "^6.0.4",
     "@vitest/browser-playwright": "^4.1.10",
     "@vitest/coverage-v8": "^4.1.10",
     "chartjs-adapter-date-fns": "^3.0.0",
     "msw": "^2.15.0",
     "playwright": "^1.61.1",
-    "storybook": "^10.5.2",
+    "storybook": "^10.5.3",
     "vitest": "^4.1.10"
   },
   "peerDependencies": {
