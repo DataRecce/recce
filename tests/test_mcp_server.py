@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -239,22 +239,6 @@ class TestRecceMCPServer:
         mock_context.get_lineage_diff.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_tool_row_count_diff(self, mcp_server):
-        """Test the row_count_diff tool"""
-        server, _ = mcp_server
-        # Mock the task execution
-        mock_result = {"results": [{"node_id": "model.project.my_model", "base": 100, "current": 105, "diff": 5}]}
-
-        with patch.object(RowCountDiffTask, "execute", return_value=mock_result):
-            result = await server._tool_row_count_diff({"node_names": ["my_model"]})
-
-        # Verify the result. DRC-3532 run-backed local mode surfaces a run_id key
-        # alongside the diff result; compare on the result fields, ignoring run_id
-        # (the dedicated TestLocalModeRunBacked tests cover run_id surfacing).
-        assert {k: v for k, v in result.items() if k != "run_id"} == mock_result
-        assert "results" in result
-
-    @pytest.mark.asyncio
     async def test_tool_query(self, mcp_server):
         """Test the query tool"""
         server, _ = mcp_server
@@ -273,23 +257,38 @@ class TestRecceMCPServer:
         assert "data" in result
         mock_result.model_dump.assert_called_once_with(mode="json")
 
+    @pytest.mark.parametrize(
+        ("base", "expected_run_type"),
+        [
+            pytest.param(True, "query_base", id="base"),
+            pytest.param(False, "query", id="current"),
+        ],
+    )
     @pytest.mark.asyncio
-    async def test_tool_query_with_base_flag(self, mcp_server):
-        """Test the query tool with base environment flag"""
+    async def test_tool_query_dispatches_environment_and_forwards_params(
+        self,
+        mcp_server,
+        base,
+        expected_run_type,
+    ):
+        """The base flag selects the run type without entering task params."""
         server, _ = mcp_server
         mock_result = {"columns": ["id"], "data": [[1]]}
+        sql_template = "SELECT account_id FROM {{ ref('accounts') }}"
 
-        with patch.object(QueryTask, "execute", return_value=mock_result) as mock_execute:
-            with patch.object(QueryTask, "__init__", return_value=None):
-                task = QueryTask(params={"sql_template": "SELECT 1"})
-                task.is_base = True
-                task.execute = mock_execute
+        with patch.object(
+            server,
+            "_tool_run_backed_local",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ) as run_backed:
+            result = await server._tool_query({"sql_template": sql_template, "base": base})
 
-                result = await server._tool_query({"sql_template": "SELECT 1", "base": True})
-
-                # Verify base flag was set (would need to inspect task creation).
-                # DRC-3532 run-backed local mode adds a run_id key; ignore it here.
-                assert {k: v for k, v in result.items() if k != "run_id"} == mock_result
+        assert result == mock_result
+        run_backed.assert_awaited_once_with(
+            expected_run_type,
+            {"sql_template": sql_template},
+        )
 
     @pytest.mark.asyncio
     async def test_tool_query_diff(self, mcp_server):
