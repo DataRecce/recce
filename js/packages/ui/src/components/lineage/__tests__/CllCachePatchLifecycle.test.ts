@@ -106,8 +106,22 @@ function createCllResponse(
   };
 }
 
+/**
+ * Marks the response a given API call returned. The marker node is absent from
+ * the cached lineage, so it never reaches the graph — it exists so a test can
+ * name *which* response it got back instead of relying on object identity
+ * alone, and so two responses can never compare equal by accident.
+ */
+const CALL_MARKER_PREFIX = "model.test.cll_call_";
+
+function callMarkerOf(cll: ColumnLineageData | undefined): string | undefined {
+  return Object.keys(cll?.current.nodes ?? {}).find((id) =>
+    id.startsWith(CALL_MARKER_PREFIX),
+  );
+}
+
 /** A change-analysis response marking NODE_A modified with a changed column. */
-function modifiedNodeACll(): ColumnLineageData {
+function modifiedNodeACll(callMarker: string): ColumnLineageData {
   return createCllResponse({
     [NODE_A]: createCllNodeData({
       id: NODE_A,
@@ -121,6 +135,11 @@ function modifiedNodeACll(): ColumnLineageData {
           change_status: "added",
         },
       },
+    }),
+    [callMarker]: createCllNodeData({
+      id: callMarker,
+      name: callMarker,
+      change_status: "modified",
     }),
   });
 }
@@ -142,8 +161,17 @@ function createHarness({ seedLineage = true } = {}) {
   }
   // Spied after seeding, so only the lifecycle's own patches are counted.
   const patch = vi.spyOn(queryClient, "setQueryData");
+  // A distinct response object per call, each tagged with its call number, so
+  // "which response came back" is observable and never accidentally equal.
+  const responses: ColumnLineageData[] = [];
   const mutateAsync = vi.fn(
-    async (_input: CllInput): Promise<ColumnLineageData> => modifiedNodeACll(),
+    async (_input: CllInput): Promise<ColumnLineageData> => {
+      const response = modifiedNodeACll(
+        `${CALL_MARKER_PREFIX}${mutateAsync.mock.calls.length}`,
+      );
+      responses.push(response);
+      return response;
+    },
   );
   const lifecycle = createCllCachePatchLifecycle();
 
@@ -153,6 +181,10 @@ function createHarness({ seedLineage = true } = {}) {
     mutateAsync,
     apiCallCount: () => mutateAsync.mock.calls.length,
     patchCount: () => patch.mock.calls.length,
+    /** Every response the mutation has handed out, oldest first. */
+    responses: () => responses,
+    /** The literal input the mutation was last called with. */
+    lastApiInput: () => mutateAsync.mock.lastCall?.[0],
     request<T extends CllInput | undefined>(
       cllInput: T,
       changeAnalysis = true,
@@ -255,6 +287,115 @@ describe("CLL cache patch lifecycle", () => {
     expect(h.patchCount()).toBe(2);
   });
 
+  it("does not hold data pending when there was no lineage cache to patch", async () => {
+    // The response is patch-eligible but no cache entry exists to write, so no
+    // subscriber is notified and no re-entry is ever coming to consume a pending
+    // value. Every later request — the identical one included, which is the case
+    // the request comparison alone cannot catch — is genuine.
+    // Kills: arming before knowing the patch produced a cache value.
+    const h = createHarness({ seedLineage: false });
+
+    const first = await h.lifecycle.resolveCllForLayout(
+      h.request(IMPACT_RADIUS_INPUT),
+    );
+    const repeated = await h.lifecycle.resolveCllForLayout(
+      h.request(IMPACT_RADIUS_INPUT),
+    );
+    const different = await h.lifecycle.resolveCllForLayout(
+      h.request({ ...IMPACT_RADIUS_INPUT, node_id: NODE_B }),
+    );
+
+    expect(h.apiCallCount()).toBe(3);
+    expect(h.patchCount()).toBe(3);
+    expect(callMarkerOf(first)).toBe(`${CALL_MARKER_PREFIX}1`);
+    expect(callMarkerOf(repeated)).toBe(`${CALL_MARKER_PREFIX}2`);
+    expect(callMarkerOf(different)).toBe(`${CALL_MARKER_PREFIX}3`);
+    expect(different).toBe(h.responses()[2]);
+  });
+
+  it("does not reuse pending data for a different input", async () => {
+    // The pending result belongs to the request that patched the cache. A
+    // different input is a different question and gets its own answer. Kills:
+    // consuming pending data without comparing it to the current request.
+    const h = createHarness();
+    const radius = await h.lifecycle.resolveCllForLayout(
+      h.request(IMPACT_RADIUS_INPUT),
+    );
+
+    const otherNode = await h.lifecycle.resolveCllForLayout(
+      h.request({ ...IMPACT_RADIUS_INPUT, node_id: NODE_B }),
+    );
+
+    expect(h.apiCallCount()).toBe(2);
+    expect(otherNode).not.toBe(radius);
+    expect(callMarkerOf(otherNode)).toBe(`${CALL_MARKER_PREFIX}2`);
+  });
+
+  it("supersedes pending data when a different non-patching request follows", async () => {
+    // A column click with change analysis off patches nothing, so it must both
+    // make its own call and leave nothing behind for the request after it.
+    // Kills: the missing request comparison (step 2 would replay the radius),
+    // and clearing pending only on success (step 3 would replay the radius,
+    // because its input matches the one still armed).
+    const h = createHarness();
+    const radius = await h.lifecycle.resolveCllForLayout(
+      h.request(IMPACT_RADIUS_INPUT),
+    );
+
+    const columnCll = await h.lifecycle.resolveCllForLayout(
+      h.request(COLUMN_CLICK_INPUT, false),
+    );
+    const radiusAgain = await h.lifecycle.resolveCllForLayout(
+      h.request(IMPACT_RADIUS_INPUT),
+    );
+
+    expect(h.apiCallCount()).toBe(3);
+    expect(columnCll).not.toBe(radius);
+    expect(callMarkerOf(columnCll)).toBe(`${CALL_MARKER_PREFIX}2`);
+    expect(radiusAgain).not.toBe(radius);
+    expect(callMarkerOf(radiusAgain)).toBe(`${CALL_MARKER_PREFIX}3`);
+  });
+
+  it("leaves nothing to replay when a different genuine request rejects", async () => {
+    // The failed request supersedes the armed one before it awaits, so the
+    // retry is a real request rather than a replay of older change data.
+    // Kills: the missing request comparison (the rejecting request would never
+    // reach the API), and clearing pending after the await instead of before.
+    const h = createHarness();
+    const radius = await h.lifecycle.resolveCllForLayout(
+      h.request(IMPACT_RADIUS_INPUT),
+    );
+    h.mutateAsync.mockRejectedValueOnce(new Error("cll boom"));
+
+    await expect(
+      h.lifecycle.resolveCllForLayout(
+        h.request({ ...IMPACT_RADIUS_INPUT, node_id: NODE_B }),
+      ),
+    ).rejects.toThrow("cll boom");
+    const retried = await h.lifecycle.resolveCllForLayout(
+      h.request(IMPACT_RADIUS_INPUT),
+    );
+
+    expect(h.apiCallCount()).toBe(3);
+    expect(retried).not.toBe(radius);
+    expect(retried).toBe(h.responses().at(-1));
+  });
+
+  it("sends the complete built API input to the mutation", async () => {
+    // A column click carries no change_analysis of its own; the resolved mode is
+    // injected when the request is built. Kills: passing `cllInput` straight
+    // through instead of `buildCllApiInput(cllInput, changeAnalysis)`.
+    const h = createHarness();
+
+    await h.lifecycle.resolveCllForLayout(h.request(COLUMN_CLICK_INPUT, true));
+
+    expect(h.lastApiInput()).toEqual({
+      node_id: NODE_A,
+      column: "order_id",
+      change_analysis: true,
+    });
+  });
+
   it("clears the pending data when CLL is disabled, so re-enabling fetches", async () => {
     const h = createHarness();
     // Arms the guard; nothing consumes it (no re-entry in this scenario).
@@ -276,7 +417,7 @@ describe("CLL cache patch lifecycle", () => {
       h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
     );
 
-    const fetched = await h.lifecycle.fetchAndPatch(
+    const fetched = await h.lifecycle.refreshCll(
       h.request(IMPACT_RADIUS_INPUT),
     );
     const reused = await reentry.result();
@@ -284,6 +425,43 @@ describe("CLL cache patch lifecycle", () => {
     expect(reused).toBe(fetched);
     expect(h.apiCallCount()).toBe(1);
     expect(h.patchCount()).toBe(1);
+  });
+
+  it("clears the pending data on refreshLayout's explicit disable", async () => {
+    // `refreshLayout` runs on view-option changes that need not re-run the
+    // layout effect, so clearing CLL there has to disarm the lifecycle itself.
+    // Kills: making `refreshCll` a no-op when there is no input instead of
+    // dropping the pending value (and, in the owning component, calling it only
+    // inside the `column_level_lineage` branch).
+    const h = createHarness();
+    const radius = await h.lifecycle.resolveCllForLayout(
+      h.request(IMPACT_RADIUS_INPUT),
+    );
+
+    const disabled = await h.lifecycle.refreshCll(h.request(undefined));
+    const radiusAgain = await h.lifecycle.resolveCllForLayout(
+      h.request(IMPACT_RADIUS_INPUT),
+    );
+
+    expect(disabled).toBeUndefined();
+    expect(h.apiCallCount()).toBe(2);
+    expect(radiusAgain).not.toBe(radius);
+    expect(callMarkerOf(radiusAgain)).toBe(`${CALL_MARKER_PREFIX}2`);
+  });
+
+  it("sends the complete built API input from refreshLayout's fetch", async () => {
+    // The column-click path is showColumnLevelLineage → refreshLayout, so this
+    // is the entry point a real column click reaches. Kills: passing `cllInput`
+    // straight through instead of `buildCllApiInput(cllInput, changeAnalysis)`.
+    const h = createHarness();
+
+    await h.lifecycle.refreshCll(h.request(COLUMN_CLICK_INPUT, true));
+
+    expect(h.lastApiInput()).toEqual({
+      node_id: NODE_A,
+      column: "order_id",
+      change_analysis: true,
+    });
   });
 
   it("does not patch or arm anything for a plain column-lineage call", async () => {
