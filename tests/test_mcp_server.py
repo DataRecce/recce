@@ -2940,12 +2940,31 @@ class TestLocalModeRunBacked:
     # ------------------------------------------------------------------
 
     @pytest.mark.asyncio
-    async def test_row_count_diff_returns_run_id(self, server):
-        """row_count_diff in local mode surfaces run_id in the result (DRC-3634)."""
-        mock_raw = {"results": [{"node_id": "model.p.orders", "base": 100, "current": 105, "diff": 5}]}
+    async def test_row_count_diff_returns_model_rows_alongside_run_id(self, server):
+        """row_count_diff adds run_id *next to* the model-keyed rows (DRC-3634).
+
+        The task returns one entry per model, keyed by model name, each carrying
+        independent base/curr counts. The citation run_id is an extra key — an
+        agent still has to see every model's own numbers, so the whole payload is
+        asserted rather than just the presence of run_id.
+        """
+        from uuid import UUID
+
+        mock_raw = {
+            "orders": {"base": 100, "curr": 105, "base_meta": None, "curr_meta": None},
+            "customers": {"base": 7, "curr": 0, "base_meta": None, "curr_meta": None},
+        }
         with patch.object(RowCountDiffTask, "execute", return_value=mock_raw):
-            result = await server._tool_row_count_diff({"node_names": ["orders"]})
-        assert "run_id" in result, "run_id must be in result for DRC-3634 run-backed local mode"
+            result = await server._tool_row_count_diff({"node_names": ["orders", "customers"]})
+
+        persisted_run_id = str(self._context.runs[0].run_id)
+        assert result == {
+            "orders": {"base": 100, "curr": 105, "base_meta": None, "curr_meta": None},
+            "customers": {"base": 7, "curr": 0, "base_meta": None, "curr_meta": None},
+            "run_id": persisted_run_id,
+        }
+        # The citation id must resolve to the persisted Run, not be a fresh uuid.
+        assert UUID(result["run_id"]) == self._context.runs[0].run_id
 
     @pytest.mark.asyncio
     async def test_row_count_diff_persists_run_in_context(self, server):

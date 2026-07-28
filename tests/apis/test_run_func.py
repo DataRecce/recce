@@ -220,6 +220,11 @@ class TestSubmitRunParamsPropagation:
             from recce.models.types import RunStatus
 
             assert run.params == expected_params
+            # Regression guard for the DRC-3307 root cause: run.status and
+            # run.result MUST already be set when the future resolves. If these
+            # assertions ever need a sleep/poll to pass, update_run_result is
+            # being scheduled async again (e.g., via run_coroutine_threadsafe)
+            # instead of called synchronously inside the executor thread.
             assert run.status == RunStatus.FINISHED
             assert run.result is not None
 
@@ -592,27 +597,3 @@ class TestCancelRunSplit:
         cancel_run(str(tmp_run.run_id))
         assert tmp_run.status == RunStatus.CANCELLED
         assert task.cancelled is True
-
-    def test_mark_run_cancelled_status_survives_completion(self, tmp_run):
-        """Late-arriving completion does not overwrite CANCELLED status.
-
-        Regression test mirroring the guard at run_func.py:203-209 — the
-        success path of update_run_result inside submit_run honors the
-        CANCELLED sentinel set by _mark_run_cancelled.
-        """
-        from recce.apis.run_func import _mark_run_cancelled
-        from recce.models.types import RunStatus
-
-        run, _ = _mark_run_cancelled(str(tmp_run.run_id))
-        # Inline the success-path semantics from update_run_result (which
-        # is a closure inside submit_run and cannot be imported directly).
-        # See run_func.py:201-205 — status check guards the result write.
-        result = {"data": [1, 2, 3]}
-        if run.status != RunStatus.CANCELLED:
-            run.status = RunStatus.FINISHED
-        run.result = result
-
-        assert run.status == RunStatus.CANCELLED
-        # The result is still written — the frontend gates on a sticky
-        # client-side cancelled set, so backend can keep recording results.
-        assert run.result == {"data": [1, 2, 3]}

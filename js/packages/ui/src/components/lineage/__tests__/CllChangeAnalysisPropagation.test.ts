@@ -22,6 +22,7 @@ import {
   activateImpactRadius,
   buildCllApiInput,
   columnClickCllInput,
+  impactRadiusCllInput,
   isNodeShowingChangeAnalysis,
   nextChangeAnalysisMode,
   resolveResetCllInput,
@@ -193,6 +194,17 @@ describe("CLL change analysis", () => {
       expect(showsChangeAnalysis(OTHER_MODIFIED_NODE, state)).toBe(true);
       // Another changed node outside the radius stays untreated.
       expect(showsChangeAnalysis(MODIFIED_NODE, state)).toBe(false);
+    });
+
+    it("requests change analysis on the activating click, before the mode flag lands", () => {
+      // Activation calls setChangeAnalysisMode and showColumnLevelLineage in the
+      // same tick, so the request built for that first click still closes over
+      // mode `false`. The explicit change_analysis on the activation input is
+      // what makes the click ask for the radius anyway.
+      expect(
+        buildCllApiInput(impactRadiusCllInput(MODIFIED_NODE), false)
+          .change_analysis,
+      ).toBe(true);
     });
 
     it("shows nothing until the radius is activated", () => {

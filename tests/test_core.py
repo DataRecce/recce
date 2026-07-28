@@ -166,6 +166,58 @@ class TestRecceState(unittest.TestCase):
         self.assertEqual(state.checks[0].type, RunType.ROW_COUNT_DIFF)
         self.assertTrue(state.checks[0].is_checked)
 
+    def test_state_loader_reads_legacy_v0_state_file(self):
+        """A v0 state file written by recce 0.45 still loads completely.
+
+        ``tests/recce_state.json`` is a real state file captured on 2024-12-06
+        and is treated here as immutable historical input — never regenerated,
+        because regenerating it would only prove that today's writer can read
+        what today's writer wrote. The facts below are what a user upgrading
+        recce would lose if a model changed incompatibly: every run and check,
+        every run type in use at the time, and the dbt artifacts the lineage is
+        rebuilt from.
+        """
+        state = FileStateLoader(state_file=os.path.join(current_dir, "recce_state.json")).load()
+
+        self.assertEqual(state.metadata.schema_version, "v0")
+        self.assertEqual(state.metadata.recce_version, "0.45.0.dev0")
+
+        self.assertEqual(len(state.runs), 17)
+        self.assertEqual(len(state.checks), 8)
+
+        # Every run type this file exercises deserializes into the enum; a
+        # dropped or renamed member would fail load, not just this assertion.
+        self.assertEqual(
+            {run.type for run in state.runs},
+            {
+                RunType.QUERY_DIFF,
+                RunType.ROW_COUNT_DIFF,
+                RunType.PROFILE_DIFF,
+                RunType.VALUE_DIFF,
+                RunType.VALUE_DIFF_DETAIL,
+                RunType.TOP_K_DIFF,
+                RunType.HISTOGRAM_DIFF,
+            },
+        )
+        # Legacy runs carry their identity, params and results, not just a type.
+        row_count_run = next(run for run in state.runs if run.type == RunType.ROW_COUNT_DIFF)
+        self.assertIsNotNone(row_count_run.run_id)
+        self.assertIsNotNone(row_count_run.params)
+        self.assertIsNotNone(row_count_run.result)
+
+        # Checks keep the review state the user curated.
+        self.assertTrue(all(check.check_id is not None for check in state.checks))
+        self.assertTrue(all(isinstance(check.name, str) and check.name for check in state.checks))
+        self.assertTrue(any(check.is_checked for check in state.checks))
+
+        # The dbt artifacts both environments were captured with still load,
+        # which is what the lineage diff is rebuilt from on import.
+        self.assertIsNotNone(state.artifacts)
+        self.assertIn("manifest", state.artifacts.base)
+        self.assertIn("manifest", state.artifacts.current)
+        self.assertIsNotNone(state.artifacts.base["manifest"])
+        self.assertIsNotNone(state.artifacts.current["manifest"])
+
 
 def test_lineage_diff(dbt_test_helper):
     sql_model1 = """

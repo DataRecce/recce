@@ -90,13 +90,13 @@ import { HSplit, toaster } from "../ui";
 import { ActionControlOss } from "./ActionControlOss";
 import { ColumnLevelLineageControlOss } from "./ColumnLevelLineageControlOss";
 import {
-  buildCllApiInput,
   columnClickCllInput,
   impactRadiusCllInput,
   isNodeShowingChangeAnalysis,
   nextChangeAnalysisMode,
   resolveResetCllInput,
 } from "./changeAnalysisState";
+import { createCllCachePatchLifecycle } from "./cllCachePatchLifecycle";
 import { computeColumnLineage } from "./computeColumnLineage";
 import { computeImpactedColumns } from "./computeImpactedColumns";
 import { computeIsImpacted } from "./computeIsImpacted";
@@ -125,10 +125,6 @@ import { LineageLegend } from "./legend";
 import { toReactFlow } from "./lineage";
 import { NodeViewOss as NodeView } from "./NodeViewOss";
 import type { NodeChangeStatus } from "./nodes/LineageNode";
-import {
-  patchLineageCacheFromCll,
-  shouldPatchLineageCache,
-} from "./patchLineageDiffFromCll";
 import { shouldCloseOrphanedRunResult } from "./runResultVisibility";
 import SetupConnectionBanner from "./SetupConnectionBannerOss";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
@@ -226,34 +222,6 @@ export interface LineageViewRef {
   copyToClipboard: () => void;
 }
 
-/**
- * Fetch CLL data and patch the lineage diff cache with change data.
- *
- * This is the shared core of CLL fetching used by both the initial layout
- * effect and refreshLayout. The caller provides the resolved changeAnalysis
- * value (from ref or state) so this function has no closure concerns.
- */
-async function fetchCllAndPatchCache(
-  cllInput: CllInput,
-  changeAnalysis: boolean,
-  actionGetCll: {
-    mutateAsync: (input: CllInput) => Promise<ColumnLineageData>;
-  },
-  cllCachePatchRef: React.MutableRefObject<{
-    pending: boolean;
-    cllData?: ColumnLineageData;
-  }>,
-  queryClient: ReturnType<typeof useQueryClient>,
-): Promise<ColumnLineageData> {
-  const cllApiInput = buildCllApiInput(cllInput, changeAnalysis);
-  const cll = await actionGetCll.mutateAsync(cllApiInput);
-  if (shouldPatchLineageCache(cllApiInput, cll)) {
-    cllCachePatchRef.current = { pending: true, cllData: cll };
-    patchLineageCacheFromCll(queryClient, cll);
-  }
-  return cll;
-}
-
 export function PrivateLineageView(
   { interactive = false, ...props }: LineageViewProps,
   ref: Ref<LineageViewRef>,
@@ -305,15 +273,12 @@ export function PrivateLineageView(
   const actionGetCll = useMutation({
     mutationFn: (input: CllInput) => getCll(input, apiClient),
   });
-  // Guard against useLayoutEffect re-entry after cache patching.
-  // When setQueryData patches lineage.diff, queryServerInfo.data changes,
-  // lineageGraph recomputes via useMemo, and the effect re-fires. This ref
-  // tells the effect to reuse the previous CLL result instead of re-calling
-  // the API and re-patching (which would loop infinitely).
-  const cllCachePatchRef = useRef<{
-    pending: boolean;
-    cllData?: ColumnLineageData;
-  }>({ pending: false });
+  // Owns the CLL fetch / cache-patch / re-entry lifecycle. When setQueryData
+  // patches the lineage query, queryServerInfo.data changes, lineageGraph
+  // recomputes via useMemo, and the layout effect re-fires — the lifecycle is
+  // what tells the effect to reuse the previous CLL result instead of calling
+  // the API and patching again (which would loop forever).
+  const cllCachePatch = useRef(createCllCachePatchLifecycle()).current;
   const [nodeColumnSetMap, setNodeColumSetMap] = useState<NodeColumnSetMap>({});
 
   const findNodeByName = useCallback(
@@ -592,49 +557,36 @@ export function PrivateLineageView(
       }
 
       let cll: ColumnLineageData | undefined;
-      if (cllInput) {
-        if (cllCachePatchRef.current.pending) {
-          // Effect re-fired because our setQueryData updated lineageGraph.
-          // Reuse the previous CLL result; skip the API call and re-patch.
-          cll = cllCachePatchRef.current.cllData;
-          cllCachePatchRef.current = { pending: false };
-        } else {
-          try {
-            cll = await fetchCllAndPatchCache(
-              cllInput,
-              changeAnalysisModeRef.current,
-              actionGetCll,
-              cllCachePatchRef,
-              queryClient,
-            );
-          } catch (e) {
-            if (autoTriggered) {
-              // Roll back the CLL state so the UI isn't stuck in a
-              // half-initialized "CLL on, no data" state.
-              changeAnalysisModeRef.current = false;
-              setChangeAnalysisMode(false);
-              setViewOptions((prev) => ({
-                ...prev,
-                column_level_lineage: undefined,
-              }));
-              cllInput = undefined;
-            }
-            if (e instanceof HttpError) {
-              toaster.create({
-                title: "Column Level Lineage error",
-                description:
-                  (e.data as { detail?: string })?.detail ?? e.message,
-                type: "error",
-                closable: true,
-              });
-              return;
-            }
-          }
+      try {
+        // Fetch + patch for a genuine input, reuse the pending result when this
+        // effect re-fired because of our own patch, disarm when CLL is off.
+        cll = await cllCachePatch.resolveCllForLayout({
+          cllInput,
+          changeAnalysis: changeAnalysisModeRef.current,
+          actionGetCll,
+          queryClient,
+        });
+      } catch (e) {
+        if (autoTriggered) {
+          // Roll back the CLL state so the UI isn't stuck in a
+          // half-initialized "CLL on, no data" state.
+          changeAnalysisModeRef.current = false;
+          setChangeAnalysisMode(false);
+          setViewOptions((prev) => ({
+            ...prev,
+            column_level_lineage: undefined,
+          }));
+          cllInput = undefined;
         }
-      } else {
-        // CLL disabled — clear any pending guard so stale data isn't reused
-        // if CLL is re-enabled after a toggle-off.
-        cllCachePatchRef.current = { pending: false };
+        if (e instanceof HttpError) {
+          toaster.create({
+            title: "Column Level Lineage error",
+            description: (e.data as { detail?: string })?.detail ?? e.message,
+            type: "error",
+            closable: true,
+          });
+          return;
+        }
       }
 
       // Compute impacted sets once; thread into ancestry to avoid redundant DFS.
@@ -933,13 +885,12 @@ export function PrivateLineageView(
     let cll: ColumnLineageData | undefined;
     if (newViewOptions.column_level_lineage) {
       try {
-        cll = await fetchCllAndPatchCache(
-          newViewOptions.column_level_lineage,
-          changeAnalysisMode,
+        cll = await cllCachePatch.fetchAndPatch({
+          cllInput: newViewOptions.column_level_lineage,
+          changeAnalysis: changeAnalysisMode,
           actionGetCll,
-          cllCachePatchRef,
           queryClient,
-        );
+        });
       } catch (e) {
         if (e instanceof HttpError) {
           toaster.create({

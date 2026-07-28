@@ -72,14 +72,14 @@ function expectCounts({
   expectCount("Column Modified", columns[2]);
 }
 
-describe("ChangeSummary story scenarios", () => {
-  it("shows zero counts for No Changes", () => {
+describe("ChangeSummary counts from lineage graph data", () => {
+  it("shows zero counts for a graph with no nodes", () => {
     render(<ChangeSummary lineageGraph={createGraph([])} />);
 
     expectCounts({ models: [0, 0, 0], columns: [0, 0, 0] });
   });
 
-  it("counts the three new models in Additions Only", () => {
+  it("counts added models and no columns when no column changes are present", () => {
     const graph = createGraph([
       createNode("model.new_model_1", "added"),
       createNode("model.new_model_2", "added"),
@@ -91,7 +91,7 @@ describe("ChangeSummary story scenarios", () => {
     expectCounts({ models: [3, 0, 0], columns: [0, 0, 0] });
   });
 
-  it("counts the mixed model and wire column changes in Default", () => {
+  it("counts each model once by its status and each column by its own status", () => {
     const graph = createGraph([
       createNode("model.customers", "modified", {
         phone: "added",
@@ -115,7 +115,7 @@ describe("ChangeSummary story scenarios", () => {
     expectCounts({ models: [1, 1, 2], columns: [3, 3, 1] });
   });
 
-  it("counts all 15 models in Many Changes", () => {
+  it("sums model and column counts across 15 changed models", () => {
     const statuses: NodeChangeStatus[] = [
       "added",
       "removed",
