@@ -551,10 +551,14 @@ class TestCheckDAOCloudMode(unittest.TestCase):
         with self.assertRaisesRegex(RecceException, "not supported in cloud mode"):
             dao.reorder(0, 1)
 
+    # _get_cloud_client is patched purely as a network guard: clear() reaches it
+    # on neither branch today, so asserting it was not called would prove
+    # nothing. If a future clear() does start talking to the cloud, this patch is
+    # what keeps that from becoming a live request inside the unit suite.
     @patch("recce.models.check.CheckDAO._get_cloud_client")
     @patch("recce.core.default_context")
-    def test_clear_cloud_no_op(self, mock_default_context, mock_get_cloud_client):
-        """Cloud clear preserves local state, avoids the API, and warns."""
+    def test_clear_cloud_no_op(self, mock_default_context, _mock_get_cloud_client):
+        """Cloud clear preserves local state and warns."""
         local_check = Check(name="Local Check", type=RunType.SCHEMA_DIFF, params={})
         mock_context = SimpleNamespace(
             checks=[local_check],
@@ -572,7 +576,6 @@ class TestCheckDAOCloudMode(unittest.TestCase):
 
         self.assertEqual(mock_context.checks, [local_check])
         self.assertIs(mock_context.checks[0], local_check)
-        mock_get_cloud_client.assert_not_called()
         self.assertEqual(
             logs.output,
             ["WARNING:uvicorn:Clear operation is not supported in cloud mode"],

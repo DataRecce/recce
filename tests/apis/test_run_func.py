@@ -10,8 +10,10 @@ after task execution, normalized primary_keys must be reflected in run.params.
 """
 
 import asyncio
+import contextlib
 import os
 import threading
+from unittest import TestCase
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
@@ -242,7 +244,6 @@ class TestSubmitRunParamsPropagation:
         self,
         mock_context,
         mock_task_class,
-        caplog,
         task_params,
         warning,
     ):
@@ -251,7 +252,12 @@ class TestSubmitRunParamsPropagation:
         from recce.models.types import RunStatus
 
         original_params = {"model": "customers", "primary_key": ["customer_id"]}
-        with patch("recce.apis.run_func.create_task") as mock_create_task:
+        # run_func logs to "uvicorn", whose own LOGGING_CONFIG sets
+        # propagate=False. assertLogs attaches to that logger directly, so this
+        # stays a real guard no matter how the test process configures logging;
+        # caplog would silently capture nothing.
+        capture = TestCase().assertLogs("uvicorn", level="WARNING") if warning else contextlib.nullcontext()
+        with patch("recce.apis.run_func.create_task") as mock_create_task, capture as logs:
             mock_create_task.return_value = mock_task_class(task_params)
 
             run, future = submit_run(type="value_diff", params=original_params.copy())
@@ -261,7 +267,7 @@ class TestSubmitRunParamsPropagation:
         assert run.status == RunStatus.FINISHED
         assert run.result == {"diff": {"columns": [], "data": []}}
         if warning is not None:
-            assert warning in caplog.text
+            assert any(warning in message for message in logs.output)
 
     @pytest.mark.asyncio
     async def test_triggered_by_propagates_to_run(self, mock_context, mock_task_class):
@@ -573,6 +579,47 @@ class TestCancelRunSplit:
                 yield run
             finally:
                 run_func.running_tasks.pop(str(run.run_id), None)
+
+    @pytest.mark.asyncio
+    async def test_submitted_run_is_cancellable_through_the_endpoint_key(self):
+        """
+        A run registered by submit_run must be findable by the cancel endpoint.
+
+        This is the only test that lets submit_run write the running_tasks entry
+        itself. Every other cancel test seeds the entry by hand, so a writer and
+        a reader that disagree on the key type stay invisible to them — and the
+        endpoint reports a cancel it never performed as "acknowledged", so
+        nothing downstream notices either.
+        """
+        from recce.apis import run_func
+        from recce.apis.run_func import _mark_run_cancelled, submit_run
+        from recce.models.types import RunStatus
+
+        with (
+            patch("recce.apis.run_func.default_context") as mock_run_func_ctx,
+            patch("recce.core.default_context") as mock_core_ctx,
+        ):
+            context = MagicMock()
+            context.adapter_type = "dbt"
+            context.review_mode = False
+            context.runs = []
+            mock_run_func_ctx.return_value = context
+            mock_core_ctx.return_value = context
+
+            task = _FakeCancelTask()
+            task.params = {"sql_template": "select 1"}
+            with patch("recce.apis.run_func.create_task", return_value=task):
+                run, future = submit_run(type="query", params={"sql_template": "select 1"})
+                await asyncio.wrap_future(future)
+
+            try:
+                # str(run_id) is exactly what cancel_run_handler passes.
+                cancelled, found_task = _mark_run_cancelled(str(run.run_id))
+            finally:
+                run_func.running_tasks.pop(str(run.run_id), None)
+
+        assert found_task is task
+        assert cancelled.status == RunStatus.CANCELLED
 
     def test_mark_run_cancelled_flips_status_immediately(self, tmp_run):
         """Status flips to CANCELLED before any adapter cancel runs."""

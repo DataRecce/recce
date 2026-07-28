@@ -1,16 +1,20 @@
 /**
  * @file CllChangeAnalysisPropagation.test.ts
  *
- * Behavior of change analysis ("Impact Radius") as the user navigates CLL.
- *
- * Every step below drives the same transitions production runs — the helpers in
- * `../changeAnalysisState`, which LineageViewOss, the CLL control, and the node
+ * The change-analysis ("Impact Radius") state machine: the transitions in
+ * `../changeAnalysisState` that LineageViewOss, the CLL control and the node
  * context menu all call. `changeAnalysisMode` is independent of
- * `viewOptions.column_level_lineage`, so column clicks that replace the
- * CllInput wholesale can no longer drop it.
+ * `viewOptions.column_level_lineage`, so column clicks that replace the CllInput
+ * wholesale can no longer drop it.
  *
- * A scenario is a sequence of those transitions, mirroring the call order of
- * the production handlers it names.
+ * Scope: the transitions themselves, driven directly. A scenario sequences them
+ * in the order the production handlers do, but the sequencing here is the
+ * test's, not the component's — so these tests cannot show that LineageViewOss
+ * still *calls* them. That half is pinned against the real component in
+ * `js/src/components/lineage/__tests__/LineageView.component.test.tsx`
+ * ("change analysis mode"), which asserts what every node consumer reads off
+ * the context and when each handler applies its transition. Change a rule here
+ * and both suites must move.
  */
 
 import type { CllInput } from "../../../api/cll";

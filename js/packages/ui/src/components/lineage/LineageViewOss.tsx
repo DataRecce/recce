@@ -293,6 +293,15 @@ export function PrivateLineageView(
     () => ++cllInteractionGenerationRef.current,
     [],
   );
+  // Bumped when a layout owner gives up without producing a layout, so the
+  // layout effect runs again. Without it the view can be left with `nodes` still
+  // at its initial identity, which the render guard below turns into an empty
+  // fragment — no canvas, no top bar, nothing to retry from.
+  const [layoutRetryNonce, setLayoutRetryNonce] = useState(0);
+  const requestLayoutRetry = useCallback(
+    () => setLayoutRetryNonce((nonce) => nonce + 1),
+    [],
+  );
   const [nodeColumnSetMap, setNodeColumSetMap] = useState<NodeColumnSetMap>({});
 
   useLayoutEffect(() => {
@@ -515,6 +524,18 @@ export function PrivateLineageView(
     const generation = ++layoutGenerationRef.current;
     const isCurrentGeneration = () =>
       layoutGenerationRef.current === generation;
+    /**
+     * The impact-at-startup decision is made below, after the node selection
+     * resolves. If this run is superseded before it gets there, the producer that
+     * won (`refreshLayout`) has no such logic and this effect will not run again
+     * on its own, so the one-shot flag would be dropped silently for the whole
+     * session. Ask for one more run in exactly that case.
+     */
+    const retryIfImpactAtStartupPending = () => {
+      if (serverFlags?.impact_at_startup && !impactAtStartupFired.current) {
+        requestLayoutRetry();
+      }
+    };
 
     const t = async () => {
       let filteredNodeIds: string[] | undefined = undefined;
@@ -553,11 +574,13 @@ export function PrivateLineageView(
             apiClient,
           );
           if (!isCurrentGeneration()) {
+            retryIfImpactAtStartupPending();
             return;
           }
           filteredNodeIds = result.nodes;
         } catch (_) {
           if (!isCurrentGeneration()) {
+            retryIfImpactAtStartupPending();
             return;
           }
           // fallback behavior
@@ -572,6 +595,7 @@ export function PrivateLineageView(
             apiClient,
           );
           if (!isCurrentGeneration()) {
+            retryIfImpactAtStartupPending();
             return;
           }
           filteredNodeIds = result.nodes;
@@ -689,12 +713,13 @@ export function PrivateLineageView(
       }
     };
     // Runs when lineageGraph changes (initial load/refetch), and also when
-    // impact_at_startup flag arrives (may load after lineageGraph).
+    // impact_at_startup flag arrives (may load after lineageGraph), or when a
+    // layout owner abandoned its turn without laying anything out.
     // viewOptions changes are handled separately by handleViewOptionsChanged.
     // Other dependencies (setNodes, setEdges, actionGetCll) are stable.
     // changeAnalysisModeRef is a ref to avoid stale closure issues.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lineageGraph, serverFlags?.impact_at_startup]);
+  }, [lineageGraph, serverFlags?.impact_at_startup, layoutRetryNonce]);
 
   const onNodeViewClosed = () => {
     supersedeCllInteraction();
@@ -916,12 +941,34 @@ export function PrivateLineageView(
     const generation = ++layoutGenerationRef.current;
     const isCurrentGeneration = () =>
       layoutGenerationRef.current === generation;
+    /**
+     * Give up this turn as layout owner.
+     *
+     * Ownership is claimed on entry, which may have aborted the layout effect
+     * mid-flight — on first load that leaves this call as the only layout
+     * producer. Returning from a failure without laying anything out would then
+     * leave `nodes` at its initial identity and the whole view rendering an
+     * empty fragment, with nothing scheduled to try again. So release the
+     * generation and ask the layout effect for another run, which falls back to
+     * laying out the view as it stands.
+     */
+    const abandonLayout = () => {
+      if (isCurrentGeneration()) {
+        layoutGenerationRef.current++;
+        requestLayoutRetry();
+      }
+    };
     let { viewOptions: newViewOptions = viewOptions } = options;
     const { fitView, preservePositions = false } = options;
 
     let selectedNodes: string[] | undefined = undefined;
 
     if (!lineageGraph) {
+      // Reachable before the graph loads: an open run result whose model is not
+      // in the current node set asks for view_mode "all" from its own effect.
+      // Nothing can be armed yet in that state — the layout effect disarms on
+      // every lineageGraph transition — so this is defence in depth for a future
+      // caller that reaches refreshLayout without owning that transition.
       void cllCachePatch.refreshCll({
         cllInput: undefined,
         changeAnalysis: changeAnalysisMode,
@@ -966,6 +1013,7 @@ export function PrivateLineageView(
             closable: true,
           });
         }
+        abandonLayout();
         return;
       }
       setFocusedNodeId(undefined);
@@ -1000,6 +1048,10 @@ export function PrivateLineageView(
           type: "error",
           closable: true,
         });
+        // No abandonLayout here on purpose: a CLL failure only reaches this
+        // point from a user CLL interaction, which never changes the node
+        // selection — so a layout already exists and releasing the generation
+        // would refit the canvas the user did not ask to move.
         return;
       }
     }

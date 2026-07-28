@@ -7,9 +7,26 @@ vi.mock("@datarecce/ui/components/schema", () => ({
   SchemaView: () => <div />,
 }));
 
+// Recorded, not blanked: the card's whole job beyond the schema table is to
+// wire each node into these two tags, and a bare <span /> would let that wiring
+// be deleted silently.
 vi.mock("@datarecce/ui/components/lineage", () => ({
-  NodeTag: () => <span />,
-  RowCountDiffTag: () => <span />,
+  NodeTag: ({
+    resourceType,
+    materialized,
+  }: {
+    resourceType?: string;
+    materialized?: string;
+  }) => (
+    <span
+      data-testid="node-tag"
+      data-resource-type={resourceType}
+      data-materialized={materialized}
+    />
+  ),
+  RowCountDiffTag: ({ node }: { node: { id: string } }) => (
+    <span data-testid="row-count-diff-tag" data-node-id={node.id} />
+  ),
 }));
 
 vi.mock("@datarecce/ui/hooks", () => ({
@@ -33,6 +50,7 @@ function createNode(
   id: string,
   name: string,
   columnChanges?: ColumnChanges,
+  dataOverrides: Partial<LineageGraphNode["data"]> = {},
 ): LineageGraphNode {
   return {
     id,
@@ -46,6 +64,7 @@ function createNode(
       packageName: "test",
       parents: {},
       children: {},
+      ...dataOverrides,
       ...(columnChanges === undefined
         ? {}
         : {
@@ -96,6 +115,44 @@ describe("SchemaSummary", () => {
     expect(
       screen.queryByText("No schema changes detected."),
     ).not.toBeInTheDocument();
+  });
+
+  it("tags each card with the node's own resource type and materialization", async () => {
+    const graph = createGraph([
+      createNode(
+        "model.changed",
+        "changed_model",
+        { new_column: "added" },
+        { materialized: "incremental" },
+      ),
+    ]);
+
+    render(<SchemaSummary lineageGraph={graph} />);
+
+    const nodeTag = await screen.findByTestId("node-tag");
+    expect(nodeTag).toHaveAttribute("data-resource-type", "model");
+    expect(nodeTag).toHaveAttribute("data-materialized", "incremental");
+  });
+
+  it("shows the row count diff for models only", async () => {
+    const graph = createGraph([
+      createNode("model.changed", "changed_model", { new_column: "added" }),
+      createNode(
+        "seed.changed",
+        "changed_seed",
+        { new_column: "added" },
+        { resourceType: "seed" },
+      ),
+    ]);
+
+    render(<SchemaSummary lineageGraph={graph} />);
+
+    // Both cards render; only the model one may claim a row count, because a
+    // seed has no base/current row count to diff.
+    await screen.findByText("changed_seed");
+    const rowCountTags = screen.getAllByTestId("row-count-diff-tag");
+    expect(rowCountTags).toHaveLength(1);
+    expect(rowCountTags[0]).toHaveAttribute("data-node-id", "model.changed");
   });
 
   it("does not show a changed node outside modifiedSet", () => {

@@ -181,11 +181,19 @@ describe("GraphColumnNode", () => {
   const mockUseLineageViewContextSafe = useLineageViewContextSafe as Mock;
   const mockedLineageColumnNode = LineageColumnNode as unknown as Mock;
 
+  // The canvas zoom the fake React Flow store reports. GraphColumnNode's own
+  // selector is what turns it into `showContent`, so the 30% threshold under
+  // test is production's, not the test's.
+  let canvasZoom = 1;
+
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Default mock implementations
-    mockUseStore.mockReturnValue(true); // showContent = true (zoom > 30%)
+    canvasZoom = 1;
+    mockUseStore.mockImplementation(
+      (selector: (state: { transform: [number, number, number] }) => unknown) =>
+        selector({ transform: [0, 0, canvasZoom] }),
+    );
     mockUseThemeColors.mockReturnValue(mockThemeColors);
     mockUseLineageViewContextSafe.mockReturnValue(createMockContext());
   });
@@ -211,15 +219,24 @@ describe("GraphColumnNode", () => {
       expect(screen.getByText("INTEGER")).toBeInTheDocument();
     });
 
-    it("passes showContent=false when zoom level is too low (< 30%)", () => {
-      mockUseStore.mockReturnValue(false); // showContent = false
+    it("passes showContent=false once the canvas is zoomed below 30%", () => {
+      canvasZoom = 0.29;
       const props = createMockColumnNodeProps();
 
       render(<GraphColumnNode {...props} />);
 
-      // Verify showContent=false is passed to LineageColumnNode
       const callProps = mockedLineageColumnNode.mock.calls[0][0];
       expect(callProps.showContent).toBe(false);
+    });
+
+    it("passes showContent=true again just above 30%", () => {
+      canvasZoom = 0.31;
+      const props = createMockColumnNodeProps();
+
+      render(<GraphColumnNode {...props} />);
+
+      const callProps = mockedLineageColumnNode.mock.calls[0][0];
+      expect(callProps.showContent).toBe(true);
     });
   });
 
