@@ -47,32 +47,36 @@ export interface CllLifecycleRequest {
   queryClient: QueryClient;
 }
 
+interface CllLifecycleResolution {
+  cll: ColumnLineageData | undefined;
+  isCurrent: () => boolean;
+}
+
 export interface CllCachePatchLifecycle {
   /**
    * The layout effect's CLL step. Fetches and patches for a genuine input,
    * reuses the pending result when the effect re-fired because of our own cache
    * patch for *this same* request, and disarms when CLL is off. Rejections
    * propagate so the caller can keep its own error handling (toast +
-   * auto-trigger rollback).
+   * auto-trigger rollback). The resolution lets the caller reject a completion
+   * that was superseded while the request was in flight.
    */
   resolveCllForLayout(
     request: CllLifecycleRequest,
-  ): Promise<ColumnLineageData | undefined>;
+  ): Promise<CllLifecycleResolution>;
   /**
    * `refreshLayout`'s CLL step: never a reuse. A genuine input fetches and
    * patches — still arming before the patch, because the patch re-fires the
    * layout effect the same way — and no input disarms, since `refreshLayout`
    * runs on view-option changes that need not re-run the layout effect.
    */
-  refreshCll(
-    request: CllLifecycleRequest,
-  ): Promise<ColumnLineageData | undefined>;
+  refreshCll(request: CllLifecycleRequest): Promise<CllLifecycleResolution>;
 }
 
 /** The armed result of a cache patch, tied to the request that caused it. */
 interface PendingCll {
   apiInput: CllInput;
-  cllData: ColumnLineageData;
+  resolution: CllLifecycleResolution;
 }
 
 /**
@@ -92,8 +96,36 @@ function isSameCllApiInput(a: CllInput, b: CllInput): boolean {
   );
 }
 
+function normalizeCllApiInput(input: CllInput): CllInput {
+  return {
+    node_id: input.node_id,
+    column: input.column,
+    change_analysis: input.change_analysis,
+    no_cll: input.no_cll,
+    no_upstream: input.no_upstream,
+    no_downstream: input.no_downstream,
+  };
+}
+
 export function createCllCachePatchLifecycle(): CllCachePatchLifecycle {
   let pending: PendingCll | undefined;
+  let epoch = 0;
+
+  function resolutionFor(
+    requestEpoch: number,
+    cll: ColumnLineageData | undefined,
+  ): CllLifecycleResolution {
+    return {
+      cll,
+      isCurrent: () => epoch === requestEpoch,
+    };
+  }
+
+  function disable(): CllLifecycleResolution {
+    const requestEpoch = ++epoch;
+    pending = undefined;
+    return resolutionFor(requestEpoch, undefined);
+  }
 
   async function fetchAndPatch({
     cllInput,
@@ -105,12 +137,28 @@ export function createCllCachePatchLifecycle(): CllCachePatchLifecycle {
     // Supersede before awaiting: from here on, only what *this* request returns
     // may be reused. A response that patches nothing, or a rejection, therefore
     // leaves nothing reusable behind.
+    const requestEpoch = ++epoch;
     pending = undefined;
-    const cll = await actionGetCll.mutateAsync(cllApiInput);
+    let cll: ColumnLineageData;
+    try {
+      cll = await actionGetCll.mutateAsync(cllApiInput);
+    } catch (error) {
+      if (epoch !== requestEpoch) {
+        return resolutionFor(requestEpoch, undefined);
+      }
+      throw error;
+    }
+    const resolution = resolutionFor(requestEpoch, cll);
+    if (!resolution.isCurrent()) {
+      return resolution;
+    }
     if (shouldPatchLineageCache(cllApiInput, cll)) {
       // Arm before patching: setQueryData notifies subscribers synchronously,
       // so the layout effect can re-enter inside the next line.
-      const armed: PendingCll = { apiInput: cllApiInput, cllData: cll };
+      const armed: PendingCll = {
+        apiInput: normalizeCllApiInput(cllApiInput),
+        resolution,
+      };
       pending = armed;
       if (!patchLineageCacheFromCll(queryClient, cll) && pending === armed) {
         // No cache value was produced, so no re-entry is coming. Clear only our
@@ -119,7 +167,7 @@ export function createCllCachePatchLifecycle(): CllCachePatchLifecycle {
         pending = undefined;
       }
     }
-    return cll;
+    return resolution;
   }
 
   return {
@@ -128,21 +176,20 @@ export function createCllCachePatchLifecycle(): CllCachePatchLifecycle {
       if (!cllInput) {
         // CLL disabled — drop the armed result so re-enabling CLL cannot reuse
         // change data from the previous session.
-        pending = undefined;
-        return undefined;
+        return disable();
       }
       if (
         pending &&
         isSameCllApiInput(
           pending.apiInput,
-          buildCllApiInput(cllInput, changeAnalysis),
+          normalizeCllApiInput(buildCllApiInput(cllInput, changeAnalysis)),
         )
       ) {
         // The effect re-fired because our own patch for this request updated the
         // lineage query. Reuse that result; skip the API call and the re-patch.
-        const { cllData } = pending;
+        const { resolution } = pending;
         pending = undefined;
-        return cllData;
+        return resolution;
       }
       return await fetchAndPatch({ ...request, cllInput });
     },
@@ -151,8 +198,7 @@ export function createCllCachePatchLifecycle(): CllCachePatchLifecycle {
       if (!cllInput) {
         // The paths that clear CLL without going through the layout effect
         // (reselect, selectParentNodes, view-option changes). Disarm explicitly.
-        pending = undefined;
-        return undefined;
+        return disable();
       }
       return await fetchAndPatch({ ...request, cllInput });
     },

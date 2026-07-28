@@ -279,6 +279,7 @@ export function PrivateLineageView(
   // what tells the effect to reuse the previous CLL result instead of calling
   // the API and patching again (which would loop forever).
   const cllCachePatch = useRef(createCllCachePatchLifecycle()).current;
+  const layoutGenerationRef = useRef(0);
   const [nodeColumnSetMap, setNodeColumSetMap] = useState<NodeColumnSetMap>({});
 
   const findNodeByName = useCallback(
@@ -486,10 +487,20 @@ export function PrivateLineageView(
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only run when lineageGraph changes (initial load/refetch).
   useLayoutEffect(() => {
+    const generation = ++layoutGenerationRef.current;
+    const isCurrentGeneration = () =>
+      layoutGenerationRef.current === generation;
+
     const t = async () => {
       let filteredNodeIds: string[] | undefined = undefined;
 
       if (!lineageGraph) {
+        void cllCachePatch.resolveCllForLayout({
+          cllInput: undefined,
+          changeAnalysis: changeAnalysisModeRef.current,
+          actionGetCll,
+          queryClient,
+        });
         return;
       }
 
@@ -516,8 +527,14 @@ export function PrivateLineageView(
             },
             apiClient,
           );
+          if (!isCurrentGeneration()) {
+            return;
+          }
           filteredNodeIds = result.nodes;
         } catch (_) {
+          if (!isCurrentGeneration()) {
+            return;
+          }
           // fallback behavior
           newViewOptions.view_mode = "all";
           const result = await select(
@@ -529,6 +546,9 @@ export function PrivateLineageView(
             },
             apiClient,
           );
+          if (!isCurrentGeneration()) {
+            return;
+          }
           filteredNodeIds = result.nodes;
         }
 
@@ -560,13 +580,20 @@ export function PrivateLineageView(
       try {
         // Fetch + patch for a genuine input, reuse the pending result when this
         // effect re-fired because of our own patch, disarm when CLL is off.
-        cll = await cllCachePatch.resolveCllForLayout({
+        const resolution = await cllCachePatch.resolveCllForLayout({
           cllInput,
           changeAnalysis: changeAnalysisModeRef.current,
           actionGetCll,
           queryClient,
         });
+        if (!isCurrentGeneration() || !resolution.isCurrent()) {
+          return;
+        }
+        cll = resolution.cll;
       } catch (e) {
+        if (!isCurrentGeneration()) {
+          return;
+        }
         if (autoTriggered) {
           // Roll back the CLL state so the UI isn't stuck in a
           // half-initialized "CLL on, no data" state.
@@ -606,6 +633,9 @@ export function PrivateLineageView(
           impacted?.columnIds,
         ),
       });
+      if (!isCurrentGeneration()) {
+        return;
+      }
       setNodes(nodes);
       setEdges(edges);
       setNodeColumSetMap(nodeColumnSetMap);
@@ -628,6 +658,11 @@ export function PrivateLineageView(
     };
 
     void t();
+    return () => {
+      if (isCurrentGeneration()) {
+        layoutGenerationRef.current++;
+      }
+    };
     // Runs when lineageGraph changes (initial load/refetch), and also when
     // impact_at_startup flag arrives (may load after lineageGraph).
     // viewOptions changes are handled separately by handleViewOptionsChanged.
@@ -837,12 +872,21 @@ export function PrivateLineageView(
     fitView?: boolean;
     preservePositions?: boolean;
   }) => {
+    const generation = ++layoutGenerationRef.current;
+    const isCurrentGeneration = () =>
+      layoutGenerationRef.current === generation;
     let { viewOptions: newViewOptions = viewOptions } = options;
     const { fitView, preservePositions = false } = options;
 
     let selectedNodes: string[] | undefined = undefined;
 
     if (!lineageGraph) {
+      void cllCachePatch.refreshCll({
+        cllInput: undefined,
+        changeAnalysis: changeAnalysisMode,
+        actionGetCll,
+        queryClient,
+      });
       return;
     }
 
@@ -863,10 +907,16 @@ export function PrivateLineageView(
           },
           apiClient,
         );
+        if (!isCurrentGeneration()) {
+          return;
+        }
         // focus to unfocus the model or column node
         newViewOptions = { ...newViewOptions, column_level_lineage: undefined };
         selectedNodes = result.nodes;
       } catch (e) {
+        if (!isCurrentGeneration()) {
+          return;
+        }
         if (e instanceof HttpError) {
           toaster.create({
             title: "Select node error",
@@ -888,13 +938,20 @@ export function PrivateLineageView(
     // re-run the layout effect, so this is the only place a cleared CLL is
     // guaranteed to drop whatever the last patch left pending.
     try {
-      cll = await cllCachePatch.refreshCll({
+      const resolution = await cllCachePatch.refreshCll({
         cllInput: newViewOptions.column_level_lineage,
         changeAnalysis: changeAnalysisMode,
         actionGetCll,
         queryClient,
       });
+      if (!isCurrentGeneration() || !resolution.isCurrent()) {
+        return;
+      }
+      cll = resolution.cll;
     } catch (e) {
+      if (!isCurrentGeneration()) {
+        return;
+      }
       if (e instanceof HttpError) {
         toaster.create({
           title: "Column Level Lineage error",
@@ -947,6 +1004,9 @@ export function PrivateLineageView(
         ),
       },
     );
+    if (!isCurrentGeneration()) {
+      return;
+    }
     setNodes(newNodes);
     setEdges(newEdges);
     setNodeColumSetMap(newNodeColumnSetMap);
@@ -976,6 +1036,9 @@ export function PrivateLineageView(
 
     if (fitView) {
       await new Promise((resolve) => setTimeout(resolve, 1));
+      if (!isCurrentGeneration()) {
+        return;
+      }
       (() => {
         void reactFlow.fitView({
           nodes: newNodes,

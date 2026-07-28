@@ -38,7 +38,13 @@ if (typeof Object.groupBy === "undefined") {
 }
 
 import type { LineageGraph, LineageGraphNode } from "@datarecce/ui";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import React, { createRef } from "react";
 import { type Mock, vi } from "vitest";
 
@@ -53,11 +59,24 @@ let mockUseNodesStateReturnValue: [unknown[], Mock, Mock] = [
   vi.fn(),
   vi.fn(),
 ];
+// biome-ignore lint/suspicious/noVar: vi.mock factories are hoisted above lexical initialization.
+var mockLineageViewContext: React.Context<
+  | {
+      showColumnLevelLineage: (input?: unknown) => Promise<void>;
+    }
+  | undefined
+>;
 
 vi.mock("@xyflow/react", () => ({
   ReactFlow: vi.fn(
     ({ children, nodes }: { children: React.ReactNode; nodes?: unknown[] }) => (
-      <div data-testid="reactflow" data-node-count={nodes?.length ?? 0}>
+      <div
+        data-testid="reactflow"
+        data-node-count={nodes?.length ?? 0}
+        data-node-ids={(nodes as { id?: string }[] | undefined)
+          ?.map((node) => node.id)
+          .join(",")}
+      >
         {children}
       </div>
     ),
@@ -101,8 +120,14 @@ vi.mock("@xyflow/react", () => ({
     getZoom: vi.fn().mockReturnValue(1),
     getNodes: vi.fn().mockReturnValue([]),
   })),
-  useNodesState: vi.fn(() => mockUseNodesStateReturnValue),
-  useEdgesState: vi.fn(() => [[], vi.fn(), vi.fn()]),
+  useNodesState: vi.fn(() => {
+    const [nodes, setNodes] = React.useState(mockUseNodesStateReturnValue[0]);
+    return [nodes, setNodes, vi.fn()];
+  }),
+  useEdgesState: vi.fn(() => {
+    const [edges, setEdges] = React.useState<unknown[]>([]);
+    return [edges, setEdges, vi.fn()];
+  }),
   getNodesBounds: vi.fn(() => ({ x: 0, y: 0, width: 100, height: 100 })),
   Handle: vi.fn(() => null),
   Position: {
@@ -132,6 +157,12 @@ const mockRecceInstanceContext = {
 
 vi.mock("@datarecce/ui/contexts", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
+  mockLineageViewContext = React.createContext<
+    | {
+        showColumnLevelLineage: (input?: unknown) => Promise<void>;
+      }
+    | undefined
+  >(undefined);
   return {
     useRouteConfig: vi.fn(() => ({ basePath: "" })),
     useLineageGraphContext: vi.fn(() => mockLineageGraphContext),
@@ -144,7 +175,7 @@ vi.mock("@datarecce/ui/contexts", async () => {
       runAction: mockRunAction,
       isRunResultOpen: false,
     })),
-    LineageViewContext: React.createContext(undefined),
+    LineageViewContext: mockLineageViewContext,
     useLineageViewContextSafe: vi.fn(() => ({
       interactive: true,
       nodes: [],
@@ -313,9 +344,19 @@ vi.mock("@datarecce/ui/components/lineage/ActionControlOss", () => ({
 vi.mock(
   "@datarecce/ui/components/lineage/ColumnLevelLineageControlOss",
   () => ({
-    ColumnLevelLineageControlOss: vi.fn(() => (
-      <div data-testid="cll-control" />
-    )),
+    ColumnLevelLineageControlOss: vi.fn(() => {
+      const context = React.useContext(mockLineageViewContext);
+      return (
+        <div data-testid="cll-control">
+          <button
+            data-testid="disable-cll"
+            onClick={() => void context?.showColumnLevelLineage(undefined)}
+          >
+            Disable CLL
+          </button>
+        </div>
+      );
+    }),
   }),
 );
 
@@ -451,6 +492,7 @@ import {
   PrivateLineageView,
 } from "@datarecce/ui/components/lineage/LineageViewOss";
 import { useRecceServerFlag } from "@datarecce/ui/contexts";
+import { trackLineageViewRender } from "@datarecce/ui/lib/api/track";
 
 // Wrap PrivateLineageView with forwardRef for testing purposes
 // This is needed because PrivateLineageView is a function that takes (props, ref)
@@ -520,6 +562,14 @@ function createMockLineageGraphNode(
       ...overrides,
     },
   };
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
 }
 
 // Helper to setup mocks with lineage graph data
@@ -1342,6 +1392,132 @@ describe("LineageView Component", () => {
         expect(select).toHaveBeenCalled();
       });
       expect(mockMutateAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("async layout ownership", () => {
+    it("keeps the newer rendered layout and tracking when an older toReactFlow finishes last", async () => {
+      const lineageGraphA = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraphA);
+      const slowLayoutA =
+        deferred<[LineageGraphNode[], [], Record<string, Set<string>>]>();
+      const nodeA = createMockLineageGraphNode(
+        "model.test.layout_a",
+        "layout_a",
+      );
+      const nodeB = createMockLineageGraphNode(
+        "model.test.layout_b",
+        "layout_b",
+      );
+      (toReactFlow as Mock)
+        .mockImplementationOnce(() => slowLayoutA.promise)
+        .mockResolvedValueOnce([
+          [nodeB],
+          [],
+          { [nodeB.id]: new Set<string>() },
+        ]);
+
+      const { rerender } = render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() => expect(toReactFlow).toHaveBeenCalledTimes(1));
+
+      mockLineageGraphContext.lineageGraph = createMockLineageGraph({
+        nodes: { [nodeB.id]: nodeB },
+      });
+      rerender(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("reactflow")).toHaveAttribute(
+          "data-node-ids",
+          nodeB.id,
+        );
+      });
+      expect(trackLineageViewRender).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        slowLayoutA.resolve([[nodeA], [], { [nodeA.id]: new Set<string>() }]);
+        await slowLayoutA.promise;
+      });
+
+      await waitFor(() => expect(toReactFlow).toHaveBeenCalledTimes(2));
+      expect(screen.getByTestId("reactflow")).toHaveAttribute(
+        "data-node-ids",
+        nodeB.id,
+      );
+      expect(trackLineageViewRender).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not send stale CLL to layout after a newer disable completes", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      const slowCllA = deferred<{
+        current: {
+          nodes: Record<string, never>;
+          columns: Record<string, never>;
+          parent_map: Record<string, never>;
+          child_map: Record<string, never>;
+        };
+      }>();
+      const mockMutateAsync = vi.fn(() => slowCllA.promise);
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+      const nodeB = createMockLineageGraphNode(
+        "model.test.after_disable",
+        "after_disable",
+      );
+      (toReactFlow as Mock).mockResolvedValue([
+        [nodeB],
+        [],
+        { [nodeB.id]: new Set<string>() },
+      ]);
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView
+            interactive={true}
+            viewOptions={{
+              column_level_lineage: {
+                node_id: "model.test.node1",
+                change_analysis: true,
+              },
+            }}
+            ref={null}
+          />
+        </TestWrapper>,
+      );
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+
+      fireEvent.click(screen.getByTestId("disable-cll"));
+      await waitFor(() => expect(toReactFlow).toHaveBeenCalledTimes(1));
+      expect(screen.getByTestId("reactflow")).toHaveAttribute(
+        "data-node-ids",
+        nodeB.id,
+      );
+
+      await act(async () => {
+        slowCllA.resolve({
+          current: {
+            nodes: {},
+            columns: {},
+            parent_map: {},
+            child_map: {},
+          },
+        });
+        await slowCllA.promise;
+      });
+
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+      expect(toReactFlow).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId("reactflow")).toHaveAttribute(
+        "data-node-ids",
+        nodeB.id,
+      );
     });
   });
 });
