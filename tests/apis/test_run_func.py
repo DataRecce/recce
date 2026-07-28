@@ -11,6 +11,7 @@ after task execution, normalized primary_keys must be reflected in run.params.
 
 import asyncio
 import os
+import threading
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
@@ -302,30 +303,66 @@ class TestSubmitRunParamsPropagation:
             await asyncio.wrap_future(future)
 
     @pytest.mark.asyncio
-    async def test_cancel_sentinel_preserved_on_success(self, mock_context, mock_task_class):
+    async def test_cancel_sentinel_preserved_on_success(self, mock_context):
         """Regression: if cancel_run flips run.status = CANCELLED while the
         executor thread is finishing a successful task, update_run_result
         must NOT overwrite CANCELLED with FINISHED. Without this guard, a
-        cancel-mid-execution race silently disappears."""
+        cancel-mid-execution race silently disappears.
+
+        The sentinel guards only the status: the work the executor thread
+        already finished is still recorded, so a caller that inspects a
+        cancelled run can tell "cancelled before it produced anything" from
+        "cancelled after it had already succeeded".
+
+        The task blocks inside ``execute`` until the sentinel is set, so the
+        success path really does observe CANCELLED. Letting the executor race
+        the assignment makes the whole test vacuous — it then passes with the
+        status guard deleted outright."""
         from recce.apis.run_func import submit_run
         from recce.models.types import RunStatus
 
+        cancelled = threading.Event()
+
+        class BlockingTask:
+            """A task that does not return until the run has been cancelled."""
+
+            def __init__(self, params):
+                self.params = params
+                self.is_cancelled = False
+                self._progress_listener = None
+
+            @property
+            def progress_listener(self):
+                return self._progress_listener
+
+            @progress_listener.setter
+            def progress_listener(self, value):
+                self._progress_listener = value
+
+            def execute(self):
+                assert cancelled.wait(timeout=10), "the run was never cancelled"
+                return {"diff": {"columns": [], "data": []}}
+
+            def cancel(self):
+                self.is_cancelled = True
+
         with patch("recce.apis.run_func.create_task") as mock_create_task:
-            mock_task = mock_task_class({"model": "customers", "primary_key": ["customer_id"]})
-            mock_create_task.return_value = mock_task
+            mock_create_task.return_value = BlockingTask({"model": "customers", "primary_key": ["customer_id"]})
 
             run, future = submit_run(
                 type="value_diff",
                 params={"model": "customers", "primary_key": ["customer_id"]},
             )
-            # Simulate cancel_run flipping the sentinel BEFORE the executor
-            # thread finishes — the success path should observe CANCELLED
-            # and refuse to overwrite it.
+            # cancel_run flips the sentinel while the task is still executing.
             run.status = RunStatus.CANCELLED
+            cancelled.set()
 
             await asyncio.wrap_future(future)
 
             assert run.status == RunStatus.CANCELLED, "update_run_result success path overwrote CANCELLED sentinel"
+            assert run.result == {
+                "diff": {"columns": [], "data": []}
+            }, "preserving the CANCELLED sentinel dropped the completed task result"
 
     @pytest.mark.asyncio
     async def test_repr_fallback_when_str_error_is_none_string(self, mock_context):

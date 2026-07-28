@@ -80,12 +80,16 @@ export function shouldPatchLineageCache(
  * The lineage query is patched in place so the graph picks up change status
  * immediately. The update is immutable — React Query needs a new reference to
  * notify subscribers.
+ *
+ * Returns whether a cache value was actually produced. With no lineage entry to
+ * patch the updater declines, nothing is written, and no subscriber is notified
+ * — which is what tells the caller no layout re-entry is coming.
  */
 export function patchLineageCacheFromCll(
   queryClient: QueryClient,
   cllData: ColumnLineageData,
-): void {
-  queryClient.setQueryData(
+): boolean {
+  const patched = queryClient.setQueryData(
     cacheKeys.lineage(),
     (old: ServerInfoResult | undefined) => {
       if (!old) return old;
@@ -95,4 +99,5 @@ export function patchLineageCacheFromCll(
       };
     },
   );
+  return patched !== undefined;
 }

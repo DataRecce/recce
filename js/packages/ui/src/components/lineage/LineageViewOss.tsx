@@ -883,26 +883,29 @@ export function PrivateLineageView(
     }
 
     let cll: ColumnLineageData | undefined;
-    if (newViewOptions.column_level_lineage) {
-      try {
-        cll = await cllCachePatch.fetchAndPatch({
-          cllInput: newViewOptions.column_level_lineage,
-          changeAnalysis: changeAnalysisMode,
-          actionGetCll,
-          queryClient,
+    // Unconditional: a genuine input fetches and patches, and no input disarms
+    // the lifecycle. This runs on view-option changes, which do not necessarily
+    // re-run the layout effect, so this is the only place a cleared CLL is
+    // guaranteed to drop whatever the last patch left pending.
+    try {
+      cll = await cllCachePatch.refreshCll({
+        cllInput: newViewOptions.column_level_lineage,
+        changeAnalysis: changeAnalysisMode,
+        actionGetCll,
+        queryClient,
+      });
+    } catch (e) {
+      if (e instanceof HttpError) {
+        toaster.create({
+          title: "Column Level Lineage error",
+          description: (e.data as { detail?: string })?.detail ?? e.message,
+          type: "error",
+          closable: true,
         });
-      } catch (e) {
-        if (e instanceof HttpError) {
-          toaster.create({
-            title: "Column Level Lineage error",
-            description: (e.data as { detail?: string })?.detail ?? e.message,
-            type: "error",
-            closable: true,
-          });
-          return;
-        }
+        return;
       }
-    } else {
+    }
+    if (!newViewOptions.column_level_lineage) {
       // Clear change analysis mode when CLL is cleared by any path
       // (reselect, selectParentNodes, selectChildNodes, etc.)
       // In new CLL experience, impact is a one-way ratchet.
