@@ -689,9 +689,7 @@ export function PrivateLineageView(
   }, [lineageGraph, serverFlags?.impact_at_startup]);
 
   const onNodeViewClosed = () => {
-    if (focusedNodeId !== undefined || focusedHistory.length > 0) {
-      supersedeCllInteraction();
-    }
+    supersedeCllInteraction();
     setFocusedNodeId(undefined);
     setFocusedHistory([]);
   };
@@ -704,8 +702,8 @@ export function PrivateLineageView(
    */
   const navigateToNode = (nodeId: string) => {
     if (!lineageGraph?.nodes[nodeId]) return;
-    if (focusedNodeId === nodeId) return;
     supersedeCllInteraction();
+    if (focusedNodeId === nodeId) return;
     if (focusedNodeId && focusedNodeId !== nodeId) {
       setFocusedHistory((h) => [...h, focusedNodeId]);
     }
@@ -1153,9 +1151,15 @@ export function PrivateLineageView(
             ...viewOptions,
             view_mode: "all",
           });
-        } else if (isLineageGraphNode(node) && focusedNode?.id !== node.id) {
-          // Only select the node if it is not already selected
-          onNodeClick(mockEvent, node);
+        } else if (isLineageGraphNode(node)) {
+          if (focusedNode?.id !== node.id) {
+            // Only select the node if it is not already selected.
+            onNodeClick(mockEvent, node);
+          } else {
+            // Reasserting the current focus is still newer intent than any
+            // pending CLL interaction.
+            supersedeCllInteraction();
+          }
         }
       } else {
         // If the run result is not related to a node, close the NodeView
@@ -1186,13 +1190,13 @@ export function PrivateLineageView(
     }
 
     const upstream = selectUpstream(lineageGraph, [nodeId], degree);
+    supersedeCllInteraction();
     if (
       selectMode === "selecting" &&
       Array.from(upstream).every((nodeId) => selectedNodeIds.has(nodeId))
     ) {
       return;
     }
-    supersedeCllInteraction();
 
     if (!selectMode) {
       setSelectMode("selecting");
@@ -1218,13 +1222,13 @@ export function PrivateLineageView(
     }
 
     const downstream = selectDownstream(lineageGraph, [nodeId], degree);
+    supersedeCllInteraction();
     if (
       selectMode === "selecting" &&
       Array.from(downstream).every((nodeId) => selectedNodeIds.has(nodeId))
     ) {
       return;
     }
-    supersedeCllInteraction();
 
     if (!selectMode) {
       setSelectMode("selecting");
@@ -1290,14 +1294,7 @@ export function PrivateLineageView(
     }
   };
   const deselect = () => {
-    if (
-      selectMode !== undefined ||
-      selectedNodeIds.size > 0 ||
-      focusedNodeId !== undefined ||
-      isRunResultOpen
-    ) {
-      supersedeCllInteraction();
-    }
+    supersedeCllInteraction();
     setSelectMode(undefined);
     setSelectedNodeIds(new Set());
     setFocusedNodeId(undefined);
