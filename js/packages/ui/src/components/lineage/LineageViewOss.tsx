@@ -281,6 +281,10 @@ export function PrivateLineageView(
   const cllCachePatch = useRef(createCllCachePatchLifecycle()).current;
   const layoutGenerationRef = useRef(0);
   const cllInteractionGenerationRef = useRef(0);
+  const supersedeCllInteraction = useCallback(
+    () => ++cllInteractionGenerationRef.current,
+    [],
+  );
   const [nodeColumnSetMap, setNodeColumSetMap] = useState<NodeColumnSetMap>({});
 
   useLayoutEffect(() => {
@@ -289,10 +293,10 @@ export function PrivateLineageView(
       // A user-triggered refresh may own a newer one, so unmount must
       // unconditionally supersede every component-owned async continuation.
       ++layoutGenerationRef.current;
-      ++cllInteractionGenerationRef.current;
+      supersedeCllInteraction();
       cllCachePatch.invalidate();
     };
-  }, [cllCachePatch]);
+  }, [cllCachePatch, supersedeCllInteraction]);
 
   const findNodeByName = useCallback(
     (name: string) => {
@@ -366,6 +370,7 @@ export function PrivateLineageView(
     selectedNodes.length > 0 ? selectedNodes : filteredNodes,
     {
       onActionStarted: () => {
+        supersedeCllInteraction();
         setSelectMode("action_result");
       },
       onActionNodeUpdated: (updated: LineageGraphNode) => {
@@ -684,6 +689,9 @@ export function PrivateLineageView(
   }, [lineageGraph, serverFlags?.impact_at_startup]);
 
   const onNodeViewClosed = () => {
+    if (focusedNodeId !== undefined || focusedHistory.length > 0) {
+      supersedeCllInteraction();
+    }
     setFocusedNodeId(undefined);
     setFocusedHistory([]);
   };
@@ -696,6 +704,8 @@ export function PrivateLineageView(
    */
   const navigateToNode = (nodeId: string) => {
     if (!lineageGraph?.nodes[nodeId]) return;
+    if (focusedNodeId === nodeId) return;
+    supersedeCllInteraction();
     if (focusedNodeId && focusedNodeId !== nodeId) {
       setFocusedHistory((h) => [...h, focusedNodeId]);
     }
@@ -706,6 +716,7 @@ export function PrivateLineageView(
     if (focusedHistory.length === 0) return;
     const previous = focusedHistory[focusedHistory.length - 1];
     if (!lineageGraph?.nodes[previous]) return;
+    supersedeCllInteraction();
     setFocusedNodeId(previous);
     setFocusedHistory((h) => h.slice(0, -1));
   };
@@ -718,6 +729,7 @@ export function PrivateLineageView(
     if (index < 0 || index >= focusedHistory.length) return;
     const target = focusedHistory[index];
     if (!lineageGraph?.nodes[target]) return;
+    supersedeCllInteraction();
     setFocusedNodeId(target);
     setFocusedHistory((h) => h.slice(0, index));
   };
@@ -768,11 +780,11 @@ export function PrivateLineageView(
     }
   });
 
-  const showColumnLevelLineage = async (
+  const applyColumnLevelLineage = async (
     columnLevelLineage?: CllInput,
     previous = false,
-  ) => {
-    const interactionGeneration = ++cllInteractionGenerationRef.current;
+  ): Promise<boolean> => {
+    const interactionGeneration = supersedeCllInteraction();
     const previousColumnLevelLineage = viewOptions.column_level_lineage;
 
     const nextMode = nextChangeAnalysisMode({
@@ -797,10 +809,11 @@ export function PrivateLineageView(
       },
       false,
       shouldPreservePositions, // preserve positions when CLL was previously active
+      interactionGeneration,
     );
 
     if (cllInteractionGenerationRef.current !== interactionGeneration) {
-      return;
+      return false;
     }
 
     if (!previous) {
@@ -812,6 +825,11 @@ export function PrivateLineageView(
       // Only clear focus when CLL is turned off, not for Impact Radius
       setFocusedNodeId(undefined);
     }
+    return true;
+  };
+
+  const showColumnLevelLineage = async (columnLevelLineage?: CllInput) => {
+    await applyColumnLevelLineage(columnLevelLineage);
   };
 
   const resetColumnLevelLineage = async (previous?: boolean) => {
@@ -819,16 +837,15 @@ export function PrivateLineageView(
       if (cllHistory.length === 0) {
         return;
       }
-      const previousCll = cllHistory.pop();
-      if (previousCll) {
-        await showColumnLevelLineage(previousCll, true);
-      } else {
-        await showColumnLevelLineage(undefined, true);
+      const previousCll = cllHistory[cllHistory.length - 1];
+      const applied = await applyColumnLevelLineage(previousCll, true);
+      if (applied) {
+        cllHistory.pop();
       }
     } else {
       // In the new CLL experience, reset returns to Layer 2 (global impact)
       // instead of clearing CLL entirely.
-      await showColumnLevelLineage(
+      await applyColumnLevelLineage(
         resolveResetCllInput({ changeAnalysisMode, newCllExperience }),
         true,
       );
@@ -860,6 +877,7 @@ export function PrivateLineageView(
     }
 
     closeContextMenu();
+    supersedeCllInteraction();
     if (!selectMode) {
       setFocusedNodeId(nextFocusedNodeId(focusedNodeId, node.id));
       setFocusedHistory([]);
@@ -1072,7 +1090,11 @@ export function PrivateLineageView(
     newViewOptions: LineageDiffViewOptions,
     fitView = true,
     preservePositions = false,
+    interactionGeneration?: number,
   ) => {
+    if (interactionGeneration === undefined) {
+      supersedeCllInteraction();
+    }
     setViewOptions(newViewOptions);
     await refreshLayout({
       viewOptions: newViewOptions,
@@ -1155,7 +1177,22 @@ export function PrivateLineageView(
   ]);
 
   const selectParentNodes = (nodeId: string, degree = 1000) => {
-    if (selectMode === "action_result" || lineageGraph === undefined) return;
+    if (
+      selectMode === "action_result" ||
+      lineageGraph === undefined ||
+      !lineageGraph.nodes[nodeId]
+    ) {
+      return;
+    }
+
+    const upstream = selectUpstream(lineageGraph, [nodeId], degree);
+    if (
+      selectMode === "selecting" &&
+      Array.from(upstream).every((nodeId) => selectedNodeIds.has(nodeId))
+    ) {
+      return;
+    }
+    supersedeCllInteraction();
 
     if (!selectMode) {
       setSelectMode("selecting");
@@ -1168,12 +1205,26 @@ export function PrivateLineageView(
       }
     }
 
-    const upstream = selectUpstream(lineageGraph, [nodeId], degree);
     setSelectedNodeIds(union(selectedNodeIds, upstream));
   };
 
   const selectChildNodes = (nodeId: string, degree = 1000) => {
-    if (selectMode === "action_result" || lineageGraph === undefined) return;
+    if (
+      selectMode === "action_result" ||
+      lineageGraph === undefined ||
+      !lineageGraph.nodes[nodeId]
+    ) {
+      return;
+    }
+
+    const downstream = selectDownstream(lineageGraph, [nodeId], degree);
+    if (
+      selectMode === "selecting" &&
+      Array.from(downstream).every((nodeId) => selectedNodeIds.has(nodeId))
+    ) {
+      return;
+    }
+    supersedeCllInteraction();
 
     if (!selectMode) {
       setSelectMode("selecting");
@@ -1186,7 +1237,6 @@ export function PrivateLineageView(
       }
     }
 
-    const downstream = selectDownstream(lineageGraph, [nodeId], degree);
     setSelectedNodeIds(union(selectedNodeIds, downstream));
   };
 
@@ -1212,15 +1262,20 @@ export function PrivateLineageView(
 
   const selectNode = (nodeId: string) => {
     if (!selectMode) {
-      if (!lineageGraph) {
+      if (!lineageGraph?.nodes[nodeId]) {
         return;
       }
 
+      supersedeCllInteraction();
       setSelectedNodeIds(new Set([nodeId]));
       setSelectMode("selecting");
       setFocusedNodeId(undefined);
       multiNodeAction.reset();
     } else if (selectMode === "selecting") {
+      if (!lineageGraph?.nodes[nodeId]) {
+        return;
+      }
+      supersedeCllInteraction();
       const newSelectedNodeIds = new Set(selectedNodeIds);
       if (selectedNodeIds.has(nodeId)) {
         newSelectedNodeIds.delete(nodeId);
@@ -1235,6 +1290,14 @@ export function PrivateLineageView(
     }
   };
   const deselect = () => {
+    if (
+      selectMode !== undefined ||
+      selectedNodeIds.size > 0 ||
+      focusedNodeId !== undefined ||
+      isRunResultOpen
+    ) {
+      supersedeCllInteraction();
+    }
     setSelectMode(undefined);
     setSelectedNodeIds(new Set());
     setFocusedNodeId(undefined);

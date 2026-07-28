@@ -85,14 +85,32 @@ var mockLineageViewContext: React.Context<
 
 vi.mock("@xyflow/react", () => ({
   ReactFlow: vi.fn(
-    ({ children, nodes }: { children: React.ReactNode; nodes?: unknown[] }) => (
+    ({
+      children,
+      nodes,
+      onNodeClick,
+    }: {
+      children: React.ReactNode;
+      nodes?: { id: string }[];
+      onNodeClick?: (
+        event: React.MouseEvent<HTMLButtonElement>,
+        node: { id: string },
+      ) => void;
+    }) => (
       <div
         data-testid="reactflow"
         data-node-count={nodes?.length ?? 0}
-        data-node-ids={(nodes as { id?: string }[] | undefined)
-          ?.map((node) => node.id)
-          .join(",")}
+        data-node-ids={nodes?.map((node) => node.id).join(",")}
       >
+        {nodes?.map((node) => (
+          <button
+            key={node.id}
+            data-testid={`click-${node.id}`}
+            onClick={(event) => onNodeClick?.(event, node)}
+          >
+            Focus {node.id}
+          </button>
+        ))}
         {children}
       </div>
     ),
@@ -394,10 +412,28 @@ vi.mock(
             Refresh node 1 CLL
           </button>
           <button
+            data-testid="show-all-models"
+            onClick={() =>
+              void context?.onViewOptionsChanged({
+                ...context.viewOptions,
+                view_mode: "all",
+                column_level_lineage: undefined,
+              })
+            }
+          >
+            Show all models
+          </button>
+          <button
             data-testid="disable-cll"
             onClick={() => void context?.showColumnLevelLineage(undefined)}
           >
             Disable CLL
+          </button>
+          <button
+            data-testid="reset-cll"
+            onClick={() => void context?.resetColumnLevelLineage()}
+          >
+            Reset CLL
           </button>
           <button
             data-testid="previous-cll"
@@ -1595,7 +1631,7 @@ describe("LineageView Component", () => {
       expect(mockReactFlowFitView).not.toHaveBeenCalled();
     });
 
-    it("keeps the newer disable focus and CLL history when an older show finishes late", async () => {
+    it("keeps the production reset focus when an older show finishes late", async () => {
       const lineageGraph = createMockLineageGraph();
       setupWithLineageGraph(lineageGraph);
       const slowShow = deferred<ColumnLineageData>();
@@ -1617,7 +1653,7 @@ describe("LineageView Component", () => {
 
       fireEvent.click(screen.getByTestId("show-impact-node1"));
       await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
-      fireEvent.click(screen.getByTestId("disable-cll"));
+      fireEvent.click(screen.getByTestId("reset-cll"));
       await waitFor(() => expect(toReactFlow).toHaveBeenCalledTimes(1));
 
       await act(async () => {
@@ -1627,6 +1663,126 @@ describe("LineageView Component", () => {
       });
 
       expect(screen.queryByTestId("node-view")).not.toBeInTheDocument();
+    });
+
+    it("keeps a newer direct view change when an older show finishes late", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      const slowShow = deferred<ColumnLineageData>();
+      const mockMutateAsync = vi.fn(() => slowShow.promise);
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("show-impact-node1")).toBeInTheDocument(),
+      );
+      (toReactFlow as Mock).mockClear();
+
+      fireEvent.click(screen.getByTestId("show-impact-node1"));
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+      fireEvent.click(screen.getByTestId("show-all-models"));
+      await waitFor(() => expect(toReactFlow).toHaveBeenCalledTimes(1));
+
+      await act(async () => {
+        slowShow.resolve(createColumnLineageData());
+        await slowShow.promise;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(screen.queryByTestId("node-view")).not.toBeInTheDocument();
+    });
+
+    it("keeps a newer node focus and excludes the stale show from history", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      const slowShow = deferred<ColumnLineageData>();
+      const mockMutateAsync = vi.fn(() => slowShow.promise);
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("show-impact-node1")).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByTestId("show-impact-node1"));
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+      fireEvent.click(screen.getByTestId("click-model.test.node2"));
+      expect(screen.getByTestId("node-view")).toHaveAttribute(
+        "data-node-id",
+        "model.test.node2",
+      );
+
+      await act(async () => {
+        slowShow.resolve(createColumnLineageData());
+        await slowShow.promise;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(screen.getByTestId("node-view")).toHaveAttribute(
+        "data-node-id",
+        "model.test.node2",
+      );
+
+      fireEvent.click(screen.getByTestId("previous-cll"));
+      expect(screen.getByTestId("node-view")).toHaveAttribute(
+        "data-node-id",
+        "model.test.node2",
+      );
+    });
+
+    it("retains previous CLL history when a deferred reset is superseded", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      const slowPrevious = deferred<ColumnLineageData>();
+      const mockMutateAsync = vi
+        .fn()
+        .mockResolvedValueOnce(createColumnLineageData())
+        .mockImplementationOnce(() => slowPrevious.promise)
+        .mockResolvedValue(createColumnLineageData());
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("show-impact-node1")).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByTestId("show-impact-node1"));
+      await waitFor(() =>
+        expect(screen.getByTestId("node-view")).toHaveAttribute(
+          "data-node-id",
+          "model.test.node1",
+        ),
+      );
+      fireEvent.click(screen.getByTestId("disable-cll"));
+      await waitFor(() =>
+        expect(screen.queryByTestId("node-view")).not.toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByTestId("previous-cll"));
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(2));
+      fireEvent.click(screen.getByTestId("click-model.test.node2"));
+
+      await act(async () => {
+        slowPrevious.resolve(createColumnLineageData());
+        await slowPrevious.promise;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(screen.getByTestId("node-view")).toHaveAttribute(
+        "data-node-id",
+        "model.test.node2",
+      );
 
       fireEvent.click(screen.getByTestId("previous-cll"));
       await waitFor(() =>
@@ -1635,7 +1791,50 @@ describe("LineageView Component", () => {
           "model.test.node1",
         ),
       );
-      expect(mockMutateAsync).toHaveBeenCalledTimes(2);
+      expect(mockMutateAsync).toHaveBeenCalledTimes(3);
+    });
+
+    it("does not fit an unmounted layout after its fit delay", async () => {
+      vi.useFakeTimers();
+      try {
+        const lineageGraph = createMockLineageGraph();
+        setupWithLineageGraph(lineageGraph);
+
+        const { unmount } = render(
+          <TestWrapper>
+            <TestablePrivateLineageView interactive={true} ref={null} />
+          </TestWrapper>,
+        );
+        await act(async () => {
+          await Promise.resolve();
+          await Promise.resolve();
+        });
+        expect(screen.getByTestId("show-all-models")).toBeInTheDocument();
+
+        (toReactFlow as Mock).mockClear();
+        (trackLineageViewRender as Mock).mockClear();
+        mockReactFlowFitView.mockClear();
+
+        fireEvent.click(screen.getByTestId("show-all-models"));
+        await act(async () => {
+          await Promise.resolve();
+          await Promise.resolve();
+          await Promise.resolve();
+        });
+        expect(toReactFlow).toHaveBeenCalledTimes(1);
+        expect(trackLineageViewRender).toHaveBeenCalledTimes(1);
+        expect(mockReactFlowFitView).not.toHaveBeenCalled();
+        expect(vi.getTimerCount()).toBeGreaterThan(0);
+
+        unmount();
+        await act(async () => {
+          await vi.runAllTimersAsync();
+        });
+
+        expect(mockReactFlowFitView).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it("keeps the newer rendered layout and tracking when an older toReactFlow finishes last", async () => {
