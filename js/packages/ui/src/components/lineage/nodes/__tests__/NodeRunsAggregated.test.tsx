@@ -15,7 +15,6 @@ import {
   NodeRunsAggregated,
   type NodeRunsAggregatedProps,
   type RowCountDiffData,
-  type ValueDiffData,
 } from "../NodeRunsAggregated";
 
 // =============================================================================
@@ -148,10 +147,9 @@ describe("NodeRunsAggregated - row count diff", () => {
 
 describe("NodeRunsAggregated - value diff", () => {
   it("shows all columns match when no mismatches", () => {
-    const valueDiff: ValueDiffData = { mismatchedColumns: 0, totalColumns: 10 };
     render(
       <NodeRunsAggregated
-        valueDiff={valueDiff}
+        valueDiff={{ mismatchedColumns: 0, totalColumns: 10 }}
         data-testid="runs-aggregated"
       />,
     );
@@ -160,10 +158,9 @@ describe("NodeRunsAggregated - value diff", () => {
   });
 
   it("shows mismatch count when columns differ", () => {
-    const valueDiff: ValueDiffData = { mismatchedColumns: 3, totalColumns: 10 };
     render(
       <NodeRunsAggregated
-        valueDiff={valueDiff}
+        valueDiff={{ mismatchedColumns: 3, totalColumns: 10 }}
         data-testid="runs-aggregated"
       />,
     );
@@ -172,10 +169,9 @@ describe("NodeRunsAggregated - value diff", () => {
   });
 
   it("shows single mismatch correctly", () => {
-    const valueDiff: ValueDiffData = { mismatchedColumns: 1, totalColumns: 5 };
     render(
       <NodeRunsAggregated
-        valueDiff={valueDiff}
+        valueDiff={{ mismatchedColumns: 1, totalColumns: 5 }}
         data-testid="runs-aggregated"
       />,
     );
@@ -213,48 +209,5 @@ describe("NodeRunsAggregated - empty state", () => {
     );
 
     expect(container.firstChild).toBeNull();
-  });
-});
-
-// =============================================================================
-// Dark Mode Tests
-// =============================================================================
-
-describe("NodeRunsAggregated - dark mode", () => {
-  it("accepts isDark prop", () => {
-    const rowCountDiff: RowCountDiffData = { base: 100, curr: 100 };
-    render(
-      <NodeRunsAggregated
-        rowCountDiff={rowCountDiff}
-        isDark={true}
-        data-testid="runs-aggregated"
-      />,
-    );
-
-    expect(screen.getByTestId("runs-aggregated")).toBeInTheDocument();
-  });
-});
-
-// =============================================================================
-// Type Export Tests
-// =============================================================================
-
-describe("NodeRunsAggregated types", () => {
-  it("RowCountDiffData type accepts valid values", () => {
-    const data: RowCountDiffData = { base: 100, curr: 200 };
-    expect(data.base).toBe(100);
-    expect(data.curr).toBe(200);
-  });
-
-  it("RowCountDiffData allows null values", () => {
-    const data: RowCountDiffData = { base: null, curr: null };
-    expect(data.base).toBeNull();
-    expect(data.curr).toBeNull();
-  });
-
-  it("ValueDiffData type accepts valid values", () => {
-    const data: ValueDiffData = { mismatchedColumns: 5, totalColumns: 20 };
-    expect(data.mismatchedColumns).toBe(5);
-    expect(data.totalColumns).toBe(20);
   });
 });

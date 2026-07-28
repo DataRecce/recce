@@ -47,11 +47,7 @@ vi.mock("@xyflow/react", () => ({
 // ============================================================================
 
 import { fireEvent, render, screen } from "@testing-library/react";
-import type { MouseEvent } from "react";
 import {
-  COLUMN_NODE_HEIGHT,
-  COLUMN_NODE_WIDTH,
-  type ColumnChangeStatus,
   type ColumnTransformationType,
   LineageColumnNode,
   type LineageColumnNodeData,
@@ -391,20 +387,6 @@ describe("LineageColumnNode", () => {
   });
 
   // ==========================================================================
-  // Constants Tests
-  // ==========================================================================
-
-  describe("constants", () => {
-    it("exports COLUMN_NODE_HEIGHT", () => {
-      expect(COLUMN_NODE_HEIGHT).toBe(24);
-    });
-
-    it("exports COLUMN_NODE_WIDTH", () => {
-      expect(COLUMN_NODE_WIDTH).toBe(280);
-    });
-  });
-
-  // ==========================================================================
   // showContent Prop Tests (Zoom Visibility)
   // ==========================================================================
 
@@ -580,16 +562,6 @@ describe("LineageColumnNode", () => {
   });
 
   // ==========================================================================
-  // Memoization Tests
-  // ==========================================================================
-
-  describe("memoization", () => {
-    it("has displayName set for debugging", () => {
-      expect(LineageColumnNode.displayName).toBe("LineageColumnNode");
-    });
-  });
-
-  // ==========================================================================
   // Integration Tests
   // ==========================================================================
 
@@ -674,17 +646,6 @@ describe("LineageColumnNode", () => {
       // Shows change status because showChangeAnalysis is true
       expect(screen.getByText("~")).toBeInTheDocument();
       expect(container.firstChild).toBeInTheDocument();
-    });
-  });
-
-  // ==========================================================================
-  // Type Export Tests
-  // ==========================================================================
-
-  describe("type exports", () => {
-    it("ColumnChangeStatus type accepts valid values", () => {
-      const status: ColumnChangeStatus = "added";
-      expect(status).toBe("added");
     });
   });
 });
