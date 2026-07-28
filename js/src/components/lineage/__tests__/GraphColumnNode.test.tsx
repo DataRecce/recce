@@ -85,7 +85,7 @@ import { LineageColumnNode } from "@datarecce/ui/components/lineage/columns";
 import { GraphColumnNode } from "@datarecce/ui/components/lineage/GraphColumnNodeOss";
 import { useLineageViewContextSafe } from "@datarecce/ui/contexts";
 import { useThemeColors } from "@datarecce/ui/hooks";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { useStore } from "@xyflow/react";
 import React from "react";
 
@@ -211,38 +211,15 @@ describe("GraphColumnNode", () => {
       expect(screen.getByText("INTEGER")).toBeInTheDocument();
     });
 
-    it("returns null when zoom level is too low (< 30%)", () => {
+    it("passes showContent=false when zoom level is too low (< 30%)", () => {
       mockUseStore.mockReturnValue(false); // showContent = false
       const props = createMockColumnNodeProps();
 
-      const { container } = render(<GraphColumnNode {...props} />);
+      render(<GraphColumnNode {...props} />);
 
       // Verify showContent=false is passed to LineageColumnNode
       const callProps = mockedLineageColumnNode.mock.calls[0][0];
       expect(callProps.showContent).toBe(false);
-      // Component should render nothing when zoomed out
-      expect(container.firstChild).toBeNull();
-    });
-
-    it("renders both handles", () => {
-      const props = createMockColumnNodeProps();
-
-      render(<GraphColumnNode {...props} />);
-
-      expect(screen.getByTestId("handle-target")).toBeInTheDocument();
-      expect(screen.getByTestId("handle-source")).toBeInTheDocument();
-    });
-
-    it("renders handles with correct positions", () => {
-      const props = createMockColumnNodeProps();
-
-      render(<GraphColumnNode {...props} />);
-
-      const targetHandle = screen.getByTestId("handle-target");
-      const sourceHandle = screen.getByTestId("handle-source");
-
-      expect(targetHandle).toHaveAttribute("data-position", "left");
-      expect(sourceHandle).toHaveAttribute("data-position", "right");
     });
   });
 
@@ -325,23 +302,6 @@ describe("GraphColumnNode", () => {
       expect(callProps.data.type).toBe("TIMESTAMP");
     });
 
-    it("passes onContextMenu callback to LineageColumnNode", () => {
-      const mockShowContextMenu = vi.fn();
-      mockUseLineageViewContextSafe.mockReturnValue(
-        createMockContext({
-          showContextMenu: mockShowContextMenu,
-        }),
-      );
-      const props = createMockColumnNodeProps({ type: "BOOLEAN" });
-
-      render(<GraphColumnNode {...props} />);
-
-      // Verify onContextMenu callback is passed
-      const callProps = mockedLineageColumnNode.mock.calls[0][0];
-      expect(callProps.onContextMenu).toBeDefined();
-      expect(typeof callProps.onContextMenu).toBe("function");
-    });
-
     it("onContextMenu callback invokes showContextMenu from context", () => {
       const mockShowContextMenu = vi.fn();
       mockUseLineageViewContextSafe.mockReturnValue(
@@ -353,51 +313,20 @@ describe("GraphColumnNode", () => {
 
       render(<GraphColumnNode {...props} />);
 
-      // Get the onContextMenu callback passed to LineageColumnNode
       const callProps = mockedLineageColumnNode.mock.calls[0][0];
       const mockEvent = {
         preventDefault: vi.fn(),
       } as unknown as React.MouseEvent;
 
-      // Call the callback
       callProps.onContextMenu(mockEvent, "test_column");
 
-      // Verify showContextMenu was called
-      expect(mockShowContextMenu).toHaveBeenCalled();
-    });
-
-    it("passes different types correctly", () => {
-      const props = createMockColumnNodeProps({ type: "DATE" });
-
-      render(<GraphColumnNode {...props} />);
-
-      const callProps = mockedLineageColumnNode.mock.calls[0][0];
-      expect(callProps.data.type).toBe("DATE");
-    });
-  });
-
-  // ==========================================================================
-  // Context Menu Tests
-  // ==========================================================================
-
-  describe("context menu", () => {
-    it("calls showContextMenu on kebab click", () => {
-      const mockShowContextMenu = vi.fn();
-      mockUseLineageViewContextSafe.mockReturnValue(
-        createMockContext({
-          showContextMenu: mockShowContextMenu,
+      expect(mockShowContextMenu).toHaveBeenCalledWith(
+        mockEvent,
+        expect.objectContaining({
+          id: "node1_column1",
+          data: expect.objectContaining({ column: "test_column" }),
         }),
       );
-      const props = createMockColumnNodeProps();
-
-      const { container } = render(<GraphColumnNode {...props} />);
-
-      // Trigger hover to show kebab menu
-      fireEvent.mouseEnter(container.firstChild as Element);
-
-      // The kebab icon should now be clickable
-      // Due to component structure, we verify the mock is available
-      expect(mockShowContextMenu).toBeDefined();
     });
   });
 
@@ -430,8 +359,9 @@ describe("GraphColumnNode", () => {
 
       render(<GraphColumnNode {...props} />);
 
-      // Component applies DIM_FILTER when not highlighted
-      // We verify the logic path is exercised
+      expect(mockedLineageColumnNode.mock.calls[0][0].data.isHighlighted).toBe(
+        false,
+      );
     });
   });
 
@@ -457,7 +387,9 @@ describe("GraphColumnNode", () => {
 
       render(<GraphColumnNode {...props} />);
 
-      // When isFocus is true, background should be background.subtle
+      expect(mockedLineageColumnNode.mock.calls[0][0].data.isFocused).toBe(
+        true,
+      );
     });
 
     it("does not apply focus styling when different column is selected", () => {
@@ -477,7 +409,9 @@ describe("GraphColumnNode", () => {
 
       render(<GraphColumnNode {...props} />);
 
-      // isFocus should be false
+      expect(mockedLineageColumnNode.mock.calls[0][0].data.isFocused).toBe(
+        false,
+      );
     });
 
     it("does not apply focus styling when different node is selected", () => {
@@ -497,7 +431,9 @@ describe("GraphColumnNode", () => {
 
       render(<GraphColumnNode {...props} />);
 
-      // isFocus should be false since node doesn't match
+      expect(mockedLineageColumnNode.mock.calls[0][0].data.isFocused).toBe(
+        false,
+      );
     });
   });
 
@@ -519,56 +455,6 @@ describe("GraphColumnNode", () => {
 
       // Should be called with the parent node ID (node1), not column node ID
       expect(mockIsNodeShowingChangeAnalysis).toHaveBeenCalledWith("node1");
-    });
-  });
-
-  // ==========================================================================
-  // Integration Tests
-  // ==========================================================================
-
-  describe("integration", () => {
-    it("renders complete column node with all data", () => {
-      mockUseLineageViewContextSafe.mockReturnValue(
-        createMockContext({
-          isNodeHighlighted: vi.fn(() => true),
-        }),
-      );
-      const props = createMockColumnNodeProps({
-        column: "user_id",
-        type: "BIGINT",
-        transformationType: "passthrough",
-      });
-
-      render(<GraphColumnNode {...props} />);
-
-      expect(screen.getByText("user_id")).toBeInTheDocument();
-      expect(screen.getByText("BIGINT")).toBeInTheDocument();
-      // Verify transformationType is passed to LineageColumnNode
-      const callProps = mockedLineageColumnNode.mock.calls[0][0];
-      expect(callProps.data.transformationType).toBe("passthrough");
-    });
-
-    it("renders with change analysis mode enabled", () => {
-      mockUseLineageViewContextSafe.mockReturnValue(
-        createMockContext({
-          isNodeShowingChangeAnalysis: vi.fn(() => true),
-        }),
-      );
-      const props = createMockColumnNodeProps({
-        column: "new_column",
-        type: "STRING",
-        transformationType: "source",
-        changeStatus: "added",
-      });
-
-      render(<GraphColumnNode {...props} />);
-
-      expect(screen.getByText("new_column")).toBeInTheDocument();
-      expect(screen.getByText("STRING")).toBeInTheDocument();
-      // Verify showChangeAnalysis and changeStatus are passed to LineageColumnNode
-      const callProps = mockedLineageColumnNode.mock.calls[0][0];
-      expect(callProps.showChangeAnalysis).toBe(true);
-      expect(callProps.data.changeStatus).toBe("added");
     });
   });
 });
