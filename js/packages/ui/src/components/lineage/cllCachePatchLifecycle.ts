@@ -10,19 +10,19 @@ import {
  * The CLL fetch → cache-patch → re-entry lifecycle (DRC-2893).
  *
  * A change-analysis CLL response is merged into the cached lineage instead of
- * refetching it. That patch is the problem this owns: `setQueryData` notifies
- * subscribers synchronously, so `lineageGraph` recomputes and the lineage
- * layout effect re-fires *while the patch is still running*. Without a guard
- * the re-entry would call the API and patch again, forever.
+ * refetching it. That patch is the problem this owns: `setQueryData` schedules
+ * subscribed React views to render with a recomputed `lineageGraph`, then the
+ * lineage layout effect runs again. Without a guard the later re-entry would
+ * call the API and patch again, forever.
  *
  * The guard is therefore not a detail of the fetch — it is the fetch, the
  * patch, the re-entry and the disable path decided together. Keeping the four
  * in one object is what makes them impossible to drift apart:
  *
  * - a genuine CLL input fetches once and patches once;
- * - the pending result is armed *before* the patch, so a synchronous re-entry
- *   can find it — but only when a cache entry was really written, because
- *   nothing re-enters otherwise;
+ * - the pending result is armed *before* the patch and kept until the
+ *   subscriber's later layout effect can find it — but only when a cache entry
+ *   was really written, because nothing re-enters otherwise;
  * - the pending result belongs to the request that patched the cache, and only
  *   the re-entry asking that same question may reuse it;
  * - every genuine fetch supersedes what was pending *before* it awaits, so a
@@ -53,6 +53,12 @@ interface CllLifecycleResolution {
 }
 
 export interface CllCachePatchLifecycle {
+  /**
+   * Synchronously supersede every in-flight request and clear any armed
+   * re-entry. The owning component calls this when it unmounts so a late CLL
+   * completion cannot patch a cache that no longer has a view to consume it.
+   */
+  invalidate(): void;
   /**
    * The layout effect's CLL step. Fetches and patches for a genuine input,
    * reuses the pending result when the effect re-fired because of our own cache
@@ -122,9 +128,14 @@ export function createCllCachePatchLifecycle(): CllCachePatchLifecycle {
   }
 
   function disable(): CllLifecycleResolution {
-    const requestEpoch = ++epoch;
-    pending = undefined;
+    invalidate();
+    const requestEpoch = epoch;
     return resolutionFor(requestEpoch, undefined);
+  }
+
+  function invalidate(): void {
+    ++epoch;
+    pending = undefined;
   }
 
   async function fetchAndPatch({
@@ -153,8 +164,8 @@ export function createCllCachePatchLifecycle(): CllCachePatchLifecycle {
       return resolution;
     }
     if (shouldPatchLineageCache(cllApiInput, cll)) {
-      // Arm before patching: setQueryData notifies subscribers synchronously,
-      // so the layout effect can re-enter inside the next line.
+      // Arm before patching and keep the result across the scheduled React
+      // render so the subscriber's later layout effect can consume it.
       const armed: PendingCll = {
         apiInput: normalizeCllApiInput(cllApiInput),
         resolution,
@@ -162,8 +173,7 @@ export function createCllCachePatchLifecycle(): CllCachePatchLifecycle {
       pending = armed;
       if (!patchLineageCacheFromCll(queryClient, cll) && pending === armed) {
         // No cache value was produced, so no re-entry is coming. Clear only our
-        // own token — a synchronous re-entry may already have consumed or
-        // replaced it.
+        // own token in case another cache observer replaced it.
         pending = undefined;
       }
     }
@@ -171,6 +181,7 @@ export function createCllCachePatchLifecycle(): CllCachePatchLifecycle {
   }
 
   return {
+    invalidate,
     async resolveCllForLayout(request) {
       const { cllInput, changeAnalysis } = request;
       if (!cllInput) {

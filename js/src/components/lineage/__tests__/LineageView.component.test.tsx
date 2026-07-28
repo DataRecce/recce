@@ -38,6 +38,7 @@ if (typeof Object.groupBy === "undefined") {
 }
 
 import type { LineageGraph, LineageGraphNode } from "@datarecce/ui";
+import type { ColumnLineageData, ServerInfoResult } from "@datarecce/ui/api";
 import {
   act,
   fireEvent,
@@ -60,9 +61,24 @@ let mockUseNodesStateReturnValue: [unknown[], Mock, Mock] = [
   vi.fn(),
 ];
 // biome-ignore lint/suspicious/noVar: vi.mock factories are hoisted above lexical initialization.
+var mockReactFlowFitView: Mock;
+// biome-ignore lint/suspicious/noVar: vi.mock factories are hoisted above lexical initialization.
+var mockReactFlowSetCenter: Mock;
+// biome-ignore lint/suspicious/noVar: vi.mock factories are hoisted above lexical initialization.
+var mockReactFlowGetNodes: Mock;
+// biome-ignore lint/suspicious/noVar: vi.mock factories are hoisted above lexical initialization.
+var mockQueryClient: {
+  invalidateQueries: Mock;
+  getQueryData: Mock;
+  setQueryData: Mock;
+};
+// biome-ignore lint/suspicious/noVar: vi.mock factories are hoisted above lexical initialization.
 var mockLineageViewContext: React.Context<
   | {
       showColumnLevelLineage: (input?: unknown) => Promise<void>;
+      resetColumnLevelLineage: (previous?: boolean) => Promise<void>;
+      onViewOptionsChanged: (options: unknown) => Promise<void>;
+      viewOptions: Record<string, unknown>;
     }
   | undefined
 >;
@@ -115,10 +131,10 @@ vi.mock("@xyflow/react", () => ({
     }) => <div data-testid={`rf-panel-${position}`}>{children}</div>,
   ),
   useReactFlow: vi.fn(() => ({
-    fitView: vi.fn().mockResolvedValue(undefined),
-    setCenter: vi.fn().mockResolvedValue(undefined),
+    fitView: mockReactFlowFitView,
+    setCenter: mockReactFlowSetCenter,
     getZoom: vi.fn().mockReturnValue(1),
-    getNodes: vi.fn().mockReturnValue([]),
+    getNodes: mockReactFlowGetNodes,
   })),
   useNodesState: vi.fn(() => {
     const [nodes, setNodes] = React.useState(mockUseNodesStateReturnValue[0]);
@@ -160,6 +176,9 @@ vi.mock("@datarecce/ui/contexts", async () => {
   mockLineageViewContext = React.createContext<
     | {
         showColumnLevelLineage: (input?: unknown) => Promise<void>;
+        resetColumnLevelLineage: (previous?: boolean) => Promise<void>;
+        onViewOptionsChanged: (options: unknown) => Promise<void>;
+        viewOptions: Record<string, unknown>;
       }
     | undefined
   >(undefined);
@@ -349,10 +368,42 @@ vi.mock(
       return (
         <div data-testid="cll-control">
           <button
+            data-testid="show-impact-node1"
+            onClick={() =>
+              void context?.showColumnLevelLineage({
+                node_id: "model.test.node1",
+                change_analysis: true,
+                no_upstream: true,
+              })
+            }
+          >
+            Show node 1 impact
+          </button>
+          <button
+            data-testid="refresh-cll-node1"
+            onClick={() =>
+              void context?.onViewOptionsChanged({
+                ...context.viewOptions,
+                column_level_lineage: {
+                  node_id: "model.test.node1",
+                  column: "id",
+                },
+              })
+            }
+          >
+            Refresh node 1 CLL
+          </button>
+          <button
             data-testid="disable-cll"
             onClick={() => void context?.showColumnLevelLineage(undefined)}
           >
             Disable CLL
+          </button>
+          <button
+            data-testid="previous-cll"
+            onClick={() => void context?.resetColumnLevelLineage(true)}
+          >
+            Previous CLL
           </button>
         </div>
       );
@@ -473,11 +524,7 @@ vi.mock("@tanstack/react-query", () => ({
   useQuery: vi.fn(() => ({
     data: undefined,
   })),
-  useQueryClient: vi.fn(() => ({
-    invalidateQueries: vi.fn().mockResolvedValue(undefined),
-    getQueryData: vi.fn().mockReturnValue(undefined),
-    setQueryData: vi.fn(),
-  })),
+  useQueryClient: vi.fn(() => mockQueryClient),
 }));
 
 // ============================================================================
@@ -572,6 +619,61 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
+function createColumnLineageData(): ColumnLineageData {
+  return {
+    current: {
+      nodes: {
+        "model.test.node1": {
+          id: "model.test.node1",
+          name: "node1",
+          source_name: "",
+          resource_type: "model",
+          change_status: "modified",
+          change_category: "breaking",
+          columns: {
+            "model.test.node1.id": {
+              name: "id",
+              type: "INTEGER",
+              change_status: "modified",
+            },
+          },
+        },
+      },
+      columns: {},
+      parent_map: {},
+      child_map: {},
+    },
+  };
+}
+
+function createPatchableServerInfoResult(): ServerInfoResult {
+  return {
+    state_metadata: {
+      schema_version: "1",
+      recce_version: "0.1.0",
+      generated_at: "2026-01-01",
+    },
+    adapter_type: "dbt",
+    review_mode: false,
+    cloud_mode: false,
+    file_mode: false,
+    demo: false,
+    codespace: false,
+    support_tasks: {},
+    lineage: {
+      nodes: {
+        "model.test.node1": {
+          name: "node1",
+          resource_type: "model",
+          package_name: "test",
+        },
+      },
+      edges: [],
+      metadata: { base: {}, current: {} },
+    },
+  };
+}
+
 // Helper to setup mocks with lineage graph data
 function setupWithLineageGraph(lineageGraph?: LineageGraph) {
   mockLineageGraphContext.lineageGraph = lineageGraph;
@@ -609,6 +711,14 @@ function TestWrapper({ children }: { children: React.ReactNode }) {
 describe("LineageView Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockReactFlowFitView = vi.fn().mockResolvedValue(undefined);
+    mockReactFlowSetCenter = vi.fn().mockResolvedValue(undefined);
+    mockReactFlowGetNodes = vi.fn().mockReturnValue([]);
+    mockQueryClient = {
+      invalidateQueries: vi.fn().mockResolvedValue(undefined),
+      getQueryData: vi.fn().mockReturnValue(undefined),
+      setQueryData: vi.fn(),
+    };
 
     // Reset context mocks to defaults
     mockLineageGraphContext.lineageGraph = undefined;
@@ -1396,6 +1506,138 @@ describe("LineageView Component", () => {
   });
 
   describe("async layout ownership", () => {
+    it("invalidates a deferred CLL request on unmount before it patches or lays out", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      const slowCll = deferred<ColumnLineageData>();
+      const mockMutateAsync = vi.fn(() => slowCll.promise);
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+      const cachedLineage = createPatchableServerInfoResult();
+      mockQueryClient.getQueryData.mockReturnValue(cachedLineage);
+      mockQueryClient.setQueryData.mockReturnValue({
+        ...cachedLineage,
+        lineage: { ...cachedLineage.lineage },
+      });
+
+      const { unmount } = render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("show-impact-node1")).toBeInTheDocument(),
+      );
+
+      (toReactFlow as Mock).mockClear();
+      (trackLineageViewRender as Mock).mockClear();
+      mockQueryClient.setQueryData.mockClear();
+      mockReactFlowFitView.mockClear();
+
+      fireEvent.click(screen.getByTestId("show-impact-node1"));
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+      unmount();
+
+      await act(async () => {
+        slowCll.resolve(createColumnLineageData());
+        await slowCll.promise;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(mockQueryClient.setQueryData).not.toHaveBeenCalled();
+      expect(toReactFlow).not.toHaveBeenCalled();
+      expect(trackLineageViewRender).not.toHaveBeenCalled();
+      expect(mockReactFlowFitView).not.toHaveBeenCalled();
+    });
+
+    it("invalidates refreshLayout ownership on unmount while layout is deferred", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      const mockMutateAsync = vi
+        .fn()
+        .mockResolvedValue(createColumnLineageData());
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      const { unmount } = render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("refresh-cll-node1")).toBeInTheDocument(),
+      );
+
+      const slowLayout =
+        deferred<[LineageGraphNode[], [], Record<string, Set<string>>]>();
+      const staleNode = createMockLineageGraphNode(
+        "model.test.after_unmount",
+        "after_unmount",
+      );
+      (toReactFlow as Mock).mockClear();
+      (toReactFlow as Mock).mockImplementationOnce(() => slowLayout.promise);
+      (trackLineageViewRender as Mock).mockClear();
+      mockReactFlowFitView.mockClear();
+
+      fireEvent.click(screen.getByTestId("refresh-cll-node1"));
+      await waitFor(() => expect(toReactFlow).toHaveBeenCalledTimes(1));
+      unmount();
+
+      await act(async () => {
+        slowLayout.resolve([
+          [staleNode],
+          [],
+          { [staleNode.id]: new Set<string>() },
+        ]);
+        await slowLayout.promise;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      });
+
+      expect(trackLineageViewRender).not.toHaveBeenCalled();
+      expect(mockReactFlowFitView).not.toHaveBeenCalled();
+    });
+
+    it("keeps the newer disable focus and CLL history when an older show finishes late", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      const slowShow = deferred<ColumnLineageData>();
+      const mockMutateAsync = vi
+        .fn()
+        .mockImplementationOnce(() => slowShow.promise)
+        .mockResolvedValue(createColumnLineageData());
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("show-impact-node1")).toBeInTheDocument(),
+      );
+      (toReactFlow as Mock).mockClear();
+
+      fireEvent.click(screen.getByTestId("show-impact-node1"));
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+      fireEvent.click(screen.getByTestId("disable-cll"));
+      await waitFor(() => expect(toReactFlow).toHaveBeenCalledTimes(1));
+
+      await act(async () => {
+        slowShow.resolve(createColumnLineageData());
+        await slowShow.promise;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(screen.queryByTestId("node-view")).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId("previous-cll"));
+      await waitFor(() =>
+        expect(screen.getByTestId("node-view")).toHaveAttribute(
+          "data-node-id",
+          "model.test.node1",
+        ),
+      );
+      expect(mockMutateAsync).toHaveBeenCalledTimes(2);
+    });
+
     it("keeps the newer rendered layout and tracking when an older toReactFlow finishes last", async () => {
       const lineageGraphA = createMockLineageGraph();
       setupWithLineageGraph(lineageGraphA);

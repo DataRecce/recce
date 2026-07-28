@@ -280,7 +280,19 @@ export function PrivateLineageView(
   // the API and patching again (which would loop forever).
   const cllCachePatch = useRef(createCllCachePatchLifecycle()).current;
   const layoutGenerationRef = useRef(0);
+  const cllInteractionGenerationRef = useRef(0);
   const [nodeColumnSetMap, setNodeColumSetMap] = useState<NodeColumnSetMap>({});
+
+  useLayoutEffect(() => {
+    return () => {
+      // The layout effect's own cleanup only owns the generation it created.
+      // A user-triggered refresh may own a newer one, so unmount must
+      // unconditionally supersede every component-owned async continuation.
+      ++layoutGenerationRef.current;
+      ++cllInteractionGenerationRef.current;
+      cllCachePatch.invalidate();
+    };
+  }, [cllCachePatch]);
 
   const findNodeByName = useCallback(
     (name: string) => {
@@ -760,6 +772,7 @@ export function PrivateLineageView(
     columnLevelLineage?: CllInput,
     previous = false,
   ) => {
+    const interactionGeneration = ++cllInteractionGenerationRef.current;
     const previousColumnLevelLineage = viewOptions.column_level_lineage;
 
     const nextMode = nextChangeAnalysisMode({
@@ -785,6 +798,10 @@ export function PrivateLineageView(
       false,
       shouldPreservePositions, // preserve positions when CLL was previously active
     );
+
+    if (cllInteractionGenerationRef.current !== interactionGeneration) {
+      return;
+    }
 
     if (!previous) {
       cllHistory.push(previousColumnLevelLineage);

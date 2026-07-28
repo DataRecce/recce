@@ -8,16 +8,21 @@
  *
  * Everything here runs the production lifecycle object that `LineageViewOss`
  * holds (`createCllCachePatchLifecycle`) against a real React Query cache. The
- * re-entry is not simulated by calling a helper twice: the test subscribes to
- * the query cache and re-enters from inside the patch, which is exactly when
- * the real effect re-fires, so the guard has to be armed *before* the patch for
- * the reuse to happen at all.
+ * central re-entry test mounts a real `useQuery` subscriber: React observes the
+ * cache patch, schedules a render, and only then runs the layout resolution
+ * again. This matches the production timing that the pending result must span.
  *
  * The patch's own merge rules are covered directly in
  * `patchLineageDiffFromCll.test.ts`.
  */
 
-import { QueryClient } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from "@tanstack/react-query";
+import { render, waitFor } from "@testing-library/react";
+import { createElement, useLayoutEffect } from "react";
 import { vi } from "vitest";
 import type {
   CllInput,
@@ -233,35 +238,6 @@ function createHarness({ seedLineage = true } = {}) {
   };
 }
 
-/**
- * Re-enter `run` from inside the next lineage cache patch — the moment the real
- * layout effect re-fires, because `setQueryData` notifies subscribers
- * synchronously while the first entry is still in flight.
- */
-function onNextCachePatch<T>(
-  queryClient: QueryClient,
-  run: () => Promise<T>,
-): { result: () => Promise<T> } {
-  let reentry: Promise<T> | undefined;
-  const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
-    if (event.type !== "updated" || reentry) {
-      return;
-    }
-    unsubscribe();
-    reentry = run();
-  });
-
-  return {
-    async result() {
-      unsubscribe();
-      if (!reentry) {
-        throw new Error("the cache patch never re-entered the lifecycle");
-      }
-      return await reentry;
-    },
-  };
-}
-
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -282,29 +258,53 @@ describe("CLL cache patch lifecycle", () => {
     expect(h.graph()?.nodes[NODE_B].data.changeStatus).toBeUndefined();
   });
 
-  it("reuses the pending data when the patch re-enters the layout, with no second request or patch", async () => {
+  it("reuses the exact pending result when a React Query subscriber schedules the layout re-entry", async () => {
     const h = createHarness();
-    const reentry = onNextCachePatch(h.queryClient, () =>
-      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
+    const cll = modifiedNodeACll("model.test.scheduled_reentry");
+    h.mutateAsync.mockResolvedValue(cll);
+    const resolutions: ExpectedResolution[] = [];
+
+    function LayoutSubscriber() {
+      const { data } = useQuery<ServerInfoResult>({
+        queryKey: cacheKeys.lineage(),
+        queryFn: async () => createServerInfoResult(),
+        staleTime: Number.POSITIVE_INFINITY,
+      });
+
+      useLayoutEffect(() => {
+        if (!data) {
+          return;
+        }
+        void h.lifecycle
+          .resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT))
+          .then((resolution) => {
+            resolutions.push(asResolution(resolution));
+          });
+      }, [data]);
+
+      return null;
+    }
+
+    render(
+      createElement(
+        QueryClientProvider,
+        { client: h.queryClient },
+        createElement(LayoutSubscriber),
+      ),
     );
 
-    const first = await cllOf(
-      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
-    );
-    const reused = asResolution(await reentry.result()).cll;
+    await waitFor(() => expect(resolutions).toHaveLength(2));
 
-    expect(reused).toBe(first);
     expect(h.apiCallCount()).toBe(1);
     expect(h.patchCount()).toBe(1);
+    expect(resolutions[0].cll).toBe(cll);
+    expect(resolutions[1]).toBe(resolutions[0]);
   });
 
   it("fetches and patches again for the next genuine input after a re-entry", async () => {
     const h = createHarness();
-    const reentry = onNextCachePatch(h.queryClient, () =>
-      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
-    );
     await h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT));
-    await reentry.result();
+    await h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT));
 
     await h.lifecycle.resolveCllForLayout(
       h.request({ ...IMPACT_RADIUS_INPUT, node_id: NODE_B }),
@@ -444,14 +444,12 @@ describe("CLL cache patch lifecycle", () => {
 
   it("arms the guard from refreshLayout's fetch too, so the effect re-fire reuses it", async () => {
     const h = createHarness();
-    const reentry = onNextCachePatch(h.queryClient, () =>
-      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
+    const fetched = asResolution(
+      await h.lifecycle.refreshCll(h.request(IMPACT_RADIUS_INPUT)),
     );
-
-    const fetched = await cllOf(
-      h.lifecycle.refreshCll(h.request(IMPACT_RADIUS_INPUT)),
+    const reused = asResolution(
+      await h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
     );
-    const reused = asResolution(await reentry.result()).cll;
 
     expect(reused).toBe(fetched);
     expect(h.apiCallCount()).toBe(1);
@@ -671,21 +669,18 @@ describe("CLL cache patch lifecycle", () => {
     },
   );
 
-  it("returns the exact current resolution to synchronous cache re-entry", async () => {
+  it("invalidates an in-flight request when its component owner is disposed", async () => {
     const h = createHarness();
-    const reentry = onNextCachePatch(h.queryClient, () =>
-      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
-    );
+    const slow = deferred<ColumnLineageData>();
+    h.mutateAsync.mockImplementationOnce(() => slow.promise);
+    const request = h.lifecycle.refreshCll(h.request(IMPACT_RADIUS_INPUT));
 
-    const first = asResolution(
-      await h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
-    );
-    const reused = asResolution(await reentry.result());
+    h.lifecycle.invalidate();
+    slow.resolve(modifiedNodeACll("model.test.after_dispose"));
+    const resolution = asResolution(await request);
 
-    expect(reused).toBe(first);
-    expect(reused.isCurrent()).toBe(true);
-    expect(h.apiCallCount()).toBe(1);
-    expect(h.patchCount()).toBe(1);
+    expect(resolution.isCurrent()).toBe(false);
+    expect(h.patchCount()).toBe(0);
   });
 
   it.each([
