@@ -1,10 +1,12 @@
 # noinspection PyUnresolvedReferences
 import os
+import tempfile
 import unittest
 from datetime import datetime
 
 from recce.core import RecceContext
 from recce.models import Check, Run, RunType
+from recce.models.types import RunStatus
 from recce.state import ArtifactsRoot, FileStateLoader, RecceState
 from tests.adapter.dbt_adapter.conftest import dbt_test_helper  # noqa: F401
 
@@ -130,23 +132,39 @@ class TestRecceState(unittest.TestCase):
         self.assertEqual(adapter.base_manifest.metadata.invocation_id, manifest.get("metadata").get("invocation_id"))
 
     def test_state_loader(self):
-        # copy ./recce_state.json to temp and open
+        expected_run = Run(
+            type=RunType.ROW_COUNT_DIFF,
+            name="Customers row count",
+            params={"node_names": ["customers"]},
+            result={"customers": {"base": 100, "curr": 50}},
+            status=RunStatus.FINISHED,
+        )
+        expected_check = Check(
+            name="Customers changed",
+            description="Review the customer count",
+            type=RunType.ROW_COUNT_DIFF,
+            params={"node_names": ["customers"]},
+            is_checked=True,
+        )
+        expected_state = RecceState(runs=[expected_run], checks=[expected_check])
 
-        # use library to create a temp file in the context
-        import os
-        import shutil
-        import tempfile
+        with tempfile.TemporaryDirectory() as temp_dir:
+            state_file = os.path.join(temp_dir, "state.json")
+            expected_state.to_file(state_file)
+            state = FileStateLoader(state_file=state_file).load()
 
-        with tempfile.NamedTemporaryFile() as f:
-            # copy ./recce_state.json to temp file
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            state_file = os.path.join(current_dir, "recce_state.json")
-            shutil.copy(state_file, f.name)
-
-            # load the state file
-            state_loader = FileStateLoader(state_file=f.name)
-            state = state_loader.load()
-            assert len(state.runs) == 17
+        self.assertIsInstance(state, RecceState)
+        self.assertEqual(len(state.runs), 1)
+        self.assertEqual(state.runs[0].run_id, expected_run.run_id)
+        self.assertEqual(state.runs[0].type, RunType.ROW_COUNT_DIFF)
+        self.assertEqual(state.runs[0].status, RunStatus.FINISHED)
+        self.assertEqual(state.runs[0].params, {"node_names": ["customers"]})
+        self.assertEqual(state.runs[0].result, {"customers": {"base": 100, "curr": 50}})
+        self.assertEqual(len(state.checks), 1)
+        self.assertEqual(state.checks[0].check_id, expected_check.check_id)
+        self.assertEqual(state.checks[0].name, "Customers changed")
+        self.assertEqual(state.checks[0].type, RunType.ROW_COUNT_DIFF)
+        self.assertTrue(state.checks[0].is_checked)
 
 
 def test_lineage_diff(dbt_test_helper):

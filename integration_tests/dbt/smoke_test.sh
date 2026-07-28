@@ -9,11 +9,11 @@ pwd
 git restore models/customers.sql
 dbt --version
 dbt deps
-dbt seed --target-path target-base
-dbt run --target-path target-base
-dbt docs generate --target-path target-base
+dbt seed --target base --target-path target-base
+dbt run --target base --target-path target-base
+dbt docs generate --target base --target-path target-base
 
-echo "where customer_id > 0" >> models/customers.sql
+echo "where customer_id <= 50" >> models/customers.sql
 dbt run
 dbt docs generate
 git restore models/customers.sql
@@ -36,10 +36,19 @@ if ! [ -e recce_state.json ]; then
     exit 1
 fi
 
-model=$(cat recce_state.json | jq '.runs[0].result | keys | .[0]' | tr -d '"')
-run_type=$(cat recce_state.json | jq '.runs[0]'.type | tr -d '"')
-assert_string_value $model "customers"
-assert_string_value $run_type "row_count_diff"
+row_count_run=$(jq -c '[.runs[] | select(.type == "row_count_diff")] | first' recce_state.json)
+model=$(jq -r '.result | keys | first' <<< "$row_count_run")
+run_type=$(jq -r '.type' <<< "$row_count_run")
+run_status=$(jq -r '.status' <<< "$row_count_run")
+run_error=$(jq -r 'if .error == null then "null" else .error end' <<< "$row_count_run")
+base_count=$(jq -r '.result.customers.base' <<< "$row_count_run")
+current_count=$(jq -r '.result.customers.curr' <<< "$row_count_run")
+assert_string_value "$model" "customers"
+assert_string_value "$run_type" "row_count_diff"
+assert_string_value "$run_status" "Finished"
+assert_string_value "$run_error" "null"
+assert_string_value "$base_count" "100"
+assert_string_value "$current_count" "50"
 
 # Recce Summary
 recce summary ./recce_state.json | tee recce_summary.md
