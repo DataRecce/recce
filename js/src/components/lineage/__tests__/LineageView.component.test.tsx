@@ -175,6 +175,15 @@ vi.mock("@xyflow/react", () => ({
 // Mock @datarecce/ui contexts
 const mockRefetchLineageGraph = vi.fn();
 const mockRefetchRunsAggregated = vi.fn();
+let mockActiveRun:
+  | {
+      type: "schema_diff";
+      run_id: string;
+      run_at: string;
+    }
+  | undefined;
+let mockActiveRunId: string | undefined;
+let mockIsRunResultOpen = false;
 
 const mockLineageGraphContext = {
   lineageGraph: undefined as LineageGraph | undefined,
@@ -206,11 +215,11 @@ vi.mock("@datarecce/ui/contexts", async () => {
     useRecceInstanceContext: vi.fn(() => mockRecceInstanceContext),
     useRecceServerFlag: vi.fn(() => ({ data: {} })),
     useRecceActionContext: vi.fn(() => ({
-      runId: undefined,
+      runId: mockActiveRunId,
       showRunId: mockShowRunId,
       closeRunResult: mockCloseRunResult,
       runAction: mockRunAction,
-      isRunResultOpen: false,
+      isRunResultOpen: mockIsRunResultOpen,
     })),
     LineageViewContext: mockLineageViewContext,
     useLineageViewContextSafe: vi.fn(() => ({
@@ -528,7 +537,7 @@ vi.mock("@datarecce/ui/hooks", () => ({
     ImageDownloadModal: () => null,
     ref: { current: null },
   })),
-  useRun: vi.fn(() => ({ run: undefined })),
+  useRun: vi.fn(() => ({ run: mockActiveRun })),
   useThemeColors: vi.fn(() => ({
     isDark: false,
   })),
@@ -768,6 +777,9 @@ describe("LineageView Component", () => {
     mockLineageGraphContext.error = undefined;
     mockRecceInstanceContext.featureToggles = { mode: "full" };
     mockRecceInstanceContext.singleEnv = false;
+    mockActiveRun = undefined;
+    mockActiveRunId = undefined;
+    mockIsRunResultOpen = false;
 
     // Reset node state mock
     mockUseNodesStateReturnValue = [[], vi.fn(), vi.fn()];
@@ -1790,6 +1802,81 @@ describe("LineageView Component", () => {
         "data-node-id",
         "model.test.node2",
       );
+    });
+
+    it("does not let an unchanged open run supersede a newer CLL interaction", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      mockActiveRunId = "run-node2";
+      mockIsRunResultOpen = true;
+      mockActiveRun = {
+        type: "schema_diff",
+        run_id: mockActiveRunId,
+        run_at: "2026-07-28T00:00:00Z",
+      };
+      const slowShow = deferred<ColumnLineageData>();
+      const mockMutateAsync = vi.fn(() => slowShow.promise);
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("show-impact-node1")).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByTestId("show-impact-node1"));
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+      await act(async () => {
+        slowShow.resolve(createColumnLineageData());
+        await slowShow.promise;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(screen.getByTestId("node-view")).toHaveAttribute(
+        "data-node-id",
+        "model.test.node1",
+      );
+    });
+
+    it("lets a newly opened run supersede an older CLL interaction", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      const slowShow = deferred<ColumnLineageData>();
+      const mockMutateAsync = vi.fn(() => slowShow.promise);
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      const view = (
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>
+      );
+      const { rerender } = render(view);
+      await waitFor(() =>
+        expect(screen.getByTestId("show-impact-node1")).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByTestId("show-impact-node1"));
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+
+      mockActiveRunId = "new-run";
+      mockIsRunResultOpen = true;
+      mockActiveRun = {
+        type: "schema_diff",
+        run_id: mockActiveRunId,
+        run_at: "2026-07-28T00:00:00Z",
+      };
+      rerender(view);
+
+      await act(async () => {
+        slowShow.resolve(createColumnLineageData());
+        await slowShow.promise;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(screen.queryByTestId("node-view")).not.toBeInTheDocument();
     });
 
     it("retains previous CLL history when a deferred reset is superseded", async () => {
