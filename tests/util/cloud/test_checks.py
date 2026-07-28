@@ -6,6 +6,7 @@ checks in Recce Cloud sessions.
 """
 
 import unittest
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
@@ -138,36 +139,6 @@ class TestChecksCloud(unittest.TestCase):
         assert result == updated_check["check"]
 
     @patch("recce.util.cloud.ChecksCloud._request")
-    def test_delete_check_success_204(self, mock_request):
-        """Test successful check deletion with 204 No Content."""
-        # Arrange
-        mock_response = Mock()
-        mock_response.ok = True
-        mock_response.status_code = 204
-        mock_request.return_value = mock_response
-
-        # Act
-        self.client.delete_check("org1", "proj1", "sess1", "check123")
-
-        # Assert
-        self.assertEqual(self.client._request.return_value.status_code, 204)
-
-    @patch("recce.util.cloud.ChecksCloud._request")
-    def test_delete_check_success_200(self, mock_request):
-        """Test successful check deletion with 200 OK."""
-        # Arrange
-        mock_response = Mock()
-        mock_response.ok = True
-        mock_response.status_code = 200
-        mock_request.return_value = mock_response
-
-        # Act
-        self.client.delete_check("org1", "proj1", "sess1", "check123")
-
-        # Assert - should not raise an exception
-        self.assertEqual(self.client._request.call_count, 1)
-
-    @patch("recce.util.cloud.ChecksCloud._request")
     def test_delete_check_error(self, mock_request):
         """Test delete_check with API error."""
         # Arrange
@@ -185,6 +156,23 @@ class TestChecksCloud(unittest.TestCase):
         # Assertions
         self.assertIn(f"Failed to delete check {check_id} from Recce Cloud.", str(context.exception))
         self.assertEqual(context.exception.status_code, 403)
+
+
+@pytest.mark.parametrize("status_code", [200, 204])
+def test_delete_check_success(status_code):
+    """Both documented successful DELETE responses avoid error handling."""
+    client = ChecksCloud("test-token")
+    response = SimpleNamespace(status_code=status_code)
+
+    with (
+        patch.object(client, "_request", return_value=response) as request,
+        patch.object(client, "_raise_for_status") as raise_for_status,
+    ):
+        client.delete_check("org1", "proj1", "sess1", "check123")
+
+    expected_url = f"{client.base_url_v2}/organizations/org1/projects/proj1/" "sessions/sess1/checks/check123"
+    request.assert_called_once_with("DELETE", expected_url)
+    raise_for_status.assert_not_called()
 
 
 class TestIntegrationWithRecceCloud:

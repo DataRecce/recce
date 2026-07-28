@@ -1,4 +1,6 @@
 import os
+from datetime import datetime
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -20,25 +22,23 @@ pr2_manifest_dir = os.path.join(current_dir, "data", "manifest", "pr2")  # Pull 
 
 
 def test_generate_summary_metadata():
-    dbt_version = DbtVersion()
-    if dbt_version < "1.8.1":
-        pytest.skip("Dbt version is less than 1.8.1")
+    base_lineage = {
+        "manifest_metadata": SimpleNamespace(generated_at=datetime(2024, 1, 2, 3, 4, 5)),
+        "catalog_metadata": SimpleNamespace(generated_at=datetime(2024, 1, 2, 4, 5, 6)),
+    }
+    current_lineage = {
+        "manifest_metadata": SimpleNamespace(generated_at=datetime(2025, 6, 7, 8, 9, 10)),
+        "catalog_metadata": None,
+    }
 
-    manifest = load_manifest(path=os.path.join(current_dir, "manifest.json"))
-    assert manifest is not None
-    dbt_adapter = DbtAdapter(curr_manifest=manifest)
-    curr_lineage = dbt_adapter.get_lineage()
-    base_lineage = dbt_adapter.get_lineage()
+    summary = generate_summary_metadata(base_lineage, current_lineage)
 
-    # Summary with no changes
-    generate_summary_metadata(curr_lineage, base_lineage)
-
-    base_manifest = load_manifest(path=os.path.join(base_manifest_dir, "manifest.json"))
-    curr_manifest = load_manifest(path=os.path.join(pr2_manifest_dir, "manifest.json"))
-    dbt_adapter = DbtAdapter(curr_manifest=curr_manifest, base_manifest=base_manifest)
-    curr_lineage = dbt_adapter.get_lineage()
-    base_lineage = dbt_adapter.get_lineage(base=True)
-    generate_summary_metadata(curr_lineage, base_lineage)
+    assert summary == (
+        "|        |Manifest            |Catalog             |\n"
+        "|--------|--------------------|--------------------|\n"
+        "|Base    |2024-01-02 03:04:05 |2024-01-02 04:05:06 |\n"
+        "|Current |2025-06-07 08:09:10 |N/A                 |"
+    )
 
 
 def test_build_lineage_graph():
