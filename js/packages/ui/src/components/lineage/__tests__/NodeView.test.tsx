@@ -8,6 +8,7 @@
  */
 
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import type { NodeColumnData } from "../../../api";
 import type { NodeViewNodeData } from "../NodeView";
@@ -372,6 +373,81 @@ describe("NodeView", () => {
       expect(
         screen.queryByRole("button", { name: /add schema diff to checklist/i }),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("disabled action tooltips", () => {
+    /**
+     * Profiling an added or a removed model has nothing to compare against, so
+     * the action button is disabled and has to say why on hover. The button is
+     * wrapped in a span precisely because a disabled button fires no pointer
+     * events — hover the wrapper, as the user's cursor does.
+     */
+    async function hoverDisabledReason(buttonName: RegExp) {
+      const user = userEvent.setup();
+      const button = screen.getByRole("button", { name: buttonName });
+      const wrapper = button.parentElement;
+      if (wrapper == null) throw new Error("action button has no hover target");
+      await user.hover(wrapper);
+      return { button, wrapper };
+    }
+
+    test.each(["added", "removed"])(
+      "explains why Profile is unavailable for a %s model in diff mode",
+      async (changeStatus) => {
+        const node = createNode("model", testColumns);
+        node.data.changeStatus = changeStatus;
+
+        renderNodeView(node, testColumns);
+
+        const { button } = await hoverDisabledReason(/^profile$/i);
+
+        expect(button).toBeDisabled();
+        expect(await screen.findByRole("tooltip")).toHaveTextContent(
+          "Unavailable for added or removed resources.",
+        );
+      },
+    );
+
+    test("explains why Profile is unavailable for an added model in single-env mode", async () => {
+      const node = createNode("model", testColumns);
+      node.data.changeStatus = "added";
+
+      renderNodeView(node, testColumns, { isSingleEnv: true });
+
+      const { button } = await hoverDisabledReason(/^profile$/i);
+
+      expect(button).toBeDisabled();
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "Unavailable for added or removed resources.",
+      );
+    });
+
+    test("reports an unsupported action instead when the model itself is diffable", async () => {
+      const node = createNode("model", testColumns);
+      node.data.changeStatus = "modified";
+
+      renderNodeView(node, testColumns, {
+        isActionAvailable: (runType) => runType !== "value_diff",
+      });
+
+      await hoverDisabledReason(/^value$/i);
+
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "This action is not supported yet.",
+      );
+    });
+
+    test("shows no reason on an action that is available", async () => {
+      const node = createNode("model", testColumns);
+      node.data.changeStatus = "modified";
+
+      renderNodeView(node, testColumns);
+
+      const { button } = await hoverDisabledReason(/^profile$/i);
+
+      expect(button).toBeEnabled();
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
     });
   });
 });
