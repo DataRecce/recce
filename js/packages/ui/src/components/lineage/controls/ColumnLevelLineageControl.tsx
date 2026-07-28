@@ -42,7 +42,7 @@ import type { CllInput, ColumnLineageData } from "../../../api/cll";
 import type { LineageDiffViewOptions } from "../../../api/lineagecheck";
 import type { LineageGraph } from "../../../contexts/lineage/types";
 import { useIsDark } from "../../../hooks/useIsDark";
-import { impactRadiusCllInput } from "../changeAnalysisState";
+import { activateImpactRadius } from "../changeAnalysisState";
 
 /**
  * Props for the ColumnLevelLineageControl component.
@@ -271,8 +271,10 @@ export const ColumnLevelLineageControl = ({
                 }
                 startIcon={<FaRegDotCircle />}
                 onClick={() => {
-                  setChangeAnalysisMode?.(true);
-                  void onShowCll(impactRadiusCllInput());
+                  activateImpactRadius({
+                    setChangeAnalysisMode,
+                    showColumnLevelLineage: onShowCll,
+                  });
                 }}
               >
                 Impact Radius
