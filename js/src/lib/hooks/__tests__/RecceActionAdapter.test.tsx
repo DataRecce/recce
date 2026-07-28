@@ -28,7 +28,6 @@ vi.mock("@datarecce/ui/api", async () => {
     ...actual,
     submitRun: vi.fn(),
     searchRuns: vi.fn(),
-    cacheKeys: (actual as Record<string, unknown>).cacheKeys,
   };
 });
 
@@ -47,10 +46,13 @@ vi.mock("@datarecce/ui/components/run", () => ({
     RunResultView: () => <div>Result View</div>,
     RunForm: undefined,
   })),
-  RunModalOss: vi.fn(({ isOpen, onClose, title }) =>
+  RunModalOss: vi.fn(({ isOpen, onClose, title, initialRun }) =>
     isOpen ? (
       <div data-testid="run-modal">
         <span data-testid="modal-title">{title}</span>
+        <span data-testid="modal-initial-run-id">
+          {initialRun?.run_id ?? "none"}
+        </span>
         <button type="button" onClick={onClose} data-testid="modal-close">
           Close
         </button>
@@ -67,7 +69,7 @@ vi.mock("next/navigation", () => ({
   })),
 }));
 
-import { cacheKeys, searchRuns, submitRun } from "@datarecce/ui/api";
+import { searchRuns, submitRun } from "@datarecce/ui/api";
 import { findByRunType } from "@datarecce/ui/components/run";
 import { toaster } from "@datarecce/ui/components/ui/Toaster";
 import { useRecceActionContext } from "@datarecce/ui/contexts";
@@ -258,9 +260,10 @@ describe("RecceActionAdapter", () => {
       });
     });
 
-    it("looks up the previous run to prefill the form when showLast is set", async () => {
+    it("looks up the previous run and prefills the modal with it when showLast is set", async () => {
       // showLast is an OSS-only option: the adapter fetches the most recent
-      // matching run so the modal can open on its params.
+      // matching run and passes it to the modal as initialRun so the form can
+      // open pre-populated with its params.
       mockSearchRuns.mockResolvedValue([
         {
           run_id: "existing-run-789",
@@ -301,6 +304,12 @@ describe("RecceActionAdapter", () => {
           { sql_template: "SELECT 1" },
           1,
           expect.anything(),
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("modal-initial-run-id")).toHaveTextContent(
+          "existing-run-789",
         );
       });
     });
@@ -366,9 +375,13 @@ describe("RecceActionAdapter", () => {
         screen.getByTestId("show-run-btn").click();
       });
 
+      // The public run query key ("runs") is a stable contract other callers
+      // (e.g. the run history list) key their queries on — asserted as a
+      // literal here rather than via cacheKeys.runs() so this test can't
+      // drift in lockstep with the adapter's own cache-key import.
       await waitFor(() => {
         expect(invalidateQueries).toHaveBeenCalledWith({
-          queryKey: cacheKeys.runs(),
+          queryKey: ["runs"],
         });
       });
     });
