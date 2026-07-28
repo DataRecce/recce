@@ -12,6 +12,17 @@ running_tasks = {}
 logger = logging.getLogger("uvicorn")
 
 
+def _task_key(run_id) -> str:
+    """Normalize a run id to the single key type ``running_tasks`` uses.
+
+    ``Run.run_id`` is a ``UUID``, the cancel endpoint's path param is a ``UUID``,
+    and ``_mark_run_cancelled`` takes a ``str``. Routing every access through
+    this keeps a writer and a reader from disagreeing on the key type, which is
+    invisible at the call site and turns cancel into a silent no-op.
+    """
+    return str(run_id)
+
+
 def _get_ref_model(sql_template: str) -> Optional[str]:
     import re
 
@@ -146,7 +157,11 @@ def submit_run(type, params, check_id=None, triggered_by=None):
     RunDAO().create(run)
 
     loop = asyncio.get_running_loop()
-    running_tasks[run.run_id] = task
+    # Keyed by the string form, because that is what every reader has: the
+    # cancel endpoint receives a UUID path param and hands _mark_run_cancelled
+    # str(run_id). A UUID key never matches that lookup, which silently turned
+    # every cancel into a no-op (the endpoint reports it as acknowledged).
+    running_tasks[_task_key(run.run_id)] = task
 
     def progress_listener(message=None, percentage=None):
         run.progress = {"message": message, "percentage": percentage}
@@ -283,7 +298,7 @@ def _mark_run_cancelled(run_id: str) -> Tuple[Run, Task]:
     if run is None:
         raise RecceException(f"Run ID '{run_id}' not found")
 
-    task = running_tasks.get(run_id)
+    task = running_tasks.get(_task_key(run_id))
     if task is None:
         raise RecceException(f"Run task for Run ID '{run_id}' not found")
 

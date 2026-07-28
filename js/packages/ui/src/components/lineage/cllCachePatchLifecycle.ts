@@ -86,31 +86,40 @@ interface PendingCll {
 }
 
 /**
- * Whether two CLL requests ask the same question. `CllInput` is six optional
- * primitives, so comparing them field by field is exact, needs no
- * deep-equality dependency, and does not depend on key order the way
- * serializing would. A seventh field must be added here too.
+ * Every field of `CllInput`, as a value.
+ *
+ * The `satisfies` clause is the whole point: add a field to `CllInput` and this
+ * object stops compiling until the field is listed here, so neither the
+ * comparison nor the normalization below can silently ignore it. An ignored
+ * field means two different questions compare equal and one request reuses the
+ * other's cached answer — a comment asking the next author to remember could not
+ * enforce that.
+ */
+export const CLL_INPUT_FIELDS = Object.keys({
+  node_id: true,
+  column: true,
+  change_analysis: true,
+  no_cll: true,
+  no_upstream: true,
+  no_downstream: true,
+} satisfies Record<keyof CllInput, true>) as (keyof CllInput)[];
+
+/**
+ * Whether two CLL requests ask the same question. `CllInput` is optional
+ * primitives throughout, so comparing field by field is exact, needs no
+ * deep-equality dependency, and does not depend on key order the way serializing
+ * would.
  */
 function isSameCllApiInput(a: CllInput, b: CllInput): boolean {
-  return (
-    a.node_id === b.node_id &&
-    a.column === b.column &&
-    a.change_analysis === b.change_analysis &&
-    a.no_cll === b.no_cll &&
-    a.no_upstream === b.no_upstream &&
-    a.no_downstream === b.no_downstream
-  );
+  return CLL_INPUT_FIELDS.every((field) => a[field] === b[field]);
 }
 
 function normalizeCllApiInput(input: CllInput): CllInput {
-  return {
-    node_id: input.node_id,
-    column: input.column,
-    change_analysis: input.change_analysis,
-    no_cll: input.no_cll,
-    no_upstream: input.no_upstream,
-    no_downstream: input.no_downstream,
-  };
+  const normalized: Record<string, unknown> = {};
+  for (const field of CLL_INPUT_FIELDS) {
+    normalized[field] = input[field];
+  }
+  return normalized as CllInput;
 }
 
 export function createCllCachePatchLifecycle(): CllCachePatchLifecycle {

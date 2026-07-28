@@ -34,7 +34,10 @@ import type {
 } from "../../../api";
 import { cacheKeys } from "../../../api/cacheKeys";
 import { buildLineageGraph } from "../../../contexts/lineage/utils";
-import { createCllCachePatchLifecycle } from "../cllCachePatchLifecycle";
+import {
+  CLL_INPUT_FIELDS,
+  createCllCachePatchLifecycle,
+} from "../cllCachePatchLifecycle";
 import { patchLineageCacheFromCll } from "../patchLineageDiffFromCll";
 
 // ---------------------------------------------------------------------------
@@ -683,14 +686,27 @@ describe("CLL cache patch lifecycle", () => {
     expect(h.patchCount()).toBe(0);
   });
 
-  it.each([
-    ["node_id", { node_id: NODE_B }],
-    ["column", { column: "customer_id" }],
-    ["change_analysis", { change_analysis: false }],
-    ["no_cll", { no_cll: false }],
-    ["no_upstream", { no_upstream: false }],
-    ["no_downstream", { no_downstream: false }],
-  ] satisfies [keyof CllInput, Partial<CllInput>][])(
+  // Typed as an exhaustive Record, not a loose array: a new CllInput field fails
+  // to compile here until it gets its own row, so the matrix cannot fall behind
+  // the type the way a hand-written list can.
+  const FIELD_DIFFERENCES: Record<keyof CllInput, Partial<CllInput>> = {
+    node_id: { node_id: NODE_B },
+    column: { column: "customer_id" },
+    change_analysis: { change_analysis: false },
+    no_cll: { no_cll: false },
+    no_upstream: { no_upstream: false },
+    no_downstream: { no_downstream: false },
+  };
+
+  it("compares and normalizes every field of CllInput", () => {
+    expect([...CLL_INPUT_FIELDS].sort()).toEqual(
+      Object.keys(FIELD_DIFFERENCES).sort(),
+    );
+  });
+
+  it.each(
+    Object.entries(FIELD_DIFFERENCES) as [keyof CllInput, Partial<CllInput>][],
+  )(
     "treats a difference in normalized %s as a genuine request",
     async (_field, difference) => {
       const h = createHarness();

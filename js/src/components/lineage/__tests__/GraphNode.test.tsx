@@ -132,10 +132,15 @@ vi.mock("@datarecce/ui/components/run", () => ({
   })),
 }));
 
-// Mock @datarecce/ui - add isSchemaChanged and COLUMN_HEIGHT to existing mock
+// Mock @datarecce/ui. COLUMN_HEIGHT is a deliberately unreal fixture value:
+// GraphNode must forward the shared constant, and a fixture that could never be
+// the production number is what proves it is forwarded rather than hardcoded.
+// The real value's own contract (it must equal COLUMN_NODE_HEIGHT) is pinned in
+// packages/ui/src/contexts/lineage/__tests__/columnHeight.test.ts.
+const COLUMN_HEIGHT_FIXTURE = 1234;
 vi.mock("@datarecce/ui", () => ({
   isSchemaChanged: vi.fn(() => false),
-  COLUMN_HEIGHT: 28,
+  COLUMN_HEIGHT: 1234,
 }));
 
 // Mock MUI theme token
@@ -273,11 +278,19 @@ describe("GraphNode", () => {
   const mockUseLineageViewContextSafe = useLineageViewContextSafe as Mock;
   const mockUseLineageGraphContext = useLineageGraphContext as Mock;
 
+  // The canvas zoom the fake React Flow store reports. GraphNode's own selector
+  // is what turns it into `showContent`, so the 30% threshold is production's,
+  // not the test's.
+  let canvasZoom = 1;
+
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Default mock implementations
-    mockUseStore.mockReturnValue(true); // showContent = true (zoom > 30%)
+    canvasZoom = 1;
+    mockUseStore.mockImplementation(
+      (selector: (state: { transform: [number, number, number] }) => unknown) =>
+        selector({ transform: [0, 0, canvasZoom] }),
+    );
     mockUseThemeColors.mockReturnValue(mockThemeColors);
     mockUseLineageViewContextSafe.mockReturnValue(createMockContext());
     mockUseLineageGraphContext.mockReturnValue(createMockLineageGraphContext());
@@ -323,13 +336,22 @@ describe("GraphNode", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("hides content at low zoom level (< 30%)", () => {
-      mockUseStore.mockReturnValue(false); // showContent = false
+    it("hides content once the canvas is zoomed below 30%", () => {
+      canvasZoom = 0.29;
       const props = createMockNodeProps();
 
       render(<GraphNode {...props} />);
 
       expect(mockedLineageNode.mock.calls[0][0].showContent).toBe(false);
+    });
+
+    it("shows content again just above 30%", () => {
+      canvasZoom = 0.31;
+      const props = createMockNodeProps();
+
+      render(<GraphNode {...props} />);
+
+      expect(mockedLineageNode.mock.calls[0][0].showContent).toBe(true);
     });
 
     it("passes different resourceType values to LineageNode", () => {
@@ -344,7 +366,13 @@ describe("GraphNode", () => {
 
       for (const resourceType of resourceTypes) {
         vi.clearAllMocks();
-        mockUseStore.mockReturnValue(true);
+        mockUseStore.mockImplementation(
+          (
+            selector: (state: {
+              transform: [number, number, number];
+            }) => unknown,
+          ) => selector({ transform: [0, 0, canvasZoom] }),
+        );
         mockUseThemeColors.mockReturnValue(mockThemeColors);
         mockUseLineageViewContextSafe.mockReturnValue(createMockContext());
         mockUseLineageGraphContext.mockReturnValue(
@@ -792,7 +820,9 @@ describe("GraphNode", () => {
       render(<GraphNode {...props} />);
 
       expect(mockedLineageNode.mock.calls[0][0].columnCount).toBe(3);
-      expect(mockedLineageNode.mock.calls[0][0].columnHeight).toBe(28);
+      expect(mockedLineageNode.mock.calls[0][0].columnHeight).toBe(
+        COLUMN_HEIGHT_FIXTURE,
+      );
     });
 
     it("does not render column container when no columns", () => {

@@ -55,6 +55,9 @@ function expectCount(label: string, count: number) {
   expect(
     within(countGroup as HTMLElement).getByText(String(count)),
   ).toBeVisible();
+  // Every counter carries the icon for its own change status, so dropping a
+  // branch of getIconForChangeStatus (or the conditional render) fails here.
+  expect((countGroup as HTMLElement).querySelector("svg")).not.toBeNull();
 }
 
 function expectCounts({
@@ -140,13 +143,17 @@ describe("ChangeSummary counts from lineage graph data", () => {
             ? { id: "added", col_a: "added", col_b: "added" }
             : status === "removed"
               ? { id: "removed", col_a: "removed" }
-              : { col_a: "modified", col_b: "added" };
+              : { col_a: "modified", col_b: "modified", col_c: "added" };
         return createNode(`model.model_${index}`, status, columnChanges);
       }),
     );
 
     render(<ChangeSummary lineageGraph={graph} />);
 
-    expectCounts({ models: [5, 5, 5], columns: [20, 10, 5] });
+    // Two modified columns per modified model, deliberately: with one,
+    // `Model Removed` (5) and `Column Modified` (5) held the same value in every
+    // fixture, so swapping those two counters passed the whole suite. Across the
+    // four fixtures no pair of the six counters is equal everywhere now.
+    expectCounts({ models: [5, 5, 5], columns: [20, 10, 10] });
   });
 });
