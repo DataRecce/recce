@@ -281,6 +281,14 @@ export function PrivateLineageView(
   const cllCachePatch = useRef(createCllCachePatchLifecycle()).current;
   const layoutGenerationRef = useRef(0);
   const cllInteractionGenerationRef = useRef(0);
+  const runFocusIntentRef = useRef<string | undefined>(undefined);
+  const pendingRunFocusIntentRef = useRef<
+    | {
+        key: string;
+        interactionGeneration: number;
+      }
+    | undefined
+  >(undefined);
   const supersedeCllInteraction = useCallback(
     () => ++cllInteractionGenerationRef.current,
     [],
@@ -1101,15 +1109,19 @@ export function PrivateLineageView(
     });
   };
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: handleViewOptionsChanged and onNodeClick are intentionally omitted
+  // biome-ignore lint/correctness/useExhaustiveDependencies: run-result synchronization is keyed explicitly below
   useEffect(() => {
     const runResultType = run?.type;
     if (!interactive) {
       // Skip the following logic if the view is not interactive
+      runFocusIntentRef.current = undefined;
+      pendingRunFocusIntentRef.current = undefined;
       return;
     }
     if (!isRunResultOpen) {
       // Skip the following logic if the run result is not open
+      runFocusIntentRef.current = undefined;
+      pendingRunFocusIntentRef.current = undefined;
       return;
     }
     if (
@@ -1119,59 +1131,94 @@ export function PrivateLineageView(
       )
     ) {
       // Skip the following logic if the run result type is not related to a node
+      runFocusIntentRef.current = undefined;
+      pendingRunFocusIntentRef.current = undefined;
       return;
     }
 
-    if (!selectMode) {
-      // Skip the following logic if the select mode is not single
-      let selectedRunModel = undefined;
-      if (
-        isTopKDiffRun(run) ||
-        isProfileDiffRun(run) ||
-        isHistogramDiffRun(run) ||
-        isValueDiffRun(run) ||
-        isValueDiffDetailRun(run)
-      ) {
-        selectedRunModel = run.params?.model;
-      }
-
-      // Create a mock MouseEvent
-      const mockEvent = new MouseEvent("click", {
-        bubbles: true,
-        cancelable: true,
-        view: window,
-      }) as unknown as React.MouseEvent;
-
-      if (selectedRunModel) {
-        // If the run result is related to a node, select the node to show NodeView
-        const node = findNodeByName(selectedRunModel);
-        if (!node) {
-          // Cannot find the node in the current nodes, try to change the view mode to 'all'
-          void handleViewOptionsChanged({
-            ...viewOptions,
-            view_mode: "all",
-          });
-        } else if (isLineageGraphNode(node)) {
-          if (focusedNode?.id !== node.id) {
-            // Only select the node if it is not already selected.
-            onNodeClick(mockEvent, node);
-          } else {
-            // Reasserting the current focus is still newer intent than any
-            // pending CLL interaction.
-            supersedeCllInteraction();
-          }
-        }
-      } else {
-        // If the run result is not related to a node, close the NodeView
-        onNodeViewClosed();
-      }
+    if (selectMode) {
+      // Skip the following logic if the select mode is not single.
+      runFocusIntentRef.current = undefined;
+      pendingRunFocusIntentRef.current = undefined;
+      return;
     }
-    // handleViewOptionsChanged and onNodeClick are intentionally omitted to prevent
-    // unnecessary re-runs. These functions are called conditionally within the effect
-    // and don't need to trigger the effect when they change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    let selectedRunModel = undefined;
+    if (
+      isTopKDiffRun(run) ||
+      isProfileDiffRun(run) ||
+      isHistogramDiffRun(run) ||
+      isValueDiffRun(run) ||
+      isValueDiffDetailRun(run)
+    ) {
+      selectedRunModel = run.params?.model;
+    }
+
+    const intentKey = JSON.stringify([
+      runId ?? run.run_id,
+      runResultType,
+      selectedRunModel,
+    ]);
+    const isNewIntent = runFocusIntentRef.current !== intentKey;
+    const pendingIntent = pendingRunFocusIntentRef.current;
+    const isCurrentPendingIntent =
+      pendingIntent?.key === intentKey &&
+      pendingIntent.interactionGeneration ===
+        cllInteractionGenerationRef.current;
+
+    if (!isNewIntent && !isCurrentPendingIntent) {
+      pendingRunFocusIntentRef.current = undefined;
+      return;
+    }
+
+    let interactionGeneration = pendingIntent?.interactionGeneration;
+    if (isNewIntent) {
+      interactionGeneration = supersedeCllInteraction();
+      runFocusIntentRef.current = intentKey;
+      pendingRunFocusIntentRef.current = undefined;
+    }
+
+    if (selectedRunModel) {
+      // If the run result is related to a node, select the node to show NodeView.
+      const node = findNodeByName(selectedRunModel);
+      if (!node) {
+        if (isNewIntent && interactionGeneration !== undefined) {
+          // The model may be hidden by the current view. Keep this run intent
+          // pending until the refreshed node set arrives, unless a newer user
+          // interaction supersedes it first.
+          pendingRunFocusIntentRef.current = {
+            key: intentKey,
+            interactionGeneration,
+          };
+          void handleViewOptionsChanged(
+            {
+              ...viewOptions,
+              view_mode: "all",
+            },
+            true,
+            false,
+            interactionGeneration,
+          );
+        }
+        return;
+      }
+
+      pendingRunFocusIntentRef.current = undefined;
+      if (isLineageGraphNode(node) && focusedNode?.id !== node.id) {
+        closeContextMenu();
+        setFocusedNodeId(node.id);
+        setFocusedHistory([]);
+      }
+    } else {
+      // A genuine non-model run intent closes the NodeView once. Rerenders from
+      // unrelated view changes must not repeatedly supersede newer CLL work.
+      pendingRunFocusIntentRef.current = undefined;
+      setFocusedNodeId(undefined);
+      setFocusedHistory([]);
+    }
   }, [
     run,
+    runId,
     viewOptions,
     isRunResultOpen,
     selectMode,
