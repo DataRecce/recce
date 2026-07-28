@@ -1,6 +1,6 @@
 "use client";
 
-import type { Check, ServerInfoResult } from "../../api";
+import type { Check } from "../../api";
 import {
   type CllInput,
   type ColumnLineageData,
@@ -89,6 +89,14 @@ import { LineageViewNotification } from "../notifications";
 import { HSplit, toaster } from "../ui";
 import { ActionControlOss } from "./ActionControlOss";
 import { ColumnLevelLineageControlOss } from "./ColumnLevelLineageControlOss";
+import {
+  buildCllApiInput,
+  columnClickCllInput,
+  impactRadiusCllInput,
+  isNodeShowingChangeAnalysis,
+  nextChangeAnalysisMode,
+  resolveResetCllInput,
+} from "./changeAnalysisState";
 import { computeColumnLineage } from "./computeColumnLineage";
 import { computeImpactedColumns } from "./computeImpactedColumns";
 import { computeIsImpacted } from "./computeIsImpacted";
@@ -117,7 +125,10 @@ import { LineageLegend } from "./legend";
 import { toReactFlow } from "./lineage";
 import { NodeViewOss as NodeView } from "./NodeViewOss";
 import type { NodeChangeStatus } from "./nodes/LineageNode";
-import { patchLineageFromCll } from "./patchLineageDiffFromCll";
+import {
+  patchLineageCacheFromCll,
+  shouldPatchLineageCache,
+} from "./patchLineageDiffFromCll";
 import { shouldCloseOrphanedRunResult } from "./runResultVisibility";
 import SetupConnectionBanner from "./SetupConnectionBannerOss";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
@@ -234,23 +245,11 @@ async function fetchCllAndPatchCache(
   }>,
   queryClient: ReturnType<typeof useQueryClient>,
 ): Promise<ColumnLineageData> {
-  const cllApiInput: CllInput = {
-    ...cllInput,
-    change_analysis: cllInput.change_analysis ?? changeAnalysis,
-  };
+  const cllApiInput = buildCllApiInput(cllInput, changeAnalysis);
   const cll = await actionGetCll.mutateAsync(cllApiInput);
-  if (cllApiInput.change_analysis && cll) {
+  if (shouldPatchLineageCache(cllApiInput, cll)) {
     cllCachePatchRef.current = { pending: true, cllData: cll };
-    queryClient.setQueryData(
-      cacheKeys.lineage(),
-      (old: ServerInfoResult | undefined) => {
-        if (!old) return old;
-        return {
-          ...old,
-          lineage: patchLineageFromCll(old.lineage, cll),
-        };
-      },
-    );
+    patchLineageCacheFromCll(queryClient, cll);
   }
   return cll;
 }
@@ -583,7 +582,7 @@ export function PrivateLineageView(
         autoTriggered = true;
         changeAnalysisModeRef.current = true;
         setChangeAnalysisMode(true);
-        cllInput = { change_analysis: true, no_upstream: true };
+        cllInput = impactRadiusCllInput();
         // Persist to viewOptions so the CLL survives effect re-fires
         // (e.g. when the lineageGraph cache is patched with change data)
         setViewOptions((prev) => ({
@@ -776,10 +775,13 @@ export function PrivateLineageView(
   ) => {
     const previousColumnLevelLineage = viewOptions.column_level_lineage;
 
-    // Clear change analysis mode when CLL is turned off entirely.
-    // In new CLL experience, impact is a one-way ratchet — never disable it.
-    if (!columnLevelLineage && !newCllExperience) {
-      setChangeAnalysisMode(false);
+    const nextMode = nextChangeAnalysisMode({
+      cllInput: columnLevelLineage,
+      changeAnalysisMode,
+      newCllExperience,
+    });
+    if (nextMode !== changeAnalysisMode) {
+      setChangeAnalysisMode(nextMode);
     }
 
     // Preserve positions when:
@@ -819,15 +821,13 @@ export function PrivateLineageView(
       } else {
         await showColumnLevelLineage(undefined, true);
       }
-    } else if (newCllExperience && changeAnalysisMode) {
-      // In new CLL experience, reset returns to Layer 2 (global impact)
+    } else {
+      // In the new CLL experience, reset returns to Layer 2 (global impact)
       // instead of clearing CLL entirely.
       await showColumnLevelLineage(
-        { change_analysis: true, no_upstream: true },
+        resolveResetCllInput({ changeAnalysisMode, newCllExperience }),
         true,
       );
-    } else {
-      await showColumnLevelLineage(undefined, true);
     }
   };
 
@@ -839,10 +839,9 @@ export function PrivateLineageView(
       return;
     }
 
-    void showColumnLevelLineage({
-      node_id: node.data.node.id,
-      column: node.data.column,
-    });
+    void showColumnLevelLineage(
+      columnClickCllInput(node.data.node.id, node.data.column),
+    );
   };
 
   const onNodeClick = (event: React.MouseEvent, node: Node) => {
@@ -952,11 +951,18 @@ export function PrivateLineageView(
           return;
         }
       }
-    } else if (!newCllExperience) {
+    } else {
       // Clear change analysis mode when CLL is cleared by any path
       // (reselect, selectParentNodes, selectChildNodes, etc.)
       // In new CLL experience, impact is a one-way ratchet.
-      setChangeAnalysisMode(false);
+      const nextMode = nextChangeAnalysisMode({
+        cllInput: undefined,
+        changeAnalysisMode,
+        newCllExperience,
+      });
+      if (nextMode !== changeAnalysisMode) {
+        setChangeAnalysisMode(nextMode);
+      }
     }
 
     // Capture positions if preservePositions is true
@@ -1231,20 +1237,13 @@ export function PrivateLineageView(
         return target in cll.current.parent_map[source];
       }
     },
-    isNodeShowingChangeAnalysis: (nodeId: string) => {
-      if (!lineageGraph || !changeAnalysisMode) {
-        return false;
-      }
-
-      const node =
-        nodeId in lineageGraph.nodes ? lineageGraph.nodes[nodeId] : undefined;
-
-      const cll = viewOptions.column_level_lineage;
-      if (cll?.node_id && !cll.column) {
-        return cll.node_id === nodeId && !!node?.data.changeStatus;
-      }
-      return !!node?.data.changeStatus;
-    },
+    isNodeShowingChangeAnalysis: (nodeId: string) =>
+      isNodeShowingChangeAnalysis({
+        nodeId,
+        changeAnalysisMode,
+        cllInput: viewOptions.column_level_lineage,
+        lineageGraph,
+      }),
     changeAnalysisMode,
     newCllExperience,
     setChangeAnalysisMode,
