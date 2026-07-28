@@ -158,7 +158,7 @@ function modifiedNodeACll(callMarker: string): ColumnLineageData {
       id: NODE_A,
       name: "orders",
       change_status: "modified",
-      change_category: "breaking",
+      change_category: "breaking", // wire-enum-ok -- legacy CLL response
       columns: {
         [`${NODE_A}.order_id`]: {
           name: "order_id",
