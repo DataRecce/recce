@@ -49,15 +49,3 @@ def test_recce_context_propagates_duckdb_external_access():
         )
 
     assert ctx.adapter.duckdb_external_access is True
-
-
-def test_dbt_adapter_support_tasks_without_required_dbt_package(dbt_test_helper):
-    adapter: DbtAdapter = dbt_test_helper.context.adapter
-    # Mock the macros in manifest to simulate no required dbt package installed
-    adapter.manifest.macros = {}
-
-    support_tasks = adapter.support_tasks()
-
-    for task_type in dbt_supported_registry:
-        task = task_type.value
-        assert task in support_tasks

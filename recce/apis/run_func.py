@@ -234,7 +234,7 @@ def submit_run(type, params, check_id=None, triggered_by=None):
                     else:
                         logger.warning(
                             f"Could not serialize task.params for run_id={run.run_id}: "
-                            f"unexpected type {type(task.params)} with value {repr(task.params)}"
+                            f"unexpected type {task.params.__class__} with value {repr(task.params)}"
                         )
                 except Exception as e:
                     logger.warning(f"Failed to serialize task.params: {e}")

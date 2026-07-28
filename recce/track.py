@@ -19,6 +19,21 @@ _event_init_lock = threading.Lock()
 _event_initialized = False
 
 
+def _initialize_event_tracking() -> None:
+    """Initialize event tracking at most once across concurrent commands."""
+    global _event_initialized
+    if not _event_initialized:
+        with _event_init_lock:
+            if not _event_initialized:
+                try:
+                    from recce import event
+
+                    event.init()
+                except Exception:
+                    logger.debug("Failed to initialize event tracking", exc_info=True)
+                _event_initialized = True
+
+
 class TrackCommand(Command):
     def __init__(
         self,
@@ -72,15 +87,7 @@ class TrackCommand(Command):
     def invoke(self, ctx: Context) -> t.Any:
         from recce import event
 
-        global _event_initialized
-        if not _event_initialized:
-            with _event_init_lock:
-                if not _event_initialized:
-                    try:
-                        event.init()
-                    except Exception:
-                        logger.debug("Failed to initialize event tracking", exc_info=True)
-                    _event_initialized = True
+        _initialize_event_tracking()
 
         from rich.console import Console
 
