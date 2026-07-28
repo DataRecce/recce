@@ -315,10 +315,16 @@ vi.mock("@datarecce/ui/components/lineage/topbar/LineageViewTopBarOss", () => ({
 }));
 
 vi.mock("@datarecce/ui/components/lineage/NodeViewOss", () => ({
-  NodeViewOss: vi.fn(({ node, onCloseNode }) => (
+  NodeViewOss: vi.fn(({ node, onCloseNode, onNavigateToNode }) => (
     <div data-testid="node-view" data-node-id={node?.id}>
       <button data-testid="close-node-view" onClick={onCloseNode}>
         Close
+      </button>
+      <button
+        data-testid="repeat-focused-node"
+        onClick={() => onNavigateToNode(node.id)}
+      >
+        Keep current focus
       </button>
     </div>
   )),
@@ -1634,10 +1640,10 @@ describe("LineageView Component", () => {
     it("keeps the production reset focus when an older show finishes late", async () => {
       const lineageGraph = createMockLineageGraph();
       setupWithLineageGraph(lineageGraph);
-      const slowShow = deferred<ColumnLineageData>();
+      const slowShowLayout =
+        deferred<[LineageGraphNode[], [], Record<string, Set<string>>]>();
       const mockMutateAsync = vi
         .fn()
-        .mockImplementationOnce(() => slowShow.promise)
         .mockResolvedValue(createColumnLineageData());
       (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
 
@@ -1650,15 +1656,18 @@ describe("LineageView Component", () => {
         expect(screen.getByTestId("show-impact-node1")).toBeInTheDocument(),
       );
       (toReactFlow as Mock).mockClear();
+      (toReactFlow as Mock).mockImplementationOnce(
+        () => slowShowLayout.promise,
+      );
 
       fireEvent.click(screen.getByTestId("show-impact-node1"));
-      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
-      fireEvent.click(screen.getByTestId("reset-cll"));
       await waitFor(() => expect(toReactFlow).toHaveBeenCalledTimes(1));
+      fireEvent.click(screen.getByTestId("reset-cll"));
+      await waitFor(() => expect(toReactFlow).toHaveBeenCalledTimes(2));
 
       await act(async () => {
-        slowShow.resolve(createColumnLineageData());
-        await slowShow.promise;
+        slowShowLayout.resolve([[], [], {}]);
+        await slowShowLayout.promise;
         await new Promise((resolve) => setTimeout(resolve, 0));
       });
 
@@ -1731,6 +1740,51 @@ describe("LineageView Component", () => {
         "model.test.node2",
       );
 
+      fireEvent.click(screen.getByTestId("previous-cll"));
+      expect(screen.getByTestId("node-view")).toHaveAttribute(
+        "data-node-id",
+        "model.test.node2",
+      );
+    });
+
+    it("honors repeated focus intent while an older show is pending", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      const slowShow = deferred<ColumnLineageData>();
+      const mockMutateAsync = vi.fn(() => slowShow.promise);
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByTestId("click-model.test.node2"),
+        ).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByTestId("click-model.test.node2"));
+      expect(screen.getByTestId("node-view")).toHaveAttribute(
+        "data-node-id",
+        "model.test.node2",
+      );
+
+      fireEvent.click(screen.getByTestId("show-impact-node1"));
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+      fireEvent.click(screen.getByTestId("repeat-focused-node"));
+
+      await act(async () => {
+        slowShow.resolve(createColumnLineageData());
+        await slowShow.promise;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(screen.getByTestId("node-view")).toHaveAttribute(
+        "data-node-id",
+        "model.test.node2",
+      );
       fireEvent.click(screen.getByTestId("previous-cll"));
       expect(screen.getByTestId("node-view")).toHaveAttribute(
         "data-node-id",
