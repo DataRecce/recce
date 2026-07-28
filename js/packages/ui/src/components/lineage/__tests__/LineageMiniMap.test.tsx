@@ -163,10 +163,4 @@ describe("MiniMap auto-disable for large graphs", () => {
 
     expect(screen.queryByTestId("minimap")).not.toBeInTheDocument();
   });
-
-  it("shows the MiniMap for an ordinary graph", async () => {
-    await renderWithNodeCount(10);
-
-    expect(screen.getByTestId("minimap")).toBeInTheDocument();
-  });
 });

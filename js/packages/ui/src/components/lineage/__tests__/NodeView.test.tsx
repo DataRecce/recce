@@ -447,7 +447,10 @@ describe("NodeView", () => {
       const { button } = await hoverDisabledReason(/^profile$/i);
 
       expect(button).toBeEnabled();
-      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+      // MUI opens the tooltip after an enter delay, so a synchronous
+      // queryByRole would pass even when a reason IS shown. findByRole waits
+      // out that delay and only rejects once nothing has appeared.
+      await expect(screen.findByRole("tooltip")).rejects.toThrow();
     });
   });
 });
