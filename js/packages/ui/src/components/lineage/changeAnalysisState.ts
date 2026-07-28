@@ -25,6 +25,25 @@ export function impactRadiusCllInput(nodeId?: string): CllInput {
 }
 
 /**
+ * The complete Impact Radius activation: turn change analysis on, then request
+ * the radius. This is the whole user-facing activation — the CLL control button
+ * and the node context menu item each run exactly this and nothing else, so the
+ * two halves cannot drift apart.
+ */
+export function activateImpactRadius({
+  nodeId,
+  setChangeAnalysisMode,
+  showColumnLevelLineage,
+}: {
+  nodeId?: string;
+  setChangeAnalysisMode?: (active: boolean) => void;
+  showColumnLevelLineage?: (cllInput: CllInput) => void | Promise<void>;
+}): void {
+  setChangeAnalysisMode?.(true);
+  void showColumnLevelLineage?.(impactRadiusCllInput(nodeId));
+}
+
+/**
  * CllInput for a column click (Layer 3). Carries only the node and column —
  * change analysis lives in `changeAnalysisMode`, not here.
  */
@@ -109,8 +128,10 @@ export function isNodeShowingChangeAnalysis({
   const node =
     nodeId in lineageGraph.nodes ? lineageGraph.nodes[nodeId] : undefined;
 
+  const nodeIsChanged = !!node?.data.changeStatus;
+
   if (cllInput?.node_id && !cllInput.column) {
-    return cllInput.node_id === nodeId && !!node?.data.changeStatus;
+    return cllInput.node_id === nodeId && nodeIsChanged;
   }
-  return !!node?.data.changeStatus;
+  return nodeIsChanged;
 }

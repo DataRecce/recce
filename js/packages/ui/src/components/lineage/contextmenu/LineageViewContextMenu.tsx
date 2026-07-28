@@ -55,7 +55,7 @@ import {
 } from "../../../contexts/lineage/types";
 import { formatSelectColumns } from "../../../utils/formatSelect";
 import type { IconComponent } from "../../run/types";
-import { impactRadiusCllInput } from "../changeAnalysisState";
+import { activateImpactRadius } from "../changeAnalysisState";
 
 // ============================================================================
 // Types
@@ -454,8 +454,11 @@ export const ModelNodeContextMenu = ({
       itemIcon: <FaRegDotCircle />,
       isDisabled: noCatalogCurrent || !isActionAvailable("change_analysis"),
       action: () => {
-        setChangeAnalysisMode?.(true);
-        void showColumnLevelLineage?.(impactRadiusCllInput(node.id));
+        activateImpactRadius({
+          nodeId: node.id,
+          setChangeAnalysisMode,
+          showColumnLevelLineage,
+        });
       },
     });
   }

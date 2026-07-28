@@ -19,9 +19,9 @@ import type {
   LineageGraphNode,
 } from "../../../contexts/lineage/types";
 import {
+  activateImpactRadius,
   buildCllApiInput,
   columnClickCllInput,
-  impactRadiusCllInput,
   isNodeShowingChangeAnalysis,
   nextChangeAnalysisMode,
   resolveResetCllInput,
@@ -82,11 +82,27 @@ interface CllViewState {
 }
 
 /**
- * Impact Radius activation, as the CLL control and node context menu do it:
- * flip the mode on, then hand `showColumnLevelLineage` the radius input.
+ * Impact Radius activation. Runs the production activation the CLL control
+ * button and the node context menu item both run, wired to the same two
+ * callbacks they pass it, and records where the view state lands. Nothing about
+ * what activation does is restated here — drop the mode-setting from
+ * `activateImpactRadius` and every scenario below starts from mode off.
  */
-function activateImpactRadius(nodeId?: string): CllViewState {
-  return { cllInput: impactRadiusCllInput(nodeId), changeAnalysisMode: true };
+function impactRadiusActivation(nodeId?: string): CllViewState {
+  const state: CllViewState = {
+    cllInput: undefined,
+    changeAnalysisMode: false,
+  };
+  activateImpactRadius({
+    nodeId,
+    setChangeAnalysisMode: (active) => {
+      state.changeAnalysisMode = active;
+    },
+    showColumnLevelLineage: (cllInput) => {
+      state.cllInput = cllInput;
+    },
+  });
+  return state;
 }
 
 /** `showColumnLevelLineage(cllInput)` — the CLL request is replaced wholesale. */
@@ -155,19 +171,24 @@ function showsChangeAnalysis(nodeId: string, state: CllViewState): boolean {
 describe("CLL change analysis", () => {
   describe("activation radius", () => {
     it("shows change analysis on the radius node", () => {
-      const state = activateImpactRadius(MODIFIED_NODE);
+      const state = impactRadiusActivation(MODIFIED_NODE);
 
       expect(showsChangeAnalysis(MODIFIED_NODE, state)).toBe(true);
     });
 
-    it("does not show change analysis on unchanged nodes in the radius", () => {
-      const state = activateImpactRadius(MODIFIED_NODE);
+    it("treats every changed node in a global radius and leaves unchanged ones alone", () => {
+      // The CLL control's Impact Radius button activates without a node id, so
+      // the radius covers the whole graph — the only thing separating the two
+      // kinds of node here is their change status.
+      const state = impactRadiusActivation();
 
+      expect(showsChangeAnalysis(MODIFIED_NODE, state)).toBe(true);
+      expect(showsChangeAnalysis(OTHER_MODIFIED_NODE, state)).toBe(true);
       expect(showsChangeAnalysis(UNMODIFIED_NODE, state)).toBe(false);
     });
 
     it("scopes the radius to its own node while no column is selected", () => {
-      const state = activateImpactRadius(OTHER_MODIFIED_NODE);
+      const state = impactRadiusActivation(OTHER_MODIFIED_NODE);
 
       expect(showsChangeAnalysis(OTHER_MODIFIED_NODE, state)).toBe(true);
       // Another changed node outside the radius stays untreated.
@@ -186,7 +207,7 @@ describe("CLL change analysis", () => {
 
   describe("column navigation", () => {
     it("keeps change analysis when a column on the radius node is clicked", () => {
-      let state = activateImpactRadius(MODIFIED_NODE);
+      let state = impactRadiusActivation(MODIFIED_NODE);
 
       state = showColumnLevelLineage(
         state,
@@ -197,7 +218,7 @@ describe("CLL change analysis", () => {
     });
 
     it("keeps change analysis when a column on another node is clicked", () => {
-      let state = activateImpactRadius(MODIFIED_NODE);
+      let state = impactRadiusActivation(MODIFIED_NODE);
 
       state = showColumnLevelLineage(
         state,
@@ -208,7 +229,7 @@ describe("CLL change analysis", () => {
     });
 
     it("keeps change analysis across a run of column clicks", () => {
-      let state = activateImpactRadius(MODIFIED_NODE);
+      let state = impactRadiusActivation(MODIFIED_NODE);
 
       state = showColumnLevelLineage(
         state,
@@ -227,7 +248,7 @@ describe("CLL change analysis", () => {
     });
 
     it("still requests change analysis from the API after a column click", () => {
-      let state = activateImpactRadius(MODIFIED_NODE);
+      let state = impactRadiusActivation(MODIFIED_NODE);
 
       state = showColumnLevelLineage(
         state,
@@ -252,7 +273,7 @@ describe("CLL change analysis", () => {
 
   describe("reset and deactivation", () => {
     it("clears change analysis when CLL is turned off", () => {
-      let state = activateImpactRadius(MODIFIED_NODE);
+      let state = impactRadiusActivation(MODIFIED_NODE);
 
       state = showColumnLevelLineage(state, undefined);
 
@@ -261,7 +282,7 @@ describe("CLL change analysis", () => {
     });
 
     it("clears change analysis when a reselect drops CLL", () => {
-      let state = activateImpactRadius(MODIFIED_NODE);
+      let state = impactRadiusActivation(MODIFIED_NODE);
 
       state = refreshLayoutWithClearedCll(state);
 
@@ -270,7 +291,7 @@ describe("CLL change analysis", () => {
     });
 
     it("clears CLL entirely on reset", () => {
-      let state = activateImpactRadius(MODIFIED_NODE);
+      let state = impactRadiusActivation(MODIFIED_NODE);
 
       state = resetColumnLevelLineage(state);
 
@@ -281,7 +302,7 @@ describe("CLL change analysis", () => {
 
   describe("new CLL experience — one-way ratchet", () => {
     it("keeps change analysis when CLL is turned off", () => {
-      let state = activateImpactRadius(MODIFIED_NODE);
+      let state = impactRadiusActivation(MODIFIED_NODE);
 
       state = showColumnLevelLineage(state, undefined, true);
 
@@ -289,7 +310,7 @@ describe("CLL change analysis", () => {
     });
 
     it("keeps change analysis when a reselect drops CLL", () => {
-      let state = activateImpactRadius(MODIFIED_NODE);
+      let state = impactRadiusActivation(MODIFIED_NODE);
 
       state = refreshLayoutWithClearedCll(state, true);
 
@@ -297,7 +318,7 @@ describe("CLL change analysis", () => {
     });
 
     it("resets from a column back to the global impact radius", () => {
-      let state = activateImpactRadius(MODIFIED_NODE);
+      let state = impactRadiusActivation(MODIFIED_NODE);
       state = showColumnLevelLineage(
         state,
         columnClickCllInput(MODIFIED_NODE, "order_id"),

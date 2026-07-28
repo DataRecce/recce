@@ -13,7 +13,7 @@ import type { Node } from "@xyflow/react";
 import React from "react";
 import { vi } from "vitest";
 import type { LineageGraph } from "../../../contexts/lineage/types";
-import { LineageViewOss, MINIMAP_NODE_THRESHOLD } from "../LineageViewOss";
+import { LineageViewOss } from "../LineageViewOss";
 
 const MODIFIED_NODE = "model.test.orders";
 
@@ -148,15 +148,18 @@ async function renderWithNodeCount(nodeCount: number) {
   await screen.findByTestId("reactflow");
 }
 
+// The boundary is stated here as literals on purpose: 500 nodes still get a
+// MiniMap, 501 do not. Deriving these from the production constant would let
+// the threshold move without a test noticing.
 describe("MiniMap auto-disable for large graphs", () => {
-  it("shows the MiniMap at the node threshold", async () => {
-    await renderWithNodeCount(MINIMAP_NODE_THRESHOLD);
+  it("shows the MiniMap on a 500-node graph", async () => {
+    await renderWithNodeCount(500);
 
     expect(screen.getByTestId("minimap")).toBeInTheDocument();
   });
 
-  it("hides the MiniMap one node past the threshold", async () => {
-    await renderWithNodeCount(MINIMAP_NODE_THRESHOLD + 1);
+  it("hides the MiniMap on a 501-node graph", async () => {
+    await renderWithNodeCount(501);
 
     expect(screen.queryByTestId("minimap")).not.toBeInTheDocument();
   });
