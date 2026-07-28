@@ -177,13 +177,17 @@ const mockRefetchLineageGraph = vi.fn();
 const mockRefetchRunsAggregated = vi.fn();
 let mockActiveRun:
   | {
-      type: "schema_diff";
+      type: "schema_diff" | "profile_diff";
       run_id: string;
       run_at: string;
+      params?: {
+        model: string;
+      };
     }
   | undefined;
 let mockActiveRunId: string | undefined;
 let mockIsRunResultOpen = false;
+let mockIsProfileDiffRun = false;
 
 const mockLineageGraphContext = {
   lineageGraph: undefined as LineageGraph | undefined,
@@ -297,7 +301,7 @@ vi.mock("@datarecce/ui/api", () => ({
   createLineageDiffCheck: vi.fn().mockResolvedValue({ check_id: "test-check" }),
   createSchemaDiffCheck: vi.fn().mockResolvedValue({ check_id: "test-check" }),
   isHistogramDiffRun: vi.fn(() => false),
-  isProfileDiffRun: vi.fn(() => false),
+  isProfileDiffRun: vi.fn(() => mockIsProfileDiffRun),
   isTopKDiffRun: vi.fn(() => false),
   isValueDiffDetailRun: vi.fn(() => false),
   isValueDiffRun: vi.fn(() => false),
@@ -747,6 +751,18 @@ function setupWithLineageGraph(lineageGraph?: LineageGraph) {
   });
 }
 
+function setupOpenProfileRun(model: string) {
+  mockActiveRunId = `profile-${model}`;
+  mockIsRunResultOpen = true;
+  mockIsProfileDiffRun = true;
+  mockActiveRun = {
+    type: "profile_diff",
+    run_id: mockActiveRunId,
+    run_at: "2026-07-28T00:00:00Z",
+    params: { model },
+  };
+}
+
 // ============================================================================
 // Test Wrapper
 // ============================================================================
@@ -780,6 +796,7 @@ describe("LineageView Component", () => {
     mockActiveRun = undefined;
     mockActiveRunId = undefined;
     mockIsRunResultOpen = false;
+    mockIsProfileDiffRun = false;
 
     // Reset node state mock
     mockUseNodesStateReturnValue = [[], vi.fn(), vi.fn()];
@@ -1877,6 +1894,91 @@ describe("LineageView Component", () => {
       });
 
       expect(screen.queryByTestId("node-view")).not.toBeInTheDocument();
+    });
+
+    it("focuses a hidden run model after the all-models layout resolves", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      setupOpenProfileRun("node2");
+      const visibleNode = lineageGraph.nodes["model.test.node1"];
+      const hiddenNode = lineageGraph.nodes["model.test.node2"];
+      mockUseNodesStateReturnValue = [[visibleNode], vi.fn(), vi.fn()];
+      const slowLayout =
+        deferred<[LineageGraphNode[], [], Record<string, Set<string>>]>();
+      (toReactFlow as Mock).mockImplementation(() => slowLayout.promise);
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() => expect(toReactFlow).toHaveBeenCalledTimes(1));
+      expect(select).toHaveBeenCalledWith(
+        expect.objectContaining({ view_mode: "all" }),
+        expect.anything(),
+      );
+      expect(screen.queryByTestId("node-view")).not.toBeInTheDocument();
+
+      await act(async () => {
+        slowLayout.resolve([
+          [visibleNode, hiddenNode],
+          [],
+          {
+            [visibleNode.id]: new Set<string>(),
+            [hiddenNode.id]: new Set<string>(),
+          },
+        ]);
+        await slowLayout.promise;
+      });
+
+      await waitFor(() =>
+        expect(screen.getByTestId("node-view")).toHaveAttribute(
+          "data-node-id",
+          hiddenNode.id,
+        ),
+      );
+    });
+
+    it("does not let a hidden run model steal a newer user focus", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      setupOpenProfileRun("node2");
+      const visibleNode = lineageGraph.nodes["model.test.node1"];
+      const hiddenNode = lineageGraph.nodes["model.test.node2"];
+      mockUseNodesStateReturnValue = [[visibleNode], vi.fn(), vi.fn()];
+      const slowLayout =
+        deferred<[LineageGraphNode[], [], Record<string, Set<string>>]>();
+      (toReactFlow as Mock).mockImplementation(() => slowLayout.promise);
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() => expect(toReactFlow).toHaveBeenCalledTimes(1));
+
+      fireEvent.click(screen.getByTestId(`click-${visibleNode.id}`));
+      expect(screen.getByTestId("node-view")).toHaveAttribute(
+        "data-node-id",
+        visibleNode.id,
+      );
+
+      await act(async () => {
+        slowLayout.resolve([
+          [visibleNode, hiddenNode],
+          [],
+          {
+            [visibleNode.id]: new Set<string>(),
+            [hiddenNode.id]: new Set<string>(),
+          },
+        ]);
+        await slowLayout.promise;
+      });
+
+      expect(screen.getByTestId("node-view")).toHaveAttribute(
+        "data-node-id",
+        visibleNode.id,
+      );
     });
 
     it("retains previous CLL history when a deferred reset is superseded", async () => {
