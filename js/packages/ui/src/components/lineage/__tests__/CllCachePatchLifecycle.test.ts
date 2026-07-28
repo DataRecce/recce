@@ -30,6 +30,7 @@ import type {
 import { cacheKeys } from "../../../api/cacheKeys";
 import { buildLineageGraph } from "../../../contexts/lineage/utils";
 import { createCllCachePatchLifecycle } from "../cllCachePatchLifecycle";
+import { patchLineageCacheFromCll } from "../patchLineageDiffFromCll";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -47,6 +48,31 @@ const IMPACT_RADIUS_INPUT: CllInput = {
 
 /** A plain column click — nothing to patch into the lineage cache. */
 const COLUMN_CLICK_INPUT: CllInput = { node_id: NODE_A, column: "order_id" };
+
+interface ExpectedResolution {
+  cll: ColumnLineageData | undefined;
+  isCurrent: () => boolean;
+}
+
+function asResolution(value: unknown): ExpectedResolution {
+  return value as ExpectedResolution;
+}
+
+async function cllOf(
+  resolution: Promise<unknown>,
+): Promise<ColumnLineageData | undefined> {
+  return asResolution(await resolution).cll;
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
 
 function createMergedLineage(): MergedLineageResponse {
   const nodes: Record<string, MergedNodeData> = {
@@ -181,6 +207,7 @@ function createHarness({ seedLineage = true } = {}) {
     mutateAsync,
     apiCallCount: () => mutateAsync.mock.calls.length,
     patchCount: () => patch.mock.calls.length,
+    clearPatchCount: () => patch.mockClear(),
     /** Every response the mutation has handed out, oldest first. */
     responses: () => responses,
     /** The literal input the mutation was last called with. */
@@ -243,8 +270,8 @@ describe("CLL cache patch lifecycle", () => {
   it("fetches once and patches the lineage cache once for a genuine input", async () => {
     const h = createHarness();
 
-    const cll = await h.lifecycle.resolveCllForLayout(
-      h.request(IMPACT_RADIUS_INPUT),
+    const cll = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
     );
 
     expect(cll).toBeDefined();
@@ -261,10 +288,10 @@ describe("CLL cache patch lifecycle", () => {
       h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
     );
 
-    const first = await h.lifecycle.resolveCllForLayout(
-      h.request(IMPACT_RADIUS_INPUT),
+    const first = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
     );
-    const reused = await reentry.result();
+    const reused = asResolution(await reentry.result()).cll;
 
     expect(reused).toBe(first);
     expect(h.apiCallCount()).toBe(1);
@@ -295,14 +322,16 @@ describe("CLL cache patch lifecycle", () => {
     // Kills: arming before knowing the patch produced a cache value.
     const h = createHarness({ seedLineage: false });
 
-    const first = await h.lifecycle.resolveCllForLayout(
-      h.request(IMPACT_RADIUS_INPUT),
+    const first = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
     );
-    const repeated = await h.lifecycle.resolveCllForLayout(
-      h.request(IMPACT_RADIUS_INPUT),
+    const repeated = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
     );
-    const different = await h.lifecycle.resolveCllForLayout(
-      h.request({ ...IMPACT_RADIUS_INPUT, node_id: NODE_B }),
+    const different = await cllOf(
+      h.lifecycle.resolveCllForLayout(
+        h.request({ ...IMPACT_RADIUS_INPUT, node_id: NODE_B }),
+      ),
     );
 
     expect(h.apiCallCount()).toBe(3);
@@ -318,12 +347,14 @@ describe("CLL cache patch lifecycle", () => {
     // different input is a different question and gets its own answer. Kills:
     // consuming pending data without comparing it to the current request.
     const h = createHarness();
-    const radius = await h.lifecycle.resolveCllForLayout(
-      h.request(IMPACT_RADIUS_INPUT),
+    const radius = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
     );
 
-    const otherNode = await h.lifecycle.resolveCllForLayout(
-      h.request({ ...IMPACT_RADIUS_INPUT, node_id: NODE_B }),
+    const otherNode = await cllOf(
+      h.lifecycle.resolveCllForLayout(
+        h.request({ ...IMPACT_RADIUS_INPUT, node_id: NODE_B }),
+      ),
     );
 
     expect(h.apiCallCount()).toBe(2);
@@ -338,15 +369,15 @@ describe("CLL cache patch lifecycle", () => {
     // and clearing pending only on success (step 3 would replay the radius,
     // because its input matches the one still armed).
     const h = createHarness();
-    const radius = await h.lifecycle.resolveCllForLayout(
-      h.request(IMPACT_RADIUS_INPUT),
+    const radius = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
     );
 
-    const columnCll = await h.lifecycle.resolveCllForLayout(
-      h.request(COLUMN_CLICK_INPUT, false),
+    const columnCll = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(COLUMN_CLICK_INPUT, false)),
     );
-    const radiusAgain = await h.lifecycle.resolveCllForLayout(
-      h.request(IMPACT_RADIUS_INPUT),
+    const radiusAgain = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
     );
 
     expect(h.apiCallCount()).toBe(3);
@@ -362,8 +393,8 @@ describe("CLL cache patch lifecycle", () => {
     // Kills: the missing request comparison (the rejecting request would never
     // reach the API), and clearing pending after the await instead of before.
     const h = createHarness();
-    const radius = await h.lifecycle.resolveCllForLayout(
-      h.request(IMPACT_RADIUS_INPUT),
+    const radius = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
     );
     h.mutateAsync.mockRejectedValueOnce(new Error("cll boom"));
 
@@ -372,8 +403,8 @@ describe("CLL cache patch lifecycle", () => {
         h.request({ ...IMPACT_RADIUS_INPUT, node_id: NODE_B }),
       ),
     ).rejects.toThrow("cll boom");
-    const retried = await h.lifecycle.resolveCllForLayout(
-      h.request(IMPACT_RADIUS_INPUT),
+    const retried = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
     );
 
     expect(h.apiCallCount()).toBe(3);
@@ -401,8 +432,8 @@ describe("CLL cache patch lifecycle", () => {
     // Arms the guard; nothing consumes it (no re-entry in this scenario).
     await h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT));
 
-    const disabled = await h.lifecycle.resolveCllForLayout(
-      h.request(undefined),
+    const disabled = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(undefined)),
     );
     await h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT));
 
@@ -417,10 +448,10 @@ describe("CLL cache patch lifecycle", () => {
       h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
     );
 
-    const fetched = await h.lifecycle.refreshCll(
-      h.request(IMPACT_RADIUS_INPUT),
+    const fetched = await cllOf(
+      h.lifecycle.refreshCll(h.request(IMPACT_RADIUS_INPUT)),
     );
-    const reused = await reentry.result();
+    const reused = asResolution(await reentry.result()).cll;
 
     expect(reused).toBe(fetched);
     expect(h.apiCallCount()).toBe(1);
@@ -434,13 +465,13 @@ describe("CLL cache patch lifecycle", () => {
     // dropping the pending value (and, in the owning component, calling it only
     // inside the `column_level_lineage` branch).
     const h = createHarness();
-    const radius = await h.lifecycle.resolveCllForLayout(
-      h.request(IMPACT_RADIUS_INPUT),
+    const radius = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
     );
 
-    const disabled = await h.lifecycle.refreshCll(h.request(undefined));
-    const radiusAgain = await h.lifecycle.resolveCllForLayout(
-      h.request(IMPACT_RADIUS_INPUT),
+    const disabled = await cllOf(h.lifecycle.refreshCll(h.request(undefined)));
+    const radiusAgain = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
     );
 
     expect(disabled).toBeUndefined();
@@ -484,8 +515,8 @@ describe("CLL cache patch lifecycle", () => {
       h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
     ).rejects.toThrow("cll boom");
     // A retry after the failure is a real request, not a reuse of nothing.
-    const retried = await h.lifecycle.resolveCllForLayout(
-      h.request(IMPACT_RADIUS_INPUT),
+    const retried = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
     );
 
     expect(retried).toBeDefined();
@@ -501,5 +532,220 @@ describe("CLL cache patch lifecycle", () => {
     expect(
       h.queryClient.getQueryData<ServerInfoResult>(cacheKeys.lineage()),
     ).toBeUndefined();
+  });
+
+  it("keeps the newer patch when an older patchable request finishes last", async () => {
+    const h = createHarness();
+    const slowA = deferred<ColumnLineageData>();
+    const fastB = deferred<ColumnLineageData>();
+    h.mutateAsync
+      .mockImplementationOnce(() => slowA.promise)
+      .mockImplementationOnce(() => fastB.promise);
+
+    const requestA = h.lifecycle.resolveCllForLayout(
+      h.request(IMPACT_RADIUS_INPUT),
+    );
+    const requestB = h.lifecycle.resolveCllForLayout(
+      h.request({ ...IMPACT_RADIUS_INPUT, node_id: NODE_B }),
+    );
+    const cllB = modifiedNodeACll("model.test.newer_b");
+    fastB.resolve(cllB);
+    const resolutionB = asResolution(await requestB);
+
+    expect(resolutionB.cll).toBe(cllB);
+    expect(resolutionB.isCurrent()).toBe(true);
+    expect(h.patchCount()).toBe(1);
+
+    const cllA = modifiedNodeACll("model.test.older_a");
+    slowA.resolve(cllA);
+    const resolutionA = asResolution(await requestA);
+
+    expect(resolutionA.cll).toBe(cllA);
+    expect(resolutionA.isCurrent()).toBe(false);
+    expect(h.patchCount()).toBe(1);
+  });
+
+  it("does not let an older patchable request patch after a newer non-patching request", async () => {
+    const h = createHarness();
+    const slowA = deferred<ColumnLineageData>();
+    const fastB = deferred<ColumnLineageData>();
+    h.mutateAsync
+      .mockImplementationOnce(() => slowA.promise)
+      .mockImplementationOnce(() => fastB.promise);
+
+    const requestA = h.lifecycle.resolveCllForLayout(
+      h.request(IMPACT_RADIUS_INPUT),
+    );
+    const requestB = h.lifecycle.resolveCllForLayout(
+      h.request(COLUMN_CLICK_INPUT, false),
+    );
+    fastB.resolve(modifiedNodeACll("model.test.newer_plain_b"));
+    const resolutionB = asResolution(await requestB);
+
+    expect(resolutionB.isCurrent()).toBe(true);
+    expect(h.patchCount()).toBe(0);
+
+    slowA.resolve(modifiedNodeACll("model.test.older_patch_a"));
+    const resolutionA = asResolution(await requestA);
+
+    expect(resolutionA.isCurrent()).toBe(false);
+    expect(h.patchCount()).toBe(0);
+  });
+
+  it("propagates a current rejection and makes the older completion non-current", async () => {
+    const h = createHarness();
+    const slowA = deferred<ColumnLineageData>();
+    const currentB = deferred<ColumnLineageData>();
+    h.mutateAsync
+      .mockImplementationOnce(() => slowA.promise)
+      .mockImplementationOnce(() => currentB.promise);
+
+    const requestA = h.lifecycle.resolveCllForLayout(
+      h.request(IMPACT_RADIUS_INPUT),
+    );
+    const requestB = h.lifecycle.resolveCllForLayout(
+      h.request({ ...IMPACT_RADIUS_INPUT, node_id: NODE_B }),
+    );
+    currentB.reject(new Error("current b failed"));
+
+    await expect(requestB).rejects.toThrow("current b failed");
+    slowA.resolve(modifiedNodeACll("model.test.older_after_error"));
+    const resolutionA = asResolution(await requestA);
+
+    expect(resolutionA.isCurrent()).toBe(false);
+    expect(h.patchCount()).toBe(0);
+  });
+
+  it("turns a stale rejection into a non-current resolution", async () => {
+    const h = createHarness();
+    const slowA = deferred<ColumnLineageData>();
+    const currentB = deferred<ColumnLineageData>();
+    h.mutateAsync
+      .mockImplementationOnce(() => slowA.promise)
+      .mockImplementationOnce(() => currentB.promise);
+
+    const requestA = h.lifecycle.resolveCllForLayout(
+      h.request(IMPACT_RADIUS_INPUT),
+    );
+    const requestB = h.lifecycle.resolveCllForLayout(
+      h.request({ ...IMPACT_RADIUS_INPUT, node_id: NODE_B }),
+    );
+    const cllB = modifiedNodeACll("model.test.newer_success");
+    currentB.resolve(cllB);
+    const resolutionB = asResolution(await requestB);
+    slowA.reject(new Error("stale a failed"));
+    const resolutionA = asResolution(await requestA);
+
+    expect(resolutionB.cll).toBe(cllB);
+    expect(resolutionB.isCurrent()).toBe(true);
+    expect(resolutionA.cll).toBeUndefined();
+    expect(resolutionA.isCurrent()).toBe(false);
+    expect(h.patchCount()).toBe(1);
+  });
+
+  it.each([
+    ["layout", "resolveCllForLayout"],
+    ["refresh", "refreshCll"],
+  ] as const)(
+    "invalidates an older request when the %s entry disables CLL",
+    async (_entry, method) => {
+      const h = createHarness();
+      const slowA = deferred<ColumnLineageData>();
+      h.mutateAsync.mockImplementationOnce(() => slowA.promise);
+
+      const requestA = h.lifecycle.resolveCllForLayout(
+        h.request(IMPACT_RADIUS_INPUT),
+      );
+      const disabled = asResolution(
+        await h.lifecycle[method](h.request(undefined)),
+      );
+
+      expect(disabled.cll).toBeUndefined();
+      expect(disabled.isCurrent()).toBe(true);
+
+      slowA.resolve(modifiedNodeACll(`model.test.older_${_entry}`));
+      const resolutionA = asResolution(await requestA);
+
+      expect(resolutionA.isCurrent()).toBe(false);
+      expect(h.patchCount()).toBe(0);
+    },
+  );
+
+  it("returns the exact current resolution to synchronous cache re-entry", async () => {
+    const h = createHarness();
+    const reentry = onNextCachePatch(h.queryClient, () =>
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
+    );
+
+    const first = asResolution(
+      await h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
+    );
+    const reused = asResolution(await reentry.result());
+
+    expect(reused).toBe(first);
+    expect(reused.isCurrent()).toBe(true);
+    expect(h.apiCallCount()).toBe(1);
+    expect(h.patchCount()).toBe(1);
+  });
+
+  it.each([
+    ["node_id", { node_id: NODE_B }],
+    ["column", { column: "customer_id" }],
+    ["change_analysis", { change_analysis: false }],
+    ["no_cll", { no_cll: false }],
+    ["no_upstream", { no_upstream: false }],
+    ["no_downstream", { no_downstream: false }],
+  ] satisfies [keyof CllInput, Partial<CllInput>][])(
+    "treats a difference in normalized %s as a genuine request",
+    async (_field, difference) => {
+      const h = createHarness();
+      const fullInput: CllInput = {
+        node_id: NODE_A,
+        column: "order_id",
+        change_analysis: true,
+        no_cll: true,
+        no_upstream: true,
+        no_downstream: true,
+      };
+      await h.lifecycle.resolveCllForLayout(h.request(fullInput, true));
+
+      await h.lifecycle.resolveCllForLayout(
+        h.request({ ...fullInput, ...difference }, true),
+      );
+
+      expect(h.apiCallCount()).toBe(2);
+    },
+  );
+
+  it("does not arm re-entry when structural sharing keeps a deep-equal cache reference", async () => {
+    const h = createHarness();
+    const cll = modifiedNodeACll("model.test.deep_equal");
+    h.mutateAsync.mockResolvedValue(cll);
+    patchLineageCacheFromCll(h.queryClient, cll);
+    h.clearPatchCount();
+
+    const seeded = h.queryClient.getQueryData<ServerInfoResult>(
+      cacheKeys.lineage(),
+    );
+    expect(seeded).toBeDefined();
+    const first = asResolution(
+      await h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
+    );
+    const afterFirst = h.queryClient.getQueryData<ServerInfoResult>(
+      cacheKeys.lineage(),
+    );
+    const second = asResolution(
+      await h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
+    );
+    const afterSecond = h.queryClient.getQueryData<ServerInfoResult>(
+      cacheKeys.lineage(),
+    );
+
+    expect(first.cll).toBe(cll);
+    expect(second.cll).toBe(cll);
+    expect(afterFirst).toBe(seeded);
+    expect(afterFirst).toBe(afterSecond);
+    expect(h.apiCallCount()).toBe(2);
+    expect(h.patchCount()).toBe(2);
   });
 });
