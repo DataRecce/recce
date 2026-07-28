@@ -14,6 +14,7 @@ dbt run --target base --target-path target-base
 dbt docs generate --target base --target-path target-base
 
 echo "where customer_id <= 50" >> models/customers.sql
+dbt seed
 dbt run
 dbt docs generate
 git restore models/customers.sql
