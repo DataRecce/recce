@@ -159,6 +159,25 @@ export interface StateMetadata {
 }
 
 /**
+ * Catalog coverage fields returned by the cloud backend after artifact
+ * classification.
+ */
+export interface CatalogCoverage {
+  status:
+    | "complete"
+    | "partial"
+    | "empty"
+    | "absent"
+    | "not_applicable"
+    | "unknown";
+  warn: boolean;
+  covered_count: number;
+  expected_count: number;
+  catalog_entry_count: number;
+  computed_at: string;
+}
+
+/**
  * Session staleness fields returned by the backend when the PR session's
  * frozen-snapshot base may have diverged from the project's current shared base.
  * All fields are null for legacy sessions (pre-DRC-3309) or OSS mode.
@@ -227,6 +246,11 @@ export interface ServerInfoResult {
   support_tasks: Record<string, boolean>;
   /** Session staleness fields (cloud mode only, null for OSS / legacy sessions). */
   session_staleness?: SessionStaleness;
+  /**
+   * Catalog coverage fields in cloud mode. Omitted by OSS and legacy servers;
+   * null when the cloud session has not produced a conclusive classification.
+   */
+  catalog_coverage?: CatalogCoverage | null;
 }
 
 /**
