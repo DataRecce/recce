@@ -41,6 +41,16 @@ def build_merged_lineage(lineage_diff: LineageDiff) -> MergedLineage:
                 if isinstance(mat, str):
                     merged.materialized = mat
 
+        # `schema` describes the preferred source — current whenever the node
+        # exists there — so a base env living in a different schema would be
+        # invisible to the client (DRC-3975). Carry it separately, but only when
+        # it actually differs: lineage payloads run to thousands of nodes and in
+        # most setups both envs share a schema, where `schema` already says it.
+        if base_node is not None and current_node is not None:
+            base_schema = base_node.get("schema")
+            if isinstance(base_schema, str) and base_schema != merged.schema_name:
+                merged.base_schema = base_schema
+
         node_diff = diff.get(node_id)
         if node_diff:
             merged.change_status = node_diff.change_status

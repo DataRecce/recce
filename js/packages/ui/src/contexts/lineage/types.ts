@@ -37,7 +37,14 @@ export type LineageGraphNode = Node<
     name: string;
     resourceType?: string;
     packageName?: string;
+    /** Schema in the current environment. */
     schema?: string;
+    /**
+     * Schema in the base environment — resolved, so it equals `schema` when
+     * both environments share one. Meaningless for an added node, which has
+     * no base environment.
+     */
+    baseSchema?: string;
     materialized?: string;
     changeStatus?: "added" | "removed" | "modified";
     change?: {

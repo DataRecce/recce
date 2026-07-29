@@ -726,8 +726,8 @@ describe("extractSchemas", () => {
     const lineageGraph = createMockLineageGraph();
     const [baseSchemas, currentSchemas] = extractSchemas(lineageGraph);
 
-    // With merged lineage, both nodes have no changeStatus so schemas
-    // appear in both base and current sets
+    // These nodes carry no baseSchema, which means both environments share
+    // one schema — so the same values land in both sets.
     expect(baseSchemas.size).toBe(2);
     expect(baseSchemas.has("schema_a")).toBe(true);
     expect(baseSchemas.has("schema_c")).toBe(true);
@@ -735,6 +735,36 @@ describe("extractSchemas", () => {
     expect(currentSchemas.size).toBe(2);
     expect(currentSchemas.has("schema_a")).toBe(true);
     expect(currentSchemas.has("schema_c")).toBe(true);
+  });
+
+  it("keeps the base and current schemas apart when they diverge", () => {
+    // DRC-3975: a base env in a different schema must not be overwritten by
+    // the current one — the regression this test pins showed the current
+    // schema in both columns of the Environment Information panel.
+    const lineageGraph = createMockLineageGraph();
+    lineageGraph.nodes.node1.data.baseSchema = "prod_rpt";
+    lineageGraph.nodes.node1.data.schema = "ci_pr_1012";
+    lineageGraph.nodes.node2.data.baseSchema = "prod_mart";
+    lineageGraph.nodes.node2.data.schema = "ci_pr_1012";
+
+    const [baseSchemas, currentSchemas] = extractSchemas(lineageGraph);
+
+    expect(Array.from(baseSchemas).sort()).toEqual(["prod_mart", "prod_rpt"]);
+    expect(Array.from(currentSchemas)).toEqual(["ci_pr_1012"]);
+  });
+
+  it("excludes an added node from the base set and a removed node from the current set", () => {
+    const lineageGraph = createMockLineageGraph();
+    lineageGraph.nodes.node1.data.changeStatus = "added";
+    lineageGraph.nodes.node1.data.schema = "ci_pr_1012";
+    lineageGraph.nodes.node2.data.changeStatus = "removed";
+    lineageGraph.nodes.node2.data.schema = "prod_rpt";
+    lineageGraph.nodes.node2.data.baseSchema = "prod_rpt";
+
+    const [baseSchemas, currentSchemas] = extractSchemas(lineageGraph);
+
+    expect(Array.from(baseSchemas)).toEqual(["prod_rpt"]);
+    expect(Array.from(currentSchemas)).toEqual(["ci_pr_1012"]);
   });
 
   it("handles undefined lineage graph", () => {

@@ -245,6 +245,10 @@ class MergedNode(BaseModel):
     resource_type: str
     package_name: str = ""
     schema_name: str | None = Field(None, alias="schema")
+    # The base environment's schema, sent only when it differs from `schema`
+    # (which reports the preferred source — current wherever the node exists
+    # there). Absent means "same as `schema`", not "unknown" (DRC-3975).
+    base_schema: str | None = None
     materialized: str | None = None
     tags: list[str] | None = None
     source_name: str | None = None
