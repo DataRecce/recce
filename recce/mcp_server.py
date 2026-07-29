@@ -551,6 +551,11 @@ class MCPLogger:
         self._write_log(log_entry)
 
 
+# Bounds the node names schema_diff names as unverifiable. Independent of the
+# row cap so an under-catalogued project cannot crowd out the changes it did find.
+_UNCHECKED_NODE_LIMIT = 50
+
+
 class RecceMCPServer:
     """MCP Server for Recce data validation tools"""
 
@@ -1704,13 +1709,26 @@ class RecceMCPServer:
 
         # Build schema changes
         schema_changes = []
+        unchecked_nodes = []
 
         for node_id in nodes_to_compare:
             base_node = base_nodes.get(node_id, {})
             current_node = current_nodes.get(node_id, {})
 
-            base_columns = base_node.get("columns", {})
-            current_columns = current_node.get("columns", {})
+            base_columns = base_node.get("columns") or {}
+            current_columns = current_node.get("columns") or {}
+
+            # Column data comes from the catalog while the node itself comes
+            # from the manifest, so a run that did not build this model leaves
+            # one side without columns. Comparing anyway would turn "we never
+            # looked" into a full set of added or removed columns. Emptiness
+            # counts as absence: a relation with no columns cannot exist, so an
+            # empty map means the catalog never described it. Skipped before the
+            # row cap so unverifiable rows can neither displace real changes nor
+            # inflate `more`.
+            if not base_columns or not current_columns:
+                unchecked_nodes.append(node_id)
+                continue
 
             # Get column names in base and current
             base_col_names = set(base_columns.keys())
@@ -1747,7 +1765,21 @@ class RecceMCPServer:
             limit=limit,
             more=has_more,
         )
-        return diff_df.model_dump(mode="json")
+        result = diff_df.model_dump(mode="json")
+
+        # Carried alongside the frame rather than inside it: `DataFrame` backs
+        # every tool's payload, and coverage only means something here. Consumers
+        # that ignore it still see the unchanged shape, minus rows we cannot
+        # stand behind. `data == []` means "no column changes" only when
+        # `status` is "complete".
+        unchecked_nodes.sort()
+        result["schema_coverage"] = {
+            "status": "partial" if unchecked_nodes else "complete",
+            "unchecked_nodes": unchecked_nodes[:_UNCHECKED_NODE_LIMIT],
+            "unchecked_node_count": len(unchecked_nodes),
+            "more": len(unchecked_nodes) > _UNCHECKED_NODE_LIMIT,
+        }
+        return result
 
     async def _tool_row_count_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute row count diff task"""

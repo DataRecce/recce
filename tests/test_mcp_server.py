@@ -239,6 +239,83 @@ class TestRecceMCPServer:
         mock_context.get_lineage_diff.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_tool_schema_diff_does_not_report_an_unbuilt_model_as_removed(self, mcp_server):
+        """A model the run did not rebuild must not read as a column drop.
+
+        `_build_lineage` in the dbt adapter builds every node from the manifest
+        but assigns `columns` only when the catalog holds that node, so a
+        selective build leaves an unrebuilt model present on both sides with no
+        `columns` key on the current side. Comparing the two column sets then
+        turns "we never looked" into "every column was dropped".
+
+        Node keys below mirror what that builder emits, so the absent-`columns`
+        shape is the producer's, not the test's invention.
+        """
+        server, mock_context = mcp_server
+
+        def node(name, *, columns=None):
+            n = {
+                "id": f"model.project.{name}",
+                "name": name,
+                "resource_type": "model",
+                "package_name": "project",
+                "schema": "analytics",
+                "config": {"materialized": "view"},
+                "checksum": {"name": "sha256", "checksum": "abc"},
+                "raw_code": "select 1",
+            }
+            if columns is not None:
+                n["columns"] = {c: {"name": c, "type": "text"} for c in columns}
+            return n
+
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {
+                "nodes": {
+                    "model.project.not_rebuilt": node("not_rebuilt", columns=["a", "b", "c"]),
+                    "model.project.rebuilt": node("rebuilt", columns=["kept", "dropped"]),
+                    "model.project.empty_entry": node("empty_entry", columns=["x", "y"]),
+                },
+            },
+            "current": {
+                "nodes": {
+                    # Absent from this run's catalog, so the builder never set
+                    # the key at all.
+                    "model.project.not_rebuilt": node("not_rebuilt"),
+                    "model.project.rebuilt": node("rebuilt", columns=["kept"]),
+                    # Catalogued but described nothing. A relation with no
+                    # columns cannot exist, so this is the same gap wearing a
+                    # different shape and must not read as a wholesale drop.
+                    "model.project.empty_entry": node("empty_entry", columns=[]),
+                },
+            },
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+
+        result = await server._tool_schema_diff({})
+
+        removed = [row for row in result["data"] if row[2] == "removed"]
+
+        assert not [row for row in removed if row[0] == "model.project.not_rebuilt"], (
+            "columns of a model that was not rebuilt were reported as removed"
+        )
+        assert not [row for row in removed if row[0] == "model.project.empty_entry"], (
+            "columns of a model with an empty catalog entry were reported as removed"
+        )
+
+        # A real drop on a model that WAS rebuilt still reports, so the guard
+        # cannot be satisfied by suppressing everything.
+        assert ["model.project.rebuilt", "dropped", "removed"] in result["data"]
+
+        # A reduced `data` has to stay distinguishable from a verified zero,
+        # otherwise the false positive is traded for a false negative.
+        coverage = result["schema_coverage"]
+        assert coverage["status"] == "partial"
+        assert "model.project.not_rebuilt" in coverage["unchecked_nodes"]
+        assert "model.project.empty_entry" in coverage["unchecked_nodes"]
+        assert coverage["unchecked_node_count"] == 2
+
+    @pytest.mark.asyncio
     async def test_tool_query(self, mcp_server):
         """Test the query tool"""
         server, _ = mcp_server
