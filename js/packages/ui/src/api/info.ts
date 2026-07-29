@@ -75,6 +75,12 @@ export interface MergedNodeData {
   resource_type: string;
   package_name: string;
   schema?: string;
+  /**
+   * The base environment's schema, sent only when it differs from `schema`
+   * (which reports the current environment wherever the node exists there).
+   * Absent means "same as `schema`", not "unknown" (DRC-3975).
+   */
+  base_schema?: string;
   materialized?: string;
   tags?: string[];
   source_name?: string;
