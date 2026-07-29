@@ -556,6 +556,21 @@ class MCPLogger:
 _UNCHECKED_NODE_LIMIT = 50
 
 
+def _columns_comparable(base_node: dict, current_node: dict) -> bool:
+    """Whether the two sides carry enough column data to be compared at all.
+
+    Nodes come from the manifest but their columns come from the catalog, so a
+    model a selective build did not rebuild arrives with no column data on the
+    current side. Differencing the two sets anyway turns "we never looked" into
+    a full sweep of added or removed columns.
+
+    Emptiness counts as absence: a relation with no columns cannot exist, so an
+    empty map means the catalog never described the model rather than that it
+    lost everything.
+    """
+    return bool(base_node.get("columns")) and bool(current_node.get("columns"))
+
+
 class RecceMCPServer:
     """MCP Server for Recce data validation tools"""
 
@@ -758,7 +773,12 @@ class RecceMCPServer:
                 Tool(
                     name="schema_diff",
                     description="Get the schema diff (column changes) between base and current environments. "
-                    "Shows added, removed, and type-changed columns in compact dataframe format.",
+                    "Shows added, removed, and type-changed columns in compact dataframe format. "
+                    "Also returns schema_coverage. An empty `data` means 'no column changes' ONLY when "
+                    "schema_coverage.status is 'complete'. When it is 'partial', the models named in "
+                    "schema_coverage.unchecked_nodes were not built by this run, so their columns were "
+                    "never compared — that is not evidence they are unchanged, and it is not evidence "
+                    "anything was removed.",
                     inputSchema={
                         "type": "object",
                         "properties": {
@@ -1718,15 +1738,9 @@ class RecceMCPServer:
             base_columns = base_node.get("columns") or {}
             current_columns = current_node.get("columns") or {}
 
-            # Column data comes from the catalog while the node itself comes
-            # from the manifest, so a run that did not build this model leaves
-            # one side without columns. Comparing anyway would turn "we never
-            # looked" into a full set of added or removed columns. Emptiness
-            # counts as absence: a relation with no columns cannot exist, so an
-            # empty map means the catalog never described it. Skipped before the
-            # row cap so unverifiable rows can neither displace real changes nor
-            # inflate `more`.
-            if not base_columns or not current_columns:
+            # Skipped before the row cap so unverifiable rows can neither
+            # displace real changes nor inflate `more`.
+            if not _columns_comparable(base_node, current_node):
                 unchecked_nodes.append(node_id)
                 continue
 
@@ -1960,17 +1974,37 @@ class RecceMCPServer:
                 node_id_by_name[node_info["name"]] = node_id
 
         # Step 2b: Schema diff (compare columns between base and current)
+        # Unknown until the step runs, so a failure below leaves it unknown
+        # rather than claiming complete coverage.
+        schema_coverage = {
+            "status": "unknown",
+            "unchecked_nodes": [],
+            "unchecked_node_count": 0,
+            "more": False,
+        }
         try:
             base_nodes = lineage_diff.get("base", {}).get("nodes", {})
             current_nodes = lineage_diff.get("current", {}).get("nodes", {})
 
+            schema_unchecked = []
             for model in impacted_models:
                 node_id = node_id_by_name.get(model["name"])
                 if not node_id:
                     continue
 
-                base_cols = set(base_nodes.get(node_id, {}).get("columns", {}).keys())
-                curr_cols = set(current_nodes.get(node_id, {}).get("columns", {}).keys())
+                base_node = base_nodes.get(node_id, {})
+                current_node = current_nodes.get(node_id, {})
+
+                # Same comparison as the schema_diff tool, so it needs the same
+                # guard. `None` rather than `[]`: an empty list reads as "checked,
+                # nothing changed", which is the claim we cannot make here.
+                if not _columns_comparable(base_node, current_node):
+                    model["schema_changes"] = None
+                    schema_unchecked.append(node_id)
+                    continue
+
+                base_cols = set(base_node.get("columns", {}).keys())
+                curr_cols = set(current_node.get("columns", {}).keys())
 
                 changes = []
                 for col in curr_cols - base_cols:
@@ -1984,6 +2018,14 @@ class RecceMCPServer:
                         changes.append({"column": col, "change_status": "modified"})
 
                 model["schema_changes"] = changes
+
+            schema_unchecked.sort()
+            schema_coverage = {
+                "status": "partial" if schema_unchecked else "complete",
+                "unchecked_nodes": schema_unchecked[:_UNCHECKED_NODE_LIMIT],
+                "unchecked_node_count": len(schema_unchecked),
+                "more": len(schema_unchecked) > _UNCHECKED_NODE_LIMIT,
+            }
         except Exception as e:
             errors.append({"step": "schema_diff", "message": str(e)})
 
@@ -2228,6 +2270,7 @@ class RecceMCPServer:
             "max_affected_row_count": max_affected,
             "confirmed_impacted_models": impacted_models,
             "confirmed_not_impacted_models": not_impacted_models,
+            "schema_coverage": schema_coverage,
             "errors": errors,
         }
         return self._maybe_add_single_env_warning(result)
