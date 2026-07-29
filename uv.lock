@@ -2422,7 +2422,7 @@ requires-dist = [
     { name = "isort", marker = "extra == 'dev'", specifier = ">=6.0.1" },
     { name = "itsdangerous" },
     { name = "jinja2" },
-    { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.23.0" },
+    { name = "mcp", marker = "extra == 'mcp'", specifier = "~=1.23" },
     { name = "openpyxl", specifier = ">=3.1.0" },
     { name = "packaging" },
     { name = "pandas", marker = "extra == 'dev'" },
