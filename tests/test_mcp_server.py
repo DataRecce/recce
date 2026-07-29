@@ -296,12 +296,12 @@ class TestRecceMCPServer:
 
         removed = [row for row in result["data"] if row[2] == "removed"]
 
-        assert not [row for row in removed if row[0] == "model.project.not_rebuilt"], (
-            "columns of a model that was not rebuilt were reported as removed"
-        )
-        assert not [row for row in removed if row[0] == "model.project.empty_entry"], (
-            "columns of a model with an empty catalog entry were reported as removed"
-        )
+        assert not [
+            row for row in removed if row[0] == "model.project.not_rebuilt"
+        ], "columns of a model that was not rebuilt were reported as removed"
+        assert not [
+            row for row in removed if row[0] == "model.project.empty_entry"
+        ], "columns of a model with an empty catalog entry were reported as removed"
 
         # A real drop on a model that WAS rebuilt still reports, so the guard
         # cannot be satisfied by suppressing everything.
