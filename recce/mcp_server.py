@@ -567,6 +567,10 @@ def _columns_comparable(base_node: dict, current_node: dict) -> bool:
     Emptiness counts as absence: a relation with no columns cannot exist, so an
     empty map means the catalog never described the model rather than that it
     lost everything.
+
+    What this observes is the absence, not its cause. A selective build is the
+    commonest reason but not the only one, so callers must not turn a False here
+    into a claim about what the user's pipeline did.
     """
     return bool(base_node.get("columns")) and bool(current_node.get("columns"))
 
@@ -776,9 +780,10 @@ class RecceMCPServer:
                     "Shows added, removed, and type-changed columns in compact dataframe format. "
                     "Also returns schema_coverage. An empty `data` means 'no column changes' ONLY when "
                     "schema_coverage.status is 'complete'. When it is 'partial', the models named in "
-                    "schema_coverage.unchecked_nodes were not built by this run, so their columns were "
-                    "never compared — that is not evidence they are unchanged, and it is not evidence "
-                    "anything was removed.",
+                    "schema_coverage.unchecked_nodes have no column metadata on at least one side, so "
+                    "they were never compared — that is not evidence they are unchanged, and it is not "
+                    "evidence anything was removed. The commonest cause is a build that only builds what "
+                    "changed, but this tool does not observe the cause; do not report one as fact.",
                     inputSchema={
                         "type": "object",
                         "properties": {
