@@ -74,6 +74,23 @@ When asked to "update deps" or "check for updates":
 - `summary.py` row count gotcha: `base`/`curr` can be `None` (TABLE_NOT_FOUND, PERMISSION_DENIED). Guard with `is None` check before arithmetic — `dict.get(key, 0)` does NOT protect when key exists with `None` value. N/A display includes reason: `"N/A (table_not_found)"`.
 - Format changes to MCP tool responses require both deterministic tests AND BQ/LLM eval to prove agent behavior unchanged.
 
+### Shared tool descriptions cover both backends
+
+`list_tools` is a single shared registry: the same `Tool(description=...)` is served in
+local and cloud mode, and `call_tool` routes to `CloudBackend.call_tool` whenever
+`self.backend` is set — before any local `_tool_*` branch is reached. Widening a tool's
+description therefore obliges **both** implementations — `RecceMCPServer._tool_*` and
+`CloudBackend._tool_*` — or the description must state what the other backend returns
+instead. A description promising a field that only one backend emits is a broken agent
+contract even when both implementations are individually correct.
+
+**Worked example**: `schema_diff`'s description promises a `schema_coverage` block.
+`CloudBackend._tool_schema_diff` satisfies it by emitting `_schema_coverage(None)` —
+status `unknown`, "coverage unassessed" — rather than omitting the key.
+
+Origin: PR #1484 review (DRC-3997). Same local/cloud divergence trap as the
+"Cloud vs Local Mode Exception Types" note below, in a different guise.
+
 ## Cloud vs Local Mode Exception Types
 
 `CheckDAO` / `RunDAO` operations have cloud-mode and local-mode branches that
