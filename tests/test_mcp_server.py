@@ -13,7 +13,11 @@ from mcp.types import (  # noqa: E402
 )
 
 from recce.core import RecceContext  # noqa: E402
-from recce.mcp_server import RecceMCPServer, run_mcp_server  # noqa: E402
+from recce.mcp_server import (  # noqa: E402
+    _UNCHECKED_NODE_LIMIT,
+    RecceMCPServer,
+    run_mcp_server,
+)
 from recce.models.types import LineageDiff  # noqa: E402
 from recce.server import RecceServerMode  # noqa: E402
 from recce.tasks.histogram import HistogramDiffTask  # noqa: E402
@@ -314,6 +318,109 @@ class TestRecceMCPServer:
         assert "model.project.not_rebuilt" in coverage["unchecked_nodes"]
         assert "model.project.empty_entry" in coverage["unchecked_nodes"]
         assert coverage["unchecked_node_count"] == 2
+
+    @pytest.mark.asyncio
+    async def test_tool_schema_diff_coverage_ignores_nodes_the_catalog_never_describes(self, mcp_server):
+        """A node dbt never catalogues is not a coverage gap.
+
+        `catalog.json` describes warehouse relations. Exposures, metrics and
+        semantic models are not relations — the dbt adapter builds them with no
+        `columns` key at all — and an ephemeral model is inlined as a CTE, so it
+        is excluded from the catalog too. Counting them as unchecked would pin
+        `status` to "partial" on any project that owns one, so a genuinely clean
+        schema_diff could never be reported as verified, and the capped
+        `unchecked_nodes` list would fill with nodes that were never comparable.
+        """
+        server, mock_context = mcp_server
+
+        both_sides = {
+            "model.project.clean": {
+                "id": "model.project.clean",
+                "name": "clean",
+                "resource_type": "model",
+                "config": {"materialized": "table"},
+                "columns": {"id": {"name": "id", "type": "text"}},
+            },
+            "exposure.project.dash": {
+                "id": "exposure.project.dash",
+                "name": "dash",
+                "resource_type": "exposure",
+                "config": {},
+            },
+            "metric.project.revenue": {
+                "id": "metric.project.revenue",
+                "name": "revenue",
+                "resource_type": "metric",
+                "config": {},
+            },
+            "semantic_model.project.orders_sm": {
+                "id": "semantic_model.project.orders_sm",
+                "name": "orders_sm",
+                "resource_type": "semantic_model",
+                "config": {},
+            },
+            "model.project.inlined": {
+                "id": "model.project.inlined",
+                "name": "inlined",
+                "resource_type": "model",
+                "config": {"materialized": "ephemeral"},
+            },
+        }
+
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {"nodes": both_sides},
+            "current": {"nodes": both_sides},
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+
+        result = await server._tool_schema_diff({})
+
+        assert result["data"] == []
+        coverage = result["schema_coverage"]
+        assert coverage["unchecked_nodes"] == []
+        assert coverage["unchecked_node_count"] == 0
+        assert coverage["status"] == "complete", "a clean project was reported as only partially checked"
+
+    @pytest.mark.asyncio
+    async def test_tool_schema_diff_coverage_truncates_at_the_node_limit(self, mcp_server):
+        """Past the cap, `unchecked_nodes` truncates and `more` says so.
+
+        The full count still reports, so a consumer can tell a truncated list
+        from an exhaustive one.
+        """
+        server, mock_context = mcp_server
+
+        node_ids = [f"model.project.m{i:03d}" for i in range(_UNCHECKED_NODE_LIMIT + 5)]
+
+        def node(node_id, *, catalogued):
+            n = {
+                "id": node_id,
+                "name": node_id.rsplit(".", 1)[-1],
+                "resource_type": "model",
+                "config": {"materialized": "table"},
+            }
+            if catalogued:
+                n["columns"] = {"id": {"name": "id", "type": "text"}}
+            return n
+
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {"nodes": {nid: node(nid, catalogued=True) for nid in node_ids}},
+            # Nothing was rebuilt, so no node has a current catalog entry.
+            "current": {"nodes": {nid: node(nid, catalogued=False) for nid in node_ids}},
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+
+        result = await server._tool_schema_diff({})
+
+        coverage = result["schema_coverage"]
+        assert coverage["status"] == "partial"
+        assert coverage["unchecked_node_count"] == len(node_ids)
+        assert len(coverage["unchecked_nodes"]) == _UNCHECKED_NODE_LIMIT
+        assert coverage["more"] is True
+        # Sorted, so the truncation is a stable prefix rather than dict order.
+        assert coverage["unchecked_nodes"] == sorted(node_ids)[:_UNCHECKED_NODE_LIMIT]
 
     @pytest.mark.asyncio
     async def test_tool_query(self, mcp_server):
@@ -2979,6 +3086,135 @@ class TestImpactAnalysisBehavior:
         assert "max_affected_row_count" in result
         assert "total_affected_row_count" not in result
         assert "suggested_deep_dives" not in result
+
+    ONE_SIDED_LINEAGE_DIFF_DATA = {
+        "base": {
+            "nodes": {
+                "model.project.deleted_model": {
+                    "name": "deleted_model",
+                    "resource_type": "model",
+                    "config": {"materialized": "table"},
+                    "columns": {
+                        "id": {"type": "INTEGER"},
+                        "gone": {"type": "TEXT"},
+                    },
+                },
+            },
+            "parent_map": {},
+        },
+        "current": {
+            "nodes": {
+                "model.project.new_model": {
+                    "name": "new_model",
+                    "resource_type": "model",
+                    "config": {"materialized": "table"},
+                    "columns": {
+                        "id": {"type": "INTEGER"},
+                        "new_col": {"type": "TEXT"},
+                    },
+                },
+            },
+            "parent_map": {},
+        },
+        "diff": {
+            "model.project.new_model": {"change_status": "added"},
+            "model.project.deleted_model": {"change_status": "removed"},
+        },
+    }
+
+    @pytest.mark.asyncio
+    async def test_one_sided_models_keep_their_column_changes(self, mcp_server):
+        """An added or removed model is an observation, not a coverage gap.
+
+        schema_diff pre-filters to nodes present in BOTH lineages, so a one-sided
+        node never reaches its absence guard. impact_analysis has no such filter:
+        an added model has no base side and a removed model has no current side,
+        which looks exactly like a model the run did not build. But a new model's
+        columns really are all added and a deleted model's really are all removed
+        — reporting those as unchecked discards real findings.
+        """
+        server, mock_context = mcp_server
+
+        mock_context.get_lineage_diff.return_value = MagicMock(
+            model_dump=MagicMock(return_value=self.ONE_SIDED_LINEAGE_DIFF_DATA)
+        )
+
+        adapter = MagicMock()
+
+        def mock_select_nodes(select=""):
+            if select == "state:modified":
+                return set()
+            return {"model.project.new_model", "model.project.deleted_model"}
+
+        adapter.select_nodes.side_effect = mock_select_nodes
+        adapter.get_model.return_value = {}
+        mock_context.adapter = adapter
+
+        with (
+            patch("recce.mcp_server.sentry_metrics", None),
+            patch.object(RowCountDiffTask, "execute", return_value={}),
+        ):
+            result = await server._tool_impact_analysis({"skip_value_diff": True})
+
+        assert result["errors"] == []
+        by_name = {model["name"]: model for model in result["confirmed_impacted_models"]}
+        assert set(by_name) == {"new_model", "deleted_model"}
+
+        added = by_name["new_model"]["schema_changes"]
+        assert added is not None, "an added model's columns were reported as unchecked"
+        assert sorted(change["column"] for change in added) == ["id", "new_col"]
+        assert {change["change_status"] for change in added} == {"added"}
+
+        removed = by_name["deleted_model"]["schema_changes"]
+        assert removed is not None, "a removed model's columns were reported as unchecked"
+        assert sorted(change["column"] for change in removed) == ["gone", "id"]
+        assert {change["change_status"] for change in removed} == {"removed"}
+
+        coverage = result["schema_coverage"]
+        assert coverage["unchecked_nodes"] == []
+        assert coverage["status"] == "complete", "one-sided models were counted as a coverage gap"
+
+    @pytest.mark.asyncio
+    async def test_ephemeral_model_is_not_a_coverage_gap(self, mcp_server):
+        """An ephemeral model is inlined as a CTE, so it never enters the catalog.
+
+        It reaches impact_analysis like any other model, but "no columns on
+        either side" is its normal state rather than something the run skipped.
+        """
+        server, mock_context = mcp_server
+
+        ephemeral_node = {
+            "name": "inlined",
+            "resource_type": "model",
+            "config": {"materialized": "ephemeral"},
+        }
+        mock_context.get_lineage_diff.return_value = MagicMock(
+            model_dump=MagicMock(
+                return_value={
+                    "base": {"nodes": {"model.project.inlined": ephemeral_node}, "parent_map": {}},
+                    "current": {"nodes": {"model.project.inlined": ephemeral_node}, "parent_map": {}},
+                    "diff": {},
+                }
+            )
+        )
+
+        adapter = MagicMock()
+        adapter.select_nodes.side_effect = lambda select="": (
+            set() if select == "state:modified" else {"model.project.inlined"}
+        )
+        adapter.get_model.return_value = {}
+        mock_context.adapter = adapter
+
+        with (
+            patch("recce.mcp_server.sentry_metrics", None),
+            patch.object(RowCountDiffTask, "execute", return_value={}),
+        ):
+            result = await server._tool_impact_analysis({"skip_value_diff": True})
+
+        assert result["errors"] == []
+        coverage = result["schema_coverage"]
+        assert coverage["unchecked_nodes"] == []
+        assert coverage["status"] == "complete", "an ephemeral model was counted as a coverage gap"
 
 
 class TestLocalModeRunBacked:

@@ -575,6 +575,60 @@ def _columns_comparable(base_node: dict, current_node: dict) -> bool:
     return bool(base_node.get("columns")) and bool(current_node.get("columns"))
 
 
+# Resource types dbt never describes in catalog.json, because the catalog
+# describes warehouse relations and these are not relations. See
+# `recce/adapter/dbt_adapter/__init__.py`, which builds them with no `columns`
+# key at all.
+_NON_RELATION_RESOURCE_TYPES = frozenset({"exposure", "metric", "semantic_model", "saved_query"})
+
+
+def _can_carry_catalog_columns(node: dict) -> bool:
+    """Whether the catalog could ever have described this node's columns.
+
+    Missing columns on a node dbt never catalogues are the normal state, not a
+    gap in what we checked. Exposures, metrics and semantic models are not
+    relations, and an ephemeral model is inlined as a CTE rather than
+    materialized, so none of them ever get a catalog entry. Counting them as
+    unchecked would pin `status` to "partial" on any project that owns one — a
+    genuinely clean schema_diff could then never be reported as verified — and
+    would spend the capped `unchecked_nodes` slots on nodes that were never
+    comparable to begin with.
+
+    A denylist, not an allowlist: a resource type we have not met, or a node
+    carrying no `resource_type` at all, still counts as a coverage gap. The
+    trade-off is deliberate. Skipping every node with no columns on *either*
+    side would also have covered these cases, but it would silently drop a model
+    that neither environment built — precisely the absence `unchecked_nodes`
+    exists to name — so we over-report a gap rather than hide one.
+    """
+    if node.get("resource_type") in _NON_RELATION_RESOURCE_TYPES:
+        return False
+    return (node.get("config") or {}).get("materialized") != "ephemeral"
+
+
+def _schema_coverage(unchecked_node_ids: Optional[List[str]]) -> Dict[str, Any]:
+    """Build the schema_coverage block shared by schema_diff and impact_analysis.
+
+    `None` means the comparison never ran — it raised, or the backend does not
+    report coverage. That is distinct from an empty list, which means the
+    comparison ran and found nothing it could not check.
+    """
+    if unchecked_node_ids is None:
+        return {
+            "status": "unknown",
+            "unchecked_nodes": [],
+            "unchecked_node_count": 0,
+            "more": False,
+        }
+    ordered = sorted(unchecked_node_ids)
+    return {
+        "status": "partial" if ordered else "complete",
+        "unchecked_nodes": ordered[:_UNCHECKED_NODE_LIMIT],
+        "unchecked_node_count": len(ordered),
+        "more": len(ordered) > _UNCHECKED_NODE_LIMIT,
+    }
+
+
 class RecceMCPServer:
     """MCP Server for Recce data validation tools"""
 
@@ -1744,9 +1798,13 @@ class RecceMCPServer:
             current_columns = current_node.get("columns") or {}
 
             # Skipped before the row cap so unverifiable rows can neither
-            # displace real changes nor inflate `more`.
+            # displace real changes nor inflate `more`. A node the catalog never
+            # describes is skipped without being named: it is not a gap in what
+            # we checked, and naming it would make `status` permanently
+            # "partial" on any project that owns one.
             if not _columns_comparable(base_node, current_node):
-                unchecked_nodes.append(node_id)
+                if _can_carry_catalog_columns(current_node):
+                    unchecked_nodes.append(node_id)
                 continue
 
             # Get column names in base and current
@@ -1791,13 +1849,7 @@ class RecceMCPServer:
         # that ignore it still see the unchanged shape, minus rows we cannot
         # stand behind. `data == []` means "no column changes" only when
         # `status` is "complete".
-        unchecked_nodes.sort()
-        result["schema_coverage"] = {
-            "status": "partial" if unchecked_nodes else "complete",
-            "unchecked_nodes": unchecked_nodes[:_UNCHECKED_NODE_LIMIT],
-            "unchecked_node_count": len(unchecked_nodes),
-            "more": len(unchecked_nodes) > _UNCHECKED_NODE_LIMIT,
-        }
+        result["schema_coverage"] = _schema_coverage(unchecked_nodes)
         return result
 
     async def _tool_row_count_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
@@ -1981,12 +2033,7 @@ class RecceMCPServer:
         # Step 2b: Schema diff (compare columns between base and current)
         # Unknown until the step runs, so a failure below leaves it unknown
         # rather than claiming complete coverage.
-        schema_coverage = {
-            "status": "unknown",
-            "unchecked_nodes": [],
-            "unchecked_node_count": 0,
-            "more": False,
-        }
+        schema_coverage = _schema_coverage(None)
         try:
             base_nodes = lineage_diff.get("base", {}).get("nodes", {})
             current_nodes = lineage_diff.get("current", {}).get("nodes", {})
@@ -2000,16 +2047,30 @@ class RecceMCPServer:
                 base_node = base_nodes.get(node_id, {})
                 current_node = current_nodes.get(node_id, {})
 
-                # Same comparison as the schema_diff tool, so it needs the same
-                # guard. `None` rather than `[]`: an empty list reads as "checked,
-                # nothing changed", which is the claim we cannot make here.
-                if not _columns_comparable(base_node, current_node):
+                # The same absence guard as the schema_diff tool, but that tool
+                # compares only nodes present in BOTH lineages. Added and removed
+                # models reach this loop too, and a one-sided node is an
+                # observation, not an absence: a new model's columns really are
+                # all added, and a deleted model's really are all removed. Nodes
+                # the catalog never describes fall through as well — comparing
+                # two empty maps yields the honest empty result without claiming
+                # a coverage gap.
+                # `None` rather than `[]` for a real gap: an empty list reads as
+                # "checked, nothing changed", which is the claim we cannot make.
+                exists_in_both = bool(base_node) and bool(current_node)
+                if (
+                    exists_in_both
+                    and not _columns_comparable(base_node, current_node)
+                    and _can_carry_catalog_columns(current_node)
+                ):
                     model["schema_changes"] = None
                     schema_unchecked.append(node_id)
                     continue
 
-                base_cols = set(base_node.get("columns", {}).keys())
-                curr_cols = set(current_node.get("columns", {}).keys())
+                base_columns = base_node.get("columns") or {}
+                current_columns = current_node.get("columns") or {}
+                base_cols = set(base_columns.keys())
+                curr_cols = set(current_columns.keys())
 
                 changes = []
                 for col in curr_cols - base_cols:
@@ -2017,20 +2078,14 @@ class RecceMCPServer:
                 for col in base_cols - curr_cols:
                     changes.append({"column": col, "change_status": "removed"})
                 for col in base_cols & curr_cols:
-                    base_type = base_nodes[node_id]["columns"][col].get("type")
-                    curr_type = current_nodes[node_id]["columns"][col].get("type")
+                    base_type = base_columns[col].get("type")
+                    curr_type = current_columns[col].get("type")
                     if base_type != curr_type:
                         changes.append({"column": col, "change_status": "modified"})
 
                 model["schema_changes"] = changes
 
-            schema_unchecked.sort()
-            schema_coverage = {
-                "status": "partial" if schema_unchecked else "complete",
-                "unchecked_nodes": schema_unchecked[:_UNCHECKED_NODE_LIMIT],
-                "unchecked_node_count": len(schema_unchecked),
-                "more": len(schema_unchecked) > _UNCHECKED_NODE_LIMIT,
-            }
+            schema_coverage = _schema_coverage(schema_unchecked)
         except Exception as e:
             errors.append({"step": "schema_diff", "message": str(e)})
 
