@@ -192,7 +192,14 @@ class DataFrame(BaseModel):
             if dtype == "int64":
                 col_type = DataFrameColumnType.INTEGER
             elif dtype == "float64":
-                col_type = DataFrameColumnType.NUMBER
+                # A pandas float64 IS an IEEE-754 double, so it is approximate by
+                # construction — unlike the agate path, where NUMBER covers exact
+                # DECIMAL and approximate DOUBLE alike and the catalog has to tell
+                # them apart. Nothing here needs the catalog: the dtype is already
+                # the authoritative answer. Labelling it NUMBER (exact) is what made
+                # every SQLMesh float column compare with string-inequality and
+                # report float noise as a change. (DRC-3025)
+                col_type = DataFrameColumnType.FLOAT
             elif dtype == "object":
                 col_type = DataFrameColumnType.TEXT
             elif dtype == "bool":

@@ -82,6 +82,29 @@ def test_float_serializes_to_float_wire_label():
 
 
 # ---------------------------------------------------------------------------
+# from_pandas — a float64 dtype IS approximate, no catalog needed (SQLMesh path)
+# ---------------------------------------------------------------------------
+
+
+def test_from_pandas_labels_float64_approximate():
+    """The SQLMesh query/query-diff path is pandas-backed (see QueryDiffTask.
+    execute_sqlmesh), and never stamps from a catalog. A float64 column is an
+    IEEE-754 double by definition, so the dtype alone must yield FLOAT —
+    labelling it NUMBER made every SQLMesh float column compare exactly.
+    """
+    import pandas as pd
+
+    df = DataFrame.from_pandas(pd.DataFrame({"n": [1, 2], "ratio": [0.1 + 0.2, 2.5]}))
+
+    # Only the two numeric dtypes are asserted. `object`-vs-`str` for text columns
+    # moved in pandas 3, so pinning a text/bool mapping here would fail on one
+    # pandas major or the other for reasons that have nothing to do with DRC-3025.
+    types = _types(df)
+    assert types["ratio"] == T.FLOAT, "float64 is approximate by construction"
+    assert types["n"] == T.INTEGER, "int64 stays exact"
+
+
+# ---------------------------------------------------------------------------
 # catalog_column_types — reads DECIMAL vs DOUBLE from the catalog (AC4)
 # ---------------------------------------------------------------------------
 
