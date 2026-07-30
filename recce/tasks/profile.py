@@ -8,11 +8,23 @@ from ..models import Check
 from .core import CheckValidator, Task, TaskResultDiffer
 from .dataframe import DataFrame, DataFrameColumnType
 
-# Profile aggregate columns that recce COMPUTES as approximate floats
-# (avg/median are DOUBLE; the proportions are ratios). They carry IEEE-754 noise
-# (e.g. 0.30000000000000004 vs 0.3), so they are stamped FLOAT — approximate by
-# construction — and compared with an epsilon on the frontend. min/max/counts
-# stay exact. (DRC-3025)
+# Profile aggregates that recce COMPUTES, rather than reading back verbatim.
+#
+# Their result type depends on the input column and the warehouse: `avg`/`median`
+# over a DOUBLE are DOUBLE and carry IEEE-754 noise (0.30000000000000004 vs 0.3),
+# while over a DECIMAL they may come back exact; the two proportions divide by
+# `cast(count(*) as {{ dbt.type_numeric() }})`, which is exact NUMERIC on most
+# adapters. So these are stamped FLOAT because they MAY be approximate, not
+# because they always are — the epsilon has to be safe for the exact case too.
+#
+# It is: the epsilon is 1e-9 *relative*, and the exact forms are far coarser than
+# that (numeric(28,6) resolves 1e-6, ~1e-8 relative at magnitude 100), so no
+# representable exact difference is swallowed.
+#
+# Everything else in the profile is read back, not computed — row_count,
+# distinct_count and is_unique are integer/boolean, and min/max are an existing
+# value cast to string rather than an accumulation — so they stay exact.
+# (DRC-3025)
 PROFILE_FLOAT_AGGREGATES = {
     "avg": DataFrameColumnType.FLOAT,
     "median": DataFrameColumnType.FLOAT,

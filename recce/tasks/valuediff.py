@@ -54,7 +54,7 @@ class ValueDiffMixin:
         return lookup.get(identifier.lower(), identifier)
 
     @staticmethod
-    def _stamp_catalog_types(dbt_adapter, df: DataFrame, model: str, base: bool = False) -> DataFrame:
+    def _stamp_catalog_types(dbt_adapter, df: DataFrame, model: str) -> DataFrame:
         """Stamp each model-backed result column with its catalog comparison type.
 
         Columns whose catalog DB type is DOUBLE/FLOAT/REAL become FLOAT
@@ -63,10 +63,25 @@ class ValueDiffMixin:
         change); INT variants become INTEGER. Columns with no catalog match
         (ad-hoc/expression columns, or every column when the catalog is absent)
         keep their `from_agate` type and compare exactly (AC9).
+
+        Always reads the CURRENT catalog, for both sides of a diff, on purpose:
+
+        - A comparison type is a property of the column *pair*, not of one side.
+          Stamping base from the base catalog and current from the current one
+          could label the two halves of a single cell comparison differently,
+          which `isCellChanged` has no way to reconcile — it takes one type.
+        - The model-backed path is a preview-change diff, and both of its queries
+          already run against the current environment (`QueryDiffTask._query_diff`
+          passes `base=False` when `preview_change` is set), so the current
+          catalog is the one describing both results.
+
+        A DECIMAL→DOUBLE type change between base and current therefore reads as
+        approximate on both sides. That is the safe direction: the alternative is
+        to call a genuine float column exact and resurrect the phantom diffs.
         """
         from .dataframe import DataFrameColumnType
 
-        db_types = dbt_adapter.catalog_column_types(model, base=base)
+        db_types = dbt_adapter.catalog_column_types(model)
         type_map = {}
         for name, db_type in db_types.items():
             comparison_type = DataFrameColumnType.from_db_type(db_type)
