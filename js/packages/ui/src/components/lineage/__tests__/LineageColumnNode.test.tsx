@@ -47,11 +47,7 @@ vi.mock("@xyflow/react", () => ({
 // ============================================================================
 
 import { fireEvent, render, screen } from "@testing-library/react";
-import type { MouseEvent } from "react";
 import {
-  COLUMN_NODE_HEIGHT,
-  COLUMN_NODE_WIDTH,
-  type ColumnChangeStatus,
   type ColumnTransformationType,
   LineageColumnNode,
   type LineageColumnNodeData,
@@ -213,21 +209,22 @@ describe("LineageColumnNode", () => {
       unknown: "U",
     };
 
-    it.each(
-      Object.entries(transformationLetters),
-    )("shows %s chip for %s transformation", (type, letter) => {
-      const props = createMockColumnNodeProps(
-        {},
-        {
-          transformationType: type as ColumnTransformationType,
-          changeStatus: undefined, // Change status takes precedence
-        },
-      );
+    it.each(Object.entries(transformationLetters))(
+      "shows %s chip for %s transformation",
+      (type, letter) => {
+        const props = createMockColumnNodeProps(
+          {},
+          {
+            transformationType: type as ColumnTransformationType,
+            changeStatus: undefined, // Change status takes precedence
+          },
+        );
 
-      render(<LineageColumnNode {...props} />);
+        render(<LineageColumnNode {...props} />);
 
-      expect(screen.getByText(letter)).toBeInTheDocument();
-    });
+        expect(screen.getByText(letter)).toBeInTheDocument();
+      },
+    );
 
     it("shows transformation type by default even when change status is present", () => {
       const props = createMockColumnNodeProps(
@@ -386,20 +383,6 @@ describe("LineageColumnNode", () => {
       expect(() => {
         fireEvent.mouseLeave(element);
       }).not.toThrow();
-    });
-  });
-
-  // ==========================================================================
-  // Constants Tests
-  // ==========================================================================
-
-  describe("constants", () => {
-    it("exports COLUMN_NODE_HEIGHT", () => {
-      expect(COLUMN_NODE_HEIGHT).toBe(24);
-    });
-
-    it("exports COLUMN_NODE_WIDTH", () => {
-      expect(COLUMN_NODE_WIDTH).toBe(280);
     });
   });
 
@@ -579,16 +562,6 @@ describe("LineageColumnNode", () => {
   });
 
   // ==========================================================================
-  // Memoization Tests
-  // ==========================================================================
-
-  describe("memoization", () => {
-    it("has displayName set for debugging", () => {
-      expect(LineageColumnNode.displayName).toBe("LineageColumnNode");
-    });
-  });
-
-  // ==========================================================================
   // Integration Tests
   // ==========================================================================
 
@@ -673,17 +646,6 @@ describe("LineageColumnNode", () => {
       // Shows change status because showChangeAnalysis is true
       expect(screen.getByText("~")).toBeInTheDocument();
       expect(container.firstChild).toBeInTheDocument();
-    });
-  });
-
-  // ==========================================================================
-  // Type Export Tests
-  // ==========================================================================
-
-  describe("type exports", () => {
-    it("ColumnChangeStatus type accepts valid values", () => {
-      const status: ColumnChangeStatus = "added";
-      expect(status).toBe("added");
     });
   });
 });

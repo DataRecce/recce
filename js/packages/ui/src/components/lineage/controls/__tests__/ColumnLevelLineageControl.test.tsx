@@ -8,6 +8,7 @@
  */
 
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 
 import type { LineageGraph } from "../../../../contexts/lineage/types";
@@ -132,6 +133,26 @@ describe("ColumnLevelLineageControl — newCllExperience", () => {
       />,
     );
     expect(screen.getByText(/column lineage for/i)).toBeInTheDocument();
+  });
+
+  it("turns change analysis on and requests the global radius when Impact Radius is clicked", async () => {
+    const setChangeAnalysisMode = vi.fn();
+    const onShowCll = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ColumnLevelLineageControl
+        {...createMinimalProps({ setChangeAnalysisMode, onShowCll })}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /impact radius/i }),
+    );
+
+    expect(setChangeAnalysisMode).toHaveBeenCalledWith(true);
+    expect(onShowCll).toHaveBeenCalledWith({
+      change_analysis: true,
+      no_upstream: true,
+    });
   });
 
   it("shows mode message for global impact without newCllExperience", () => {

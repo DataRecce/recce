@@ -38,7 +38,14 @@ if (typeof Object.groupBy === "undefined") {
 }
 
 import type { LineageGraph, LineageGraphNode } from "@datarecce/ui";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ColumnLineageData, ServerInfoResult } from "@datarecce/ui/api";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import React, { createRef } from "react";
 import { type Mock, vi } from "vitest";
 
@@ -53,11 +60,73 @@ let mockUseNodesStateReturnValue: [unknown[], Mock, Mock] = [
   vi.fn(),
   vi.fn(),
 ];
+// Opt in to React Flow's real initial node identity. Production's render guard is
+// `nodes == initialNodes` (referential), and initialNodes is a module-level [];
+// a stubbed array is never that value, so the empty-render path is invisible to
+// every test that does not set this.
+let mockUseRealInitialNodes = false;
+// biome-ignore lint/suspicious/noVar: vi.mock factories are hoisted above lexical initialization.
+var mockReactFlowFitView: Mock;
+// biome-ignore lint/suspicious/noVar: vi.mock factories are hoisted above lexical initialization.
+var mockReactFlowSetCenter: Mock;
+// biome-ignore lint/suspicious/noVar: vi.mock factories are hoisted above lexical initialization.
+var mockReactFlowGetNodes: Mock;
+// biome-ignore lint/suspicious/noVar: vi.mock factories are hoisted above lexical initialization.
+var mockQueryClient: {
+  invalidateQueries: Mock;
+  getQueryData: Mock;
+  setQueryData: Mock;
+};
+// biome-ignore lint/suspicious/noVar: vi.mock factories are hoisted above lexical initialization.
+var mockLineageViewContext: React.Context<
+  | {
+      showColumnLevelLineage: (input?: unknown) => Promise<void>;
+      resetColumnLevelLineage: (previous?: boolean) => Promise<void>;
+      onViewOptionsChanged: (options: unknown) => Promise<void>;
+      viewOptions: Record<string, unknown>;
+      nodes: { id: string }[];
+      changeAnalysisMode: boolean;
+      setChangeAnalysisMode: (active: boolean) => void;
+      isNodeShowingChangeAnalysis: (nodeId: string) => boolean;
+      selectMode: string | undefined;
+      selectNode: (nodeId: string) => void;
+      selectParentNodes: (nodeId: string, degree?: number) => void;
+      selectChildNodes: (nodeId: string, degree?: number) => void;
+    }
+  | undefined
+>;
 
 vi.mock("@xyflow/react", () => ({
   ReactFlow: vi.fn(
-    ({ children, nodes }: { children: React.ReactNode; nodes?: unknown[] }) => (
-      <div data-testid="reactflow" data-node-count={nodes?.length ?? 0}>
+    ({
+      children,
+      nodes,
+      onNodeClick,
+      minZoom,
+    }: {
+      children: React.ReactNode;
+      nodes?: { id: string }[];
+      onNodeClick?: (
+        event: React.MouseEvent<HTMLButtonElement>,
+        node: { id: string },
+      ) => void;
+      minZoom?: number;
+    }) => (
+      <div
+        data-testid="reactflow"
+        data-node-count={nodes?.length ?? 0}
+        data-node-ids={nodes?.map((node) => node.id).join(",")}
+        data-min-zoom={minZoom}
+      >
+        {nodes?.map((node) => (
+          <button
+            key={node.id}
+            data-testid={`click-${node.id}`}
+            onClick={(event) => onNodeClick?.(event, node)}
+          >
+            Focus {node.id}
+          </button>
+        ))}
         {children}
       </div>
     ),
@@ -96,13 +165,21 @@ vi.mock("@xyflow/react", () => ({
     }) => <div data-testid={`rf-panel-${position}`}>{children}</div>,
   ),
   useReactFlow: vi.fn(() => ({
-    fitView: vi.fn().mockResolvedValue(undefined),
-    setCenter: vi.fn().mockResolvedValue(undefined),
+    fitView: mockReactFlowFitView,
+    setCenter: mockReactFlowSetCenter,
     getZoom: vi.fn().mockReturnValue(1),
-    getNodes: vi.fn().mockReturnValue([]),
+    getNodes: mockReactFlowGetNodes,
   })),
-  useNodesState: vi.fn(() => mockUseNodesStateReturnValue),
-  useEdgesState: vi.fn(() => [[], vi.fn(), vi.fn()]),
+  useNodesState: vi.fn((initial: unknown[]) => {
+    const [nodes, setNodes] = React.useState(
+      mockUseRealInitialNodes ? initial : mockUseNodesStateReturnValue[0],
+    );
+    return [nodes, setNodes, vi.fn()];
+  }),
+  useEdgesState: vi.fn(() => {
+    const [edges, setEdges] = React.useState<unknown[]>([]);
+    return [edges, setEdges, vi.fn()];
+  }),
   getNodesBounds: vi.fn(() => ({ x: 0, y: 0, width: 100, height: 100 })),
   Handle: vi.fn(() => null),
   Position: {
@@ -116,6 +193,19 @@ vi.mock("@xyflow/react", () => ({
 // Mock @datarecce/ui contexts
 const mockRefetchLineageGraph = vi.fn();
 const mockRefetchRunsAggregated = vi.fn();
+let mockActiveRun:
+  | {
+      type: "schema_diff" | "profile_diff";
+      run_id: string;
+      run_at: string;
+      params?: {
+        model: string;
+      };
+    }
+  | undefined;
+let mockActiveRunId: string | undefined;
+let mockIsRunResultOpen = false;
+let mockIsProfileDiffRun = false;
 
 const mockLineageGraphContext = {
   lineageGraph: undefined as LineageGraph | undefined,
@@ -132,19 +222,36 @@ const mockRecceInstanceContext = {
 
 vi.mock("@datarecce/ui/contexts", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
+  mockLineageViewContext = React.createContext<
+    | {
+        showColumnLevelLineage: (input?: unknown) => Promise<void>;
+        resetColumnLevelLineage: (previous?: boolean) => Promise<void>;
+        onViewOptionsChanged: (options: unknown) => Promise<void>;
+        viewOptions: Record<string, unknown>;
+        nodes: { id: string }[];
+        changeAnalysisMode: boolean;
+        setChangeAnalysisMode: (active: boolean) => void;
+        isNodeShowingChangeAnalysis: (nodeId: string) => boolean;
+        selectMode: string | undefined;
+        selectNode: (nodeId: string) => void;
+        selectParentNodes: (nodeId: string, degree?: number) => void;
+        selectChildNodes: (nodeId: string, degree?: number) => void;
+      }
+    | undefined
+  >(undefined);
   return {
     useRouteConfig: vi.fn(() => ({ basePath: "" })),
     useLineageGraphContext: vi.fn(() => mockLineageGraphContext),
     useRecceInstanceContext: vi.fn(() => mockRecceInstanceContext),
     useRecceServerFlag: vi.fn(() => ({ data: {} })),
     useRecceActionContext: vi.fn(() => ({
-      runId: undefined,
+      runId: mockActiveRunId,
       showRunId: mockShowRunId,
       closeRunResult: mockCloseRunResult,
       runAction: mockRunAction,
-      isRunResultOpen: false,
+      isRunResultOpen: mockIsRunResultOpen,
     })),
-    LineageViewContext: React.createContext(undefined),
+    LineageViewContext: mockLineageViewContext,
     useLineageViewContextSafe: vi.fn(() => ({
       interactive: true,
       nodes: [],
@@ -220,7 +327,7 @@ vi.mock("@datarecce/ui/api", () => ({
   createLineageDiffCheck: vi.fn().mockResolvedValue({ check_id: "test-check" }),
   createSchemaDiffCheck: vi.fn().mockResolvedValue({ check_id: "test-check" }),
   isHistogramDiffRun: vi.fn(() => false),
-  isProfileDiffRun: vi.fn(() => false),
+  isProfileDiffRun: vi.fn(() => mockIsProfileDiffRun),
   isTopKDiffRun: vi.fn(() => false),
   isValueDiffDetailRun: vi.fn(() => false),
   isValueDiffRun: vi.fn(() => false),
@@ -247,10 +354,16 @@ vi.mock("@datarecce/ui/components/lineage/topbar/LineageViewTopBarOss", () => ({
 }));
 
 vi.mock("@datarecce/ui/components/lineage/NodeViewOss", () => ({
-  NodeViewOss: vi.fn(({ node, onCloseNode }) => (
+  NodeViewOss: vi.fn(({ node, onCloseNode, onNavigateToNode }) => (
     <div data-testid="node-view" data-node-id={node?.id}>
       <button data-testid="close-node-view" onClick={onCloseNode}>
         Close
+      </button>
+      <button
+        data-testid="repeat-focused-node"
+        onClick={() => onNavigateToNode(node.id)}
+      >
+        Keep current focus
       </button>
     </div>
   )),
@@ -313,9 +426,172 @@ vi.mock("@datarecce/ui/components/lineage/ActionControlOss", () => ({
 vi.mock(
   "@datarecce/ui/components/lineage/ColumnLevelLineageControlOss",
   () => ({
-    ColumnLevelLineageControlOss: vi.fn(() => (
-      <div data-testid="cll-control" />
-    )),
+    ColumnLevelLineageControlOss: vi.fn(() => {
+      const context = React.useContext(mockLineageViewContext);
+      return (
+        <div
+          data-testid="cll-control"
+          data-change-analysis-mode={String(
+            context?.changeAnalysisMode ?? false,
+          )}
+          data-select-mode={String(context?.selectMode)}
+        >
+          {/*
+            The real multi-select entry points, driven through the context the
+            canvas and the context menu use. Each one has to supersede a pending
+            CLL interaction, or a late CLL response steals focus mid-selection.
+          */}
+          <button
+            data-testid="select-parents-node1"
+            onClick={() => context?.selectParentNodes("model.test.node1")}
+          >
+            Select node 1 parents
+          </button>
+          <button
+            data-testid="select-children-node1"
+            onClick={() => context?.selectChildNodes("model.test.node1")}
+          >
+            Select node 1 children
+          </button>
+          <button
+            data-testid="select-node2"
+            onClick={() => context?.selectNode("model.test.node2")}
+          >
+            Select node 2
+          </button>
+          <button
+            data-testid="select-node1"
+            onClick={() => context?.selectNode("model.test.node1")}
+          >
+            Select node 1
+          </button>
+          <button
+            data-testid="select-missing-node"
+            onClick={() => context?.selectNode("model.test.missing")}
+          >
+            Select a node the graph does not have
+          </button>
+          <button
+            data-testid="select-parents-missing-node"
+            onClick={() => context?.selectParentNodes("model.test.missing")}
+          >
+            Select parents of a node the graph does not have
+          </button>
+          {/*
+            The change-analysis treatment every node consumes, read straight off
+            the context the real GraphNode reads it from. Nothing here restates
+            the rule — the component's `isNodeShowingChangeAnalysis` decides.
+          */}
+          {(context?.nodes ?? []).map((node) => (
+            <span
+              key={node.id}
+              data-testid={`change-analysis-${node.id}`}
+              data-showing={String(
+                context?.isNodeShowingChangeAnalysis(node.id) ?? false,
+              )}
+            />
+          ))}
+          {/*
+            Impact Radius activation as the real control performs it: set the
+            independent mode flag, then request the radius. Activation is the
+            control's job; what the *view* does with the resulting transitions
+            is what the tests below pin.
+          */}
+          <button
+            data-testid="activate-impact"
+            onClick={() => {
+              context?.setChangeAnalysisMode(true);
+              void context?.showColumnLevelLineage({
+                change_analysis: true,
+                no_upstream: true,
+              });
+            }}
+          >
+            Activate impact radius
+          </button>
+          <button
+            data-testid="activate-impact-node1"
+            onClick={() => {
+              context?.setChangeAnalysisMode(true);
+              void context?.showColumnLevelLineage({
+                node_id: "model.test.node1",
+                change_analysis: true,
+                no_upstream: true,
+              });
+            }}
+          >
+            Activate node 1 impact radius
+          </button>
+          <button
+            data-testid="click-column-node1-id"
+            onClick={() =>
+              void context?.showColumnLevelLineage({
+                node_id: "model.test.node1",
+                column: "id",
+              })
+            }
+          >
+            Click node 1 id column
+          </button>
+          <button
+            data-testid="show-impact-node1"
+            onClick={() =>
+              void context?.showColumnLevelLineage({
+                node_id: "model.test.node1",
+                change_analysis: true,
+                no_upstream: true,
+              })
+            }
+          >
+            Show node 1 impact
+          </button>
+          <button
+            data-testid="refresh-cll-node1"
+            onClick={() =>
+              void context?.onViewOptionsChanged({
+                ...context.viewOptions,
+                column_level_lineage: {
+                  node_id: "model.test.node1",
+                  column: "id",
+                },
+              })
+            }
+          >
+            Refresh node 1 CLL
+          </button>
+          <button
+            data-testid="show-all-models"
+            onClick={() =>
+              void context?.onViewOptionsChanged({
+                ...context.viewOptions,
+                view_mode: "all",
+                column_level_lineage: undefined,
+              })
+            }
+          >
+            Show all models
+          </button>
+          <button
+            data-testid="disable-cll"
+            onClick={() => void context?.showColumnLevelLineage(undefined)}
+          >
+            Disable CLL
+          </button>
+          <button
+            data-testid="reset-cll"
+            onClick={() => void context?.resetColumnLevelLineage()}
+          >
+            Reset CLL
+          </button>
+          <button
+            data-testid="previous-cll"
+            onClick={() => void context?.resetColumnLevelLineage(true)}
+          >
+            Previous CLL
+          </button>
+        </div>
+      );
+    }),
   }),
 );
 
@@ -394,7 +670,7 @@ vi.mock("@datarecce/ui/hooks", () => ({
     ImageDownloadModal: () => null,
     ref: { current: null },
   })),
-  useRun: vi.fn(() => ({ run: undefined })),
+  useRun: vi.fn(() => ({ run: mockActiveRun })),
   useThemeColors: vi.fn(() => ({
     isDark: false,
   })),
@@ -432,17 +708,14 @@ vi.mock("@tanstack/react-query", () => ({
   useQuery: vi.fn(() => ({
     data: undefined,
   })),
-  useQueryClient: vi.fn(() => ({
-    invalidateQueries: vi.fn().mockResolvedValue(undefined),
-    getQueryData: vi.fn().mockReturnValue(undefined),
-    setQueryData: vi.fn(),
-  })),
+  useQueryClient: vi.fn(() => mockQueryClient),
 }));
 
 // ============================================================================
 // Imports - MUST come after mocks
 // ============================================================================
 
+import { selectDownstream, selectUpstream } from "@datarecce/ui";
 import { select } from "@datarecce/ui/api";
 import {
   LineageViewOss as LineageView,
@@ -451,6 +724,7 @@ import {
   PrivateLineageView,
 } from "@datarecce/ui/components/lineage/LineageViewOss";
 import { useRecceServerFlag } from "@datarecce/ui/contexts";
+import { trackLineageViewRender } from "@datarecce/ui/lib/api/track";
 
 // Wrap PrivateLineageView with forwardRef for testing purposes
 // This is needed because PrivateLineageView is a function that takes (props, ref)
@@ -461,7 +735,9 @@ const TestablePrivateLineageView = React.forwardRef<
 >(PrivateLineageView);
 
 import { toReactFlow } from "@datarecce/ui/components/lineage/lineage";
+import { toaster } from "@datarecce/ui/components/ui";
 import { useMultiNodesActionOss as useMultiNodesAction } from "@datarecce/ui/hooks/useMultiNodesActionOss";
+import { HttpError } from "@datarecce/ui/lib/fetchClient";
 import { useMutation } from "@tanstack/react-query";
 
 // ============================================================================
@@ -522,6 +798,69 @@ function createMockLineageGraphNode(
   };
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
+function createColumnLineageData(): ColumnLineageData {
+  return {
+    current: {
+      nodes: {
+        "model.test.node1": {
+          id: "model.test.node1",
+          name: "node1",
+          source_name: "",
+          resource_type: "model",
+          change_status: "modified",
+          change_category: "breaking",
+          columns: {
+            "model.test.node1.id": {
+              name: "id",
+              type: "INTEGER",
+              change_status: "modified",
+            },
+          },
+        },
+      },
+      columns: {},
+      parent_map: {},
+      child_map: {},
+    },
+  };
+}
+
+function createPatchableServerInfoResult(): ServerInfoResult {
+  return {
+    state_metadata: {
+      schema_version: "1",
+      recce_version: "0.1.0",
+      generated_at: "2026-01-01",
+    },
+    adapter_type: "dbt",
+    review_mode: false,
+    cloud_mode: false,
+    file_mode: false,
+    demo: false,
+    codespace: false,
+    support_tasks: {},
+    lineage: {
+      nodes: {
+        "model.test.node1": {
+          name: "node1",
+          resource_type: "model",
+          package_name: "test",
+        },
+      },
+      edges: [],
+      metadata: { base: {}, current: {} },
+    },
+  };
+}
+
 // Helper to setup mocks with lineage graph data
 function setupWithLineageGraph(lineageGraph?: LineageGraph) {
   mockLineageGraphContext.lineageGraph = lineageGraph;
@@ -544,6 +883,18 @@ function setupWithLineageGraph(lineageGraph?: LineageGraph) {
   });
 }
 
+function setupOpenProfileRun(model: string) {
+  mockActiveRunId = `profile-${model}`;
+  mockIsRunResultOpen = true;
+  mockIsProfileDiffRun = true;
+  mockActiveRun = {
+    type: "profile_diff",
+    run_id: mockActiveRunId,
+    run_at: "2026-07-28T00:00:00Z",
+    params: { model },
+  };
+}
+
 // ============================================================================
 // Test Wrapper
 // ============================================================================
@@ -559,6 +910,23 @@ function TestWrapper({ children }: { children: React.ReactNode }) {
 describe("LineageView Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // clearAllMocks resets call records but NOT implementations, so a
+    // mockReturnValue set by one test would otherwise leak into every later
+    // test that does not set its own and make the suite order-dependent.
+    (useMutation as Mock).mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue(undefined),
+    });
+    (useRecceServerFlag as Mock).mockReturnValue({ data: {} });
+    (toReactFlow as Mock).mockReturnValue([[], [], {}]);
+    (select as Mock).mockResolvedValue({ nodes: [] });
+    mockReactFlowFitView = vi.fn().mockResolvedValue(undefined);
+    mockReactFlowSetCenter = vi.fn().mockResolvedValue(undefined);
+    mockReactFlowGetNodes = vi.fn().mockReturnValue([]);
+    mockQueryClient = {
+      invalidateQueries: vi.fn().mockResolvedValue(undefined),
+      getQueryData: vi.fn().mockReturnValue(undefined),
+      setQueryData: vi.fn(),
+    };
 
     // Reset context mocks to defaults
     mockLineageGraphContext.lineageGraph = undefined;
@@ -566,9 +934,14 @@ describe("LineageView Component", () => {
     mockLineageGraphContext.error = undefined;
     mockRecceInstanceContext.featureToggles = { mode: "full" };
     mockRecceInstanceContext.singleEnv = false;
+    mockActiveRun = undefined;
+    mockActiveRunId = undefined;
+    mockIsRunResultOpen = false;
+    mockIsProfileDiffRun = false;
 
     // Reset node state mock
     mockUseNodesStateReturnValue = [[], vi.fn(), vi.fn()];
+    mockUseRealInitialNodes = false;
   });
 
   // ==========================================================================
@@ -1239,6 +1612,38 @@ describe("LineageView Component", () => {
         screen.queryByTestId("lineage-view-topbar"),
       ).not.toBeInTheDocument();
     });
+
+    it("lets manual zoom go below the floor fitView will settle at", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("show-all-models")).toBeInTheDocument(),
+      );
+
+      // A view change fits the graph, and fitView carries the legibility floor.
+      fireEvent.click(screen.getByTestId("show-all-models"));
+      await waitFor(() => expect(mockReactFlowFitView).toHaveBeenCalled());
+
+      const fitViewMinZoom = (
+        mockReactFlowFitView.mock.calls[0][0] as { minZoom: number }
+      ).minZoom;
+      const canvasMinZoom = Number(
+        screen.getByTestId("reactflow").getAttribute("data-min-zoom"),
+      );
+
+      // The whole point of two floors: fitView keeps labels legible, while the
+      // user may still zoom out past that to explore a large graph.
+      expect(fitViewMinZoom).toBeGreaterThan(0);
+      expect(fitViewMinZoom).toBeLessThan(1);
+      expect(canvasMinZoom).toBeGreaterThan(0);
+      expect(canvasMinZoom).toBeLessThan(fitViewMinZoom);
+    });
   });
 
   // ==========================================================================
@@ -1327,6 +1732,39 @@ describe("LineageView Component", () => {
       expect(mockMutateAsync).not.toHaveBeenCalled();
     });
 
+    it("still triggers CLL when a hidden run model supersedes the first layout", async () => {
+      // The run-focus effect asks for view_mode "all" on the first commit, which
+      // supersedes the layout effect while its node selection is in flight — and
+      // the layout effect is the only thing that arms the one-shot impact
+      // request. Dropping it would silently disable the flag for the session.
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      setupOpenProfileRun("node2");
+      mockUseNodesStateReturnValue = [
+        [lineageGraph.nodes["model.test.node1"]],
+        vi.fn(),
+        vi.fn(),
+      ];
+      (useRecceServerFlag as Mock).mockReturnValue({
+        data: { impact_at_startup: true },
+      });
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+
+      await waitFor(() =>
+        expect(mockMutateAsync).toHaveBeenCalledWith(
+          expect.objectContaining({
+            change_analysis: true,
+            no_upstream: true,
+          }),
+        ),
+      );
+    });
+
     it("does not trigger CLL when flag is absent", async () => {
       const lineageGraph = createMockLineageGraph();
       setupWithLineageGraph(lineageGraph);
@@ -1342,6 +1780,1211 @@ describe("LineageView Component", () => {
         expect(select).toHaveBeenCalled();
       });
       expect(mockMutateAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("async layout ownership", () => {
+    it("invalidates a deferred CLL request on unmount before it patches or lays out", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      const slowCll = deferred<ColumnLineageData>();
+      const mockMutateAsync = vi.fn(() => slowCll.promise);
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+      const cachedLineage = createPatchableServerInfoResult();
+      mockQueryClient.getQueryData.mockReturnValue(cachedLineage);
+      mockQueryClient.setQueryData.mockReturnValue({
+        ...cachedLineage,
+        lineage: { ...cachedLineage.lineage },
+      });
+
+      const { unmount } = render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("show-impact-node1")).toBeInTheDocument(),
+      );
+
+      (toReactFlow as Mock).mockClear();
+      (trackLineageViewRender as Mock).mockClear();
+      mockQueryClient.setQueryData.mockClear();
+      mockReactFlowFitView.mockClear();
+
+      fireEvent.click(screen.getByTestId("show-impact-node1"));
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+      unmount();
+
+      await act(async () => {
+        slowCll.resolve(createColumnLineageData());
+        await slowCll.promise;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(mockQueryClient.setQueryData).not.toHaveBeenCalled();
+      expect(toReactFlow).not.toHaveBeenCalled();
+      expect(trackLineageViewRender).not.toHaveBeenCalled();
+      expect(mockReactFlowFitView).not.toHaveBeenCalled();
+    });
+
+    it("invalidates refreshLayout ownership on unmount while layout is deferred", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      const mockMutateAsync = vi
+        .fn()
+        .mockResolvedValue(createColumnLineageData());
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      const { unmount } = render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("refresh-cll-node1")).toBeInTheDocument(),
+      );
+
+      const slowLayout =
+        deferred<[LineageGraphNode[], [], Record<string, Set<string>>]>();
+      const staleNode = createMockLineageGraphNode(
+        "model.test.after_unmount",
+        "after_unmount",
+      );
+      (toReactFlow as Mock).mockClear();
+      (toReactFlow as Mock).mockImplementationOnce(() => slowLayout.promise);
+      (trackLineageViewRender as Mock).mockClear();
+      mockReactFlowFitView.mockClear();
+
+      fireEvent.click(screen.getByTestId("refresh-cll-node1"));
+      await waitFor(() => expect(toReactFlow).toHaveBeenCalledTimes(1));
+      unmount();
+
+      await act(async () => {
+        slowLayout.resolve([
+          [staleNode],
+          [],
+          { [staleNode.id]: new Set<string>() },
+        ]);
+        await slowLayout.promise;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      });
+
+      expect(trackLineageViewRender).not.toHaveBeenCalled();
+      expect(mockReactFlowFitView).not.toHaveBeenCalled();
+    });
+
+    it("keeps the production reset focus when an older show finishes late", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      const slowShowLayout =
+        deferred<[LineageGraphNode[], [], Record<string, Set<string>>]>();
+      const mockMutateAsync = vi
+        .fn()
+        .mockResolvedValue(createColumnLineageData());
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("show-impact-node1")).toBeInTheDocument(),
+      );
+      (toReactFlow as Mock).mockClear();
+      (toReactFlow as Mock).mockImplementationOnce(
+        () => slowShowLayout.promise,
+      );
+
+      fireEvent.click(screen.getByTestId("show-impact-node1"));
+      await waitFor(() => expect(toReactFlow).toHaveBeenCalledTimes(1));
+      fireEvent.click(screen.getByTestId("reset-cll"));
+      await waitFor(() => expect(toReactFlow).toHaveBeenCalledTimes(2));
+
+      await act(async () => {
+        slowShowLayout.resolve([[], [], {}]);
+        await slowShowLayout.promise;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(screen.queryByTestId("node-view")).not.toBeInTheDocument();
+    });
+
+    it("keeps a newer direct view change when an older show finishes late", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      const slowShow = deferred<ColumnLineageData>();
+      const mockMutateAsync = vi.fn(() => slowShow.promise);
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("show-impact-node1")).toBeInTheDocument(),
+      );
+      (toReactFlow as Mock).mockClear();
+
+      fireEvent.click(screen.getByTestId("show-impact-node1"));
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+      fireEvent.click(screen.getByTestId("show-all-models"));
+      await waitFor(() => expect(toReactFlow).toHaveBeenCalledTimes(1));
+
+      await act(async () => {
+        slowShow.resolve(createColumnLineageData());
+        await slowShow.promise;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(screen.queryByTestId("node-view")).not.toBeInTheDocument();
+    });
+
+    it("keeps a newer node focus and excludes the stale show from history", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      const slowShow = deferred<ColumnLineageData>();
+      const mockMutateAsync = vi.fn(() => slowShow.promise);
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("show-impact-node1")).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByTestId("show-impact-node1"));
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+      fireEvent.click(screen.getByTestId("click-model.test.node2"));
+      expect(screen.getByTestId("node-view")).toHaveAttribute(
+        "data-node-id",
+        "model.test.node2",
+      );
+
+      await act(async () => {
+        slowShow.resolve(createColumnLineageData());
+        await slowShow.promise;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(screen.getByTestId("node-view")).toHaveAttribute(
+        "data-node-id",
+        "model.test.node2",
+      );
+
+      // Flushed, then asserted: a superseded show must not have pushed a history
+      // entry, so "previous" has nothing to restore. Without the flush a
+      // regressed push would land after the test body returned and the bare
+      // assertion could not fail.
+      fireEvent.click(screen.getByTestId("previous-cll"));
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(screen.getByTestId("node-view")).toHaveAttribute(
+        "data-node-id",
+        "model.test.node2",
+      );
+      expect(mockMutateAsync).toHaveBeenCalledTimes(1);
+    });
+
+    it("honors repeated focus intent while an older show is pending", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      const slowShow = deferred<ColumnLineageData>();
+      const mockMutateAsync = vi.fn(() => slowShow.promise);
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByTestId("click-model.test.node2"),
+        ).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByTestId("click-model.test.node2"));
+      expect(screen.getByTestId("node-view")).toHaveAttribute(
+        "data-node-id",
+        "model.test.node2",
+      );
+
+      fireEvent.click(screen.getByTestId("show-impact-node1"));
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+      fireEvent.click(screen.getByTestId("repeat-focused-node"));
+
+      await act(async () => {
+        slowShow.resolve(createColumnLineageData());
+        await slowShow.promise;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(screen.getByTestId("node-view")).toHaveAttribute(
+        "data-node-id",
+        "model.test.node2",
+      );
+      // Flushed, then asserted: a superseded show must not have pushed a history
+      // entry, so "previous" has nothing to restore. Without the flush a
+      // regressed push would land after the test body returned and the bare
+      // assertion could not fail.
+      fireEvent.click(screen.getByTestId("previous-cll"));
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(screen.getByTestId("node-view")).toHaveAttribute(
+        "data-node-id",
+        "model.test.node2",
+      );
+      expect(mockMutateAsync).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not let an unchanged open run supersede a newer CLL interaction", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      mockActiveRunId = "run-node2";
+      mockIsRunResultOpen = true;
+      mockActiveRun = {
+        type: "schema_diff",
+        run_id: mockActiveRunId,
+        run_at: "2026-07-28T00:00:00Z",
+      };
+      const slowShow = deferred<ColumnLineageData>();
+      const mockMutateAsync = vi.fn(() => slowShow.promise);
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("show-impact-node1")).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByTestId("show-impact-node1"));
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+      await act(async () => {
+        slowShow.resolve(createColumnLineageData());
+        await slowShow.promise;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(screen.getByTestId("node-view")).toHaveAttribute(
+        "data-node-id",
+        "model.test.node1",
+      );
+    });
+
+    it("lets a newly opened run supersede an older CLL interaction", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      const slowShow = deferred<ColumnLineageData>();
+      const mockMutateAsync = vi.fn(() => slowShow.promise);
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      // A fresh element every time: React bails out of re-rendering a
+      // referentially identical one, so the newly opened run would never reach
+      // the component.
+      const view = () => (
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>
+      );
+      const { rerender } = render(view());
+      await waitFor(() =>
+        expect(screen.getByTestId("show-impact-node1")).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByTestId("show-impact-node1"));
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+
+      mockActiveRunId = "new-run";
+      mockIsRunResultOpen = true;
+      mockActiveRun = {
+        type: "schema_diff",
+        run_id: mockActiveRunId,
+        run_at: "2026-07-28T00:00:00Z",
+      };
+      rerender(view());
+
+      await act(async () => {
+        slowShow.resolve(createColumnLineageData());
+        await slowShow.promise;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(screen.queryByTestId("node-view")).not.toBeInTheDocument();
+    });
+
+    it("focuses a hidden run model after the all-models layout resolves", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      setupOpenProfileRun("node2");
+      const visibleNode = lineageGraph.nodes["model.test.node1"];
+      const hiddenNode = lineageGraph.nodes["model.test.node2"];
+      mockUseNodesStateReturnValue = [[visibleNode], vi.fn(), vi.fn()];
+      const slowLayout =
+        deferred<[LineageGraphNode[], [], Record<string, Set<string>>]>();
+      (toReactFlow as Mock).mockImplementation(() => slowLayout.promise);
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() => expect(toReactFlow).toHaveBeenCalledTimes(1));
+      expect(select).toHaveBeenCalledWith(
+        expect.objectContaining({ view_mode: "all" }),
+        expect.anything(),
+      );
+      expect(screen.queryByTestId("node-view")).not.toBeInTheDocument();
+
+      await act(async () => {
+        slowLayout.resolve([
+          [visibleNode, hiddenNode],
+          [],
+          {
+            [visibleNode.id]: new Set<string>(),
+            [hiddenNode.id]: new Set<string>(),
+          },
+        ]);
+        await slowLayout.promise;
+      });
+
+      await waitFor(() =>
+        expect(screen.getByTestId("node-view")).toHaveAttribute(
+          "data-node-id",
+          hiddenNode.id,
+        ),
+      );
+    });
+
+    it("does not let a hidden run model steal a newer user focus", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      setupOpenProfileRun("node2");
+      const visibleNode = lineageGraph.nodes["model.test.node1"];
+      const hiddenNode = lineageGraph.nodes["model.test.node2"];
+      mockUseNodesStateReturnValue = [[visibleNode], vi.fn(), vi.fn()];
+      const slowLayout =
+        deferred<[LineageGraphNode[], [], Record<string, Set<string>>]>();
+      (toReactFlow as Mock).mockImplementation(() => slowLayout.promise);
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() => expect(toReactFlow).toHaveBeenCalledTimes(1));
+
+      fireEvent.click(screen.getByTestId(`click-${visibleNode.id}`));
+      expect(screen.getByTestId("node-view")).toHaveAttribute(
+        "data-node-id",
+        visibleNode.id,
+      );
+
+      await act(async () => {
+        slowLayout.resolve([
+          [visibleNode, hiddenNode],
+          [],
+          {
+            [visibleNode.id]: new Set<string>(),
+            [hiddenNode.id]: new Set<string>(),
+          },
+        ]);
+        await slowLayout.promise;
+      });
+
+      expect(screen.getByTestId("node-view")).toHaveAttribute(
+        "data-node-id",
+        visibleNode.id,
+      );
+    });
+
+    it("retains previous CLL history when a deferred reset is superseded", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      const slowPrevious = deferred<ColumnLineageData>();
+      const mockMutateAsync = vi
+        .fn()
+        .mockResolvedValueOnce(createColumnLineageData())
+        .mockImplementationOnce(() => slowPrevious.promise)
+        .mockResolvedValue(createColumnLineageData());
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("show-impact-node1")).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByTestId("show-impact-node1"));
+      await waitFor(() =>
+        expect(screen.getByTestId("node-view")).toHaveAttribute(
+          "data-node-id",
+          "model.test.node1",
+        ),
+      );
+      fireEvent.click(screen.getByTestId("disable-cll"));
+      await waitFor(() =>
+        expect(screen.queryByTestId("node-view")).not.toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByTestId("previous-cll"));
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(2));
+      fireEvent.click(screen.getByTestId("click-model.test.node2"));
+
+      await act(async () => {
+        slowPrevious.resolve(createColumnLineageData());
+        await slowPrevious.promise;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(screen.getByTestId("node-view")).toHaveAttribute(
+        "data-node-id",
+        "model.test.node2",
+      );
+
+      fireEvent.click(screen.getByTestId("previous-cll"));
+      await waitFor(() =>
+        expect(screen.getByTestId("node-view")).toHaveAttribute(
+          "data-node-id",
+          "model.test.node1",
+        ),
+      );
+      expect(mockMutateAsync).toHaveBeenCalledTimes(3);
+    });
+
+    it("does not fit an unmounted layout after its fit delay", async () => {
+      vi.useFakeTimers();
+      try {
+        const lineageGraph = createMockLineageGraph();
+        setupWithLineageGraph(lineageGraph);
+
+        const { unmount } = render(
+          <TestWrapper>
+            <TestablePrivateLineageView interactive={true} ref={null} />
+          </TestWrapper>,
+        );
+        await act(async () => {
+          await Promise.resolve();
+          await Promise.resolve();
+        });
+        expect(screen.getByTestId("show-all-models")).toBeInTheDocument();
+
+        (toReactFlow as Mock).mockClear();
+        (trackLineageViewRender as Mock).mockClear();
+        mockReactFlowFitView.mockClear();
+
+        fireEvent.click(screen.getByTestId("show-all-models"));
+        await act(async () => {
+          await Promise.resolve();
+          await Promise.resolve();
+          await Promise.resolve();
+        });
+        expect(toReactFlow).toHaveBeenCalledTimes(1);
+        expect(trackLineageViewRender).toHaveBeenCalledTimes(1);
+        expect(mockReactFlowFitView).not.toHaveBeenCalled();
+        expect(vi.getTimerCount()).toBeGreaterThan(0);
+
+        unmount();
+        await act(async () => {
+          await vi.runAllTimersAsync();
+        });
+
+        expect(mockReactFlowFitView).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("keeps the newer rendered layout and tracking when an older toReactFlow finishes last", async () => {
+      const lineageGraphA = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraphA);
+      const slowLayoutA =
+        deferred<[LineageGraphNode[], [], Record<string, Set<string>>]>();
+      const nodeA = createMockLineageGraphNode(
+        "model.test.layout_a",
+        "layout_a",
+      );
+      const nodeB = createMockLineageGraphNode(
+        "model.test.layout_b",
+        "layout_b",
+      );
+      (toReactFlow as Mock)
+        .mockImplementationOnce(() => slowLayoutA.promise)
+        .mockResolvedValueOnce([
+          [nodeB],
+          [],
+          { [nodeB.id]: new Set<string>() },
+        ]);
+
+      const { rerender } = render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() => expect(toReactFlow).toHaveBeenCalledTimes(1));
+
+      mockLineageGraphContext.lineageGraph = createMockLineageGraph({
+        nodes: { [nodeB.id]: nodeB },
+      });
+      rerender(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("reactflow")).toHaveAttribute(
+          "data-node-ids",
+          nodeB.id,
+        );
+      });
+      expect(trackLineageViewRender).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        slowLayoutA.resolve([[nodeA], [], { [nodeA.id]: new Set<string>() }]);
+        await slowLayoutA.promise;
+      });
+
+      await waitFor(() => expect(toReactFlow).toHaveBeenCalledTimes(2));
+      expect(screen.getByTestId("reactflow")).toHaveAttribute(
+        "data-node-ids",
+        nodeB.id,
+      );
+      expect(trackLineageViewRender).toHaveBeenCalledTimes(1);
+    });
+
+    // Pins the layout-generation half of the
+    // `!isCurrentGeneration() || !resolution.isCurrent()` guard: the disable
+    // owns a newer layout generation, so the older CLL completion may not reach
+    // toReactFlow. The lifecycle-epoch half (`resolution.isCurrent()`) is
+    // defence-in-depth for a future caller that does not own a layout
+    // generation; its contract is pinned directly in
+    // packages/ui/.../CllCachePatchLifecycle.test.ts ("keeps the newer patch
+    // when an older patchable request finishes last" and friends).
+    it("does not send stale CLL to layout after a newer disable completes", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      const slowCllA = deferred<{
+        current: {
+          nodes: Record<string, never>;
+          columns: Record<string, never>;
+          parent_map: Record<string, never>;
+          child_map: Record<string, never>;
+        };
+      }>();
+      const mockMutateAsync = vi.fn(() => slowCllA.promise);
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+      const nodeB = createMockLineageGraphNode(
+        "model.test.after_disable",
+        "after_disable",
+      );
+      (toReactFlow as Mock).mockResolvedValue([
+        [nodeB],
+        [],
+        { [nodeB.id]: new Set<string>() },
+      ]);
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView
+            interactive={true}
+            viewOptions={{
+              column_level_lineage: {
+                node_id: "model.test.node1",
+                change_analysis: true,
+              },
+            }}
+            ref={null}
+          />
+        </TestWrapper>,
+      );
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+
+      fireEvent.click(screen.getByTestId("disable-cll"));
+      await waitFor(() => expect(toReactFlow).toHaveBeenCalledTimes(1));
+      expect(screen.getByTestId("reactflow")).toHaveAttribute(
+        "data-node-ids",
+        nodeB.id,
+      );
+
+      await act(async () => {
+        slowCllA.resolve({
+          current: {
+            nodes: {},
+            columns: {},
+            parent_map: {},
+            child_map: {},
+          },
+        });
+        await slowCllA.promise;
+      });
+
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+      expect(toReactFlow).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId("reactflow")).toHaveAttribute(
+        "data-node-ids",
+        nodeB.id,
+      );
+    });
+  });
+
+  // ==========================================================================
+  // First-layout ownership
+  // ==========================================================================
+
+  describe("first layout ownership", () => {
+    it("still lays out the graph when the view change that superseded the first layout fails", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      // The real initial identity, so the "nothing has laid out yet" render
+      // guard is live for this test.
+      mockUseRealInitialNodes = true;
+      // A run result open on a model the current view does not show: the
+      // run-focus effect asks for view_mode "all", which supersedes the layout
+      // effect mid-flight and makes refreshLayout the only layout producer.
+      setupOpenProfileRun("node2");
+      const nodeIds = Object.keys(lineageGraph.nodes);
+      (select as Mock)
+        .mockResolvedValueOnce({ nodes: nodeIds })
+        .mockRejectedValueOnce(
+          new HttpError(500, { detail: "select blew up" }, "select failed"),
+        );
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+
+      await waitFor(() =>
+        expect(toaster.create).toHaveBeenCalledWith(
+          expect.objectContaining({ title: "Select node error" }),
+        ),
+      );
+
+      // The failed view change must not take the whole panel with it: a lineage
+      // view that renders nothing has no canvas, no top bar and no way back.
+      await waitFor(() =>
+        expect(screen.getByTestId("reactflow")).toBeInTheDocument(),
+      );
+    });
+  });
+
+  // ==========================================================================
+  // Multi-select entry points
+  // ==========================================================================
+
+  describe("multi-select", () => {
+    function selectMode() {
+      return screen.getByTestId("cll-control").getAttribute("data-select-mode");
+    }
+
+    async function renderWithPendingCll() {
+      setupWithLineageGraph(createMockLineageGraph());
+      (selectUpstream as Mock).mockReturnValue(
+        new Set(["model.test.node1", "model.test.node2"]),
+      );
+      (selectDownstream as Mock).mockReturnValue(
+        new Set(["model.test.node1", "model.test.node2"]),
+      );
+      const slowShow = deferred<ColumnLineageData>();
+      const mockMutateAsync = vi.fn(() => slowShow.promise);
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("show-impact-node1")).toBeInTheDocument(),
+      );
+      fireEvent.click(screen.getByTestId("show-impact-node1"));
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+      return slowShow;
+    }
+
+    async function resolvePendingCll(slowShow: {
+      promise: Promise<ColumnLineageData>;
+      resolve: (value: ColumnLineageData) => void;
+    }) {
+      await act(async () => {
+        slowShow.resolve(createColumnLineageData());
+        await slowShow.promise;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+    }
+
+    it.each([
+      ["select-parents-node1"] as const,
+      ["select-children-node1"] as const,
+      ["select-node2"] as const,
+    ])(
+      "does not let a pending CLL response steal focus after %s",
+      async (testId) => {
+        const slowShow = await renderWithPendingCll();
+
+        fireEvent.click(screen.getByTestId(testId));
+        expect(selectMode()).toBe("selecting");
+
+        await resolvePendingCll(slowShow);
+
+        // The CLL request the user abandoned by starting a selection must not
+        // open the Model Detail panel on top of that selection.
+        expect(screen.queryByTestId("node-view")).not.toBeInTheDocument();
+        expect(selectMode()).toBe("selecting");
+      },
+    );
+
+    it.each([
+      ["select-parents-node1"] as const,
+      ["select-children-node1"] as const,
+      ["select-node1"] as const,
+    ])(
+      "supersedes a pending CLL response from %s while already selecting",
+      async (testId) => {
+        // Entering the selection first matters: from then on the handler skips
+        // the branch that clears CLL through onViewOptionsChanged, so its own
+        // supersede call is the only thing standing between a late CLL response
+        // and the user's selection.
+        setupWithLineageGraph(createMockLineageGraph());
+        (selectUpstream as Mock).mockReturnValue(
+          new Set(["model.test.node1", "model.test.node2"]),
+        );
+        (selectDownstream as Mock).mockReturnValue(
+          new Set(["model.test.node1", "model.test.node2"]),
+        );
+        const slowShow = deferred<ColumnLineageData>();
+        const mockMutateAsync = vi.fn(() => slowShow.promise);
+        (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+        render(
+          <TestWrapper>
+            <TestablePrivateLineageView interactive={true} ref={null} />
+          </TestWrapper>,
+        );
+        await waitFor(() =>
+          expect(screen.getByTestId("select-node2")).toBeInTheDocument(),
+        );
+
+        fireEvent.click(screen.getByTestId("select-node2"));
+        expect(selectMode()).toBe("selecting");
+
+        fireEvent.click(screen.getByTestId("show-impact-node1"));
+        await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+
+        fireEvent.click(screen.getByTestId(testId));
+        await resolvePendingCll(slowShow);
+
+        expect(screen.queryByTestId("node-view")).not.toBeInTheDocument();
+        expect(selectMode()).toBe("selecting");
+      },
+    );
+
+    it.each([
+      ["select-missing-node"] as const,
+      ["select-parents-missing-node"] as const,
+    ])(
+      "ignores %s, which names a node the graph does not have",
+      async (testId) => {
+        setupWithLineageGraph(createMockLineageGraph());
+
+        render(
+          <TestWrapper>
+            <TestablePrivateLineageView interactive={true} ref={null} />
+          </TestWrapper>,
+        );
+        await waitFor(() =>
+          expect(screen.getByTestId(testId)).toBeInTheDocument(),
+        );
+
+        fireEvent.click(screen.getByTestId(testId));
+
+        // No selection is entered, so the action toolbar never appears for a node
+        // that cannot be acted on.
+        expect(selectMode()).toBe("undefined");
+        expect(screen.queryByTestId("action-control")).not.toBeInTheDocument();
+      },
+    );
+  });
+
+  // ==========================================================================
+  // Change Analysis Mode
+  //
+  // The transitions themselves are unit-tested in
+  // packages/ui/.../CllChangeAnalysisPropagation.test.ts. What follows pins the
+  // *component's* use of them: which handler applies which transition, when the
+  // mode lands, and what every node consumer reads off the context.
+  // ==========================================================================
+
+  describe("change analysis mode", () => {
+    const CHANGED_NODE = "model.test.node1";
+    const OTHER_CHANGED_NODE = "model.test.node2";
+    const UNCHANGED_NODE = "model.test.node3";
+
+    function setupChangeAnalysisGraph() {
+      const graph = createMockLineageGraph({
+        nodes: {
+          [CHANGED_NODE]: createMockLineageGraphNode(CHANGED_NODE, "node1"),
+          [OTHER_CHANGED_NODE]: createMockLineageGraphNode(
+            OTHER_CHANGED_NODE,
+            "node2",
+          ),
+          [UNCHANGED_NODE]: createMockLineageGraphNode(
+            UNCHANGED_NODE,
+            "node3",
+            { changeStatus: undefined },
+          ),
+        },
+        modifiedSet: [CHANGED_NODE, OTHER_CHANGED_NODE],
+      });
+      setupWithLineageGraph(graph);
+    }
+
+    function mode() {
+      return screen
+        .getByTestId("cll-control")
+        .getAttribute("data-change-analysis-mode");
+    }
+
+    function showsChangeAnalysis(nodeId: string) {
+      return screen
+        .getByTestId(`change-analysis-${nodeId}`)
+        .getAttribute("data-showing");
+    }
+
+    async function renderAndActivate(testId: string) {
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId(testId)).toBeInTheDocument(),
+      );
+      fireEvent.click(screen.getByTestId(testId));
+      await waitFor(() => expect(mode()).toBe("true"));
+    }
+
+    it("treats every changed node in a global impact radius", async () => {
+      setupChangeAnalysisGraph();
+
+      await renderAndActivate("activate-impact");
+
+      expect(showsChangeAnalysis(CHANGED_NODE)).toBe("true");
+      expect(showsChangeAnalysis(OTHER_CHANGED_NODE)).toBe("true");
+      expect(showsChangeAnalysis(UNCHANGED_NODE)).toBe("false");
+    });
+
+    it("scopes a node-scoped impact radius to its own node", async () => {
+      setupChangeAnalysisGraph();
+
+      await renderAndActivate("activate-impact-node1");
+
+      expect(showsChangeAnalysis(CHANGED_NODE)).toBe("true");
+      expect(showsChangeAnalysis(OTHER_CHANGED_NODE)).toBe("false");
+      expect(showsChangeAnalysis(UNCHANGED_NODE)).toBe("false");
+    });
+
+    it("widens a node-scoped radius to every changed node once a column is clicked", async () => {
+      setupChangeAnalysisGraph();
+      await renderAndActivate("activate-impact-node1");
+
+      fireEvent.click(screen.getByTestId("click-column-node1-id"));
+
+      await waitFor(() =>
+        expect(showsChangeAnalysis(OTHER_CHANGED_NODE)).toBe("true"),
+      );
+      // The column click replaced the CllInput wholesale and carries no
+      // change_analysis of its own — the mode has to survive it.
+      expect(mode()).toBe("true");
+      expect(showsChangeAnalysis(CHANGED_NODE)).toBe("true");
+      expect(showsChangeAnalysis(UNCHANGED_NODE)).toBe("false");
+    });
+
+    it("clears change analysis as soon as CLL is turned off, before the layout round trip", async () => {
+      setupChangeAnalysisGraph();
+      await renderAndActivate("activate-impact");
+
+      fireEvent.click(screen.getByTestId("disable-cll"));
+
+      // Asserted synchronously: `showColumnLevelLineage` applies the transition
+      // before it awaits the layout, so the impact treatment never survives a
+      // frame past the click. The layout's own clear is a microtask later.
+      expect(mode()).toBe("false");
+      expect(showsChangeAnalysis(CHANGED_NODE)).toBe("false");
+
+      await waitFor(() => expect(mode()).toBe("false"));
+    });
+
+    it("clears change analysis when a view-option change drops CLL", async () => {
+      setupChangeAnalysisGraph();
+      await renderAndActivate("activate-impact");
+
+      // Reaches refreshLayout directly, not via showColumnLevelLineage — the
+      // path reselect / selectParentNodes / selectChildNodes take.
+      fireEvent.click(screen.getByTestId("show-all-models"));
+
+      await waitFor(() => expect(mode()).toBe("false"));
+      expect(showsChangeAnalysis(CHANGED_NODE)).toBe("false");
+      expect(showsChangeAnalysis(OTHER_CHANGED_NODE)).toBe("false");
+    });
+  });
+
+  // ==========================================================================
+  // CLL Failure Handling
+  // ==========================================================================
+
+  describe("CLL failure handling", () => {
+    function httpFailure(detail?: string) {
+      return new HttpError(
+        500,
+        detail === undefined ? {} : { detail },
+        "Internal Server Error",
+      );
+    }
+
+    it("toasts the server detail when a user-triggered CLL request fails", async () => {
+      setupWithLineageGraph(createMockLineageGraph());
+      const mockMutateAsync = vi.fn().mockRejectedValue(httpFailure("boom"));
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("show-impact-node1")).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByTestId("show-impact-node1"));
+
+      await waitFor(() =>
+        expect(toaster.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: "Column Level Lineage error",
+            description: "boom",
+            type: "error",
+          }),
+        ),
+      );
+    });
+
+    it("falls back to the error message when the failure carries no detail", async () => {
+      setupWithLineageGraph(createMockLineageGraph());
+      const mockMutateAsync = vi.fn().mockRejectedValue(httpFailure());
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("show-impact-node1")).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByTestId("show-impact-node1"));
+
+      await waitFor(() =>
+        expect(toaster.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: "Column Level Lineage error",
+            description: "Internal Server Error",
+          }),
+        ),
+      );
+    });
+
+    it("rolls the impact radius back off when the auto-triggered request fails", async () => {
+      setupWithLineageGraph(createMockLineageGraph());
+      (useRecceServerFlag as Mock).mockReturnValue({
+        data: { impact_at_startup: true },
+      });
+      const mockMutateAsync = vi.fn().mockRejectedValue(httpFailure("nope"));
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+      await waitFor(() =>
+        expect(toaster.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: "Column Level Lineage error",
+            description: "nope",
+          }),
+        ),
+      );
+      // Without the rollback the UI would sit in "impact on, no impact data".
+      await waitFor(() =>
+        expect(
+          screen
+            .getByTestId("cll-control")
+            .getAttribute("data-change-analysis-mode"),
+        ).toBe("false"),
+      );
+      // The rollback is not a retry: the failed auto-trigger is not re-fetched.
+      expect(mockMutateAsync).toHaveBeenCalledTimes(1);
+    });
+
+    it("still lays out the graph, without a toast, when CLL fails for a non-HTTP reason", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      const mockMutateAsync = vi
+        .fn()
+        .mockRejectedValue(new Error("network down"));
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("show-impact-node1")).toBeInTheDocument(),
+      );
+      (toReactFlow as Mock).mockClear();
+
+      fireEvent.click(screen.getByTestId("show-impact-node1"));
+
+      await waitFor(() => expect(toReactFlow).toHaveBeenCalledTimes(1));
+      expect((toReactFlow as Mock).mock.calls[0][1]).toMatchObject({
+        cll: undefined,
+      });
+      expect(toaster.create).not.toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Column Level Lineage error" }),
+      );
+    });
+  });
+
+  // ==========================================================================
+  // No Lineage Graph
+  // ==========================================================================
+
+  describe("without a lineage graph", () => {
+    function armCachePatch() {
+      const cachedLineage = createPatchableServerInfoResult();
+      mockQueryClient.getQueryData.mockReturnValue(cachedLineage);
+      mockQueryClient.setQueryData.mockReturnValue({
+        ...cachedLineage,
+        lineage: { ...cachedLineage.lineage },
+      });
+    }
+
+    const impactViewOptions = {
+      column_level_lineage: { change_analysis: true, no_upstream: true },
+    };
+
+    it("reuses its own cache patch instead of re-fetching when the patch re-fires the layout", async () => {
+      setupWithLineageGraph(createMockLineageGraph());
+      armCachePatch();
+      const mockMutateAsync = vi
+        .fn()
+        .mockResolvedValue(createColumnLineageData());
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      // A fresh element every time: React bails out of re-rendering a
+      // referentially identical one, which would hide the context change.
+      const view = () => (
+        <TestWrapper>
+          <TestablePrivateLineageView
+            interactive={true}
+            viewOptions={impactViewOptions}
+            ref={null}
+          />
+        </TestWrapper>
+      );
+      const { rerender } = render(view());
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+
+      // A fresh lineageGraph reference is what the patched lineage query hands
+      // the component in production; the layout effect re-fires on it.
+      mockLineageGraphContext.lineageGraph = createMockLineageGraph();
+      rerender(view());
+
+      await waitFor(() => expect(toReactFlow).toHaveBeenCalled());
+      expect(mockMutateAsync).toHaveBeenCalledTimes(1);
+    });
+
+    it("drops the armed patch when the lineage graph goes away, so its return re-fetches", async () => {
+      setupWithLineageGraph(createMockLineageGraph());
+      armCachePatch();
+      const mockMutateAsync = vi
+        .fn()
+        .mockResolvedValue(createColumnLineageData());
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      // A fresh element every time: React bails out of re-rendering a
+      // referentially identical one, which would hide the context change.
+      const view = () => (
+        <TestWrapper>
+          <TestablePrivateLineageView
+            interactive={true}
+            viewOptions={impactViewOptions}
+            ref={null}
+          />
+        </TestWrapper>
+      );
+      const { rerender } = render(view());
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+
+      mockLineageGraphContext.lineageGraph = undefined;
+      rerender(view());
+      await waitFor(() =>
+        expect(screen.queryByTestId("cll-control")).not.toBeInTheDocument(),
+      );
+
+      mockLineageGraphContext.lineageGraph = createMockLineageGraph();
+      rerender(view());
+
+      // Re-arriving lineage may carry no change data at all, so replaying the
+      // previous session's patched result would show stale impact.
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(2));
+    });
+
+    it("does not fetch CLL or lay out when a run wants a view change before lineage loads", async () => {
+      mockLineageGraphContext.lineageGraph = undefined;
+      setupOpenProfileRun("node2");
+      const mockMutateAsync = vi
+        .fn()
+        .mockResolvedValue(createColumnLineageData());
+      (useMutation as Mock).mockReturnValue({ mutateAsync: mockMutateAsync });
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView
+            interactive={true}
+            viewOptions={impactViewOptions}
+            ref={null}
+          />
+        </TestWrapper>,
+      );
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(screen.queryByTestId("reactflow")).not.toBeInTheDocument();
+      expect(mockMutateAsync).not.toHaveBeenCalled();
+      expect(toReactFlow).not.toHaveBeenCalled();
+      expect(select).not.toHaveBeenCalled();
     });
   });
 });

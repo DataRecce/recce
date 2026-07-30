@@ -1,10 +1,12 @@
 # noinspection PyUnresolvedReferences
 import os
+import tempfile
 import unittest
 from datetime import datetime
 
 from recce.core import RecceContext
 from recce.models import Check, Run, RunType
+from recce.models.types import RunStatus
 from recce.state import ArtifactsRoot, FileStateLoader, RecceState
 from tests.adapter.dbt_adapter.conftest import dbt_test_helper  # noqa: F401
 
@@ -130,23 +132,91 @@ class TestRecceState(unittest.TestCase):
         self.assertEqual(adapter.base_manifest.metadata.invocation_id, manifest.get("metadata").get("invocation_id"))
 
     def test_state_loader(self):
-        # copy ./recce_state.json to temp and open
+        expected_run = Run(
+            type=RunType.ROW_COUNT_DIFF,
+            name="Customers row count",
+            params={"node_names": ["customers"]},
+            result={"customers": {"base": 100, "curr": 50}},
+            status=RunStatus.FINISHED,
+        )
+        expected_check = Check(
+            name="Customers changed",
+            description="Review the customer count",
+            type=RunType.ROW_COUNT_DIFF,
+            params={"node_names": ["customers"]},
+            is_checked=True,
+        )
+        expected_state = RecceState(runs=[expected_run], checks=[expected_check])
 
-        # use library to create a temp file in the context
-        import os
-        import shutil
-        import tempfile
+        with tempfile.TemporaryDirectory() as temp_dir:
+            state_file = os.path.join(temp_dir, "state.json")
+            expected_state.to_file(state_file)
+            state = FileStateLoader(state_file=state_file).load()
 
-        with tempfile.NamedTemporaryFile() as f:
-            # copy ./recce_state.json to temp file
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            state_file = os.path.join(current_dir, "recce_state.json")
-            shutil.copy(state_file, f.name)
+        self.assertIsInstance(state, RecceState)
+        self.assertEqual(len(state.runs), 1)
+        self.assertEqual(state.runs[0].run_id, expected_run.run_id)
+        self.assertEqual(state.runs[0].type, RunType.ROW_COUNT_DIFF)
+        self.assertEqual(state.runs[0].status, RunStatus.FINISHED)
+        self.assertEqual(state.runs[0].params, {"node_names": ["customers"]})
+        self.assertEqual(state.runs[0].result, {"customers": {"base": 100, "curr": 50}})
+        self.assertEqual(len(state.checks), 1)
+        self.assertEqual(state.checks[0].check_id, expected_check.check_id)
+        self.assertEqual(state.checks[0].name, "Customers changed")
+        self.assertEqual(state.checks[0].type, RunType.ROW_COUNT_DIFF)
+        self.assertTrue(state.checks[0].is_checked)
 
-            # load the state file
-            state_loader = FileStateLoader(state_file=f.name)
-            state = state_loader.load()
-            assert len(state.runs) == 17
+    def test_state_loader_reads_legacy_v0_state_file(self):
+        """A v0 state file written by recce 0.45 still loads completely.
+
+        ``tests/recce_state.json`` is a real state file captured on 2024-12-06
+        and is treated here as immutable historical input — never regenerated,
+        because regenerating it would only prove that today's writer can read
+        what today's writer wrote. The facts below are what a user upgrading
+        recce would lose if a model changed incompatibly: every run and check,
+        every run type in use at the time, and the dbt artifacts the lineage is
+        rebuilt from.
+        """
+        state = FileStateLoader(state_file=os.path.join(current_dir, "recce_state.json")).load()
+
+        self.assertEqual(state.metadata.schema_version, "v0")
+        self.assertEqual(state.metadata.recce_version, "0.45.0.dev0")
+
+        self.assertEqual(len(state.runs), 17)
+        self.assertEqual(len(state.checks), 8)
+
+        # Every run type this file exercises deserializes into the enum; a
+        # dropped or renamed member would fail load, not just this assertion.
+        self.assertEqual(
+            {run.type for run in state.runs},
+            {
+                RunType.QUERY_DIFF,
+                RunType.ROW_COUNT_DIFF,
+                RunType.PROFILE_DIFF,
+                RunType.VALUE_DIFF,
+                RunType.VALUE_DIFF_DETAIL,
+                RunType.TOP_K_DIFF,
+                RunType.HISTOGRAM_DIFF,
+            },
+        )
+        # Legacy runs carry their identity, params and results, not just a type.
+        row_count_run = next(run for run in state.runs if run.type == RunType.ROW_COUNT_DIFF)
+        self.assertIsNotNone(row_count_run.run_id)
+        self.assertIsNotNone(row_count_run.params)
+        self.assertIsNotNone(row_count_run.result)
+
+        # Checks keep the review state the user curated.
+        self.assertTrue(all(check.check_id is not None for check in state.checks))
+        self.assertTrue(all(isinstance(check.name, str) and check.name for check in state.checks))
+        self.assertTrue(any(check.is_checked for check in state.checks))
+
+        # The dbt artifacts both environments were captured with still load,
+        # which is what the lineage diff is rebuilt from on import.
+        self.assertIsNotNone(state.artifacts)
+        self.assertIn("manifest", state.artifacts.base)
+        self.assertIn("manifest", state.artifacts.current)
+        self.assertIsNotNone(state.artifacts.base["manifest"])
+        self.assertIsNotNone(state.artifacts.current["manifest"])
 
 
 def test_lineage_diff(dbt_test_helper):

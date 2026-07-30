@@ -1,5 +1,7 @@
-import type { ColumnLineageData } from "../../api/cll";
-import type { MergedLineageResponse } from "../../api/info";
+import type { QueryClient } from "@tanstack/react-query";
+import { cacheKeys } from "../../api/cacheKeys";
+import type { CllInput, ColumnLineageData } from "../../api/cll";
+import type { MergedLineageResponse, ServerInfoResult } from "../../api/info";
 
 /**
  * Extract change analysis data from a CLL response and merge it into
@@ -58,4 +60,47 @@ export function patchLineageFromCll(
     ...lineage,
     nodes: patchedNodes,
   };
+}
+
+/**
+ * Whether a finished CLL call carries change data worth patching into the
+ * lineage cache. Only change-analysis calls do; a plain column-lineage call
+ * has nothing to contribute, so the cache is left alone (no refetch either).
+ */
+export function shouldPatchLineageCache(
+  cllApiInput: CllInput,
+  cllData: ColumnLineageData | undefined,
+): boolean {
+  return !!cllApiInput.change_analysis && !!cllData;
+}
+
+/**
+ * Merge CLL change data into the cached lineage instead of refetching it.
+ *
+ * The lineage query is patched in place so the graph picks up change status
+ * immediately. The update is immutable — React Query needs a new reference to
+ * notify subscribers.
+ *
+ * Returns whether the cached reference actually changed. With no lineage entry
+ * to patch, or when structural sharing preserves a deep-equal value, no
+ * production render can consume an armed re-entry.
+ */
+export function patchLineageCacheFromCll(
+  queryClient: QueryClient,
+  cllData: ColumnLineageData,
+): boolean {
+  const before = queryClient.getQueryData<ServerInfoResult>(
+    cacheKeys.lineage(),
+  );
+  const after = queryClient.setQueryData(
+    cacheKeys.lineage(),
+    (old: ServerInfoResult | undefined) => {
+      if (!old) return old;
+      return {
+        ...old,
+        lineage: patchLineageFromCll(old.lineage, cllData),
+      };
+    },
+  );
+  return before !== undefined && after !== before;
 }

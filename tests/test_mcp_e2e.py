@@ -523,7 +523,9 @@ class TestImpactAnalysisErrorResilience:
         helper.add_unique_test("model.recce_test.orders", "orders", "id")
 
         # Corrupt base node columns to force schema-diff to raise AttributeError
-        # (columns=None → None.keys() fails), while keeping classification intact
+        # (a str has no .keys()), while keeping classification intact. It has to
+        # be a non-empty non-mapping: absent, None and empty all mean "this model
+        # was not built by this run", which is now handled rather than raised.
         from unittest.mock import MagicMock
 
         original_fn = server.context.get_lineage_diff
@@ -532,7 +534,7 @@ class TestImpactAnalysisErrorResilience:
             result = original_fn()
             data = result.model_dump(mode="json")
             for nid in list(data.get("base", {}).get("nodes", {}).keys()):
-                data["base"]["nodes"][nid]["columns"] = None
+                data["base"]["nodes"][nid]["columns"] = "not-a-mapping"
             mock_result = MagicMock()
             mock_result.model_dump.return_value = data
             return mock_result
@@ -796,6 +798,69 @@ class TestSchemaDiffE2E:
         changes = result["data"]
         assert len(changes) >= 1
         assert any("email" in str(row) for row in changes)
+        assert result["schema_coverage"]["status"] == "complete"
+
+    @pytest.mark.asyncio
+    async def test_model_missing_from_current_catalog_is_not_reported_as_removed(self, mcp_e2e):
+        """A selective build catalogues only what it rebuilt.
+
+        Passing no current columns leaves the model in the current manifest with
+        no catalog entry, which is what a run that skipped it produces. Every
+        base column then looks dropped unless the comparison declines to run.
+        """
+        server, helper = mcp_e2e
+        # Changed upstream, so the model below lands in the blast radius the way
+        # a downstream model does in a real selective build.
+        helper.create_model(
+            "upstream",
+            unique_id="model.recce_test.upstream",
+            base_csv="""\
+                id,name
+                1,Alice""",
+            curr_csv="""\
+                id,name
+                1,Alice
+                2,Bob""",
+            base_columns={"id": "INTEGER", "name": "VARCHAR"},
+            curr_columns={"id": "INTEGER", "name": "VARCHAR"},
+        )
+        helper.create_model(
+            "not_rebuilt",
+            unique_id="model.recce_test.not_rebuilt",
+            depends_on=["model.recce_test.upstream"],
+            base_csv="""\
+                id,name
+                1,Alice""",
+            curr_csv="""\
+                id,name
+                1,Alice""",
+            base_columns={"id": "INTEGER", "name": "VARCHAR"},
+            curr_columns=None,
+        )
+
+        result = await server._tool_schema_diff({})
+
+        assert not [
+            row for row in result["data"] if row[2] == "removed"
+        ], "columns of a model absent from the current catalog were reported as removed"
+        coverage = result["schema_coverage"]
+        assert coverage["status"] == "partial"
+        assert "model.recce_test.not_rebuilt" in coverage["unchecked_nodes"]
+
+        # impact_analysis runs the same comparison, so the same model must not
+        # come back as a wholesale drop through that tool either. Asserted on the
+        # model directly rather than inside a loop, so the model going missing
+        # from the blast radius fails instead of passing vacuously, and on an
+        # exact status, because "unknown" would mean the schema step raised.
+        impact = await server._tool_impact_analysis({})
+        by_name = {model["name"]: model for model in impact["confirmed_impacted_models"]}
+        assert "not_rebuilt" in by_name, "not_rebuilt dropped out of the blast radius"
+        assert (
+            by_name["not_rebuilt"]["schema_changes"] is None
+        ), "impact_analysis compared a model the run did not build"
+        assert impact["errors"] == []
+        assert impact["schema_coverage"]["status"] == "partial"
+        assert "model.recce_test.not_rebuilt" in impact["schema_coverage"]["unchecked_nodes"]
 
     @pytest.mark.asyncio
     async def test_schema_diff_no_changes(self, mcp_e2e_with_data):

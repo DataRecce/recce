@@ -11,6 +11,11 @@ import type { LineageGraph, LineageGraphNode } from "../contexts/lineage";
  * Iterates through all nodes in the lineage graph and collects
  * unique schema names from both base and current environments.
  *
+ * `data.schema` describes the current environment and `data.baseSchema` the
+ * base one; they only differ when the two environments live in different
+ * schemas. Reading a single field for both sets is the DRC-3975 regression —
+ * it showed the current schema in the panel's Base column for every project.
+ *
  * @param lineageGraph - The lineage graph data
  * @returns Tuple of [baseSchemas, currentSchemas] as Sets
  *
@@ -32,13 +37,12 @@ export function extractSchemas(
   if (lineageGraph?.nodes) {
     const nodes: LineageGraphNode[] = Object.values(lineageGraph.nodes);
     for (const node of nodes) {
-      if (node.data.schema) {
-        if (node.data.changeStatus !== "added") {
-          baseSchemas.add(node.data.schema);
-        }
-        if (node.data.changeStatus !== "removed") {
-          currentSchemas.add(node.data.schema);
-        }
+      const baseSchema = node.data.baseSchema ?? node.data.schema;
+      if (baseSchema && node.data.changeStatus !== "added") {
+        baseSchemas.add(baseSchema);
+      }
+      if (node.data.schema && node.data.changeStatus !== "removed") {
+        currentSchemas.add(node.data.schema);
       }
     }
   }

@@ -6,6 +6,7 @@ Follows unittest.TestCase patterns as used in tests/state/test_cloud.py
 
 import unittest
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
@@ -550,24 +551,35 @@ class TestCheckDAOCloudMode(unittest.TestCase):
         with self.assertRaisesRegex(RecceException, "not supported in cloud mode"):
             dao.reorder(0, 1)
 
+    # _get_cloud_client is patched purely as a network guard: clear() reaches it
+    # on neither branch today, so asserting it was not called would prove
+    # nothing. If a future clear() does start talking to the cloud, this patch is
+    # what keeps that from becoming a live request inside the unit suite.
+    @patch("recce.models.check.CheckDAO._get_cloud_client")
     @patch("recce.core.default_context")
-    def test_clear_cloud_no_op(self, mock_default_context):
-        """Test that clear is a no-op in cloud mode."""
-        # Setup
-        mock_loader = Mock()
-        mock_loader.session_id = "test-session-123"
-        mock_loader.org_id = "org-456"
-        mock_loader.project_id = "proj-789"
-
-        mock_context = Mock()
-        mock_context.state_loader = mock_loader
+    def test_clear_cloud_no_op(self, mock_default_context, _mock_get_cloud_client):
+        """Cloud clear preserves local state and warns."""
+        local_check = Check(name="Local Check", type=RunType.SCHEMA_DIFF, params={})
+        mock_context = SimpleNamespace(
+            checks=[local_check],
+            state_loader=SimpleNamespace(
+                session_id="test-session-123",
+                org_id="org-456",
+                project_id="proj-789",
+            ),
+        )
         mock_default_context.return_value = mock_context
 
-        # Execute (should not raise exception)
         dao = CheckDAO()
-        dao.clear()
+        with self.assertLogs("uvicorn", level="WARNING") as logs:
+            dao.clear()
 
-        # Verify - no exception raised
+        self.assertEqual(mock_context.checks, [local_check])
+        self.assertIs(mock_context.checks[0], local_check)
+        self.assertEqual(
+            logs.output,
+            ["WARNING:uvicorn:Clear operation is not supported in cloud mode"],
+        )
 
     @patch("recce.util.recce_cloud.RecceCloud")
     @patch("recce.event.get_recce_api_token", return_value="test-token")

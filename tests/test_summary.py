@@ -1,4 +1,6 @@
 import os
+from datetime import datetime
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -20,25 +22,84 @@ pr2_manifest_dir = os.path.join(current_dir, "data", "manifest", "pr2")  # Pull 
 
 
 def test_generate_summary_metadata():
+    base_lineage = {
+        "manifest_metadata": SimpleNamespace(generated_at=datetime(2024, 1, 2, 3, 4, 5)),
+        "catalog_metadata": SimpleNamespace(generated_at=datetime(2024, 1, 2, 4, 5, 6)),
+    }
+    current_lineage = {
+        "manifest_metadata": SimpleNamespace(generated_at=datetime(2025, 6, 7, 8, 9, 10)),
+        "catalog_metadata": None,
+    }
+
+    summary = generate_summary_metadata(base_lineage, current_lineage)
+
+    assert summary == (
+        "|        |Manifest            |Catalog             |\n"
+        "|--------|--------------------|--------------------|\n"
+        "|Base    |2024-01-02 03:04:05 |2024-01-02 04:05:06 |\n"
+        "|Current |2025-06-07 08:09:10 |N/A                 |"
+    )
+
+
+@pytest.mark.parametrize(
+    "missing_metadata",
+    [
+        pytest.param(None, id="none-metadata"),
+        pytest.param({}, id="sqlmesh-empty-metadata"),
+    ],
+)
+def test_generate_summary_metadata_without_artifact_timestamps(missing_metadata):
+    """
+    Metadata with no generated_at renders N/A instead of raising.
+
+    Both shapes are real: the dbt adapter returns None for an artifact it does
+    not have (a project with no catalog), and the SQLMesh adapter returns {} for
+    manifest_metadata and catalog_metadata alike (sqlmesh_adapter.get_lineage).
+    Since get_lineage_diff feeds get_lineage output straight into this function,
+    dereferencing generated_at unguarded made `recce summary` raise
+    AttributeError on every SQLMesh project.
+    """
+    lineage = {"manifest_metadata": missing_metadata, "catalog_metadata": missing_metadata}
+
+    summary = generate_summary_metadata(lineage, lineage)
+
+    assert summary == (
+        "|        |Manifest|Catalog|\n"
+        "|--------|--------|-------|\n"
+        "|Base    |N/A     |N/A    |\n"
+        "|Current |N/A     |N/A    |"
+    )
+
+
+def test_generate_summary_metadata_accepts_adapter_lineage():
+    """
+    The literal shapes above are only worth anything if they are the shapes an
+    adapter really hands over, so run the dbt adapter's own get_lineage output
+    through it — the coupling that catches a metadata shape change at its source.
+    """
     dbt_version = DbtVersion()
     if dbt_version < "1.8.1":
         pytest.skip("Dbt version is less than 1.8.1")
 
     manifest = load_manifest(path=os.path.join(current_dir, "manifest.json"))
     assert manifest is not None
-    dbt_adapter = DbtAdapter(curr_manifest=manifest)
-    curr_lineage = dbt_adapter.get_lineage()
-    base_lineage = dbt_adapter.get_lineage()
+    single_env_adapter = DbtAdapter(curr_manifest=manifest)
+    single_env_lineage = single_env_adapter.get_lineage()
 
-    # Summary with no changes
-    generate_summary_metadata(curr_lineage, base_lineage)
+    single_env_summary = generate_summary_metadata(single_env_lineage, single_env_lineage)
+    # A real manifest timestamp on both rows; no catalog on either.
+    assert single_env_summary.count("N/A") == 2
+    assert single_env_lineage["catalog_metadata"] is None
 
     base_manifest = load_manifest(path=os.path.join(base_manifest_dir, "manifest.json"))
     curr_manifest = load_manifest(path=os.path.join(pr2_manifest_dir, "manifest.json"))
-    dbt_adapter = DbtAdapter(curr_manifest=curr_manifest, base_manifest=base_manifest)
-    curr_lineage = dbt_adapter.get_lineage()
-    base_lineage = dbt_adapter.get_lineage(base=True)
-    generate_summary_metadata(curr_lineage, base_lineage)
+    diff_adapter = DbtAdapter(curr_manifest=curr_manifest, base_manifest=base_manifest)
+
+    diff_summary = generate_summary_metadata(diff_adapter.get_lineage(base=True), diff_adapter.get_lineage())
+    # Two distinct manifests, so the two Manifest cells must differ.
+    base_row, current_row = diff_summary.splitlines()[2:4]
+    assert base_row != current_row
+    assert diff_summary.count("N/A") == 2
 
 
 def test_build_lineage_graph():
