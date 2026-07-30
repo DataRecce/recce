@@ -382,12 +382,18 @@ class CloudBackend:
             for column, change_status in column_changes.items():
                 changes.append((node_id, column, change_status))
         limit = 100
-        return DataFrame.from_data(
+        result = DataFrame.from_data(
             columns={"node_id": "text", "column": "text", "change_status": "text"},
             data=changes[:limit],
             limit=limit,
             more=len(changes) > limit,
         ).model_dump(mode="json")
+        # The cloud session hands us the column changes it already computed but
+        # says nothing about which nodes it could not describe, so coverage is
+        # unassessed rather than complete. Emitted under the same key as the
+        # local path so the one shared tool description holds for both backends.
+        result["schema_coverage"] = _schema_coverage(None)
+        return result
 
     async def _tool_impact_analysis(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         info = await self._request("GET", "info")
@@ -436,6 +442,10 @@ class CloudBackend:
             "max_affected_row_count": 0,
             "confirmed_impacted_models": impacted_models,
             "confirmed_not_impacted_models": not_impacted_models,
+            # Metadata-only triage: the session reports the column changes it
+            # found but not what it failed to describe, so coverage is
+            # unassessed. Same key as the local path (see _schema_coverage).
+            "schema_coverage": _schema_coverage(None),
             "errors": [],
         }
 
@@ -832,12 +842,16 @@ class RecceMCPServer:
                     name="schema_diff",
                     description="Get the schema diff (column changes) between base and current environments. "
                     "Shows added, removed, and type-changed columns in compact dataframe format. "
-                    "Also returns schema_coverage. An empty `data` means 'no column changes' ONLY when "
-                    "schema_coverage.status is 'complete'. When it is 'partial', the models named in "
-                    "schema_coverage.unchecked_nodes have no column metadata on at least one side, so "
-                    "they were never compared — that is not evidence they are unchanged, and it is not "
-                    "evidence anything was removed. The commonest cause is a build that only builds what "
-                    "changed, but this tool does not observe the cause; do not report one as fact.",
+                    "Also returns schema_coverage, which says how much of the comparison could run. "
+                    "An empty `data` means 'no column changes' ONLY when schema_coverage.status is "
+                    "'complete'. When it is 'partial', the nodes listed in "
+                    "schema_coverage.unchecked_nodes — dbt node ids, e.g. 'model.<package>.<name>' — "
+                    "have no column metadata on at least one side, so they were never compared: that "
+                    "is not evidence they are unchanged, and it is not evidence anything was removed. "
+                    "The commonest cause is a build that only builds what changed, but this tool does "
+                    "not observe the cause; do not report one as fact. When it is 'unknown', coverage "
+                    "was not assessed at all (cloud-backed sessions), so an empty `data` is "
+                    "uncorroborated rather than verified.",
                     inputSchema={
                         "type": "object",
                         "properties": {
@@ -1450,6 +1464,18 @@ class RecceMCPServer:
 
                             Models with data_impact: 'potential' have unknown data impact — follow
                             the model's next_action field to investigate with profile_diff/query_diff.
+
+                            Schema results come with a coverage contract. A model's
+                            schema_changes: [] means it WAS compared and nothing changed;
+                            schema_changes: null means it was never compared, because one side has no
+                            column metadata — that is not evidence its schema is unchanged, and not
+                            evidence columns were removed. Top-level schema_coverage summarises this:
+                            'complete' = every impacted model was compared, 'partial' = the nodes in
+                            schema_coverage.unchecked_nodes were not, 'unknown' = the comparison did
+                            not run at all (see errors, or a cloud-backed session), so no
+                            schema_changes value on any model is corroborated. unchecked_nodes holds
+                            dbt node ids ('model.<package>.<name>') while confirmed_impacted_models
+                            entries key on the bare model name.
                         """
                         ).strip(),
                         inputSchema={
@@ -2323,6 +2349,8 @@ class RecceMCPServer:
                 "'potential' = no value_diff available (views, no PK, or skipped) "
                 "— follow the model's next_action to investigate. "
                 "Only models with next_action != null need further tool calls. "
+                "schema_changes: null means that model was never compared (see schema_coverage) — "
+                "not that its schema is unchanged; [] means compared and unchanged. "
                 "Note: incremental model value_diff may reflect "
                 "build window artifacts if not fully refreshed."
             ),
