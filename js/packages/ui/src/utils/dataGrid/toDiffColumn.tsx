@@ -7,9 +7,8 @@
  */
 
 import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
-import _ from "lodash";
 import type { ColumnRenderMode, ColumnType, RowObjectType } from "../../api";
-import { getHeaderCellClass } from "./gridUtils";
+import { getHeaderCellClass, isCellChanged } from "./gridUtils";
 import type {
   DataFrameColumnGroupHeaderProps,
   DiffColumnRenderComponents,
@@ -75,6 +74,7 @@ export type DiffColumnResult =
 export function createCellClassBase(
   columnName: string,
   columnStatus: string,
+  columnType?: ColumnType,
 ): (params: CellClassParams<RowObjectType>) => string | undefined {
   return (params: CellClassParams<RowObjectType>) => {
     const row = params.data;
@@ -90,7 +90,7 @@ export function createCellClassBase(
     const baseKey = `base__${columnName}`.toLowerCase();
     const currentKey = `current__${columnName}`.toLowerCase();
 
-    if (!_.isEqual(row[baseKey], row[currentKey])) {
+    if (isCellChanged(row[baseKey], row[currentKey], columnType)) {
       return "diff-cell-removed";
     }
 
@@ -108,6 +108,7 @@ export function createCellClassBase(
 export function createCellClassCurrent(
   columnName: string,
   columnStatus: string,
+  columnType?: ColumnType,
 ): (params: CellClassParams<RowObjectType>) => string | undefined {
   return (params: CellClassParams<RowObjectType>) => {
     const row = params.data;
@@ -123,7 +124,7 @@ export function createCellClassCurrent(
     const baseKey = `base__${columnName}`.toLowerCase();
     const currentKey = `current__${columnName}`.toLowerCase();
 
-    if (!_.isEqual(row[baseKey], row[currentKey])) {
+    if (isCellChanged(row[baseKey], row[currentKey], columnType)) {
       return "diff-cell-added";
     }
 
@@ -223,8 +224,12 @@ export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
   }
 
   // Side-by-side mode with base/current child columns
-  const cellClassBase = createCellClassBase(name, columnStatus);
-  const cellClassCurrent = createCellClassCurrent(name, columnStatus);
+  const cellClassBase = createCellClassBase(name, columnStatus, columnType);
+  const cellClassCurrent = createCellClassCurrent(
+    name,
+    columnStatus,
+    columnType,
+  );
 
   return {
     headerName: name,

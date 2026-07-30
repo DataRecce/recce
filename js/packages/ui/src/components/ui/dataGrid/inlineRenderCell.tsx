@@ -19,6 +19,7 @@ import type {
 } from "../../../api";
 import {
   formatSmartDecimal,
+  isCellChanged,
   toRenderedValue,
 } from "../../../utils/dataGrid/gridUtils";
 import { DiffText, type DiffTextProps } from "../DiffText";
@@ -120,8 +121,15 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
       columnRenderMode,
     );
 
-    // No change - render single value
-    if (row[baseKey] === row[currentKey]) {
+    // No change - render single value.
+    // Must use the same type-dispatched comparison the row status and the
+    // side-by-side cell classes use: a raw `===` here would render a
+    // "base → current" diff for a FLOAT column whose two values differ only by
+    // IEEE-754 noise, while determineRowStatus called the row unmodified.
+    // Inline is the default display mode for the profile, value-diff-detail and
+    // query-diff views, so that mismatch was the whole reported symptom of
+    // DRC-3025.
+    if (!isCellChanged(row[baseKey], row[currentKey], columnType)) {
       return (
         <Typography
           component="span"
@@ -138,7 +146,9 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
     // For delta modes, calculate the change for numeric columns
     if (
       isDeltaMode &&
-      (columnType === "number" || columnType === "integer") &&
+      (columnType === "number" ||
+        columnType === "float" ||
+        columnType === "integer") &&
       hasBase &&
       hasCurrent
     ) {
