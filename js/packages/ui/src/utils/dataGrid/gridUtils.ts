@@ -199,15 +199,68 @@ function withinFloatEpsilon(a: number, b: number): boolean {
 }
 
 /**
+ * Parses a string that must be numeric *in its entirety*, else NaN.
+ *
+ * Deliberately not `parseFloat`, which parses a leading numeric prefix and
+ * discards the rest: `parseFloat("0.3abc") === 0.3`, so two different strings
+ * would compare equal inside a float cell. `Number` rejects trailing garbage,
+ * but maps whitespace-only and empty input to 0, so those are screened first.
+ */
+function strictNumeric(value: string): number {
+  const trimmed = value.trim();
+  if (trimmed === "") {
+    return Number.NaN;
+  }
+  return Number(trimmed);
+}
+
+/** Matches a plain decimal literal — no exponent, no trailing garbage. */
+const DECIMAL_LITERAL = /^[+-]?\d+(?:\.\d+)?$/;
+
+/**
+ * Canonical form of a decimal literal, or `undefined` if it is not one.
+ *
+ * Strips the sign of zero, leading integer zeros and trailing fraction zeros, so
+ * two spellings of the same exact value compare equal — `"19.990"` vs `"19.99"`,
+ * `"007"` vs `"7"`, `"-0.00"` vs `"0"`. Deliberately string-only: no `Number`
+ * anywhere, because float64 cannot hold `DECIMAL(38,2)` and rounding two
+ * genuinely different decimals into the same double is exactly the false
+ * negative DRC-3025 forbids.
+ */
+function canonicalDecimal(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!DECIMAL_LITERAL.test(trimmed)) {
+    return undefined;
+  }
+
+  const negative = trimmed.startsWith("-");
+  const [rawInteger, rawFraction = ""] = trimmed
+    .replace(/^[+-]/, "")
+    .split(".");
+  const integer = rawInteger.replace(/^0+(?=\d)/, "");
+  const fraction = rawFraction.replace(/0+$/, "");
+  const magnitude = fraction ? `${integer}.${fraction}` : integer;
+
+  return negative && magnitude !== "0" ? `-${magnitude}` : magnitude;
+}
+
+/**
  * `_.isEqualWith` customizer applying the magnitude-relative epsilon at every
  * numeric leaf of a FLOAT-typed cell.
  *
  * Numeric values arrive from the backend as exact strings (agate flattens
  * DECIMAL and DOUBLE alike to strings — DRC-3025), so the two float cases are:
- * - Two numeric STRINGS (the top-level cell value) → `parseFloat` both and
- *   compare within epsilon. Lossless at aggregate magnitudes.
+ * - Two fully-numeric STRINGS (the top-level cell value) → parse both and
+ *   compare within epsilon. Lossless at aggregate magnitudes. A string that is
+ *   only *partly* numeric (`"0.3abc"`) is not numeric here, so it keeps exact
+ *   equality rather than silently comparing its numeric prefix.
  * - Two finite NUMBERS (floats nested inside a JSON/ARRAY/STRUCT cell, already
  *   parsed) → compare within epsilon directly.
+ *
+ * A number on one side and a string on the other is deliberately NOT bridged:
+ * that pairing means the column's data type changed between base and current,
+ * which the grid reports as a modification on purpose (see the type-change cases
+ * in `toDataDiffGrid.test.ts`).
  *
  * Everything else → `undefined`, deferring to lodash's default deep-equal, which
  * recurses into objects/arrays and re-invokes this customizer at each nested
@@ -225,8 +278,8 @@ function floatComparator(base: unknown, current: unknown): boolean | undefined {
   }
 
   if (typeof base === "string" && typeof current === "string") {
-    const b = parseFloat(base);
-    const c = parseFloat(current);
+    const b = strictNumeric(base);
+    const c = strictNumeric(current);
     if (Number.isFinite(b) && Number.isFinite(c)) {
       return withinFloatEpsilon(b, c);
     }
@@ -237,16 +290,56 @@ function floatComparator(base: unknown, current: unknown): boolean | undefined {
 }
 
 /**
+ * `_.isEqualWith` customizer for EXACT numeric columns (DECIMAL, NUMERIC, INT).
+ *
+ * This is the other half of DRC-3025: a decimal must be compared *as a number*
+ * rather than as an opaque string, but exactly. `"19.99"` and `"19.990"` are the
+ * same number and must not read as a change — while a 1-cent difference in a
+ * `DECIMAL(38,2)` still must, which is why this compares canonical digit strings
+ * and never a float.
+ *
+ * String-to-string only, for the same reason as {@link floatComparator}: a number
+ * against a string means the column's type changed, which stays a modification.
+ *
+ * Anything that is not a plain decimal literal on both sides → `undefined`,
+ * leaving lodash's exact deep-equal in charge.
+ */
+function exactNumericComparator(
+  base: unknown,
+  current: unknown,
+): boolean | undefined {
+  if (typeof base !== "string" || typeof current !== "string") {
+    return undefined;
+  }
+
+  const b = canonicalDecimal(base);
+  const c = canonicalDecimal(current);
+  if (b === undefined || c === undefined) {
+    return undefined;
+  }
+
+  return b === c;
+}
+
+/**
  * Single source of truth for "did this cell change?" across the data grid.
+ *
+ * Every cell-compare site in the grid must route through this — the row status,
+ * the side-by-side cell classes, and the inline cell renderer alike. A site that
+ * compares with a bare `===` or `_.isEqual` disagrees with the others and shows a
+ * change the rest of the grid says is not there.
  *
  * Dispatches on the column's comparison type:
  * - `"float"` (approximate: DOUBLE/FLOAT data columns and computed profile
- *   aggregates) → one deep traversal via `_.isEqualWith` with
- *   {@link floatComparator}, so float precision is never compared — top-level
- *   numeric strings and floats nested inside JSON/ARRAY/STRUCT cells alike.
- * - everything else (`"number"`/decimal, `"integer"`, `"text"`, …, or an
- *   unknown/absent type) → exact deep-equal. A DECIMAL column is `"number"`, so
- *   a 1-cent change is never float-collapsed (the cycle-4 guard).
+ *   aggregates) → one deep traversal via {@link floatComparator}, so float
+ *   precision is never compared — top-level numeric values and floats nested
+ *   inside JSON/ARRAY/STRUCT cells alike.
+ * - `"number"` (DECIMAL/NUMERIC) and `"integer"` → exact, but numeric rather
+ *   than textual, via {@link exactNumericComparator}: `"19.990"` equals
+ *   `"19.99"`, while a 1-cent difference in a `DECIMAL(38,2)` is still a change
+ *   (the cycle-4 guard — no float64 is involved in that decision).
+ * - everything else (`"text"`, `"boolean"`, …, or an unknown/absent type) →
+ *   exact deep-equal on the raw values.
  *
  * @param base    Base cell value
  * @param current Current cell value
@@ -259,6 +352,9 @@ export function isCellChanged(
 ): boolean {
   if (colType === "float") {
     return !_.isEqualWith(base, current, floatComparator);
+  }
+  if (colType === "number" || colType === "integer") {
+    return !_.isEqualWith(base, current, exactNumericComparator);
   }
   return !_.isEqual(base, current);
 }

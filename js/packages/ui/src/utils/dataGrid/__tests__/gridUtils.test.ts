@@ -526,6 +526,42 @@ describe("getCellClass", () => {
 
     expect(result).toBeUndefined();
   });
+
+  // DRC-3025: getCellClass takes the column's comparison type as its 5th
+  // argument. It is public API (`@datarecce/ui/utils`), so pin both branches —
+  // omitting the argument must stay exact for existing callers.
+  test("float column: a noise-only difference is not a diff", () => {
+    const row = createRow({
+      base__value: "0.30000000000000004",
+      current__value: "0.3",
+    });
+
+    expect(
+      getCellClass(row, undefined, "value", false, "float"),
+    ).toBeUndefined();
+  });
+
+  test("number column: the same difference is still a diff", () => {
+    const row = createRow({
+      base__value: "0.30000000000000004",
+      current__value: "0.3",
+    });
+
+    expect(getCellClass(row, undefined, "value", false, "number")).toBe(
+      "diff-cell-added",
+    );
+  });
+
+  test("omitted colType keeps the pre-DRC-3025 exact behaviour", () => {
+    const row = createRow({
+      base__value: "0.30000000000000004",
+      current__value: "0.3",
+    });
+
+    expect(getCellClass(row, undefined, "value", true)).toBe(
+      "diff-cell-removed",
+    );
+  });
 });
 
 // ============================================================================
@@ -836,6 +872,21 @@ describe("isCellChanged (DRC-3025)", () => {
       expect(isCellChanged("abc", "abc", "float")).toBe(false);
       expect(isCellChanged("abc", "abd", "float")).toBe(true);
     });
+
+    test("partly-numeric strings are not compared by their numeric prefix", () => {
+      // parseFloat("0.3abc") === 0.3 would call these two equal. A whole-string
+      // numeric parse is required so only real numbers take the epsilon path.
+      expect(isCellChanged("0.3abc", "0.3xyz", "float")).toBe(true);
+      expect(isCellChanged("0.3abc", "0.3abc", "float")).toBe(false);
+      expect(isCellChanged("12 apples", "12 oranges", "float")).toBe(true);
+    });
+
+    test("blank strings are not coerced to zero", () => {
+      // Number("") === 0, which would make an empty cell equal to "0".
+      expect(isCellChanged("", "0", "float")).toBe(true);
+      expect(isCellChanged("   ", "0", "float")).toBe(true);
+      expect(isCellChanged("", "", "float")).toBe(false);
+    });
   });
 
   describe("AC7: nested floats inside JSON/ARRAY/STRUCT float cells", () => {
@@ -889,6 +940,48 @@ describe("isCellChanged (DRC-3025)", () => {
     test("text column exact compare", () => {
       expect(isCellChanged("abc", "abc", "text")).toBe(false);
       expect(isCellChanged("abc", "abd", "text")).toBe(true);
+    });
+
+    // The other half of DRC-3025: a decimal is compared as a NUMBER, not as an
+    // opaque string — exactly, with no float64 in the decision.
+    test("differing scale of the same decimal value → unchanged", () => {
+      expect(isCellChanged("19.99", "19.990", "number")).toBe(false);
+      expect(isCellChanged("19.990000", "19.99", "number")).toBe(false);
+      expect(isCellChanged("0.50", "0.5", "number")).toBe(false);
+    });
+
+    test("leading zeros and signed zero → unchanged", () => {
+      expect(isCellChanged("007", "7", "integer")).toBe(false);
+      expect(isCellChanged("-0.00", "0", "number")).toBe(false);
+      expect(isCellChanged("0.000", "0", "number")).toBe(false);
+    });
+
+    test("a number against a string stays a change (type changed)", () => {
+      // Not bridged on purpose: this pairing means the column's data type
+      // changed between base and current, which the grid reports as a
+      // modification — see the type-change cases in toDataDiffGrid.test.ts.
+      expect(isCellChanged(19.99, "19.99", "number")).toBe(true);
+      expect(isCellChanged("19.99", 19.99, "number")).toBe(true);
+      expect(isCellChanged(123, "123", "integer")).toBe(true);
+    });
+
+    test("high-precision DECIMAL differences survive the numeric compare", () => {
+      // The values below are indistinguishable as float64; canonical digit
+      // comparison must still report the 1-cent change.
+      expect(
+        isCellChanged("12345678901234567.89", "12345678901234567.90", "number"),
+      ).toBe(true);
+      expect(isCellChanged("0.30000000000000004", "0.3", "number")).toBe(true);
+      expect(isCellChanged("-19.99", "19.99", "number")).toBe(true);
+    });
+
+    test("non-decimal spellings fall back to exact string compare", () => {
+      // Exponent notation is not a plain decimal literal, so it is not
+      // canonicalised — it stays exact rather than being parsed through a float.
+      expect(isCellChanged("1e2", "100", "number")).toBe(true);
+      expect(isCellChanged("1e2", "1e2", "number")).toBe(false);
+      expect(isCellChanged("abc", "abc", "number")).toBe(false);
+      expect(isCellChanged(null, "0", "number")).toBe(true);
     });
   });
 
