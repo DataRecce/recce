@@ -847,13 +847,20 @@ class TestSchemaDiffE2E:
         assert coverage["status"] == "partial"
         assert "model.recce_test.not_rebuilt" in coverage["unchecked_nodes"]
 
-        # The same comparison is duplicated inside impact_analysis, so the same
-        # model must not come back as a wholesale drop through that tool either.
+        # impact_analysis runs the same comparison, so the same model must not
+        # come back as a wholesale drop through that tool either. Asserted on the
+        # model directly rather than inside a loop, so the model going missing
+        # from the blast radius fails instead of passing vacuously, and on an
+        # exact status, because "unknown" would mean the schema step raised.
         impact = await server._tool_impact_analysis({})
-        for model in impact["confirmed_impacted_models"]:
-            if model["name"] == "not_rebuilt":
-                assert model["schema_changes"] is None, "impact_analysis compared a model the run did not build"
-        assert impact["schema_coverage"]["status"] in ("partial", "unknown")
+        by_name = {model["name"]: model for model in impact["confirmed_impacted_models"]}
+        assert "not_rebuilt" in by_name, "not_rebuilt dropped out of the blast radius"
+        assert (
+            by_name["not_rebuilt"]["schema_changes"] is None
+        ), "impact_analysis compared a model the run did not build"
+        assert impact["errors"] == []
+        assert impact["schema_coverage"]["status"] == "partial"
+        assert "model.recce_test.not_rebuilt" in impact["schema_coverage"]["unchecked_nodes"]
 
     @pytest.mark.asyncio
     async def test_schema_diff_no_changes(self, mcp_e2e_with_data):
