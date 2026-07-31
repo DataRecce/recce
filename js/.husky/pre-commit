@@ -34,7 +34,7 @@ if git diff --cached --name-only --diff-filter=ACM | grep -qx "$PINNED_PKG_JSON"
     # those nursery rules either. A silent dependabot bump still requires
     # deliberate ack: when changing biome, update EXPECTED_BIOME in the same
     # commit as the bump (and re-run the macOS arm64 check above).
-    EXPECTED_BIOME="2.5.4"
+    EXPECTED_BIOME="2.5.5"
     # head -1 hardens against a future pnpm.overrides entry adding a second
     # "@biomejs/biome": line. Fail-loud (below) if extraction is empty so a
     # package.json reformat (or removed dep) can't silently disable the guard.
