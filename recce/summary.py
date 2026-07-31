@@ -411,6 +411,21 @@ def _generate_mismatched_nodes_summary(check: CheckSummary, limit: int = 3) -> s
     return ", ".join(display_nodes) + f", and {len(nodes) - len(display_nodes)} more nodes"
 
 
+def _format_generated_at(metadata):
+    """
+    Render an artifact's generation time, or "N/A" when there is none.
+
+    Adapters do not agree on the shape here: the dbt adapter returns ``None``
+    when the corresponding manifest or catalog is absent (single-environment
+    runs have no base manifest), and the SQLMesh adapter returns ``{}`` for both.
+    Neither carries ``generated_at``, so this must not dereference blindly.
+    """
+    generated_at = getattr(metadata, "generated_at", None)
+    if generated_at is None:
+        return "N/A"
+    return generated_at.strftime("%Y-%m-%d %H:%M:%S")
+
+
 def generate_summary_metadata(base_lineage, curr_lineage):
     from py_markdown_table.markdown_table import markdown_table
 
@@ -422,13 +437,13 @@ def generate_summary_metadata(base_lineage, curr_lineage):
     metadata = [
         {
             "": "Base",
-            "Manifest": base_manifest.generated_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "Catalog": base_catalog.generated_at.strftime("%Y-%m-%d %H:%M:%S") if base_catalog else "N/A",
+            "Manifest": _format_generated_at(base_manifest),
+            "Catalog": _format_generated_at(base_catalog),
         },
         {
             "": "Current",
-            "Manifest": curr_manifest.generated_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "Catalog": curr_catalog.generated_at.strftime("%Y-%m-%d %H:%M:%S") if curr_catalog else "N/A",
+            "Manifest": _format_generated_at(curr_manifest),
+            "Catalog": _format_generated_at(curr_catalog),
         },
     ]
 

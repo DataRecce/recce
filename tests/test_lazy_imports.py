@@ -92,40 +92,39 @@ class TestEventInitOnceGuard:
         assert track_module._event_initialized is True
 
     @patch("recce.event.init")
-    @patch("recce.event.flush_events")
-    @patch("recce.event.log_event")
-    @patch("recce.event.set_exception_tag")
-    @patch("recce.event.log_codespaces_events")
-    def test_event_init_thread_safety(self, mock_log_cs, mock_set_tag, mock_log, mock_flush, mock_init):
-        """event.init() should only be called once even with concurrent threads."""
-        import recce.track as track_module
+    def test_event_init_thread_safety(self, mock_init):
+        """Production initialization calls event.init() once under contention."""
+        from recce.track import _initialize_event_tracking
 
-        barrier = threading.Barrier(4)
+        barrier = threading.Barrier(5)
+        init_started = threading.Event()
+        allow_init_to_finish = threading.Event()
         errors = []
 
-        def try_init():
-            """Simulate the double-check locking pattern from TrackCommand.invoke()."""
-            from recce import event
+        def blocking_init():
+            init_started.set()
+            if not allow_init_to_finish.wait(timeout=5):
+                raise TimeoutError("test did not release event initialization")
 
+        def try_init():
             try:
                 barrier.wait(timeout=5)
-                global_flag = track_module._event_initialized
-                if not global_flag:
-                    with track_module._event_init_lock:
-                        if not track_module._event_initialized:
-                            event.init()
-                            track_module._event_initialized = True
+                _initialize_event_tracking()
             except Exception as e:
                 errors.append(e)
 
+        mock_init.side_effect = blocking_init
         threads = [threading.Thread(target=try_init) for _ in range(4)]
         for t in threads:
             t.start()
+        barrier.wait(timeout=5)
+        assert init_started.wait(timeout=5)
+        allow_init_to_finish.set()
         for t in threads:
-            t.join()
+            t.join(timeout=5)
 
         assert not errors, f"Thread errors: {errors}"
-        # event.init() should be called exactly once despite concurrent access
+        assert all(not t.is_alive() for t in threads)
         mock_init.assert_called_once()
 
 

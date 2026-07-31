@@ -1,5 +1,8 @@
 import unittest
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
+
+import pytest
 
 from recce.util.recce_cloud import RecceCloud, RecceCloudException
 
@@ -356,34 +359,25 @@ class TestRecceCloudCreateSession(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 400)
 
 
+@pytest.mark.parametrize("status_code", [200, 204])
+def test_upload_completed_success(status_code):
+    """Both documented successful upload notifications use the same request."""
+    cloud = RecceCloud("test-api-token")
+    response = SimpleNamespace(status_code=status_code)
+
+    with patch.object(cloud, "_request", return_value=response) as request:
+        cloud.upload_completed("sess-123")
+
+    expected_url = f"{cloud.base_url_v2}/sessions/sess-123/upload-completed"
+    request.assert_called_once_with("POST", expected_url)
+
+
 class TestRecceCloudUploadCompleted(unittest.TestCase):
-    """Test cases for upload_completed method."""
+    """Test error handling for upload_completed."""
 
     def setUp(self):
         self.token = "test-api-token"
         self.cloud = RecceCloud(self.token)
-
-    @patch("recce.util.recce_cloud.RecceCloud._request")
-    def test_upload_completed_success_200(self, mock_request):
-        """Test upload_completed with 200 response."""
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_request.return_value = mock_response
-
-        # Should not raise
-        self.cloud.upload_completed("sess-123")
-
-        expected_url = f"{self.cloud.base_url_v2}/sessions/sess-123/upload-completed"
-        mock_request.assert_called_once_with("POST", expected_url)
-
-    @patch("recce.util.recce_cloud.RecceCloud._request")
-    def test_upload_completed_success_204(self, mock_request):
-        """Test upload_completed with 204 response."""
-        mock_response = Mock()
-        mock_response.status_code = 204
-        mock_request.return_value = mock_response
-
-        self.cloud.upload_completed("sess-456")
 
     @patch("recce.util.recce_cloud.RecceCloud._request")
     def test_upload_completed_error(self, mock_request):

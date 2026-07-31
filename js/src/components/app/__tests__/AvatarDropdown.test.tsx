@@ -568,10 +568,6 @@ describe("AvatarDropdown", () => {
     });
   });
 
-  // ==========================================================================
-  // Query Configuration Tests
-  // ==========================================================================
-
   describe("query configuration", () => {
     it("uses cacheKeys.user() for user query key", () => {
       let userQueryKey: unknown;
@@ -590,36 +586,6 @@ describe("AvatarDropdown", () => {
       render(<AvatarDropdown />);
 
       expect(userQueryKey).toEqual(["user"]);
-    });
-
-    it("disables retry for user query", () => {
-      mockUseQuery.mockImplementation(({ retry }) => {
-        if (retry === false) {
-          // User query should have retry: false
-        }
-        return {
-          data: createMockUser(),
-          isLoading: false,
-          error: null,
-        };
-      });
-
-      render(<AvatarDropdown />);
-    });
-
-    it("sets 5 minute stale time for GitHub avatar", () => {
-      mockUseQuery.mockImplementation(({ staleTime }) => {
-        if (staleTime === 5 * 60 * 1000) {
-          // GitHub avatar query should have 5 minute stale time
-        }
-        return {
-          data: "https://avatars.githubusercontent.com/u/123",
-          isLoading: false,
-          error: null,
-        };
-      });
-
-      render(<AvatarDropdown />);
     });
   });
 

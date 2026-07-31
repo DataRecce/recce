@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -13,7 +13,11 @@ from mcp.types import (  # noqa: E402
 )
 
 from recce.core import RecceContext  # noqa: E402
-from recce.mcp_server import RecceMCPServer, run_mcp_server  # noqa: E402
+from recce.mcp_server import (  # noqa: E402
+    _UNCHECKED_NODE_LIMIT,
+    RecceMCPServer,
+    run_mcp_server,
+)
 from recce.models.types import LineageDiff  # noqa: E402
 from recce.server import RecceServerMode  # noqa: E402
 from recce.tasks.histogram import HistogramDiffTask  # noqa: E402
@@ -239,20 +243,184 @@ class TestRecceMCPServer:
         mock_context.get_lineage_diff.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_tool_row_count_diff(self, mcp_server):
-        """Test the row_count_diff tool"""
-        server, _ = mcp_server
-        # Mock the task execution
-        mock_result = {"results": [{"node_id": "model.project.my_model", "base": 100, "current": 105, "diff": 5}]}
+    async def test_tool_schema_diff_does_not_report_an_unbuilt_model_as_removed(self, mcp_server):
+        """A model the run did not rebuild must not read as a column drop.
 
-        with patch.object(RowCountDiffTask, "execute", return_value=mock_result):
-            result = await server._tool_row_count_diff({"node_names": ["my_model"]})
+        `_build_lineage` in the dbt adapter builds every node from the manifest
+        but assigns `columns` only when the catalog holds that node, so a
+        selective build leaves an unrebuilt model present on both sides with no
+        `columns` key on the current side. Comparing the two column sets then
+        turns "we never looked" into "every column was dropped".
 
-        # Verify the result. DRC-3532 run-backed local mode surfaces a run_id key
-        # alongside the diff result; compare on the result fields, ignoring run_id
-        # (the dedicated TestLocalModeRunBacked tests cover run_id surfacing).
-        assert {k: v for k, v in result.items() if k != "run_id"} == mock_result
-        assert "results" in result
+        Node keys below mirror what that builder emits, so the absent-`columns`
+        shape is the producer's, not the test's invention.
+        """
+        server, mock_context = mcp_server
+
+        def node(name, *, columns=None):
+            n = {
+                "id": f"model.project.{name}",
+                "name": name,
+                "resource_type": "model",
+                "package_name": "project",
+                "schema": "analytics",
+                "config": {"materialized": "view"},
+                "checksum": {"name": "sha256", "checksum": "abc"},
+                "raw_code": "select 1",
+            }
+            if columns is not None:
+                n["columns"] = {c: {"name": c, "type": "text"} for c in columns}
+            return n
+
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {
+                "nodes": {
+                    "model.project.not_rebuilt": node("not_rebuilt", columns=["a", "b", "c"]),
+                    "model.project.rebuilt": node("rebuilt", columns=["kept", "dropped"]),
+                    "model.project.empty_entry": node("empty_entry", columns=["x", "y"]),
+                },
+            },
+            "current": {
+                "nodes": {
+                    # Absent from this run's catalog, so the builder never set
+                    # the key at all.
+                    "model.project.not_rebuilt": node("not_rebuilt"),
+                    "model.project.rebuilt": node("rebuilt", columns=["kept"]),
+                    # Catalogued but described nothing. A relation with no
+                    # columns cannot exist, so this is the same gap wearing a
+                    # different shape and must not read as a wholesale drop.
+                    "model.project.empty_entry": node("empty_entry", columns=[]),
+                },
+            },
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+
+        result = await server._tool_schema_diff({})
+
+        removed = [row for row in result["data"] if row[2] == "removed"]
+
+        assert not [
+            row for row in removed if row[0] == "model.project.not_rebuilt"
+        ], "columns of a model that was not rebuilt were reported as removed"
+        assert not [
+            row for row in removed if row[0] == "model.project.empty_entry"
+        ], "columns of a model with an empty catalog entry were reported as removed"
+
+        # A real drop on a model that WAS rebuilt still reports, so the guard
+        # cannot be satisfied by suppressing everything.
+        assert ["model.project.rebuilt", "dropped", "removed"] in result["data"]
+
+        # A reduced `data` has to stay distinguishable from a verified zero,
+        # otherwise the false positive is traded for a false negative.
+        coverage = result["schema_coverage"]
+        assert coverage["status"] == "partial"
+        assert "model.project.not_rebuilt" in coverage["unchecked_nodes"]
+        assert "model.project.empty_entry" in coverage["unchecked_nodes"]
+        assert coverage["unchecked_node_count"] == 2
+
+    @pytest.mark.asyncio
+    async def test_tool_schema_diff_coverage_ignores_nodes_the_catalog_never_describes(self, mcp_server):
+        """A node dbt never catalogues is not a coverage gap.
+
+        `catalog.json` describes warehouse relations. Exposures, metrics and
+        semantic models are not relations — the dbt adapter builds them with no
+        `columns` key at all — and an ephemeral model is inlined as a CTE, so it
+        is excluded from the catalog too. Counting them as unchecked would pin
+        `status` to "partial" on any project that owns one, so a genuinely clean
+        schema_diff could never be reported as verified, and the capped
+        `unchecked_nodes` list would fill with nodes that were never comparable.
+        """
+        server, mock_context = mcp_server
+
+        both_sides = {
+            "model.project.clean": {
+                "id": "model.project.clean",
+                "name": "clean",
+                "resource_type": "model",
+                "config": {"materialized": "table"},
+                "columns": {"id": {"name": "id", "type": "text"}},
+            },
+            "exposure.project.dash": {
+                "id": "exposure.project.dash",
+                "name": "dash",
+                "resource_type": "exposure",
+                "config": {},
+            },
+            "metric.project.revenue": {
+                "id": "metric.project.revenue",
+                "name": "revenue",
+                "resource_type": "metric",
+                "config": {},
+            },
+            "semantic_model.project.orders_sm": {
+                "id": "semantic_model.project.orders_sm",
+                "name": "orders_sm",
+                "resource_type": "semantic_model",
+                "config": {},
+            },
+            "model.project.inlined": {
+                "id": "model.project.inlined",
+                "name": "inlined",
+                "resource_type": "model",
+                "config": {"materialized": "ephemeral"},
+            },
+        }
+
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {"nodes": both_sides},
+            "current": {"nodes": both_sides},
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+
+        result = await server._tool_schema_diff({})
+
+        assert result["data"] == []
+        coverage = result["schema_coverage"]
+        assert coverage["unchecked_nodes"] == []
+        assert coverage["unchecked_node_count"] == 0
+        assert coverage["status"] == "complete", "a clean project was reported as only partially checked"
+
+    @pytest.mark.asyncio
+    async def test_tool_schema_diff_coverage_truncates_at_the_node_limit(self, mcp_server):
+        """Past the cap, `unchecked_nodes` truncates and `more` says so.
+
+        The full count still reports, so a consumer can tell a truncated list
+        from an exhaustive one.
+        """
+        server, mock_context = mcp_server
+
+        node_ids = [f"model.project.m{i:03d}" for i in range(_UNCHECKED_NODE_LIMIT + 5)]
+
+        def node(node_id, *, catalogued):
+            n = {
+                "id": node_id,
+                "name": node_id.rsplit(".", 1)[-1],
+                "resource_type": "model",
+                "config": {"materialized": "table"},
+            }
+            if catalogued:
+                n["columns"] = {"id": {"name": "id", "type": "text"}}
+            return n
+
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {"nodes": {nid: node(nid, catalogued=True) for nid in node_ids}},
+            # Nothing was rebuilt, so no node has a current catalog entry.
+            "current": {"nodes": {nid: node(nid, catalogued=False) for nid in node_ids}},
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+
+        result = await server._tool_schema_diff({})
+
+        coverage = result["schema_coverage"]
+        assert coverage["status"] == "partial"
+        assert coverage["unchecked_node_count"] == len(node_ids)
+        assert len(coverage["unchecked_nodes"]) == _UNCHECKED_NODE_LIMIT
+        assert coverage["more"] is True
+        # Sorted, so the truncation is a stable prefix rather than dict order.
+        assert coverage["unchecked_nodes"] == sorted(node_ids)[:_UNCHECKED_NODE_LIMIT]
 
     @pytest.mark.asyncio
     async def test_tool_query(self, mcp_server):
@@ -273,23 +441,38 @@ class TestRecceMCPServer:
         assert "data" in result
         mock_result.model_dump.assert_called_once_with(mode="json")
 
+    @pytest.mark.parametrize(
+        ("base", "expected_run_type"),
+        [
+            pytest.param(True, "query_base", id="base"),
+            pytest.param(False, "query", id="current"),
+        ],
+    )
     @pytest.mark.asyncio
-    async def test_tool_query_with_base_flag(self, mcp_server):
-        """Test the query tool with base environment flag"""
+    async def test_tool_query_dispatches_environment_and_forwards_params(
+        self,
+        mcp_server,
+        base,
+        expected_run_type,
+    ):
+        """The base flag selects the run type without entering task params."""
         server, _ = mcp_server
         mock_result = {"columns": ["id"], "data": [[1]]}
+        sql_template = "SELECT account_id FROM {{ ref('accounts') }}"
 
-        with patch.object(QueryTask, "execute", return_value=mock_result) as mock_execute:
-            with patch.object(QueryTask, "__init__", return_value=None):
-                task = QueryTask(params={"sql_template": "SELECT 1"})
-                task.is_base = True
-                task.execute = mock_execute
+        with patch.object(
+            server,
+            "_tool_run_backed_local",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ) as run_backed:
+            result = await server._tool_query({"sql_template": sql_template, "base": base})
 
-                result = await server._tool_query({"sql_template": "SELECT 1", "base": True})
-
-                # Verify base flag was set (would need to inspect task creation).
-                # DRC-3532 run-backed local mode adds a run_id key; ignore it here.
-                assert {k: v for k, v in result.items() if k != "run_id"} == mock_result
+        assert result == mock_result
+        run_backed.assert_awaited_once_with(
+            expected_run_type,
+            {"sql_template": sql_template},
+        )
 
     @pytest.mark.asyncio
     async def test_tool_query_diff(self, mcp_server):
@@ -1859,6 +2042,29 @@ class TestMCPServerSingleEnv:
                 note_text not in tool.description
             ), f"Tool '{tool.name}' should not have single-env note in normal mode"
 
+    @pytest.mark.asyncio
+    async def test_select_param_descriptions_warn_selector_grammar(self, mcp_server):
+        """Every tool exposing a `select` param must warn about dbt selector grammar:
+        a comma is intersection, so comma-joining distinct model names silently returns empty."""
+        from mcp.types import ListToolsRequest
+
+        server, _ = mcp_server
+        handler = server.server.request_handlers[ListToolsRequest]
+        result = await handler(ListToolsRequest(method="tools/list"))
+        tools = result.root.tools
+
+        checked = 0
+        for tool in tools:
+            select = tool.inputSchema.get("properties", {}).get("select")
+            if select is None:
+                continue
+            checked += 1
+            assert (
+                "intersection (AND)" in select["description"]
+            ), f"Tool '{tool.name}' select description must warn about comma=intersection"
+
+        assert checked >= 5, f"expected >=5 tools with a select param, found {checked}"
+
 
 class TestErrorClassification:
     """Test the _classify_db_error method and call_tool error handling"""
@@ -2881,6 +3087,135 @@ class TestImpactAnalysisBehavior:
         assert "total_affected_row_count" not in result
         assert "suggested_deep_dives" not in result
 
+    ONE_SIDED_LINEAGE_DIFF_DATA = {
+        "base": {
+            "nodes": {
+                "model.project.deleted_model": {
+                    "name": "deleted_model",
+                    "resource_type": "model",
+                    "config": {"materialized": "table"},
+                    "columns": {
+                        "id": {"type": "INTEGER"},
+                        "gone": {"type": "TEXT"},
+                    },
+                },
+            },
+            "parent_map": {},
+        },
+        "current": {
+            "nodes": {
+                "model.project.new_model": {
+                    "name": "new_model",
+                    "resource_type": "model",
+                    "config": {"materialized": "table"},
+                    "columns": {
+                        "id": {"type": "INTEGER"},
+                        "new_col": {"type": "TEXT"},
+                    },
+                },
+            },
+            "parent_map": {},
+        },
+        "diff": {
+            "model.project.new_model": {"change_status": "added"},
+            "model.project.deleted_model": {"change_status": "removed"},
+        },
+    }
+
+    @pytest.mark.asyncio
+    async def test_one_sided_models_keep_their_column_changes(self, mcp_server):
+        """An added or removed model is an observation, not a coverage gap.
+
+        schema_diff pre-filters to nodes present in BOTH lineages, so a one-sided
+        node never reaches its absence guard. impact_analysis has no such filter:
+        an added model has no base side and a removed model has no current side,
+        which looks exactly like a model the run did not build. But a new model's
+        columns really are all added and a deleted model's really are all removed
+        — reporting those as unchecked discards real findings.
+        """
+        server, mock_context = mcp_server
+
+        mock_context.get_lineage_diff.return_value = MagicMock(
+            model_dump=MagicMock(return_value=self.ONE_SIDED_LINEAGE_DIFF_DATA)
+        )
+
+        adapter = MagicMock()
+
+        def mock_select_nodes(select=""):
+            if select == "state:modified":
+                return set()
+            return {"model.project.new_model", "model.project.deleted_model"}
+
+        adapter.select_nodes.side_effect = mock_select_nodes
+        adapter.get_model.return_value = {}
+        mock_context.adapter = adapter
+
+        with (
+            patch("recce.mcp_server.sentry_metrics", None),
+            patch.object(RowCountDiffTask, "execute", return_value={}),
+        ):
+            result = await server._tool_impact_analysis({"skip_value_diff": True})
+
+        assert result["errors"] == []
+        by_name = {model["name"]: model for model in result["confirmed_impacted_models"]}
+        assert set(by_name) == {"new_model", "deleted_model"}
+
+        added = by_name["new_model"]["schema_changes"]
+        assert added is not None, "an added model's columns were reported as unchecked"
+        assert sorted(change["column"] for change in added) == ["id", "new_col"]
+        assert {change["change_status"] for change in added} == {"added"}
+
+        removed = by_name["deleted_model"]["schema_changes"]
+        assert removed is not None, "a removed model's columns were reported as unchecked"
+        assert sorted(change["column"] for change in removed) == ["gone", "id"]
+        assert {change["change_status"] for change in removed} == {"removed"}
+
+        coverage = result["schema_coverage"]
+        assert coverage["unchecked_nodes"] == []
+        assert coverage["status"] == "complete", "one-sided models were counted as a coverage gap"
+
+    @pytest.mark.asyncio
+    async def test_ephemeral_model_is_not_a_coverage_gap(self, mcp_server):
+        """An ephemeral model is inlined as a CTE, so it never enters the catalog.
+
+        It reaches impact_analysis like any other model, but "no columns on
+        either side" is its normal state rather than something the run skipped.
+        """
+        server, mock_context = mcp_server
+
+        ephemeral_node = {
+            "name": "inlined",
+            "resource_type": "model",
+            "config": {"materialized": "ephemeral"},
+        }
+        mock_context.get_lineage_diff.return_value = MagicMock(
+            model_dump=MagicMock(
+                return_value={
+                    "base": {"nodes": {"model.project.inlined": ephemeral_node}, "parent_map": {}},
+                    "current": {"nodes": {"model.project.inlined": ephemeral_node}, "parent_map": {}},
+                    "diff": {},
+                }
+            )
+        )
+
+        adapter = MagicMock()
+        adapter.select_nodes.side_effect = lambda select="": (
+            set() if select == "state:modified" else {"model.project.inlined"}
+        )
+        adapter.get_model.return_value = {}
+        mock_context.adapter = adapter
+
+        with (
+            patch("recce.mcp_server.sentry_metrics", None),
+            patch.object(RowCountDiffTask, "execute", return_value={}),
+        ):
+            result = await server._tool_impact_analysis({"skip_value_diff": True})
+
+        assert result["errors"] == []
+        coverage = result["schema_coverage"]
+        assert coverage["unchecked_nodes"] == []
+        assert coverage["status"] == "complete", "an ephemeral model was counted as a coverage gap"
+
 
 class TestLocalModeRunBacked:
     """DRC-3634: local-mode ad-hoc diff tools must persist Runs to the in-process
@@ -2918,12 +3253,31 @@ class TestLocalModeRunBacked:
     # ------------------------------------------------------------------
 
     @pytest.mark.asyncio
-    async def test_row_count_diff_returns_run_id(self, server):
-        """row_count_diff in local mode surfaces run_id in the result (DRC-3634)."""
-        mock_raw = {"results": [{"node_id": "model.p.orders", "base": 100, "current": 105, "diff": 5}]}
+    async def test_row_count_diff_returns_model_rows_alongside_run_id(self, server):
+        """row_count_diff adds run_id *next to* the model-keyed rows (DRC-3634).
+
+        The task returns one entry per model, keyed by model name, each carrying
+        independent base/curr counts. The citation run_id is an extra key — an
+        agent still has to see every model's own numbers, so the whole payload is
+        asserted rather than just the presence of run_id.
+        """
+        from uuid import UUID
+
+        mock_raw = {
+            "orders": {"base": 100, "curr": 105, "base_meta": None, "curr_meta": None},
+            "customers": {"base": 7, "curr": 0, "base_meta": None, "curr_meta": None},
+        }
         with patch.object(RowCountDiffTask, "execute", return_value=mock_raw):
-            result = await server._tool_row_count_diff({"node_names": ["orders"]})
-        assert "run_id" in result, "run_id must be in result for DRC-3634 run-backed local mode"
+            result = await server._tool_row_count_diff({"node_names": ["orders", "customers"]})
+
+        persisted_run_id = str(self._context.runs[0].run_id)
+        assert result == {
+            "orders": {"base": 100, "curr": 105, "base_meta": None, "curr_meta": None},
+            "customers": {"base": 7, "curr": 0, "base_meta": None, "curr_meta": None},
+            "run_id": persisted_run_id,
+        }
+        # The citation id must resolve to the persisted Run, not be a fresh uuid.
+        assert UUID(result["run_id"]) == self._context.runs[0].run_id
 
     @pytest.mark.asyncio
     async def test_row_count_diff_persists_run_in_context(self, server):
@@ -3140,9 +3494,7 @@ class TestLocalModeRunBacked:
         up to the raise."""
         from recce.models.types import RunStatus
 
-        with patch.object(
-            QueryDiffTask, "execute", side_effect=Exception('Referenced column "bad_col" not found')
-        ):
+        with patch.object(QueryDiffTask, "execute", side_effect=Exception('Referenced column "bad_col" not found')):
             result = await TestCallToolHandler._invoke_call_tool(
                 server, "query_diff", {"sql_template": "SELECT bad_col", "primary_keys": ["id"]}
             )

@@ -121,6 +121,10 @@ export function buildLineageGraph(
         resourceType: merged.resource_type,
         packageName: merged.package_name,
         schema: merged.schema,
+        // The server omits base_schema when both environments share a schema,
+        // and an older instance backend never sends it at all — resolve the
+        // fallback once here so consumers don't each re-derive it (DRC-3975).
+        baseSchema: merged.base_schema ?? merged.schema,
         materialized: merged.materialized,
         changeStatus: coerceCllChangeStatus(merged.change_status),
         change: merged.change ?? undefined,

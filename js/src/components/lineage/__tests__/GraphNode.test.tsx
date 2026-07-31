@@ -132,10 +132,15 @@ vi.mock("@datarecce/ui/components/run", () => ({
   })),
 }));
 
-// Mock @datarecce/ui - add isSchemaChanged and COLUMN_HEIGHT to existing mock
+// Mock @datarecce/ui. COLUMN_HEIGHT is a deliberately unreal fixture value:
+// GraphNode must forward the shared constant, and a fixture that could never be
+// the production number is what proves it is forwarded rather than hardcoded.
+// The real value's own contract (it must equal COLUMN_NODE_HEIGHT) is pinned in
+// packages/ui/src/contexts/lineage/__tests__/columnHeight.test.ts.
+const COLUMN_HEIGHT_FIXTURE = 1234;
 vi.mock("@datarecce/ui", () => ({
   isSchemaChanged: vi.fn(() => false),
-  COLUMN_HEIGHT: 28,
+  COLUMN_HEIGHT: 1234,
 }));
 
 // Mock MUI theme token
@@ -165,7 +170,7 @@ import {
   useLineageViewContextSafe,
 } from "@datarecce/ui/contexts";
 import { useThemeColors } from "@datarecce/ui/hooks";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { useStore } from "@xyflow/react";
 import React from "react";
 
@@ -273,11 +278,19 @@ describe("GraphNode", () => {
   const mockUseLineageViewContextSafe = useLineageViewContextSafe as Mock;
   const mockUseLineageGraphContext = useLineageGraphContext as Mock;
 
+  // The canvas zoom the fake React Flow store reports. GraphNode's own selector
+  // is what turns it into `showContent`, so the 30% threshold is production's,
+  // not the test's.
+  let canvasZoom = 1;
+
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Default mock implementations
-    mockUseStore.mockReturnValue(true); // showContent = true (zoom > 30%)
+    canvasZoom = 1;
+    mockUseStore.mockImplementation(
+      (selector: (state: { transform: [number, number, number] }) => unknown) =>
+        selector({ transform: [0, 0, canvasZoom] }),
+    );
     mockUseThemeColors.mockReturnValue(mockThemeColors);
     mockUseLineageViewContextSafe.mockReturnValue(createMockContext());
     mockUseLineageGraphContext.mockReturnValue(createMockLineageGraphContext());
@@ -323,16 +336,22 @@ describe("GraphNode", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("hides content at low zoom level (< 30%)", () => {
-      mockUseStore.mockReturnValue(false); // showContent = false
+    it("hides content once the canvas is zoomed below 30%", () => {
+      canvasZoom = 0.29;
       const props = createMockNodeProps();
 
       render(<GraphNode {...props} />);
 
-      // Content should be hidden via visibility:hidden
-      // The node name should still be in DOM but hidden
-      const nameElement = screen.getByText("test_model");
-      expect(nameElement.closest('[style*="visibility"]')).toBeTruthy;
+      expect(mockedLineageNode.mock.calls[0][0].showContent).toBe(false);
+    });
+
+    it("shows content again just above 30%", () => {
+      canvasZoom = 0.31;
+      const props = createMockNodeProps();
+
+      render(<GraphNode {...props} />);
+
+      expect(mockedLineageNode.mock.calls[0][0].showContent).toBe(true);
     });
 
     it("passes different resourceType values to LineageNode", () => {
@@ -347,7 +366,13 @@ describe("GraphNode", () => {
 
       for (const resourceType of resourceTypes) {
         vi.clearAllMocks();
-        mockUseStore.mockReturnValue(true);
+        mockUseStore.mockImplementation(
+          (
+            selector: (state: {
+              transform: [number, number, number];
+            }) => unknown,
+          ) => selector({ transform: [0, 0, canvasZoom] }),
+        );
         mockUseThemeColors.mockReturnValue(mockThemeColors);
         mockUseLineageViewContextSafe.mockReturnValue(createMockContext());
         mockUseLineageGraphContext.mockReturnValue(
@@ -392,44 +417,11 @@ describe("GraphNode", () => {
       );
       const props = createMockNodeProps();
 
-      const { container } = render(<GraphNode {...props} />);
+      render(<GraphNode {...props} />);
 
-      // Find and click the checkbox area
-      const checkboxArea = container.querySelector(
-        '[style*="cursor: pointer"]',
-      );
-      if (checkboxArea) {
-        fireEvent.click(checkboxArea);
-        expect(mockSelectNode).toHaveBeenCalledWith("test-node-1");
-      }
-    });
+      mockedLineageNode.mock.calls[0][0].onSelect("test-node-1");
 
-    it("checkbox does not toggle selection in action_result mode", () => {
-      const mockSelectNode = vi.fn();
-      mockUseLineageViewContextSafe.mockReturnValue(
-        createMockContext({
-          interactive: true,
-          selectMode: "action_result",
-          selectNode: mockSelectNode,
-          getNodeAction: vi.fn(() => ({
-            mode: "per_node" as const,
-            status: "success" as const,
-          })),
-        }),
-      );
-      const props = createMockNodeProps();
-
-      const { container } = render(<GraphNode {...props} />);
-
-      // Find and click the checkbox area
-      const checkboxArea = container.querySelector(
-        '[style*="cursor: pointer"]',
-      );
-      if (checkboxArea) {
-        fireEvent.click(checkboxArea);
-        // In action_result mode, selectNode should NOT be called
-        expect(mockSelectNode).not.toHaveBeenCalled();
-      }
+      expect(mockSelectNode).toHaveBeenCalledWith("test-node-1");
     });
 
     it("shows checked checkbox when node is selected", () => {
@@ -444,11 +436,7 @@ describe("GraphNode", () => {
 
       render(<GraphNode {...props} />);
 
-      // The component uses FaCheckSquare for checked state
-      // We can verify the node is in selected state by checking styling
-      expect(
-        mockUseLineageViewContextSafe().isNodeSelected,
-      ).toHaveBeenCalledWith("test-node-1");
+      expect(mockedLineageNode.mock.calls[0][0].isNodeSelected).toBe(true);
     });
 
     it("applies highlighted styling when node is highlighted", () => {
@@ -461,9 +449,7 @@ describe("GraphNode", () => {
 
       render(<GraphNode {...props} />);
 
-      expect(
-        mockUseLineageViewContextSafe().isNodeHighlighted,
-      ).toHaveBeenCalledWith("test-node-1");
+      expect(mockedLineageNode.mock.calls[0][0].isHighlighted).toBe(true);
     });
 
     it("applies dim filter when node is not highlighted", () => {
@@ -477,54 +463,7 @@ describe("GraphNode", () => {
 
       render(<GraphNode {...props} />);
 
-      // Verify the context method is called to determine highlight state
-      // The component uses this to apply opacity filter for non-highlighted nodes
-      expect(mockIsNodeHighlighted).toHaveBeenCalledWith("test-node-1");
-      // When isNodeHighlighted returns false (and not focused/selected/hovered),
-      // the component applies DIM_FILTER ("opacity(0.4) grayscale(40%)")
-      // Note: MUI sx prop styles are not accessible via inline style, but the logic is verified
-    });
-  });
-
-  // ==========================================================================
-  // Hover Behavior Tests
-  // ==========================================================================
-
-  describe("hover behavior", () => {
-    it("shows kebab menu on hover", () => {
-      const props = createMockNodeProps();
-
-      const { container } = render(<GraphNode {...props} />);
-
-      // Trigger hover
-      fireEvent.mouseEnter(container.firstChild as Element);
-
-      // After hover, resource type icon should be hidden
-      // and kebab menu should be shown (VscKebabVertical)
-      // Note: Due to mocking, we verify the hover state change behavior
-    });
-
-    it("shows impact radius icon on hover for modified nodes", () => {
-      const props = createMockNodeProps({ changeStatus: "modified" });
-
-      const { container } = render(<GraphNode {...props} />);
-
-      // Trigger hover
-      fireEvent.mouseEnter(container.firstChild as Element);
-
-      // For modified nodes, FaRegDotCircle (impact radius) should be shown
-    });
-
-    it("keeps resource type icon visible on hover", () => {
-      const props = createMockNodeProps();
-
-      const { container } = render(<GraphNode {...props} />);
-
-      expect(screen.getByTestId("resource-type-icon")).toBeInTheDocument();
-
-      fireEvent.mouseEnter(container.firstChild as Element);
-
-      expect(screen.getByTestId("resource-type-icon")).toBeInTheDocument();
+      expect(mockedLineageNode.mock.calls[0][0].isHighlighted).toBe(false);
     });
   });
 
@@ -555,7 +494,6 @@ describe("GraphNode", () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
           selectMode: "action_result",
-          // biome-ignore lint/suspicious/noExplicitAny: Mock returns undefined for testing no-action case
           getNodeAction: vi.fn(() => undefined) as any,
         }),
       );
@@ -567,28 +505,6 @@ describe("GraphNode", () => {
         screen.queryByTestId("action-tag-wrapper"),
       ).not.toBeInTheDocument();
     });
-
-    it("passes action tag to LineageNode when action exists", () => {
-      const mockAction = {
-        status: "pending" as const,
-        mode: "multi_nodes" as const,
-        run: undefined, // Run is optional, using undefined to avoid full Run type
-      };
-      mockUseLineageViewContextSafe.mockReturnValue(
-        createMockContext({
-          selectMode: "action_result",
-          // biome-ignore lint/suspicious/noExplicitAny: Simplified mock avoids complex Run type
-          getNodeAction: vi.fn(() => mockAction) as any,
-        }),
-      );
-      const props = createMockNodeProps();
-
-      render(<GraphNode {...props} />);
-
-      // Verify LineageNode was called with actionTag prop
-      const callProps = mockedLineageNode.mock.calls[0][0];
-      expect(callProps.actionTag).toBeDefined();
-    });
   });
 
   // ==========================================================================
@@ -596,30 +512,7 @@ describe("GraphNode", () => {
   // ==========================================================================
 
   describe("context integration", () => {
-    it("calls selectNode on checkbox click in selecting mode", () => {
-      const mockSelectNode = vi.fn();
-      mockUseLineageViewContextSafe.mockReturnValue(
-        createMockContext({
-          interactive: true,
-          selectMode: "selecting",
-          selectNode: mockSelectNode,
-        }),
-      );
-      const props = createMockNodeProps();
-
-      const { container } = render(<GraphNode {...props} />);
-
-      // Find the checkbox container and click it
-      const checkboxContainer = container.querySelector(
-        '[style*="cursor: pointer"]',
-      );
-      if (checkboxContainer) {
-        fireEvent.click(checkboxContainer);
-        expect(mockSelectNode).toHaveBeenCalledWith("test-node-1");
-      }
-    });
-
-    it("calls showContextMenu on kebab menu click", () => {
+    it("forwards context menu requests with the graph node", () => {
       const mockShowContextMenu = vi.fn();
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
@@ -628,32 +521,20 @@ describe("GraphNode", () => {
       );
       const props = createMockNodeProps();
 
-      const { container } = render(<GraphNode {...props} />);
+      render(<GraphNode {...props} />);
 
-      // Trigger hover to show kebab menu
-      fireEvent.mouseEnter(container.firstChild as Element);
+      const event = {
+        preventDefault: vi.fn(),
+      } as unknown as React.MouseEvent;
+      mockedLineageNode.mock.calls[0][0].onContextMenu(event, "test-node-1");
 
-      // The kebab menu click would trigger showContextMenu
-      // Due to the hover state management, we verify the mock is available
-      expect(mockShowContextMenu).toBeDefined();
-    });
-
-    it("calls showColumnLevelLineage on impact radius click for modified nodes", () => {
-      const mockShowColumnLevelLineage = vi.fn();
-      mockUseLineageViewContextSafe.mockReturnValue(
-        createMockContext({
-          showColumnLevelLineage: mockShowColumnLevelLineage,
+      expect(mockShowContextMenu).toHaveBeenCalledWith(
+        event,
+        expect.objectContaining({
+          id: "test-node-1",
+          data: expect.objectContaining({ name: "test_model" }),
         }),
       );
-      const props = createMockNodeProps({ changeStatus: "modified" });
-
-      const { container } = render(<GraphNode {...props} />);
-
-      // Trigger hover to show impact radius icon
-      fireEvent.mouseEnter(container.firstChild as Element);
-
-      // The impact radius click would trigger showColumnLevelLineage
-      expect(mockShowColumnLevelLineage).toBeDefined();
     });
   });
 
@@ -887,7 +768,9 @@ describe("GraphNode", () => {
 
       render(<GraphNode {...props} />);
 
-      // NodeRunsAggregated should be rendered for model nodes
+      expect(
+        mockedLineageNode.mock.calls[0][0].runsAggregatedTag,
+      ).toBeDefined();
     });
 
     it("does not render NodeRunsAggregated for non-model types", () => {
@@ -900,7 +783,9 @@ describe("GraphNode", () => {
 
       render(<GraphNode {...props} />);
 
-      // NodeRunsAggregated should NOT be rendered for source nodes
+      expect(
+        mockedLineageNode.mock.calls[0][0].runsAggregatedTag,
+      ).toBeUndefined();
     });
 
     it("does not render NodeRunsAggregated in action_result mode", () => {
@@ -913,7 +798,9 @@ describe("GraphNode", () => {
 
       render(<GraphNode {...props} />);
 
-      // NodeRunsAggregated should NOT be rendered in action_result mode
+      expect(
+        mockedLineageNode.mock.calls[0][0].runsAggregatedTag,
+      ).toBeUndefined();
     });
   });
 
@@ -930,14 +817,12 @@ describe("GraphNode", () => {
       );
       const props = createMockNodeProps();
 
-      const { container } = render(<GraphNode {...props} />);
+      render(<GraphNode {...props} />);
 
-      // Column container should be rendered with appropriate height
-      // 3 columns * 20px = 60px
-      const columnContainer = container.querySelector(
-        '[style*="height: 60px"]',
+      expect(mockedLineageNode.mock.calls[0][0].columnCount).toBe(3);
+      expect(mockedLineageNode.mock.calls[0][0].columnHeight).toBe(
+        COLUMN_HEIGHT_FIXTURE,
       );
-      expect(columnContainer).toBeTruthy;
     });
 
     it("does not render column container when no columns", () => {
@@ -950,20 +835,7 @@ describe("GraphNode", () => {
 
       render(<GraphNode {...props} />);
 
-      // Column container should NOT be rendered
-    });
-
-    it("adjusts border radius when columns are shown", () => {
-      mockUseLineageViewContextSafe.mockReturnValue(
-        createMockContext({
-          getNodeColumnSet: vi.fn(() => new Set(["col1"])),
-        }),
-      );
-      const props = createMockNodeProps();
-
-      render(<GraphNode {...props} />);
-
-      // Bottom border radius should be 0 when columns are shown
+      expect(mockedLineageNode.mock.calls[0][0].columnCount).toBe(0);
     });
   });
 
@@ -983,7 +855,7 @@ describe("GraphNode", () => {
 
       render(<GraphNode {...props} />);
 
-      // Focused node should have different background color
+      expect(mockedLineageNode.mock.calls[0][0].isFocused).toBe(true);
     });
 
     it("applies focused styling when node is focused by impact radius", () => {
@@ -1001,7 +873,7 @@ describe("GraphNode", () => {
 
       render(<GraphNode {...props} />);
 
-      // Node should be styled as focused when it's the impact radius target
+      expect(mockedLineageNode.mock.calls[0][0].isFocused).toBe(true);
     });
   });
 

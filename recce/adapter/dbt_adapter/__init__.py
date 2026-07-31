@@ -633,6 +633,34 @@ class DbtAdapter(BaseAdapter):
 
         return None
 
+    def catalog_column_types(self, model: str, base: bool = False) -> Dict[str, str]:
+        """Resolve each column's true DB type for a model from the loaded catalog.
+
+        Reads the same `catalog.nodes[*].columns[*].type` that lineage uses (see
+        the read in `_build_lineage`), so it needs no new I/O and works offline
+        across adapters. Returns `{column_name: db_type_string}` (e.g.
+        `{"total_revenue": "DOUBLE", "discount_value": "DECIMAL(18,3)"}`).
+
+        Returns `{}` when the catalog is absent or the model is not catalogued —
+        the caller then leaves every column at its `from_agate` type (exact
+        fallback, AC9). This is the authoritative exact-vs-approximate signal that
+        the query-result value path (which flattens DECIMAL and DOUBLE alike to
+        strings) cannot provide.
+        """
+        catalog = self.curr_catalog if base is False else self.base_catalog
+        if catalog is None:
+            return {}
+
+        node = self.find_node_by_name(model, base=base)
+        if node is None:
+            return {}
+
+        catalog_node = catalog.nodes.get(node.unique_id)
+        if catalog_node is None:
+            return {}
+
+        return {col_name: col_metadata.type for col_name, col_metadata in catalog_node.columns.items()}
+
     def get_node_name_by_id(self, unique_id):
         if unique_id.startswith("source."):
             if unique_id in self.curr_manifest.sources:

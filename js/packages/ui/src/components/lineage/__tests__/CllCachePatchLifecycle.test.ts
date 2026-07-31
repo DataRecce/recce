@@ -1,79 +1,44 @@
 /**
  * @file CllCachePatchLifecycle.test.ts
  *
- * Tests for the cache-patching lifecycle introduced in DRC-2893.
+ * Lifecycle of the CLL cache patch (DRC-2893): after a change-analysis CLL
+ * call, the lineage query is patched in place instead of refetched, and the
+ * layout effect that re-fires because of that patch must not call the API or
+ * patch again.
  *
- * After a CLL call with change_analysis: true, the frontend patches the
- * React Query lineage cache directly (via queryClient.setQueryData) instead
- * of refetching lineage from the server. This file validates:
+ * Everything here runs the production lifecycle object that `LineageViewOss`
+ * holds (`createCllCachePatchLifecycle`) against a real React Query cache. The
+ * central re-entry test mounts a real `useQuery` subscriber: React observes the
+ * cache patch, schedules a render, and only then runs the layout resolution
+ * again. This matches the production timing that the pending result must span.
  *
- * 1. The cache updater function correctly merges CLL change data into
- *    the cached ServerInfoResult.lineage nodes
- * 2. The patched lineage flows through buildLineageGraph to produce correct
- *    changeStatus on nodes
- * 3. The conditions under which patching occurs vs. is skipped
- * 4. The patching doesn't corrupt unrelated parts of the cache
- *
- * These tests use a real QueryClient to validate the actual setQueryData
- * behavior, but extract the logic from LineageViewOss.tsx as pure functions
- * to avoid rendering the full component.
+ * The patch's own merge rules are covered directly in
+ * `patchLineageDiffFromCll.test.ts`.
  */
 
-import { QueryClient } from "@tanstack/react-query";
-import { cacheKeys } from "../../../api/cacheKeys";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from "@tanstack/react-query";
+import { render, waitFor } from "@testing-library/react";
+import { createElement, useLayoutEffect } from "react";
+import { vi } from "vitest";
 import type {
   CllInput,
   CllNodeData,
   ColumnLineageData,
-} from "../../../api/cll";
-import type {
   MergedLineageResponse,
   MergedNodeData,
   ServerInfoResult,
-} from "../../../api/info";
+} from "../../../api";
+import { cacheKeys } from "../../../api/cacheKeys";
 import { buildLineageGraph } from "../../../contexts/lineage/utils";
-import { patchLineageFromCll } from "../patchLineageDiffFromCll";
-
-// ---------------------------------------------------------------------------
-// Helpers — mirror the cache-patching logic from LineageViewOss.tsx
-// ---------------------------------------------------------------------------
-
-/**
- * Mirrors the cache-patching block from refreshLayout / useLayoutEffect.
- * This is the exact logic that runs after a successful CLL API call.
- */
-function applyCachePatch(
-  queryClient: QueryClient,
-  cllApiInput: CllInput,
-  cllData: ColumnLineageData,
-): void {
-  if (cllApiInput.change_analysis && cllData) {
-    queryClient.setQueryData(
-      cacheKeys.lineage(),
-      (old: ServerInfoResult | undefined) => {
-        if (!old) return old;
-        return {
-          ...old,
-          lineage: patchLineageFromCll(old.lineage, cllData),
-        };
-      },
-    );
-  }
-}
-
-/**
- * Mirrors how refreshLayout constructs CllInput from viewOptions.
- * The change_analysis field is injected from the independent boolean.
- */
-function buildCllApiInput(
-  columnLevelLineage: CllInput,
-  changeAnalysisMode: boolean,
-): CllInput {
-  return {
-    ...columnLevelLineage,
-    change_analysis: columnLevelLineage.change_analysis ?? changeAnalysisMode,
-  };
-}
+import {
+  CLL_INPUT_FIELDS,
+  createCllCachePatchLifecycle,
+} from "../cllCachePatchLifecycle";
+import { patchLineageCacheFromCll } from "../patchLineageDiffFromCll";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -82,27 +47,50 @@ function buildCllApiInput(
 const NODE_A = "model.test.orders";
 const NODE_B = "model.test.customers";
 
-function createMergedLineage(
-  nodeOverrides: Record<string, Partial<MergedNodeData>> = {},
-): MergedLineageResponse {
-  const defaultNodes: Record<string, MergedNodeData> = {
-    [NODE_A]: {
-      name: "orders",
-      resource_type: "model",
-      package_name: "test",
-    },
+/** Impact Radius on NODE_A — the input that makes a patch eligible. */
+const IMPACT_RADIUS_INPUT: CllInput = {
+  node_id: NODE_A,
+  change_analysis: true,
+  no_upstream: true,
+};
+
+/** A plain column click — nothing to patch into the lineage cache. */
+const COLUMN_CLICK_INPUT: CllInput = { node_id: NODE_A, column: "order_id" };
+
+interface ExpectedResolution {
+  cll: ColumnLineageData | undefined;
+  isCurrent: () => boolean;
+}
+
+function asResolution(value: unknown): ExpectedResolution {
+  return value as ExpectedResolution;
+}
+
+async function cllOf(
+  resolution: Promise<unknown>,
+): Promise<ColumnLineageData | undefined> {
+  return asResolution(await resolution).cll;
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
+function createMergedLineage(): MergedLineageResponse {
+  const nodes: Record<string, MergedNodeData> = {
+    [NODE_A]: { name: "orders", resource_type: "model", package_name: "test" },
     [NODE_B]: {
       name: "customers",
       resource_type: "model",
       package_name: "test",
     },
   };
-
-  // Merge overrides
-  const nodes: Record<string, MergedNodeData> = { ...defaultNodes };
-  for (const [id, overrides] of Object.entries(nodeOverrides)) {
-    nodes[id] = { ...nodes[id], ...overrides };
-  }
 
   return {
     nodes,
@@ -111,9 +99,7 @@ function createMergedLineage(
   };
 }
 
-function createServerInfoResult(
-  nodeOverrides: Record<string, Partial<MergedNodeData>> = {},
-): ServerInfoResult {
+function createServerInfoResult(): ServerInfoResult {
   return {
     state_metadata: {
       schema_version: "1",
@@ -127,7 +113,7 @@ function createServerInfoResult(
     demo: false,
     codespace: false,
     support_tasks: {},
-    lineage: createMergedLineage(nodeOverrides),
+    lineage: createMergedLineage(),
   };
 }
 
@@ -154,22 +140,105 @@ function createCllResponse(
   };
 }
 
-function createQueryClient(
-  nodeOverrides: Record<string, Partial<MergedNodeData>> = {},
-): QueryClient {
-  const qc = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  qc.setQueryData(cacheKeys.lineage(), createServerInfoResult(nodeOverrides));
-  return qc;
+/**
+ * Marks the response a given API call returned. The marker node is absent from
+ * the cached lineage, so it never reaches the graph — it exists so a test can
+ * name *which* response it got back instead of relying on object identity
+ * alone, and so two responses can never compare equal by accident.
+ */
+const CALL_MARKER_PREFIX = "model.test.cll_call_";
+
+function callMarkerOf(cll: ColumnLineageData | undefined): string | undefined {
+  return Object.keys(cll?.current.nodes ?? {}).find((id) =>
+    id.startsWith(CALL_MARKER_PREFIX),
+  );
 }
 
-function getCachedNode(
-  qc: QueryClient,
-  nodeId: string,
-): MergedNodeData | undefined {
-  const data = qc.getQueryData<ServerInfoResult>(cacheKeys.lineage());
-  return data?.lineage.nodes[nodeId];
+/** A change-analysis response marking NODE_A modified with a changed column. */
+function modifiedNodeACll(callMarker: string): ColumnLineageData {
+  return createCllResponse({
+    [NODE_A]: createCllNodeData({
+      id: NODE_A,
+      name: "orders",
+      change_status: "modified",
+      change_category: "breaking", // wire-enum-ok -- legacy CLL response
+      columns: {
+        [`${NODE_A}.order_id`]: {
+          name: "order_id",
+          type: "INTEGER",
+          change_status: "added",
+        },
+      },
+    }),
+    [callMarker]: createCllNodeData({
+      id: callMarker,
+      name: callMarker,
+      change_status: "modified",
+    }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Harness
+// ---------------------------------------------------------------------------
+
+/**
+ * The lifecycle wired to a real query cache, a counting CLL mutation, and a
+ * counting view of the cache patches it performs.
+ */
+function createHarness({ seedLineage = true } = {}) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  if (seedLineage) {
+    queryClient.setQueryData(cacheKeys.lineage(), createServerInfoResult());
+  }
+  // Spied after seeding, so only the lifecycle's own patches are counted.
+  const patch = vi.spyOn(queryClient, "setQueryData");
+  // A distinct response object per call, each tagged with its call number, so
+  // "which response came back" is observable and never accidentally equal.
+  const responses: ColumnLineageData[] = [];
+  const mutateAsync = vi.fn(
+    async (_input: CllInput): Promise<ColumnLineageData> => {
+      const response = modifiedNodeACll(
+        `${CALL_MARKER_PREFIX}${mutateAsync.mock.calls.length}`,
+      );
+      responses.push(response);
+      return response;
+    },
+  );
+  const lifecycle = createCllCachePatchLifecycle();
+
+  return {
+    queryClient,
+    lifecycle,
+    mutateAsync,
+    apiCallCount: () => mutateAsync.mock.calls.length,
+    patchCount: () => patch.mock.calls.length,
+    clearPatchCount: () => patch.mockClear(),
+    /** Every response the mutation has handed out, oldest first. */
+    responses: () => responses,
+    /** The literal input the mutation was last called with. */
+    lastApiInput: () => mutateAsync.mock.lastCall?.[0],
+    request<T extends CllInput | undefined>(
+      cllInput: T,
+      changeAnalysis = true,
+    ) {
+      return {
+        cllInput,
+        changeAnalysis,
+        actionGetCll: { mutateAsync },
+        queryClient,
+      };
+    },
+    /** The graph the canvas renders, rebuilt from whatever the cache holds. */
+    graph() {
+      const cached = queryClient.getQueryData<ServerInfoResult>(
+        cacheKeys.lineage(),
+      );
+      return cached ? buildLineageGraph(cached.lineage) : undefined;
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -177,425 +246,517 @@ function getCachedNode(
 // ---------------------------------------------------------------------------
 
 describe("CLL cache patch lifecycle", () => {
-  // =========================================================================
-  // Core patching behavior
-  // =========================================================================
+  it("fetches once and patches the lineage cache once for a genuine input", async () => {
+    const h = createHarness();
 
-  describe("cache patching after CLL with change_analysis", () => {
-    it("patches node change_status when CLL returns change data", () => {
-      const qc = createQueryClient();
-      const cllData = createCllResponse({
-        [NODE_A]: createCllNodeData({
-          id: NODE_A,
-          name: "orders",
-          change_status: "modified",
-          change_category: "breaking",
-          columns: {
-            [`${NODE_A}.order_id`]: {
-              name: "order_id",
-              type: "INTEGER",
-              change_status: "modified",
-            },
-          },
-        }),
-      });
+    const cll = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
+    );
 
-      applyCachePatch(
-        qc,
-        { node_id: NODE_A, column: "order_id", change_analysis: true },
-        cllData,
-      );
-
-      const node = getCachedNode(qc, NODE_A);
-      expect(node?.change_status).toBe("modified");
-      expect(node?.change).toEqual({
-        category: "breaking",
-        columns: { order_id: "modified" },
-      });
-    });
-
-    it("preserves existing nodes not in CLL response", () => {
-      const qc = createQueryClient({
-        [NODE_B]: { change_status: "added" },
-      });
-
-      const cllData = createCllResponse({
-        [NODE_A]: createCllNodeData({
-          id: NODE_A,
-          name: "orders",
-          change_status: "modified",
-          change_category: "non_breaking",
-        }),
-      });
-
-      applyCachePatch(qc, { node_id: NODE_A, change_analysis: true }, cllData);
-
-      const nodeB = getCachedNode(qc, NODE_B);
-      expect(nodeB?.change_status).toBe("added");
-      expect(getCachedNode(qc, NODE_A)?.change_status).toBe("modified");
-    });
-
-    it("patches multiple nodes from impact radius CLL response", () => {
-      const qc = createQueryClient();
-      const cllData = createCllResponse({
-        [NODE_A]: createCllNodeData({
-          id: NODE_A,
-          name: "orders",
-          change_status: "modified",
-          change_category: "breaking",
-        }),
-        [NODE_B]: createCllNodeData({
-          id: NODE_B,
-          name: "customers",
-          change_status: "added",
-        }),
-      });
-
-      applyCachePatch(
-        qc,
-        { node_id: NODE_A, change_analysis: true, no_upstream: true },
-        cllData,
-      );
-
-      expect(getCachedNode(qc, NODE_A)?.change_status).toBe("modified");
-      expect(getCachedNode(qc, NODE_B)?.change_status).toBe("added");
-    });
+    expect(cll).toBeDefined();
+    expect(h.apiCallCount()).toBe(1);
+    expect(h.patchCount()).toBe(1);
+    // The change data reached the graph the canvas renders.
+    expect(h.graph()?.nodes[NODE_A].data.changeStatus).toBe("modified");
+    expect(h.graph()?.nodes[NODE_B].data.changeStatus).toBeUndefined();
   });
 
-  // =========================================================================
-  // Conditions for patching vs. skipping
-  // =========================================================================
+  it("reuses the exact pending result when a React Query subscriber schedules the layout re-entry", async () => {
+    const h = createHarness();
+    const cll = modifiedNodeACll("model.test.scheduled_reentry");
+    h.mutateAsync.mockResolvedValue(cll);
+    const resolutions: ExpectedResolution[] = [];
 
-  describe("patching conditions", () => {
-    it("skips patching when change_analysis is false", () => {
-      const qc = createQueryClient();
-      const cllData = createCllResponse({
-        [NODE_A]: createCllNodeData({
-          id: NODE_A,
-          name: "orders",
-          change_status: "modified",
-          change_category: "breaking",
-        }),
+    function LayoutSubscriber() {
+      const { data } = useQuery<ServerInfoResult>({
+        queryKey: cacheKeys.lineage(),
+        queryFn: async () => createServerInfoResult(),
+        staleTime: Number.POSITIVE_INFINITY,
       });
 
-      applyCachePatch(
-        qc,
-        { node_id: NODE_A, column: "order_id", change_analysis: false },
-        cllData,
-      );
+      useLayoutEffect(() => {
+        if (!data) {
+          return;
+        }
+        void h.lifecycle
+          .resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT))
+          .then((resolution) => {
+            resolutions.push(asResolution(resolution));
+          });
+      }, [data]);
 
-      // Node should be unchanged (no change_status)
-      const node = getCachedNode(qc, NODE_A);
-      expect(node?.change_status).toBeUndefined();
-    });
-
-    it("skips patching when change_analysis is undefined", () => {
-      const qc = createQueryClient();
-      const cllData = createCllResponse({
-        [NODE_A]: createCllNodeData({
-          id: NODE_A,
-          name: "orders",
-          change_status: "modified",
-        }),
-      });
-
-      applyCachePatch(qc, { node_id: NODE_A, column: "order_id" }, cllData);
-
-      const node = getCachedNode(qc, NODE_A);
-      expect(node?.change_status).toBeUndefined();
-    });
-
-    it("handles empty cache gracefully (returns undefined)", () => {
-      const qc = new QueryClient({
-        defaultOptions: { queries: { retry: false } },
-      });
-      // No data in cache
-
-      const cllData = createCllResponse({
-        [NODE_A]: createCllNodeData({
-          id: NODE_A,
-          name: "orders",
-          change_status: "modified",
-        }),
-      });
-
-      // Should not throw
-      applyCachePatch(qc, { node_id: NODE_A, change_analysis: true }, cllData);
-
-      expect(
-        qc.getQueryData<ServerInfoResult>(cacheKeys.lineage()),
-      ).toBeUndefined();
-    });
-  });
-
-  // =========================================================================
-  // CllInput construction (change_analysis injection)
-  // =========================================================================
-
-  describe("CllInput construction from viewOptions", () => {
-    it("injects change_analysis from changeAnalysisMode when not explicitly set", () => {
-      const input = buildCllApiInput(
-        { node_id: NODE_A, column: "order_id" },
-        true,
-      );
-      expect(input.change_analysis).toBe(true);
-    });
-
-    it("preserves explicit change_analysis from viewOptions", () => {
-      const input = buildCllApiInput(
-        { node_id: NODE_A, change_analysis: true, no_upstream: true },
-        false,
-      );
-      expect(input.change_analysis).toBe(true);
-    });
-
-    it("does not inject change_analysis when mode is off", () => {
-      const input = buildCllApiInput(
-        { node_id: NODE_A, column: "order_id" },
-        false,
-      );
-      expect(input.change_analysis).toBe(false);
-    });
-  });
-
-  // =========================================================================
-  // End-to-end: patched cache -> buildLineageGraph
-  // =========================================================================
-
-  describe("end-to-end: cache patch flows through buildLineageGraph", () => {
-    it("buildLineageGraph picks up changeStatus from patched nodes", () => {
-      const qc = createQueryClient();
-
-      // Simulate CLL call with change_analysis
-      const cllData = createCllResponse({
-        [NODE_A]: createCllNodeData({
-          id: NODE_A,
-          name: "orders",
-          change_status: "modified",
-          change_category: "breaking",
-          columns: {
-            [`${NODE_A}.order_id`]: {
-              name: "order_id",
-              type: "INTEGER",
-              change_status: "added",
-            },
-          },
-        }),
-      });
-
-      applyCachePatch(qc, { node_id: NODE_A, change_analysis: true }, cllData);
-
-      // Now simulate what LineageGraphAdapter does: read cache, build graph
-      const cached = qc.getQueryData<ServerInfoResult>(cacheKeys.lineage());
-      expect(cached).toBeDefined();
-
-      const graph = buildLineageGraph(cached!.lineage);
-
-      // The node should have changeStatus from the patched lineage
-      const node = graph.nodes[NODE_A];
-      expect(node).toBeDefined();
-      expect(node.data.changeStatus).toBe("modified");
-      expect(node.data.change).toEqual({
-        category: "breaking",
-        columns: { order_id: "added" },
-      });
-    });
-
-    it("buildLineageGraph shows unpatched node without changeStatus", () => {
-      const qc = createQueryClient(); // no overrides
-
-      const cached = qc.getQueryData<ServerInfoResult>(cacheKeys.lineage());
-      const graph = buildLineageGraph(cached!.lineage);
-
-      // With no change_status, node should not have changeStatus
-      const node = graph.nodes[NODE_A];
-      expect(node).toBeDefined();
-      expect(node.data.changeStatus).toBeUndefined();
-    });
-
-    it("subsequent patches accumulate in cached nodes", () => {
-      const qc = createQueryClient();
-
-      // First CLL: patch NODE_A
-      applyCachePatch(
-        qc,
-        { node_id: NODE_A, change_analysis: true },
-        createCllResponse({
-          [NODE_A]: createCllNodeData({
-            id: NODE_A,
-            name: "orders",
-            change_status: "modified",
-            change_category: "breaking",
-          }),
-        }),
-      );
-
-      // Second CLL: patch NODE_B (different column click)
-      applyCachePatch(
-        qc,
-        { node_id: NODE_B, change_analysis: true },
-        createCllResponse({
-          [NODE_B]: createCllNodeData({
-            id: NODE_B,
-            name: "customers",
-            change_status: "added",
-          }),
-        }),
-      );
-
-      expect(getCachedNode(qc, NODE_A)?.change_status).toBe("modified");
-      expect(getCachedNode(qc, NODE_B)?.change_status).toBe("added");
-
-      // Both should flow through to the graph
-      const cached = qc.getQueryData<ServerInfoResult>(cacheKeys.lineage());
-      const graph = buildLineageGraph(cached!.lineage);
-
-      expect(graph.nodes[NODE_A].data.changeStatus).toBe("modified");
-      expect(graph.nodes[NODE_B].data.changeStatus).toBe("added");
-    });
-  });
-
-  // =========================================================================
-  // Cache integrity
-  // =========================================================================
-
-  describe("cache integrity", () => {
-    it("does not corrupt non-lineage fields in ServerInfoResult", () => {
-      const qc = createQueryClient();
-      const beforePatch = qc.getQueryData<ServerInfoResult>(
-        cacheKeys.lineage(),
-      );
-
-      applyCachePatch(
-        qc,
-        { node_id: NODE_A, change_analysis: true },
-        createCllResponse({
-          [NODE_A]: createCllNodeData({
-            id: NODE_A,
-            name: "orders",
-            change_status: "modified",
-            change_category: "breaking",
-          }),
-        }),
-      );
-
-      const afterPatch = qc.getQueryData<ServerInfoResult>(cacheKeys.lineage());
-      expect(afterPatch?.adapter_type).toBe(beforePatch?.adapter_type);
-      expect(afterPatch?.state_metadata).toEqual(beforePatch?.state_metadata);
-      expect(afterPatch?.support_tasks).toEqual(beforePatch?.support_tasks);
-    });
-
-    it("creates new lineage object reference (immutable update)", () => {
-      const qc = createQueryClient({
-        [NODE_B]: { change_status: "added" },
-      });
-      const beforeLineage = qc.getQueryData<ServerInfoResult>(
-        cacheKeys.lineage(),
-      )?.lineage;
-
-      applyCachePatch(
-        qc,
-        { node_id: NODE_A, change_analysis: true },
-        createCllResponse({
-          [NODE_A]: createCllNodeData({
-            id: NODE_A,
-            name: "orders",
-            change_status: "modified",
-            change_category: "breaking",
-          }),
-        }),
-      );
-
-      const afterLineage = qc.getQueryData<ServerInfoResult>(
-        cacheKeys.lineage(),
-      )?.lineage;
-      // Should be a new object (React Query needs referential inequality)
-      expect(afterLineage).not.toBe(beforeLineage);
-    });
-  });
-
-  // =========================================================================
-  // Re-entry guard (cllCachePatchRef)
-  // =========================================================================
-
-  describe("re-entry guard prevents infinite loop", () => {
-    interface CllCachePatchRef {
-      pending: boolean;
-      cllData?: ColumnLineageData;
+      return null;
     }
 
-    it("guard is set before setQueryData and consumed on re-entry", () => {
-      const guard: CllCachePatchRef = { pending: false };
-      const qc = createQueryClient();
-      const cllData = createCllResponse({
-        [NODE_A]: createCllNodeData({
-          id: NODE_A,
-          name: "orders",
-          change_status: "modified",
-          change_category: "breaking",
-        }),
-      });
+    render(
+      createElement(
+        QueryClientProvider,
+        { client: h.queryClient },
+        createElement(LayoutSubscriber),
+      ),
+    );
 
-      // Simulate first pass: CLL call succeeds, set guard, patch cache
-      guard.pending = true;
-      guard.cllData = cllData;
-      applyCachePatch(qc, { node_id: NODE_A, change_analysis: true }, cllData);
+    await waitFor(() => expect(resolutions).toHaveLength(2));
 
-      // Guard should be pending with stored CLL data
-      expect(guard.pending).toBe(true);
-      expect(guard.cllData).toBe(cllData);
+    expect(h.apiCallCount()).toBe(1);
+    expect(h.patchCount()).toBe(1);
+    expect(resolutions[0].cll).toBe(cll);
+    expect(resolutions[1]).toBe(resolutions[0]);
+  });
 
-      // Simulate re-entry: effect fires again, guard is consumed
-      if (guard.pending) {
-        const reusedCll = guard.cllData;
-        guard.pending = false;
-        guard.cllData = undefined;
+  it("fetches and patches again for the next genuine input after a re-entry", async () => {
+    const h = createHarness();
+    await h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT));
+    await h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT));
 
-        // The reused CLL data should be the same
-        expect(reusedCll).toBe(cllData);
-      }
+    await h.lifecycle.resolveCllForLayout(
+      h.request({ ...IMPACT_RADIUS_INPUT, node_id: NODE_B }),
+    );
 
-      // Guard should be cleared
-      expect(guard.pending).toBe(false);
+    expect(h.apiCallCount()).toBe(2);
+    expect(h.patchCount()).toBe(2);
+  });
+
+  it("does not hold data pending when there was no lineage cache to patch", async () => {
+    // The response is patch-eligible but no cache entry exists to write, so no
+    // subscriber is notified and no re-entry is ever coming to consume a pending
+    // value. Every later request — the identical one included, which is the case
+    // the request comparison alone cannot catch — is genuine.
+    // Kills: arming before knowing the patch produced a cache value.
+    const h = createHarness({ seedLineage: false });
+
+    const first = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
+    );
+    const repeated = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
+    );
+    const different = await cllOf(
+      h.lifecycle.resolveCllForLayout(
+        h.request({ ...IMPACT_RADIUS_INPUT, node_id: NODE_B }),
+      ),
+    );
+
+    expect(h.apiCallCount()).toBe(3);
+    expect(h.patchCount()).toBe(3);
+    expect(callMarkerOf(first)).toBe(`${CALL_MARKER_PREFIX}1`);
+    expect(callMarkerOf(repeated)).toBe(`${CALL_MARKER_PREFIX}2`);
+    expect(callMarkerOf(different)).toBe(`${CALL_MARKER_PREFIX}3`);
+    expect(different).toBe(h.responses()[2]);
+  });
+
+  it("does not reuse pending data for a different input", async () => {
+    // The pending result belongs to the request that patched the cache. A
+    // different input is a different question and gets its own answer. Kills:
+    // consuming pending data without comparing it to the current request.
+    const h = createHarness();
+    const radius = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
+    );
+
+    const otherNode = await cllOf(
+      h.lifecycle.resolveCllForLayout(
+        h.request({ ...IMPACT_RADIUS_INPUT, node_id: NODE_B }),
+      ),
+    );
+
+    expect(h.apiCallCount()).toBe(2);
+    expect(otherNode).not.toBe(radius);
+    expect(callMarkerOf(otherNode)).toBe(`${CALL_MARKER_PREFIX}2`);
+  });
+
+  it("supersedes pending data when a different non-patching request follows", async () => {
+    // A column click with change analysis off patches nothing, so it must both
+    // make its own call and leave nothing behind for the request after it.
+    // Kills: the missing request comparison (step 2 would replay the radius),
+    // and clearing pending only on success (step 3 would replay the radius,
+    // because its input matches the one still armed).
+    const h = createHarness();
+    const radius = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
+    );
+
+    const columnCll = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(COLUMN_CLICK_INPUT, false)),
+    );
+    const radiusAgain = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
+    );
+
+    expect(h.apiCallCount()).toBe(3);
+    expect(columnCll).not.toBe(radius);
+    expect(callMarkerOf(columnCll)).toBe(`${CALL_MARKER_PREFIX}2`);
+    expect(radiusAgain).not.toBe(radius);
+    expect(callMarkerOf(radiusAgain)).toBe(`${CALL_MARKER_PREFIX}3`);
+  });
+
+  it("leaves nothing to replay when a different genuine request rejects", async () => {
+    // The failed request supersedes the armed one before it awaits, so the
+    // retry is a real request rather than a replay of older change data.
+    // Kills: the missing request comparison (the rejecting request would never
+    // reach the API), and clearing pending after the await instead of before.
+    const h = createHarness();
+    const radius = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
+    );
+    h.mutateAsync.mockRejectedValueOnce(new Error("cll boom"));
+
+    await expect(
+      h.lifecycle.resolveCllForLayout(
+        h.request({ ...IMPACT_RADIUS_INPUT, node_id: NODE_B }),
+      ),
+    ).rejects.toThrow("cll boom");
+    const retried = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
+    );
+
+    expect(h.apiCallCount()).toBe(3);
+    expect(retried).not.toBe(radius);
+    expect(retried).toBe(h.responses().at(-1));
+  });
+
+  it("sends the complete built API input to the mutation", async () => {
+    // A column click carries no change_analysis of its own; the resolved mode is
+    // injected when the request is built. Kills: passing `cllInput` straight
+    // through instead of `buildCllApiInput(cllInput, changeAnalysis)`.
+    const h = createHarness();
+
+    await h.lifecycle.resolveCllForLayout(h.request(COLUMN_CLICK_INPUT, true));
+
+    expect(h.lastApiInput()).toEqual({
+      node_id: NODE_A,
+      column: "order_id",
+      change_analysis: true,
     });
+  });
 
-    it("guard does not interfere with subsequent genuine CLL calls", () => {
-      const guard: CllCachePatchRef = { pending: false };
-      const qc = createQueryClient();
+  it("clears the pending data when CLL is disabled, so re-enabling fetches", async () => {
+    const h = createHarness();
+    // Arms the guard; nothing consumes it (no re-entry in this scenario).
+    await h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT));
 
-      // First CLL call: patch and set guard
-      const cllData1 = createCllResponse({
-        [NODE_A]: createCllNodeData({
-          id: NODE_A,
-          name: "orders",
-          change_status: "modified",
-          change_category: "breaking",
-        }),
-      });
-      guard.pending = true;
-      guard.cllData = cllData1;
-      applyCachePatch(qc, { node_id: NODE_A, change_analysis: true }, cllData1);
+    const disabled = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(undefined)),
+    );
+    await h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT));
 
-      // Re-entry: consume guard
-      guard.pending = false;
-      guard.cllData = undefined;
+    expect(disabled).toBeUndefined();
+    expect(h.apiCallCount()).toBe(2);
+    expect(h.patchCount()).toBe(2);
+  });
 
-      // Second genuine CLL call (different column click): guard is clear
-      expect(guard.pending).toBe(false);
+  it("arms the guard from refreshLayout's fetch too, so the effect re-fire reuses it", async () => {
+    const h = createHarness();
+    const fetched = asResolution(
+      await h.lifecycle.refreshCll(h.request(IMPACT_RADIUS_INPUT)),
+    );
+    const reused = asResolution(
+      await h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
+    );
 
-      const cllData2 = createCllResponse({
-        [NODE_B]: createCllNodeData({
-          id: NODE_B,
-          name: "customers",
-          change_status: "added",
-        }),
-      });
-      guard.pending = true;
-      guard.cllData = cllData2;
-      applyCachePatch(qc, { node_id: NODE_B, change_analysis: true }, cllData2);
+    expect(reused).toBe(fetched);
+    expect(h.apiCallCount()).toBe(1);
+    expect(h.patchCount()).toBe(1);
+  });
 
-      expect(getCachedNode(qc, NODE_A)?.change_status).toBe("modified");
-      expect(getCachedNode(qc, NODE_B)?.change_status).toBe("added");
+  it("clears the pending data on refreshLayout's explicit disable", async () => {
+    // `refreshLayout` runs on view-option changes that need not re-run the
+    // layout effect, so clearing CLL there has to disarm the lifecycle itself.
+    // Kills: making `refreshCll` a no-op when there is no input instead of
+    // dropping the pending value (and, in the owning component, calling it only
+    // inside the `column_level_lineage` branch).
+    const h = createHarness();
+    const radius = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
+    );
+
+    const disabled = await cllOf(h.lifecycle.refreshCll(h.request(undefined)));
+    const radiusAgain = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
+    );
+
+    expect(disabled).toBeUndefined();
+    expect(h.apiCallCount()).toBe(2);
+    expect(radiusAgain).not.toBe(radius);
+    expect(callMarkerOf(radiusAgain)).toBe(`${CALL_MARKER_PREFIX}2`);
+  });
+
+  it("sends the complete built API input from refreshLayout's fetch", async () => {
+    // The column-click path is showColumnLevelLineage → refreshLayout, so this
+    // is the entry point a real column click reaches. Kills: passing `cllInput`
+    // straight through instead of `buildCllApiInput(cllInput, changeAnalysis)`.
+    const h = createHarness();
+
+    await h.lifecycle.refreshCll(h.request(COLUMN_CLICK_INPUT, true));
+
+    expect(h.lastApiInput()).toEqual({
+      node_id: NODE_A,
+      column: "order_id",
+      change_analysis: true,
     });
+  });
+
+  it("does not patch or arm anything for a plain column-lineage call", async () => {
+    const h = createHarness();
+
+    await h.lifecycle.resolveCllForLayout(h.request(COLUMN_CLICK_INPUT, false));
+    // Nothing was armed, so the next input is a real request.
+    await h.lifecycle.resolveCllForLayout(h.request(COLUMN_CLICK_INPUT, false));
+
+    expect(h.apiCallCount()).toBe(2);
+    expect(h.patchCount()).toBe(0);
+    expect(h.graph()?.nodes[NODE_A].data.changeStatus).toBeUndefined();
+  });
+
+  it("propagates a failed CLL request and arms nothing", async () => {
+    const h = createHarness();
+    h.mutateAsync.mockRejectedValueOnce(new Error("cll boom"));
+
+    await expect(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
+    ).rejects.toThrow("cll boom");
+    // A retry after the failure is a real request, not a reuse of nothing.
+    const retried = await cllOf(
+      h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
+    );
+
+    expect(retried).toBeDefined();
+    expect(h.apiCallCount()).toBe(2);
+    expect(h.patchCount()).toBe(1);
+  });
+
+  it("leaves an unpopulated lineage cache alone", async () => {
+    const h = createHarness({ seedLineage: false });
+
+    await h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT));
+
+    expect(
+      h.queryClient.getQueryData<ServerInfoResult>(cacheKeys.lineage()),
+    ).toBeUndefined();
+  });
+
+  it("keeps the newer patch when an older patchable request finishes last", async () => {
+    const h = createHarness();
+    const slowA = deferred<ColumnLineageData>();
+    const fastB = deferred<ColumnLineageData>();
+    h.mutateAsync
+      .mockImplementationOnce(() => slowA.promise)
+      .mockImplementationOnce(() => fastB.promise);
+
+    const requestA = h.lifecycle.resolveCllForLayout(
+      h.request(IMPACT_RADIUS_INPUT),
+    );
+    const requestB = h.lifecycle.resolveCllForLayout(
+      h.request({ ...IMPACT_RADIUS_INPUT, node_id: NODE_B }),
+    );
+    const cllB = modifiedNodeACll("model.test.newer_b");
+    fastB.resolve(cllB);
+    const resolutionB = asResolution(await requestB);
+
+    expect(resolutionB.cll).toBe(cllB);
+    expect(resolutionB.isCurrent()).toBe(true);
+    expect(h.patchCount()).toBe(1);
+
+    const cllA = modifiedNodeACll("model.test.older_a");
+    slowA.resolve(cllA);
+    const resolutionA = asResolution(await requestA);
+
+    expect(resolutionA.cll).toBe(cllA);
+    expect(resolutionA.isCurrent()).toBe(false);
+    expect(h.patchCount()).toBe(1);
+  });
+
+  it("does not let an older patchable request patch after a newer non-patching request", async () => {
+    const h = createHarness();
+    const slowA = deferred<ColumnLineageData>();
+    const fastB = deferred<ColumnLineageData>();
+    h.mutateAsync
+      .mockImplementationOnce(() => slowA.promise)
+      .mockImplementationOnce(() => fastB.promise);
+
+    const requestA = h.lifecycle.resolveCllForLayout(
+      h.request(IMPACT_RADIUS_INPUT),
+    );
+    const requestB = h.lifecycle.resolveCllForLayout(
+      h.request(COLUMN_CLICK_INPUT, false),
+    );
+    fastB.resolve(modifiedNodeACll("model.test.newer_plain_b"));
+    const resolutionB = asResolution(await requestB);
+
+    expect(resolutionB.isCurrent()).toBe(true);
+    expect(h.patchCount()).toBe(0);
+
+    slowA.resolve(modifiedNodeACll("model.test.older_patch_a"));
+    const resolutionA = asResolution(await requestA);
+
+    expect(resolutionA.isCurrent()).toBe(false);
+    expect(h.patchCount()).toBe(0);
+  });
+
+  it("propagates a current rejection and makes the older completion non-current", async () => {
+    const h = createHarness();
+    const slowA = deferred<ColumnLineageData>();
+    const currentB = deferred<ColumnLineageData>();
+    h.mutateAsync
+      .mockImplementationOnce(() => slowA.promise)
+      .mockImplementationOnce(() => currentB.promise);
+
+    const requestA = h.lifecycle.resolveCllForLayout(
+      h.request(IMPACT_RADIUS_INPUT),
+    );
+    const requestB = h.lifecycle.resolveCllForLayout(
+      h.request({ ...IMPACT_RADIUS_INPUT, node_id: NODE_B }),
+    );
+    currentB.reject(new Error("current b failed"));
+
+    await expect(requestB).rejects.toThrow("current b failed");
+    slowA.resolve(modifiedNodeACll("model.test.older_after_error"));
+    const resolutionA = asResolution(await requestA);
+
+    expect(resolutionA.isCurrent()).toBe(false);
+    expect(h.patchCount()).toBe(0);
+  });
+
+  it("turns a stale rejection into a non-current resolution", async () => {
+    const h = createHarness();
+    const slowA = deferred<ColumnLineageData>();
+    const currentB = deferred<ColumnLineageData>();
+    h.mutateAsync
+      .mockImplementationOnce(() => slowA.promise)
+      .mockImplementationOnce(() => currentB.promise);
+
+    const requestA = h.lifecycle.resolveCllForLayout(
+      h.request(IMPACT_RADIUS_INPUT),
+    );
+    const requestB = h.lifecycle.resolveCllForLayout(
+      h.request({ ...IMPACT_RADIUS_INPUT, node_id: NODE_B }),
+    );
+    const cllB = modifiedNodeACll("model.test.newer_success");
+    currentB.resolve(cllB);
+    const resolutionB = asResolution(await requestB);
+    slowA.reject(new Error("stale a failed"));
+    const resolutionA = asResolution(await requestA);
+
+    expect(resolutionB.cll).toBe(cllB);
+    expect(resolutionB.isCurrent()).toBe(true);
+    expect(resolutionA.cll).toBeUndefined();
+    expect(resolutionA.isCurrent()).toBe(false);
+    expect(h.patchCount()).toBe(1);
+  });
+
+  it.each([
+    ["layout", "resolveCllForLayout"],
+    ["refresh", "refreshCll"],
+  ] as const)(
+    "invalidates an older request when the %s entry disables CLL",
+    async (_entry, method) => {
+      const h = createHarness();
+      const slowA = deferred<ColumnLineageData>();
+      h.mutateAsync.mockImplementationOnce(() => slowA.promise);
+
+      const requestA = h.lifecycle.resolveCllForLayout(
+        h.request(IMPACT_RADIUS_INPUT),
+      );
+      const disabled = asResolution(
+        await h.lifecycle[method](h.request(undefined)),
+      );
+
+      expect(disabled.cll).toBeUndefined();
+      expect(disabled.isCurrent()).toBe(true);
+
+      slowA.resolve(modifiedNodeACll(`model.test.older_${_entry}`));
+      const resolutionA = asResolution(await requestA);
+
+      expect(resolutionA.isCurrent()).toBe(false);
+      expect(h.patchCount()).toBe(0);
+    },
+  );
+
+  it("invalidates an in-flight request when its component owner is disposed", async () => {
+    const h = createHarness();
+    const slow = deferred<ColumnLineageData>();
+    h.mutateAsync.mockImplementationOnce(() => slow.promise);
+    const request = h.lifecycle.refreshCll(h.request(IMPACT_RADIUS_INPUT));
+
+    h.lifecycle.invalidate();
+    slow.resolve(modifiedNodeACll("model.test.after_dispose"));
+    const resolution = asResolution(await request);
+
+    expect(resolution.isCurrent()).toBe(false);
+    expect(h.patchCount()).toBe(0);
+  });
+
+  // Typed as an exhaustive Record, not a loose array: a new CllInput field fails
+  // to compile here until it gets its own row, so the matrix cannot fall behind
+  // the type the way a hand-written list can.
+  const FIELD_DIFFERENCES: Record<keyof CllInput, Partial<CllInput>> = {
+    node_id: { node_id: NODE_B },
+    column: { column: "customer_id" },
+    change_analysis: { change_analysis: false },
+    no_cll: { no_cll: false },
+    no_upstream: { no_upstream: false },
+    no_downstream: { no_downstream: false },
+  };
+
+  it("compares and normalizes every field of CllInput", () => {
+    expect([...CLL_INPUT_FIELDS].sort()).toEqual(
+      Object.keys(FIELD_DIFFERENCES).sort(),
+    );
+  });
+
+  it.each(
+    Object.entries(FIELD_DIFFERENCES) as [keyof CllInput, Partial<CllInput>][],
+  )(
+    "treats a difference in normalized %s as a genuine request",
+    async (_field, difference) => {
+      const h = createHarness();
+      const fullInput: CllInput = {
+        node_id: NODE_A,
+        column: "order_id",
+        change_analysis: true,
+        no_cll: true,
+        no_upstream: true,
+        no_downstream: true,
+      };
+      await h.lifecycle.resolveCllForLayout(h.request(fullInput, true));
+
+      await h.lifecycle.resolveCllForLayout(
+        h.request({ ...fullInput, ...difference }, true),
+      );
+
+      expect(h.apiCallCount()).toBe(2);
+    },
+  );
+
+  it("does not arm re-entry when structural sharing keeps a deep-equal cache reference", async () => {
+    const h = createHarness();
+    const cll = modifiedNodeACll("model.test.deep_equal");
+    h.mutateAsync.mockResolvedValue(cll);
+    patchLineageCacheFromCll(h.queryClient, cll);
+    h.clearPatchCount();
+
+    const seeded = h.queryClient.getQueryData<ServerInfoResult>(
+      cacheKeys.lineage(),
+    );
+    expect(seeded).toBeDefined();
+    const first = asResolution(
+      await h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
+    );
+    const afterFirst = h.queryClient.getQueryData<ServerInfoResult>(
+      cacheKeys.lineage(),
+    );
+    const second = asResolution(
+      await h.lifecycle.resolveCllForLayout(h.request(IMPACT_RADIUS_INPUT)),
+    );
+    const afterSecond = h.queryClient.getQueryData<ServerInfoResult>(
+      cacheKeys.lineage(),
+    );
+
+    expect(first.cll).toBe(cll);
+    expect(second.cll).toBe(cll);
+    expect(afterFirst).toBe(seeded);
+    expect(afterFirst).toBe(afterSecond);
+    expect(h.apiCallCount()).toBe(2);
+    expect(h.patchCount()).toBe(2);
   });
 });
