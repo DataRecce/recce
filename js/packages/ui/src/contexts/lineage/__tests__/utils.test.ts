@@ -56,6 +56,49 @@ describe("buildLineageGraph", () => {
     expect(node.data.materialized).toBe("table");
   });
 
+  test("resolves baseSchema from base_schema when the environments diverge", () => {
+    const lineage: MergedLineageResponse = {
+      nodes: {
+        "model.proj.orders": {
+          name: "orders",
+          resource_type: "model",
+          package_name: "proj",
+          schema: "ci_pr_1012",
+          base_schema: "prod_rpt",
+        },
+      },
+      edges: [],
+      metadata: { base: {}, current: {} },
+    };
+
+    const { nodes } = buildLineageGraph(lineage);
+
+    expect(nodes["model.proj.orders"].data.schema).toBe("ci_pr_1012");
+    expect(nodes["model.proj.orders"].data.baseSchema).toBe("prod_rpt");
+  });
+
+  test("falls back to schema for baseSchema when base_schema is absent", () => {
+    // Absent means "both environments share this schema" — and an older
+    // instance backend never sends the field at all, so the fallback is what
+    // keeps a newer UI correct against it.
+    const lineage: MergedLineageResponse = {
+      nodes: {
+        "model.proj.orders": {
+          name: "orders",
+          resource_type: "model",
+          package_name: "proj",
+          schema: "public",
+        },
+      },
+      edges: [],
+      metadata: { base: {}, current: {} },
+    };
+
+    const { nodes } = buildLineageGraph(lineage);
+
+    expect(nodes["model.proj.orders"].data.baseSchema).toBe("public");
+  });
+
   test("detects added, removed, and modified nodes via change_status", () => {
     const lineage: MergedLineageResponse = {
       nodes: {

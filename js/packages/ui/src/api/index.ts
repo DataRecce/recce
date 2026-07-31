@@ -62,6 +62,7 @@ export type { RecceServerFlags } from "./flag";
 export { getServerFlag, markRelaunchHintCompleted } from "./flag";
 // Server info API (lineage, environment, dbt metadata)
 export type {
+  CatalogCoverage,
   CatalogMetadata,
   GitInfo,
   LineageData,

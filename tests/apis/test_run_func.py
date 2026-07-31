@@ -10,7 +10,10 @@ after task execution, normalized primary_keys must be reflected in run.params.
 """
 
 import asyncio
+import contextlib
 import os
+import threading
+from unittest import TestCase
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
@@ -64,222 +67,31 @@ def test_materialize_run_results_skips_cancelled_runs():
 
 
 # =============================================================================
-# Tests: Params Merge Logic (update_run_result behavior)
-# =============================================================================
-
-
-class TestUpdateRunResultBehavior:
-    """Tests for the params merge behavior in update_run_result.
-
-    Since update_run_result is a nested function, we test the behavior
-    by verifying the merge logic that would occur.
-    """
-
-    def test_params_merge_updates_existing_params(self):
-        """Updated params should be merged into run.params."""
-        # Simulate run.params before task execution
-        original_params = {"model": "customers", "primary_key": ["customer_id"]}
-
-        # Simulate updated params after task execution (PK normalized to UPPERCASE)
-        updated_params = {"model": "customers", "primary_key": ["CUSTOMER_ID"]}
-
-        # Simulate the merge behavior from update_run_result
-        original_params.update(updated_params)
-
-        assert original_params["primary_key"] == ["CUSTOMER_ID"]
-        assert original_params["model"] == "customers"
-
-    def test_params_merge_preserves_fields_not_in_updated(self):
-        """Fields not in updated_params should be preserved."""
-        original_params = {
-            "model": "customers",
-            "primary_key": ["customer_id"],
-            "columns": ["name", "age"],  # Not in updated_params
-        }
-
-        # Task only updates primary_key
-        updated_params = {"model": "customers", "primary_key": ["CUSTOMER_ID"]}
-
-        original_params.update(updated_params)
-
-        assert original_params["columns"] == ["name", "age"]
-        assert original_params["primary_key"] == ["CUSTOMER_ID"]
-
-    def test_params_merge_handles_none_updated_params(self):
-        """When updated_params is None, original params should be unchanged."""
-        original_params = {"model": "customers", "primary_key": ["customer_id"]}
-        original_copy = original_params.copy()
-
-        updated_params = None
-
-        # Simulate the conditional merge from update_run_result
-        if updated_params is not None:
-            original_params.update(updated_params)
-
-        assert original_params == original_copy
-
-    def test_params_merge_adds_new_fields(self):
-        """New fields in updated_params should be added to run.params."""
-        original_params = {"model": "customers"}
-
-        updated_params = {
-            "model": "customers",
-            "primary_key": ["CUSTOMER_ID"],  # Added by task
-            "in_a": "in_a",  # Normalized by task
-            "in_b": "in_b",
-        }
-
-        original_params.update(updated_params)
-
-        assert original_params["primary_key"] == ["CUSTOMER_ID"]
-        assert original_params["in_a"] == "in_a"
-        assert original_params["in_b"] == "in_b"
-
-
-# =============================================================================
-# Tests: Params Serialization Logic (fn() behavior)
-# =============================================================================
-
-
-class TestParamsSerializationBehavior:
-    """Tests for params serialization in the fn() closure.
-
-    The fn() closure extracts task.params after execution using:
-    1. model_dump() for Pydantic v2
-    2. dict() for Pydantic v1
-    3. Direct pass-through for plain dicts
-    """
-
-    def test_extracts_pydantic_v2_params(self):
-        """Pydantic v2 models should use model_dump()."""
-
-        class PydanticV2Params(BaseModel):
-            model: str
-            primary_key: list
-
-        params = PydanticV2Params(model="customers", primary_key=["CUSTOMER_ID"])
-
-        # Simulate the extraction logic from fn()
-        if hasattr(params, "model_dump"):
-            extracted = params.model_dump()
-        elif hasattr(params, "dict"):
-            extracted = params.dict()
-        else:
-            extracted = params
-
-        assert extracted == {"model": "customers", "primary_key": ["CUSTOMER_ID"]}
-        assert isinstance(extracted, dict)
-
-    def test_extracts_pydantic_v1_params(self):
-        """Pydantic v1 models should use dict() method."""
-
-        # Simulate a Pydantic v1-style object (has dict() but not model_dump())
-        class PydanticV1Params:
-            def __init__(self):
-                self.model = "customers"
-                self.primary_key = ["CUSTOMER_ID"]
-
-            def dict(self):
-                return {"model": self.model, "primary_key": self.primary_key}
-
-        params = PydanticV1Params()
-
-        # Simulate the extraction logic from fn()
-        if hasattr(params, "model_dump"):
-            extracted = params.model_dump()
-        elif hasattr(params, "dict"):
-            extracted = params.dict()
-        else:
-            extracted = params
-
-        assert extracted == {"model": "customers", "primary_key": ["CUSTOMER_ID"]}
-
-    def test_extracts_plain_dict_params(self):
-        """Plain dict params should pass through directly."""
-        params = {"model": "customers", "primary_key": ["CUSTOMER_ID"]}
-
-        # Simulate the extraction logic from fn()
-        if hasattr(params, "model_dump"):
-            extracted = params.model_dump()
-        elif hasattr(params, "dict"):
-            extracted = params.dict()
-        elif isinstance(params, dict):
-            extracted = params
-        else:
-            extracted = None
-
-        assert extracted == {"model": "customers", "primary_key": ["CUSTOMER_ID"]}
-
-    def test_handles_serialization_exception(self):
-        """Serialization exceptions should be caught and logged."""
-
-        class BrokenParams:
-            def model_dump(self):
-                raise RuntimeError("Serialization failed")
-
-        params = BrokenParams()
-        updated_params = None
-
-        # Simulate the try/catch from fn()
-        try:
-            if hasattr(params, "model_dump"):
-                updated_params = params.model_dump()
-            elif hasattr(params, "dict"):
-                updated_params = params.dict()
-            elif isinstance(params, dict):
-                updated_params = params
-        except Exception:
-            updated_params = None
-
-        assert updated_params is None
-
-    def test_handles_none_params(self):
-        """None task.params should result in None updated_params."""
-        params = None
-        updated_params = None
-
-        # Simulate the conditional check from fn()
-        if params is not None:
-            if hasattr(params, "model_dump"):
-                updated_params = params.model_dump()
-            elif hasattr(params, "dict"):
-                updated_params = params.dict()
-            elif isinstance(params, dict):
-                updated_params = params
-
-        assert updated_params is None
-
-    def test_logs_warning_for_unknown_type(self):
-        """Unknown params types should trigger a warning log."""
-
-        class UnknownParams:
-            """A params object without model_dump(), dict(), or being a dict."""
-
-            pass
-
-        params = UnknownParams()
-        updated_params = "SENTINEL"  # Use sentinel to detect if branch was taken
-        warning_logged = False
-
-        # Simulate the extraction logic from fn()
-        if hasattr(params, "model_dump"):
-            updated_params = params.model_dump()
-        elif hasattr(params, "dict"):
-            updated_params = params.dict()
-        elif isinstance(params, dict):
-            updated_params = params
-        else:
-            # This is the warning branch
-            warning_logged = True
-            updated_params = None
-
-        assert warning_logged is True
-        assert updated_params is None
-
-
-# =============================================================================
 # Integration Tests: submit_run with Mocked Task
 # =============================================================================
+
+
+class _PydanticTaskParams(BaseModel):
+    model: str
+    primary_key: list[str]
+    in_a: str
+
+
+class _LegacyTaskParams:
+    def __init__(self, values):
+        self.values = values
+
+    def dict(self):
+        return self.values
+
+
+class _BrokenTaskParams:
+    def model_dump(self):
+        raise RuntimeError("serialization failed")
+
+
+class _UnknownTaskParams:
+    pass
 
 
 class TestSubmitRunParamsPropagation:
@@ -307,19 +119,11 @@ class TestSubmitRunParamsPropagation:
 
     @pytest.fixture
     def mock_task_class(self):
-        """Create a mock task class that normalizes params."""
+        """Create a successful fake task with caller-controlled params."""
 
         class MockTask:
             def __init__(self, params):
-                # Simulate Pydantic model
-                self.params = MagicMock()
-                self.params.model_dump = MagicMock(
-                    return_value={
-                        **params,
-                        # Simulate normalization: lowercase -> UPPERCASE
-                        "primary_key": [pk.upper() for pk in params.get("primary_key", [])],
-                    }
-                )
+                self.params = params
                 self.is_cancelled = False
                 self._progress_listener = None
 
@@ -339,41 +143,131 @@ class TestSubmitRunParamsPropagation:
 
         return MockTask
 
+    @pytest.mark.parametrize(
+        ("task_params", "original_params", "expected_params"),
+        [
+            pytest.param(
+                _PydanticTaskParams(
+                    model="customers",
+                    primary_key=["CUSTOMER_ID"],
+                    in_a="in_a",
+                ),
+                {
+                    "model": "customers",
+                    "primary_key": ["customer_id"],
+                    "columns": ["name", "age"],
+                },
+                {
+                    "model": "customers",
+                    "primary_key": ["CUSTOMER_ID"],
+                    "columns": ["name", "age"],
+                    "in_a": "in_a",
+                },
+                id="pydantic-model",
+            ),
+            pytest.param(
+                _LegacyTaskParams(
+                    {
+                        "model": "customers",
+                        "primary_key": ["CUSTOMER_ID"],
+                        "in_b": "in_b",
+                    }
+                ),
+                {"model": "customers", "primary_key": ["customer_id"]},
+                {
+                    "model": "customers",
+                    "primary_key": ["CUSTOMER_ID"],
+                    "in_b": "in_b",
+                },
+                id="legacy-model",
+            ),
+            pytest.param(
+                {
+                    "model": "customers",
+                    "primary_key": None,
+                    "options": {"limit": 50},
+                },
+                {
+                    "model": "customers",
+                    "primary_key": ["customer_id"],
+                    "options": {"limit": 100, "offset": 0},
+                },
+                {
+                    "model": "customers",
+                    "primary_key": None,
+                    "options": {"limit": 50},
+                },
+                id="plain-dict",
+            ),
+        ],
+    )
     @pytest.mark.asyncio
-    async def test_normalized_params_propagate_to_run(self, mock_context, mock_task_class):
-        """Test that normalized params from task execution flow to run.params."""
+    async def test_task_params_propagate_to_run(
+        self,
+        mock_context,
+        mock_task_class,
+        task_params,
+        original_params,
+        expected_params,
+    ):
+        """Completed runs persist the task's normalized parameter values."""
         from recce.apis.run_func import submit_run
 
-        # Register the mock task
         with patch("recce.apis.run_func.create_task") as mock_create_task:
-            mock_task = mock_task_class({"model": "customers", "primary_key": ["customer_id"]})
+            mock_task = mock_task_class(task_params)
             mock_create_task.return_value = mock_task
 
-            # Get the event loop
-            asyncio.get_event_loop()
-
-            # Submit the run
-            run, future = submit_run(
-                type="value_diff",
-                params={"model": "customers", "primary_key": ["customer_id"]},
-            )
-
-            # Wait for the task to complete
+            run, future = submit_run(type="value_diff", params=original_params.copy())
             await asyncio.wrap_future(future)
-
-            # Regression guard for DRC-3307 root cause: run.status MUST be
-            # set BEFORE the future resolves. If this assertion needs a
-            # sleep/poll to pass, update_run_result is being scheduled
-            # async again (e.g., via run_coroutine_threadsafe) instead of
-            # called synchronously inside the executor thread.
-
-            # Verify params were normalized
-            assert run.params["primary_key"] == ["CUSTOMER_ID"]
 
             from recce.models.types import RunStatus
 
+            assert run.params == expected_params
+            # Regression guard for the DRC-3307 root cause: run.status and
+            # run.result MUST already be set when the future resolves. If these
+            # assertions ever need a sleep/poll to pass, update_run_result is
+            # being scheduled async again (e.g., via run_coroutine_threadsafe)
+            # instead of called synchronously inside the executor thread.
             assert run.status == RunStatus.FINISHED
             assert run.result is not None
+
+    @pytest.mark.parametrize(
+        ("task_params", "warning"),
+        [
+            pytest.param(None, None, id="no-params"),
+            pytest.param(_BrokenTaskParams(), "Failed to serialize task.params", id="serialization-error"),
+            pytest.param(_UnknownTaskParams(), "unexpected type", id="unknown-type"),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_unserializable_task_params_do_not_fail_run(
+        self,
+        mock_context,
+        mock_task_class,
+        task_params,
+        warning,
+    ):
+        """Successful task results survive absent or unserializable task params."""
+        from recce.apis.run_func import submit_run
+        from recce.models.types import RunStatus
+
+        original_params = {"model": "customers", "primary_key": ["customer_id"]}
+        # run_func logs to "uvicorn", whose own LOGGING_CONFIG sets
+        # propagate=False. assertLogs attaches to that logger directly, so this
+        # stays a real guard no matter how the test process configures logging;
+        # caplog would silently capture nothing.
+        capture = TestCase().assertLogs("uvicorn", level="WARNING") if warning else contextlib.nullcontext()
+        with patch("recce.apis.run_func.create_task") as mock_create_task, capture as logs:
+            mock_create_task.return_value = mock_task_class(task_params)
+
+            run, future = submit_run(type="value_diff", params=original_params.copy())
+            await asyncio.wrap_future(future)
+
+        assert run.params == original_params
+        assert run.status == RunStatus.FINISHED
+        assert run.result == {"diff": {"columns": [], "data": []}}
+        if warning is not None:
+            assert any(warning in message for message in logs.output)
 
     @pytest.mark.asyncio
     async def test_triggered_by_propagates_to_run(self, mock_context, mock_task_class):
@@ -415,30 +309,66 @@ class TestSubmitRunParamsPropagation:
             await asyncio.wrap_future(future)
 
     @pytest.mark.asyncio
-    async def test_cancel_sentinel_preserved_on_success(self, mock_context, mock_task_class):
+    async def test_cancel_sentinel_preserved_on_success(self, mock_context):
         """Regression: if cancel_run flips run.status = CANCELLED while the
         executor thread is finishing a successful task, update_run_result
         must NOT overwrite CANCELLED with FINISHED. Without this guard, a
-        cancel-mid-execution race silently disappears."""
+        cancel-mid-execution race silently disappears.
+
+        The sentinel guards only the status: the work the executor thread
+        already finished is still recorded, so a caller that inspects a
+        cancelled run can tell "cancelled before it produced anything" from
+        "cancelled after it had already succeeded".
+
+        The task blocks inside ``execute`` until the sentinel is set, so the
+        success path really does observe CANCELLED. Letting the executor race
+        the assignment makes the whole test vacuous — it then passes with the
+        status guard deleted outright."""
         from recce.apis.run_func import submit_run
         from recce.models.types import RunStatus
 
+        cancelled = threading.Event()
+
+        class BlockingTask:
+            """A task that does not return until the run has been cancelled."""
+
+            def __init__(self, params):
+                self.params = params
+                self.is_cancelled = False
+                self._progress_listener = None
+
+            @property
+            def progress_listener(self):
+                return self._progress_listener
+
+            @progress_listener.setter
+            def progress_listener(self, value):
+                self._progress_listener = value
+
+            def execute(self):
+                assert cancelled.wait(timeout=10), "the run was never cancelled"
+                return {"diff": {"columns": [], "data": []}}
+
+            def cancel(self):
+                self.is_cancelled = True
+
         with patch("recce.apis.run_func.create_task") as mock_create_task:
-            mock_task = mock_task_class({"model": "customers", "primary_key": ["customer_id"]})
-            mock_create_task.return_value = mock_task
+            mock_create_task.return_value = BlockingTask({"model": "customers", "primary_key": ["customer_id"]})
 
             run, future = submit_run(
                 type="value_diff",
                 params={"model": "customers", "primary_key": ["customer_id"]},
             )
-            # Simulate cancel_run flipping the sentinel BEFORE the executor
-            # thread finishes — the success path should observe CANCELLED
-            # and refuse to overwrite it.
+            # cancel_run flips the sentinel while the task is still executing.
             run.status = RunStatus.CANCELLED
+            cancelled.set()
 
             await asyncio.wrap_future(future)
 
             assert run.status == RunStatus.CANCELLED, "update_run_result success path overwrote CANCELLED sentinel"
+            assert run.result == {
+                "diff": {"columns": [], "data": []}
+            }, "preserving the CANCELLED sentinel dropped the completed task result"
 
     @pytest.mark.asyncio
     async def test_repr_fallback_when_str_error_is_none_string(self, mock_context):
@@ -480,94 +410,6 @@ class TestSubmitRunParamsPropagation:
             # through the str(e) == "None" branch and recorded a useful value.
             assert run.error is not None
             assert run.error != "None"
-
-    @pytest.mark.asyncio
-    async def test_run_params_unchanged_when_task_has_no_params(self, mock_context):
-        """Test that run.params is unchanged when task.params is None."""
-        from recce.apis.run_func import submit_run
-
-        class TaskWithNoParams:
-            def __init__(self, params):
-                self.params = None
-                self.is_cancelled = False
-                self._progress_listener = None
-
-            @property
-            def progress_listener(self):
-                return self._progress_listener
-
-            @progress_listener.setter
-            def progress_listener(self, value):
-                self._progress_listener = value
-
-            def execute(self):
-                return {"result": "success"}
-
-            def cancel(self):
-                self.is_cancelled = True
-
-        with patch("recce.apis.run_func.create_task") as mock_create_task:
-            mock_create_task.return_value = TaskWithNoParams({})
-
-            original_params = {"model": "customers", "primary_key": ["customer_id"]}
-            run, future = submit_run(type="value_diff", params=original_params.copy())
-
-            await asyncio.wrap_future(future)
-
-            # Params should be unchanged since task.params was None
-            assert run.params == original_params
-
-
-# =============================================================================
-# Edge Case Tests
-# =============================================================================
-
-
-class TestEdgeCases:
-    """Edge case tests for run_func behavior."""
-
-    def test_empty_params_dict_is_valid(self):
-        """Empty dict params should be handled gracefully."""
-        params = {}
-
-        if hasattr(params, "model_dump"):
-            extracted = params.model_dump()
-        elif hasattr(params, "dict"):
-            extracted = params.dict()
-        elif isinstance(params, dict):
-            extracted = params
-        else:
-            extracted = None
-
-        assert extracted == {}
-
-    def test_params_with_none_values_preserved(self):
-        """Params containing None values should be preserved."""
-        params = {"model": "customers", "primary_key": None, "columns": None}
-
-        original = {"model": "customers"}
-        original.update(params)
-
-        assert original["primary_key"] is None
-        assert original["columns"] is None
-
-    def test_nested_params_are_merged(self):
-        """Nested dict structures should be merged (shallow merge)."""
-        original = {
-            "model": "customers",
-            "options": {"limit": 100, "offset": 0},
-        }
-
-        updated = {
-            "model": "customers",
-            "options": {"limit": 50},  # Replaces entire options dict
-        }
-
-        original.update(updated)
-
-        # Note: dict.update() does shallow merge, so options is replaced entirely
-        assert original["options"] == {"limit": 50}
-        assert "offset" not in original["options"]
 
 
 # =============================================================================
@@ -738,6 +580,47 @@ class TestCancelRunSplit:
             finally:
                 run_func.running_tasks.pop(str(run.run_id), None)
 
+    @pytest.mark.asyncio
+    async def test_submitted_run_is_cancellable_through_the_endpoint_key(self):
+        """
+        A run registered by submit_run must be findable by the cancel endpoint.
+
+        This is the only test that lets submit_run write the running_tasks entry
+        itself. Every other cancel test seeds the entry by hand, so a writer and
+        a reader that disagree on the key type stay invisible to them — and the
+        endpoint reports a cancel it never performed as "acknowledged", so
+        nothing downstream notices either.
+        """
+        from recce.apis import run_func
+        from recce.apis.run_func import _mark_run_cancelled, submit_run
+        from recce.models.types import RunStatus
+
+        with (
+            patch("recce.apis.run_func.default_context") as mock_run_func_ctx,
+            patch("recce.core.default_context") as mock_core_ctx,
+        ):
+            context = MagicMock()
+            context.adapter_type = "dbt"
+            context.review_mode = False
+            context.runs = []
+            mock_run_func_ctx.return_value = context
+            mock_core_ctx.return_value = context
+
+            task = _FakeCancelTask()
+            task.params = {"sql_template": "select 1"}
+            with patch("recce.apis.run_func.create_task", return_value=task):
+                run, future = submit_run(type="query", params={"sql_template": "select 1"})
+                await asyncio.wrap_future(future)
+
+            try:
+                # str(run_id) is exactly what cancel_run_handler passes.
+                cancelled, found_task = _mark_run_cancelled(str(run.run_id))
+            finally:
+                run_func.running_tasks.pop(str(run.run_id), None)
+
+        assert found_task is task
+        assert cancelled.status == RunStatus.CANCELLED
+
     def test_mark_run_cancelled_flips_status_immediately(self, tmp_run):
         """Status flips to CANCELLED before any adapter cancel runs."""
         from recce.apis.run_func import _mark_run_cancelled
@@ -798,27 +681,3 @@ class TestCancelRunSplit:
         cancel_run(str(tmp_run.run_id))
         assert tmp_run.status == RunStatus.CANCELLED
         assert task.cancelled is True
-
-    def test_mark_run_cancelled_status_survives_completion(self, tmp_run):
-        """Late-arriving completion does not overwrite CANCELLED status.
-
-        Regression test mirroring the guard at run_func.py:203-209 — the
-        success path of update_run_result inside submit_run honors the
-        CANCELLED sentinel set by _mark_run_cancelled.
-        """
-        from recce.apis.run_func import _mark_run_cancelled
-        from recce.models.types import RunStatus
-
-        run, _ = _mark_run_cancelled(str(tmp_run.run_id))
-        # Inline the success-path semantics from update_run_result (which
-        # is a closure inside submit_run and cannot be imported directly).
-        # See run_func.py:201-205 — status check guards the result write.
-        result = {"data": [1, 2, 3]}
-        if run.status != RunStatus.CANCELLED:
-            run.status = RunStatus.FINISHED
-        run.result = result
-
-        assert run.status == RunStatus.CANCELLED
-        # The result is still written — the frontend gates on a sticky
-        # client-side cancelled set, so backend can keep recording results.
-        assert run.result == {"data": [1, 2, 3]}

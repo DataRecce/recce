@@ -310,7 +310,7 @@ function _ScreenshotDataGrid<TData = DataGridRow>(
           textAlign: "right",
         },
         // Frozen/pinned column styling
-        "& .ag-pinned-left-cols-container .ag-cell": {
+        "& .ag-grid-scrolling-rows .ag-grid-pinned-left-cells .ag-cell": {
           backgroundColor: isDark ? "#2d2d2d" : "#f5f5f5",
         },
       }}

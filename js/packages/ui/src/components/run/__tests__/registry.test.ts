@@ -1,31 +1,124 @@
 /**
  * @file registry.test.ts
- * @description Tests for the extensible run type registry
+ * @description Tests for the run type registry.
  *
- * Tests verify:
- * - defaultRunTypeConfig has all required run types
- * - createRunTypeRegistry merges configs correctly
- * - findByRunType returns correct entries
- * - createBoundFindByRunType creates working lookup functions
- * - Registry extension patterns work correctly
+ * Consolidates the former OSS-side suite (js/src/components/run) into the
+ * owning package. Two things are checked:
+ *
+ * 1. The public run-type surface: which run types the checklist exposes, the
+ *    title each one displays, and whether it ships a result view / a parameter
+ *    form. This is spelled out as an explicit matrix below rather than looped
+ *    over `Object.keys(registry)` — deriving expectations from the registry
+ *    makes the test pass no matter what the registry says.
+ * 2. Registry composition (`createRunTypeRegistry`, `createBoundFindByRunType`)
+ *    used by consumers that inject their own icons or components.
  */
 
+import type { RunType } from "../../../api";
 import {
   createBoundFindByRunType,
   createRunTypeRegistry,
-  defaultRunTypeConfig,
   findByRunType,
   type IconComponent,
   type RunTypeConfig,
-  type RunTypeRegistry,
+  registry,
 } from "../registry";
 
-// The registered run types are exactly the keys of the registry (aliased here
-// as defaultRunTypeConfig) — derive the iteration list from it so the test
-// can't drift from the registry.
-const REGISTERED_RUN_TYPES = Object.keys(
-  defaultRunTypeConfig,
-) as (keyof typeof defaultRunTypeConfig)[];
+// ============================================================================
+// Expected public run-type surface
+// ============================================================================
+
+/**
+ * The run types the checklist exposes, with their displayed title and which
+ * optional components they ship.
+ *
+ * Written out by hand on purpose. Sources, none of which is `registry` itself:
+ * - `title` is user-facing copy shown in the run modal header and the
+ *   checklist / run-history rows.
+ * - `hasResultView` — a run type renders results in the result pane. Types
+ *   that only exist as a check kind (`lineage_diff`, `schema_diff`) or as a
+ *   placeholder (`simple`) render through their own surfaces instead, and
+ *   `RecceActionAdapter` rejects a submit for a type with no result view.
+ * - `hasForm` — a run type needs parameters from the user before it can run
+ *   (a column, a set of primary keys), so `runAction` opens the run modal.
+ *   Query and row-count runs take their params from the caller and submit
+ *   directly.
+ *
+ * `profile_distribution` is deliberately absent: it is a valid `RunType` on
+ * the wire but a backend-only one (DRC-3390), documented in
+ * `api/types/run.ts` as having no registry entry. It is asserted separately.
+ */
+const EXPECTED_RUN_TYPES = [
+  {
+    runType: "lineage_diff",
+    title: "Lineage Diff",
+    hasResultView: false,
+    hasForm: false,
+  },
+  {
+    runType: "schema_diff",
+    title: "Schema Diff",
+    hasResultView: false,
+    hasForm: false,
+  },
+  { runType: "simple", title: "Simple", hasResultView: false, hasForm: false },
+  { runType: "query", title: "Query", hasResultView: true, hasForm: false },
+  {
+    runType: "query_base",
+    title: "Query Base",
+    hasResultView: true,
+    hasForm: false,
+  },
+  {
+    runType: "query_diff",
+    title: "Query Diff",
+    hasResultView: true,
+    hasForm: false,
+  },
+  {
+    runType: "row_count",
+    title: "Row Count",
+    hasResultView: true,
+    hasForm: false,
+  },
+  {
+    runType: "row_count_diff",
+    title: "Row Count Diff",
+    hasResultView: true,
+    hasForm: false,
+  },
+  { runType: "profile", title: "Profile", hasResultView: true, hasForm: true },
+  {
+    runType: "profile_diff",
+    title: "Profile Diff",
+    hasResultView: true,
+    hasForm: true,
+  },
+  {
+    runType: "value_diff",
+    title: "Value Diff",
+    hasResultView: true,
+    hasForm: true,
+  },
+  {
+    runType: "value_diff_detail",
+    title: "Value Diff Detail",
+    hasResultView: true,
+    hasForm: true,
+  },
+  {
+    runType: "top_k_diff",
+    title: "Top-K Diff",
+    hasResultView: true,
+    hasForm: true,
+  },
+  {
+    runType: "histogram_diff",
+    title: "Histogram Diff",
+    hasResultView: true,
+    hasForm: true,
+  },
+] as const;
 
 // ============================================================================
 // Test Fixtures
@@ -41,228 +134,97 @@ CustomIcon.displayName = "CustomIcon";
 // Test Suites
 // ============================================================================
 
-describe("registry", () => {
-  describe("defaultRunTypeConfig", () => {
-    it("contains entries for all run types", () => {
-      for (const runType of REGISTERED_RUN_TYPES) {
-        expect(defaultRunTypeConfig[runType]).toBeDefined();
-      }
-    });
-
-    it("all entries have title and icon", () => {
-      for (const runType of REGISTERED_RUN_TYPES) {
-        const entry = defaultRunTypeConfig[runType];
-        expect(entry.title).toBeTruthy();
-        expect(typeof entry.title).toBe("string");
-        expect(entry.icon).toBeDefined();
-        expect(typeof entry.icon).toBe("function");
-      }
-    });
-
-    it("has correct titles for all run types", () => {
-      expect(defaultRunTypeConfig.lineage_diff.title).toBe("Lineage Diff");
-      expect(defaultRunTypeConfig.schema_diff.title).toBe("Schema Diff");
-      expect(defaultRunTypeConfig.query.title).toBe("Query");
-      expect(defaultRunTypeConfig.query_base.title).toBe("Query Base");
-      expect(defaultRunTypeConfig.query_diff.title).toBe("Query Diff");
-      expect(defaultRunTypeConfig.row_count.title).toBe("Row Count");
-      expect(defaultRunTypeConfig.row_count_diff.title).toBe("Row Count Diff");
-      expect(defaultRunTypeConfig.profile.title).toBe("Profile");
-      expect(defaultRunTypeConfig.profile_diff.title).toBe("Profile Diff");
-      expect(defaultRunTypeConfig.value_diff.title).toBe("Value Diff");
-      expect(defaultRunTypeConfig.value_diff_detail.title).toBe(
-        "Value Diff Detail",
+describe("run registry", () => {
+  describe("public run-type surface", () => {
+    it("registers exactly the expected run types", () => {
+      expect(Object.keys(registry).sort()).toEqual(
+        EXPECTED_RUN_TYPES.map((entry) => entry.runType as string).sort(),
       );
-      expect(defaultRunTypeConfig.top_k_diff.title).toBe("Top-K Diff");
-      expect(defaultRunTypeConfig.histogram_diff.title).toBe("Histogram Diff");
-      expect(defaultRunTypeConfig.simple.title).toBe("Simple");
+    });
+
+    it.each(EXPECTED_RUN_TYPES)(
+      "$runType displays '$title' with resultView=$hasResultView form=$hasForm",
+      ({ runType, title, hasResultView, hasForm }) => {
+        const entry = findByRunType(runType);
+
+        expect(entry.title).toBe(title);
+        expect(typeof entry.icon).toBe("function");
+        expect(entry.RunResultView !== undefined).toBe(hasResultView);
+        expect(entry.RunForm !== undefined).toBe(hasForm);
+      },
+    );
+
+    it("has no entry for the backend-only profile_distribution run type", () => {
+      // DRC-3390: the dispatcher accepts it, the registry does not — callers
+      // passing a dynamic RunType must handle the undefined.
+      expect(findByRunType("profile_distribution" as RunType)).toBeUndefined();
     });
   });
 
   describe("createRunTypeRegistry", () => {
-    it("returns a complete registry with defaults", () => {
-      const registry = createRunTypeRegistry({});
+    it("returns the registered defaults when given no overrides", () => {
+      const custom = createRunTypeRegistry({});
 
-      for (const runType of REGISTERED_RUN_TYPES) {
-        expect(registry[runType]).toBeDefined();
-        expect(registry[runType].title).toBe(
-          defaultRunTypeConfig[runType].title,
-        );
+      for (const { runType, title } of EXPECTED_RUN_TYPES) {
+        expect(custom[runType].title).toBe(title);
       }
     });
 
-    it("overrides icon when provided", () => {
-      const registry = createRunTypeRegistry({
+    it("applies an override without dropping the entry's other fields", () => {
+      const custom = createRunTypeRegistry({
         query: { icon: MockIcon },
-      });
-
-      expect(registry.query.icon).toBe(MockIcon);
-      expect(registry.query.title).toBe("Query"); // Title preserved
-    });
-
-    it("overrides title when provided", () => {
-      const registry = createRunTypeRegistry({
-        query: { title: "Custom Query Title" },
-      });
-
-      expect(registry.query.title).toBe("Custom Query Title");
-    });
-
-    it("supports multiple overrides", () => {
-      const registry = createRunTypeRegistry({
-        query: { icon: MockIcon, title: "SQL Query" },
-        profile: { icon: CustomIcon },
         row_count: { title: "Row Counter" },
       });
 
-      expect(registry.query.icon).toBe(MockIcon);
-      expect(registry.query.title).toBe("SQL Query");
-      expect(registry.profile.icon).toBe(CustomIcon);
-      expect(registry.profile.title).toBe("Profile");
-      expect(registry.row_count.title).toBe("Row Counter");
+      expect(custom.query.icon).toBe(MockIcon);
+      expect(custom.query.title).toBe("Query");
+      expect(custom.row_count.title).toBe("Row Counter");
+      expect(custom.row_count.RunResultView).toBe(
+        registry.row_count.RunResultView,
+      );
     });
 
-    it("does not mutate defaultRunTypeConfig", () => {
-      const originalQueryTitle = defaultRunTypeConfig.query.title;
+    it("leaves the shared registry unmodified", () => {
+      const originalQuery = registry.query;
 
-      createRunTypeRegistry({
-        query: { title: "Modified Title" },
-      });
+      createRunTypeRegistry({ query: { title: "Modified Title" } });
 
-      expect(defaultRunTypeConfig.query.title).toBe(originalQueryTitle);
+      expect(registry.query).toBe(originalQuery);
+      expect(registry.query.title).toBe("Query");
     });
 
-    it("ignores invalid run types gracefully", () => {
-      // TypeScript would catch this at compile time, but verify runtime behavior
-      const registry = createRunTypeRegistry({
-        invalid_type: { title: "Invalid" },
-      } as Record<string, Partial<RunTypeConfig>>);
+    it("drops overrides for run types that are not registered", () => {
+      const custom = createRunTypeRegistry({
+        profile_distribution: { title: "Backend Only" },
+      } as Partial<Record<RunType, Partial<RunTypeConfig>>>);
 
-      // Should still have all valid types
-      for (const runType of REGISTERED_RUN_TYPES) {
-        expect(registry[runType]).toBeDefined();
-      }
-    });
-  });
-
-  describe("findByRunType", () => {
-    it("returns correct entry for each run type", () => {
-      for (const runType of REGISTERED_RUN_TYPES) {
-        const entry = findByRunType(runType);
-        expect(entry).toBe(defaultRunTypeConfig[runType]);
-      }
-    });
-
-    it("returns customized entry when using bound lookup with overrides", () => {
-      const customRegistry = createRunTypeRegistry({
-        query: { icon: MockIcon, title: "Custom Query" },
-      });
-      const findInCustomRegistry = createBoundFindByRunType(customRegistry);
-
-      const entry = findInCustomRegistry("query");
-      expect(entry.icon).toBe(MockIcon);
-      expect(entry.title).toBe("Custom Query");
-    });
-
-    it("maintains type safety", () => {
-      // These should all compile without errors
-      const queryEntry = findByRunType("query");
-      const profileEntry = findByRunType("profile_diff");
-      const lineageEntry = findByRunType("lineage_diff");
-
-      expect(queryEntry.title).toBe("Query");
-      expect(profileEntry.title).toBe("Profile Diff");
-      expect(lineageEntry.title).toBe("Lineage Diff");
+      expect(Object.keys(custom).sort()).toEqual(Object.keys(registry).sort());
     });
   });
 
   describe("createBoundFindByRunType", () => {
-    it("creates a function that looks up in the bound registry", () => {
-      const registry = createRunTypeRegistry({
-        query: { icon: MockIcon },
+    it("looks up in the bound registry rather than the shared one", () => {
+      const custom = createRunTypeRegistry({
+        query: { icon: MockIcon, title: "Custom Query" },
       });
 
-      const findInRegistry = createBoundFindByRunType(registry);
+      const findInCustom = createBoundFindByRunType(custom);
 
-      expect(findInRegistry("query").icon).toBe(MockIcon);
-      expect(findInRegistry("profile").title).toBe("Profile");
+      expect(findInCustom("query").icon).toBe(MockIcon);
+      expect(findInCustom("query").title).toBe("Custom Query");
+      expect(findByRunType("query").title).toBe("Query");
     });
 
-    it("different bound functions use different registries", () => {
-      const registry1 = createRunTypeRegistry({
-        query: { title: "Registry 1 Query" },
-      });
-      const registry2 = createRunTypeRegistry({
-        query: { title: "Registry 2 Query" },
-      });
+    it("keeps separately bound registries independent", () => {
+      const findInFirst = createBoundFindByRunType(
+        createRunTypeRegistry({ query: { icon: MockIcon } }),
+      );
+      const findInSecond = createBoundFindByRunType(
+        createRunTypeRegistry({ query: { icon: CustomIcon } }),
+      );
 
-      const find1 = createBoundFindByRunType(registry1);
-      const find2 = createBoundFindByRunType(registry2);
-
-      expect(find1("query").title).toBe("Registry 1 Query");
-      expect(find2("query").title).toBe("Registry 2 Query");
-    });
-
-    it("returns consistent references for same run type", () => {
-      const registry = createRunTypeRegistry({});
-      const findInRegistry = createBoundFindByRunType(registry);
-
-      const entry1 = findInRegistry("query");
-      const entry2 = findInRegistry("query");
-
-      expect(entry1).toBe(entry2);
-    });
-  });
-
-  describe("extension patterns", () => {
-    it("supports OSS-style full registry creation", () => {
-      // Simulate how OSS would create a registry with all icons/components
-      const ossRegistry = createRunTypeRegistry({
-        query: { icon: MockIcon },
-        query_base: { icon: MockIcon },
-        query_diff: { icon: MockIcon },
-        profile: { icon: MockIcon },
-        profile_diff: { icon: MockIcon },
-        // ... other types
-      });
-
-      expect(ossRegistry.query.icon).toBe(MockIcon);
-      expect(ossRegistry.lineage_diff.icon).toBeDefined(); // Uses default placeholder
-    });
-
-    it("supports Cloud-style extension with custom types", () => {
-      // Cloud could add custom run types (not in base RunType union)
-      // This is a pattern test - actual implementation would need type extension
-      const baseRegistry = createRunTypeRegistry({
-        query: { icon: MockIcon },
-      });
-
-      // Extend with spread pattern
-      const cloudRegistry = {
-        ...baseRegistry,
-        custom_cloud_type: {
-          title: "Cloud Feature",
-          icon: CustomIcon,
-        },
-      };
-
-      // Access via bracket notation since query exists on RunTypeRegistry
-      expect((cloudRegistry as RunTypeRegistry).query.icon).toBe(MockIcon);
-      expect(cloudRegistry.custom_cloud_type.title).toBe("Cloud Feature");
-    });
-
-    it("supports partial override pattern", () => {
-      // Override only the icon while keeping other properties
-      const customQueryConfig: Partial<RunTypeConfig> = {
-        icon: CustomIcon,
-      };
-
-      const registry = createRunTypeRegistry({
-        query: customQueryConfig,
-      });
-
-      expect(registry.query.icon).toBe(CustomIcon);
-      expect(registry.query.title).toBe("Query"); // Preserved from default
+      expect(findInFirst("query").icon).toBe(MockIcon);
+      expect(findInSecond("query").icon).toBe(CustomIcon);
     });
   });
 });

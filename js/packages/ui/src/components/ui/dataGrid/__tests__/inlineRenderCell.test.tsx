@@ -302,3 +302,88 @@ describe("inlineRenderCell - Edge Cases", () => {
     expect(() => inlineRenderCell(params)).not.toThrow();
   });
 });
+
+// ============================================================================
+// DRC-3025: the unchanged/changed decision is type-dispatched
+//
+// Inline is the DEFAULT display mode for the profile, value-diff-detail and
+// query-diff views, so this renderer — not just the side-by-side cell class — is
+// what decides whether float noise reads as a change on screen. "raw" render
+// mode is used throughout so the two values stay textually distinguishable
+// instead of both rounding to 2 decimals.
+// ============================================================================
+
+describe("inlineRenderCell - DRC-3025 type-dispatched change detection", () => {
+  const floatCol: ColDefWithMetadata = {
+    field: "avg",
+    context: { columnType: "float", columnRenderMode: "raw" },
+  };
+  const decimalCol: ColDefWithMetadata = {
+    field: "price",
+    context: { columnType: "number", columnRenderMode: "raw" },
+  };
+
+  test("FLOAT column: a noise-only difference renders one value, not a diff", () => {
+    const params = createParams(
+      { base__avg: "0.3", current__avg: "0.30000000000000004" },
+      floatCol,
+    );
+
+    render(<>{inlineRenderCell(params)}</>);
+
+    // Unchanged renders the current value alone; the base value appearing at all
+    // means a DiffText was rendered and the phantom change is back on screen.
+    expect(screen.getByText("0.30000000000000004")).toBeInTheDocument();
+    expect(screen.queryByText("0.3")).not.toBeInTheDocument();
+  });
+
+  test("FLOAT column: a genuine change still renders both values", () => {
+    const params = createParams(
+      { base__avg: "0.3", current__avg: "0.9" },
+      floatCol,
+    );
+
+    render(<>{inlineRenderCell(params)}</>);
+
+    expect(screen.getByText("0.3")).toBeInTheDocument();
+    expect(screen.getByText("0.9")).toBeInTheDocument();
+  });
+
+  test("NUMBER column: a 1-cent decimal change renders both values", () => {
+    const params = createParams(
+      { base__price: "19.99", current__price: "19.98" },
+      decimalCol,
+    );
+
+    render(<>{inlineRenderCell(params)}</>);
+
+    expect(screen.getByText("19.99")).toBeInTheDocument();
+    expect(screen.getByText("19.98")).toBeInTheDocument();
+  });
+
+  test("NUMBER column: sub-epsilon differences are NOT smoothed", () => {
+    // The cycle-4 guard: only "float" opts into the epsilon. A DECIMAL column
+    // must keep reporting a difference this small.
+    const params = createParams(
+      { base__price: "0.3", current__price: "0.30000000000000004" },
+      decimalCol,
+    );
+
+    render(<>{inlineRenderCell(params)}</>);
+
+    expect(screen.getByText("0.3")).toBeInTheDocument();
+    expect(screen.getByText("0.30000000000000004")).toBeInTheDocument();
+  });
+
+  test("untyped column: differences stay exact", () => {
+    const params = createParams(
+      { base__value: "0.3", current__value: "0.30000000000000004" },
+      { field: "value", context: { columnRenderMode: "raw" } },
+    );
+
+    render(<>{inlineRenderCell(params)}</>);
+
+    expect(screen.getByText("0.3")).toBeInTheDocument();
+    expect(screen.getByText("0.30000000000000004")).toBeInTheDocument();
+  });
+});

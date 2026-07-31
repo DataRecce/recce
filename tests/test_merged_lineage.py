@@ -227,6 +227,63 @@ class TestBuildMergedLineageNodes:
         assert merged.change.category == "non_breaking"
         assert merged.change.columns == {"col_x": "added"}
 
+    def test_diverging_base_schema_is_carried_alongside_current(self):
+        """The base environment's schema must survive the merge (DRC-3975).
+
+        `schema` carries the current environment (current is the preferred
+        source), so a base env in a different schema needs its own field or the
+        UI cannot tell the two environments apart.
+        """
+        base_node = {"name": "m", "resource_type": "model", "package_name": "pkg", "schema": "prod_rpt"}
+        curr_node = {"name": "m", "resource_type": "model", "package_name": "pkg", "schema": "ci_pr_1012"}
+        ld = _make_lineage_diff(
+            base_nodes={"model.pkg.m": base_node},
+            current_nodes={"model.pkg.m": curr_node},
+        )
+        merged = build_merged_lineage(ld).nodes["model.pkg.m"]
+        assert merged.schema_name == "ci_pr_1012"
+        assert merged.base_schema == "prod_rpt"
+        # The client reads the wire format, so assert the serialized shape too.
+        wire = merged.model_dump(by_alias=True, exclude_none=True)
+        assert wire["schema"] == "ci_pr_1012"
+        assert wire["base_schema"] == "prod_rpt"
+
+    def test_matching_base_schema_is_omitted(self):
+        """When both envs share a schema, base_schema stays off the wire.
+
+        Lineage payloads carry thousands of nodes, so the field is only spent
+        where it says something the client can't already infer from `schema`.
+        """
+        node = {"name": "a", "resource_type": "model", "package_name": "pkg", "schema": "public"}
+        ld = _make_lineage_diff(
+            base_nodes={"model.pkg.a": node},
+            current_nodes={"model.pkg.a": node},
+        )
+        merged = build_merged_lineage(ld).nodes["model.pkg.a"]
+        assert merged.base_schema is None
+        assert "base_schema" not in merged.model_dump(by_alias=True, exclude_none=True)
+
+    def test_added_node_has_no_base_schema(self):
+        """An added node has no base environment to report a schema for."""
+        node = {"name": "new_model", "resource_type": "model", "package_name": "pkg", "schema": "ci_pr_1012"}
+        ld = _make_lineage_diff(
+            current_nodes={"model.pkg.new_model": node},
+            diff={"model.pkg.new_model": {"change_status": "added"}},
+        )
+        merged = build_merged_lineage(ld).nodes["model.pkg.new_model"]
+        assert merged.base_schema is None
+
+    def test_removed_node_reports_its_base_schema(self):
+        """A removed node's only environment is base, so `schema` is already it."""
+        node = {"name": "old_model", "resource_type": "model", "package_name": "pkg", "schema": "prod_rpt"}
+        ld = _make_lineage_diff(
+            base_nodes={"model.pkg.old_model": node},
+            diff={"model.pkg.old_model": {"change_status": "removed"}},
+        )
+        merged = build_merged_lineage(ld).nodes["model.pkg.old_model"]
+        assert merged.schema_name == "prod_rpt"
+        assert merged.base_schema is None
+
     def test_extra_node_fields_ignored(self):
         node = {
             "name": "a",

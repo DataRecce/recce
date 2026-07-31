@@ -1,79 +1,166 @@
 /**
  * MiniMap auto-disable tests.
  *
- * Verifies that:
- * 1. The threshold constant is exported and equals 500
- * 2. LineageCanvas actually hides <MiniMap> when showMiniMap=false
- *    (the prop LineageViewOss derives from the threshold)
+ * The lineage view drops the MiniMap once a graph gets large enough that its
+ * extra DOM costs more than it helps. This drives the real view with a mocked
+ * graph boundary (`toReactFlow`) so the 500/501 boundary is observed the way a
+ * user would see it — MiniMap present or absent — instead of restating the
+ * threshold arithmetic.
  */
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
-import type { Edge, Node } from "@xyflow/react";
-import { describe, expect, it, vi } from "vitest";
-import type { LineageEdgeData } from "../edges";
-import { LineageCanvas } from "../LineageCanvas";
-import { MINIMAP_NODE_THRESHOLD } from "../LineageViewOss";
-import type { LineageNodeData } from "../nodes";
+import type { Node } from "@xyflow/react";
+import React from "react";
+import { vi } from "vitest";
+import type { LineageGraph } from "../../../contexts/lineage/types";
+import { LineageViewOss } from "../LineageViewOss";
 
-// Mock @xyflow/react — same pattern as LineageCanvas.test.tsx
+const MODIFIED_NODE = "model.test.orders";
+
+const mockToReactFlow = vi.fn();
+
+// Graph boundary: hand the view an exact node count without laying anything out.
+vi.mock("../lineage", () => ({
+  toReactFlow: (...args: unknown[]) => mockToReactFlow(...args),
+}));
+
+// React Flow renders nothing meaningful in happy-dom; keep the pieces the view
+// mounts as identifiable stubs so MiniMap presence is observable.
 vi.mock("@xyflow/react", () => ({
   ReactFlow: ({ children }: { children?: React.ReactNode }) => (
     <div data-testid="reactflow">{children}</div>
   ),
   Background: () => <div data-testid="background" />,
-  Controls: () => <div data-testid="controls" />,
+  BackgroundVariant: { Dots: "dots" },
+  Controls: ({ children }: { children?: React.ReactNode }) => (
+    <div data-testid="controls">{children}</div>
+  ),
+  ControlButton: ({ children }: { children?: React.ReactNode }) => (
+    <button type="button">{children}</button>
+  ),
   MiniMap: () => <div data-testid="minimap" />,
-  useNodesState: (initialNodes: unknown[]) => [initialNodes, vi.fn(), vi.fn()],
-  useEdgesState: (initialEdges: unknown[]) => [initialEdges, vi.fn(), vi.fn()],
+  Panel: ({ children }: { children?: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  getNodesBounds: () => ({ x: 0, y: 0, width: 0, height: 0 }),
+  useNodesState: (initial: unknown[]) => {
+    const [nodes, setNodes] = React.useState(initial);
+    return [nodes, setNodes, vi.fn()];
+  },
+  useEdgesState: (initial: unknown[]) => {
+    const [edges, setEdges] = React.useState(initial);
+    return [edges, setEdges, vi.fn()];
+  },
+  useReactFlow: () => ({
+    fitView: vi.fn(async () => true),
+    setCenter: vi.fn(async () => undefined),
+    getNodes: () => [],
+    getZoom: () => 1,
+  }),
 }));
 
-function makeMockNodes(count: number): Node<LineageNodeData>[] {
+vi.mock("../../../lib/api/track", () => ({
+  trackCopyToClipboard: vi.fn(),
+  trackLineageViewRender: vi.fn(),
+  trackMultiNodesAction: vi.fn(),
+}));
+
+vi.mock("../../../hooks/useMultiNodesActionOss", () => ({
+  useMultiNodesActionOss: () => ({
+    actionState: { actions: {}, status: "pending" },
+  }),
+}));
+
+vi.mock("../../../contexts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../contexts")>()),
+  useLineageGraphContext: () => ({
+    lineageGraph,
+    isLoading: false,
+    error: undefined,
+    refetchLineageGraph: vi.fn(),
+    refetchRunsAggregated: vi.fn(),
+    isActionAvailable: () => true,
+  }),
+  useRecceActionContext: () => ({
+    runId: undefined,
+    showRunId: vi.fn(),
+    closeRunResult: vi.fn(),
+    runAction: vi.fn(),
+    isRunResultOpen: false,
+  }),
+  useRecceInstanceContext: () => ({
+    featureToggles: { mode: "read only" },
+    singleEnv: false,
+  }),
+  useRecceServerFlag: () => ({ data: undefined }),
+}));
+
+vi.mock("../../../hooks", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../hooks")>()),
+  useApiConfig: () => ({ apiClient: {} }),
+  useRun: () => ({ run: undefined }),
+  useThemeColors: () => ({ isDark: false }),
+}));
+
+const lineageGraph = {
+  nodes: {
+    [MODIFIED_NODE]: {
+      id: MODIFIED_NODE,
+      type: "lineageGraphNode",
+      position: { x: 0, y: 0 },
+      data: {
+        id: MODIFIED_NODE,
+        name: "orders",
+        resourceType: "model",
+        packageName: "test",
+        changeStatus: "modified",
+        parents: {},
+        children: {},
+      },
+    },
+  },
+  edges: {},
+  modifiedSet: [MODIFIED_NODE],
+  manifestMetadata: { base: undefined, current: undefined },
+  catalogMetadata: { base: undefined, current: undefined },
+} as unknown as LineageGraph;
+
+function makeNodes(count: number): Node[] {
   return Array.from({ length: count }, (_, i) => ({
     id: `node-${i}`,
-    type: "lineageNode",
+    type: "lineageGraphNode",
     position: { x: i * 400, y: 0 },
-    data: { label: `Model ${i}`, changeStatus: "unchanged" as const },
+    data: { id: `node-${i}`, name: `model ${i}` },
   }));
 }
 
-function makeMockEdges(nodeCount: number): Edge<LineageEdgeData>[] {
-  if (nodeCount < 2) return [];
-  return Array.from({ length: nodeCount - 1 }, (_, i) => ({
-    id: `edge-${i}`,
-    type: "lineageEdge",
-    source: `node-${i}`,
-    target: `node-${i + 1}`,
-    data: { changeStatus: "unchanged" as const },
-  }));
-}
-
-describe("MiniMap auto-disable for large graphs", () => {
-  it("exports MINIMAP_NODE_THRESHOLD as 500", () => {
-    expect(MINIMAP_NODE_THRESHOLD).toBe(500);
+/** Render the lineage view over a graph that lays out `nodeCount` nodes. */
+async function renderWithNodeCount(nodeCount: number) {
+  mockToReactFlow.mockResolvedValue([makeNodes(nodeCount), [], {}]);
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
   });
+  render(
+    <QueryClientProvider client={queryClient}>
+      <LineageViewOss viewOptions={{ node_ids: [MODIFIED_NODE] }} />
+    </QueryClientProvider>,
+  );
+  await screen.findByTestId("reactflow");
+}
 
-  it("renders MiniMap when showMiniMap is true (small graph)", () => {
-    const nodes = makeMockNodes(10);
-    const edges = makeMockEdges(10);
-
-    render(<LineageCanvas nodes={nodes} edges={edges} showMiniMap={true} />);
+// The boundary is stated here as literals on purpose: 500 nodes still get a
+// MiniMap, 501 do not. Deriving these from the production constant would let
+// the threshold move without a test noticing.
+describe("MiniMap auto-disable for large graphs", () => {
+  it("shows the MiniMap on a 500-node graph", async () => {
+    await renderWithNodeCount(500);
 
     expect(screen.getByTestId("minimap")).toBeInTheDocument();
   });
 
-  it("hides MiniMap when showMiniMap is false (simulating large graph)", () => {
-    const nodes = makeMockNodes(10);
-    const edges = makeMockEdges(10);
-
-    render(<LineageCanvas nodes={nodes} edges={edges} showMiniMap={false} />);
+  it("hides the MiniMap on a 501-node graph", async () => {
+    await renderWithNodeCount(501);
 
     expect(screen.queryByTestId("minimap")).not.toBeInTheDocument();
-  });
-
-  it("threshold correctly determines showMiniMap prop value", () => {
-    // This is the logic used in LineageViewOss:
-    // {nodes.length <= MINIMAP_NODE_THRESHOLD && <MiniMap />}
-    expect(500 <= MINIMAP_NODE_THRESHOLD).toBe(true); // at threshold → show
-    expect(501 <= MINIMAP_NODE_THRESHOLD).toBe(false); // above threshold → hide
-    expect(1860 <= MINIMAP_NODE_THRESHOLD).toBe(false); // Super-scale → hide
   });
 });

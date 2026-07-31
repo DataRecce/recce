@@ -15,6 +15,18 @@ from recce.core import RecceContext
 from recce.state import CloudStateLoader
 
 
+@pytest.fixture(autouse=True)
+def _restore_app_state():
+    """The server command assigns to the shared module `app.state` (cli.py:1427),
+    sometimes a MagicMock via @patch. Restore it after each test so state does not
+    leak into later tests (e.g. tripping the mode-guard middleware)."""
+    from recce.server import app
+
+    orig = app.state
+    yield
+    app.state = orig
+
+
 def test_cmd_version():
     from recce import __version__
     from recce.cli import version

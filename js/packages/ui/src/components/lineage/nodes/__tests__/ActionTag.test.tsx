@@ -15,7 +15,6 @@
 import { render, screen } from "@testing-library/react";
 import {
   type ActionProgress,
-  type ActionStatus,
   ActionTag,
   type RowCountDiffResult,
   type ValueDiffResult,
@@ -351,22 +350,5 @@ describe("ActionTag - success fallback", () => {
     render(<ActionTag status="success" data-testid="action-tag" />);
 
     expect(screen.getByText("Complete")).toBeInTheDocument();
-  });
-});
-
-// =============================================================================
-// Type Export Tests
-// =============================================================================
-
-describe("ActionTag types", () => {
-  it("ActionStatus type accepts valid values", () => {
-    const statuses: ActionStatus[] = [
-      "pending",
-      "running",
-      "skipped",
-      "success",
-      "error",
-    ];
-    expect(statuses).toHaveLength(5);
   });
 });

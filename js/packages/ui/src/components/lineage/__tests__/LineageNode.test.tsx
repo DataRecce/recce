@@ -424,39 +424,43 @@ describe("LineageNode", () => {
       ["breaking", "Model-Wide Change"],
       ["non_breaking", "Additive Change"],
       ["partial_breaking", "Column Change"],
-    ])("shows %s category text label when newCllExperience is false", (category, label) => {
-      const props = createMockNodeProps(
-        { showChangeAnalysis: true, changeCategory: category },
-        { label: "test" },
-      );
+    ])(
+      "shows %s category text label when newCllExperience is false",
+      (category, label) => {
+        const props = createMockNodeProps(
+          { showChangeAnalysis: true, changeCategory: category },
+          { label: "test" },
+        );
 
-      render(<LineageNode {...props} />);
+        render(<LineageNode {...props} />);
 
-      expect(screen.getByText(label)).toBeInTheDocument();
-    });
+        expect(screen.getByText(label)).toBeInTheDocument();
+      },
+    );
 
-    it.each<ChangeCategory>([
-      "breaking",
-      "non_breaking",
-      "partial_breaking",
-    ])("suppresses %s category text label when newCllExperience is true (badge carries the signal)", (category) => {
-      const props = createMockNodeProps(
-        {
-          showChangeAnalysis: true,
-          changeCategory: category,
-          newCllExperience: true,
-        },
-        { label: "test" },
-      );
+    it.each<ChangeCategory>(
+      ["breaking", "non_breaking", "partial_breaking"], // wire-enum-ok
+    )(
+      "suppresses %s category text label when newCllExperience is true (badge carries the signal)",
+      (category) => {
+        const props = createMockNodeProps(
+          {
+            showChangeAnalysis: true,
+            changeCategory: category,
+            newCllExperience: true,
+          },
+          { label: "test" },
+        );
 
-      render(<LineageNode {...props} />);
+        render(<LineageNode {...props} />);
 
-      expect(
-        screen.queryByText(
-          /^(Model-Wide Change|Additive Change|Column Change)$/,
-        ),
-      ).not.toBeInTheDocument();
-    });
+        expect(
+          screen.queryByText(
+            /^(Model-Wide Change|Additive Change|Column Change)$/,
+          ),
+        ).not.toBeInTheDocument();
+      },
+    );
 
     it("does not show any category label when showChangeAnalysis is false", () => {
       const props = createMockNodeProps(
