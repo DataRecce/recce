@@ -14,23 +14,23 @@ overrides:
   '@tanstack/react-query': 5.101.4
   '@types/react': 19.2.17
   '@types/react-dom': 19.2.3
-  '@vitejs/plugin-react': ^6.0.2
+  '@vitejs/plugin-react': ^6.0.4
   '@biomejs/biome': 2.5.5
   '@testing-library/jest-dom': 7.0.0
   '@testing-library/react': 16.3.2
-  happy-dom: ^20.9.0
+  happy-dom: ^20.11.1
   '@emotion/styled': ^11.14.1
   '@mui/material': ^9.0.0
   '@mui/system': ^9.0.0
   '@xyflow/react': ^12.10.2
   '@dagrejs/dagre': 3.0.0
-  ag-grid-community: ^36.0.1
-  ag-grid-react: ^36.0.1
+  ag-grid-community: ^36.0.2
+  ag-grid-react: ^36.0.2
   lodash: ^4.18.1
   next-themes: ^0.4.6
   typescript: npm:@typescript/typescript6@^6.0.2
   tailwindcss: ^4.3.3
-  postcss: ^8.5.19
+  postcss: ^8.5.22
   '@tailwindcss/postcss': ^4.3.3
   ajv: ^8.18.0
   serialize-javascript: '>=7.0.5'
@@ -40,7 +40,7 @@ overrides:
   'minimatch@>=10.0.0 <10.2.3': '>=10.2.3'
   'rollup@>=4.0.0 <4.59.0': '>=4.59.0'
   '@amplitude/unified': 1.1.27
-  'posthog-js': ^1.404.0
+  'posthog-js': ^1.407.2
   lodash-es: '>=4.18.1'
   '@xmldom/xmldom@<0.8.12': '>=0.8.12'
   '@xmldom/xmldom@>=0.9.0 <0.9.9': '>=0.9.9'
