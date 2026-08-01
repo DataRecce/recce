@@ -2,11 +2,9 @@
 
 Instructions for AI coding agents working with this repository.
 
-## Project Overview
-
-Recce is a data validation and review tool for dbt projects. It helps data teams preview, validate, and ship data changes with confidence via lineage visualization, data diffing, and collaborative review.
-
-**Architecture:** Python backend (FastAPI CLI) + React frontend (Next.js static build) embedded in Python package.
+Recce is a data validation and review tool for dbt projects: lineage visualization,
+data diffing, collaborative review. Python backend (FastAPI CLI) + React frontend
+(Next.js static build) embedded in the Python package.
 
 ---
 
@@ -32,53 +30,32 @@ Recce is a data validation and review tool for dbt projects. It helps data teams
 
 ---
 
-## Essential Commands
+## Non-obvious conventions
 
-| Task | Command |
-|------|---------|
-| **Install Dev** | `make install-dev` |
-| **Run Server** | `recce server` |
-| **Format Python** | `make format` |
-| **Lint Python** | `make flake8` |
-| **Test Python** | `make test` |
-| **Frontend Dev** | `cd js && pnpm dev` |
-| **Frontend Build** | `cd js && pnpm run build` |
-| **Frontend Lint** | `cd js && pnpm lint:fix` |
-| **Frontend Test** | `cd js && pnpm test` |
-| **Type Check** | `cd js && pnpm type:check` |
-| **Deps Check (Python)** | `make deps-check-python` |
-| **Deps Check (Frontend)** | `make deps-check-frontend` |
-| **Deps Check (All)** | `make deps-check` |
-| **Coverage (targeted)** | `python -m pytest tests/test_foo.py --cov=recce.module --cov-report=term-missing` |
+Things you would not infer from reading the tree:
 
----
-
-## Repository Layout
-
-| Directory | Purpose |
-|-----------|---------|
-| `recce/` | Backend (Python): APIs, adapters, models, tasks, state |
-| `recce/data/` | GENERATED - embedded frontend (do not edit) |
-| `js/` | Frontend monorepo (Next.js + React) |
-| `js/app/` | OSS Next.js shell (routes/layouts only) |
-| `js/packages/ui/` | `@datarecce/ui` shared components/hooks/api |
-| `js/packages/storybook/` | Component stories and visual tests |
-| `tests/` | Python unit tests |
-| `integration_tests/` | dbt/SQLMesh integration tests |
-| `.claude/skills/` | Project-level Claude Code skills |
-
-## Where to Add Code
-
-| Change Type | Location |
-|-------------|----------|
-| New check type | `recce/tasks/` (extend Task class) |
-| API endpoint | `recce/apis/*_api.py` + `*_func.py` |
-| Data model | `recce/models/` (Pydantic) |
-| Platform adapter | `recce/adapter/` (extend BaseAdapter) |
-| State storage | `recce/state/` (extend RecceStateLoader) |
-| UI component (shared) | `js/packages/ui/src/components/` |
-| UI component (OSS-only) | `js/app/` |
-| API client | `js/packages/ui/src/api/` |
+- **Frontend:** pnpm only — never npm or npx. There is no root `package.json`;
+  run pnpm from `js/`.
+- **Python:** Black + isort + flake8 via the Makefile. There is **no Ruff config**
+  in this repo, despite Ruff being the norm elsewhere.
+- **Integration tests** need dbt artifacts at `integration_tests/dbt/target/manifest.json`
+  and `integration_tests/dbt/target-base/manifest.json`. Unit tests do not.
+- **`make test` can fail before pytest runs.** It depends on `install-dev`, whose
+  `git config --unset-all core.hooksPath` exits 5 when the key is unset. Check for
+  `make: *** [install-dev] Error` before believing a green result, or run
+  `python -m pytest tests/ -q` directly.
+- **A biome version change aborts the commit.** `js/.husky/pre-commit` pins
+  `@biomejs/biome` (DRC-3460) and requires a deliberate ack; the hook prints the
+  exact steps.
+- **Only one hook system is active at a time.** `make install-dev` unsets
+  `core.hooksPath` (so `.git/hooks` + the Python `pre-commit` framework win, and the
+  biome guard is bypassed); `cd js && pnpm install` sets it to `js/.husky/_` (so
+  husky wins, and black/isort/flake8 are bypassed). Whichever ran last silently
+  disables the other. Check `git config --get core.hooksPath` before trusting a
+  clean commit.
+- **New MCP tools:** `list_tools` is one shared registry serving both local and
+  cloud backends, so a tool description obliges both implementations. See the
+  `recce-mcp-dev` skill.
 
 ---
 
@@ -103,6 +80,14 @@ cd js && pnpm lint:fix && pnpm type:check && pnpm test && pnpm run build
 recce server  # Test integration
 ```
 
+Targeted Python coverage:
+```bash
+python -m pytest tests/test_foo.py --cov=recce.module --cov-report=term-missing
+```
+
+Other Makefile targets are discoverable with `make help` or by reading the
+`Makefile`; frontend scripts with `cd js && pnpm run`.
+
 ---
 
 ## Commit Conventions
@@ -119,28 +104,19 @@ git commit -s -m "feat(check): add timeline component"
 
 ---
 
-## Tech Stack
+## Where things live
 
-| Layer | Stack |
-|-------|-------|
-| Backend | Python 3.10-3.13, FastAPI, Click, Pydantic, dbt adapters, uv (package manager) |
-| Frontend | Node.js 24+, Next.js 16, React 19, TypeScript 5.9, MUI 7, Biome 2.4, Tailwind 4 |
-| Testing | pytest, Vitest, React Testing Library, Playwright |
-
----
-
-## Frontend Specifics
-
-For pnpm v11 quirks (`strictDepBuilds`, `allowBuilds`, Corepack pinning), Biome/Vitest tooling, `@datarecce/ui` publishing, and frontend style conventions, see **[js/CLAUDE.md](./js/CLAUDE.md)**.
+`recce/` backend (`tasks/` = check types, `apis/` = endpoints, `models/` =
+Pydantic, `adapter/` = platform adapters, `state/` = state loaders).
+`recce/data/` is generated — never edit. `js/app/` is the thin OSS shell;
+`js/packages/ui/` is `@datarecce/ui`, where shared components, hooks, and API
+clients belong.
 
 ## Common Pitfalls
 
 | Problem | Fix |
 |---------|-----|
 | Frontend changes not appearing | `cd js && pnpm run build` then restart `recce server` |
-| Python import errors | `make install-dev` (uses uv) |
-| Biome lint failures | `pnpm lint:fix` |
-| Type errors | `pnpm type:check` for details |
 | dbt artifact issues | Check `integration_tests/dbt/target` |
 
 ---
@@ -149,3 +125,4 @@ For pnpm v11 quirks (`strictDepBuilds`, `allowBuilds`, Corepack pinning), Biome/
 
 - **[CLAUDE.md](./CLAUDE.md)** - Claude-specific workflows and deep dives
 - **[js/CLAUDE.md](./js/CLAUDE.md)** - Frontend-specific instructions (pnpm, Biome, @datarecce/ui, style conventions)
+- **`docs/KNOWLEDGE_BASE.md`** - Architecture, code patterns, testing, debugging
