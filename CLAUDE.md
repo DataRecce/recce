@@ -12,6 +12,7 @@
 
 ## Working Preferences
 
+- Keep responses concise and action-oriented.
 - Ask clarifying questions before changes that alter product behavior.
 
 ## AI Agent Documentation
@@ -41,15 +42,18 @@ own line — GitHub's parser ignores the rest of a comma-separated list.
 
 ## PR Review Response
 
-The `pr-review-response` skill drives the loop. Two things it is easy to get wrong:
+The `recce-dev:pr-review-response` skill drives the loop (name it in full — a bare
+`pr-review-response` also resolves to a personal user-level skill). Two things it is
+easy to get wrong:
 
 - Fetching review comments **requires** `--paginate` (gh) or manual pagination — PRs here frequently have >30 comments.
 - Replying to a review comment uses `POST /repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies`.
 
 ## Dependency Updates
 
-The `address-dependabot` skill drives consolidation. Non-obvious prerequisites and
-outputs:
+The `recce-dev:address-dependabot` skill drives consolidation (name it in full —
+the bare name collides with project- and user-level skills of the same name).
+Non-obvious prerequisites and outputs:
 
 - Requires `brew install dependabot` and a running Docker daemon.
 - `make deps-check` runs Dependabot locally and writes `deps-python.yml` and
@@ -66,8 +70,9 @@ cd js && pnpm install && pnpm lint && pnpm type:check && pnpm test && pnpm run b
 
 Response-format contracts, the shared local/cloud tool registry, and the
 cloud-vs-local exception-type trap are in the **`recce-mcp-dev`** skill — it loads
-when you touch `recce/mcp_server.py`, MCP tool handlers, error classification, or
-MCP tests. Read it before changing a tool description or response shape.
+when you touch `recce/mcp_server.py`, MCP tool handlers, error classification, MCP
+tests, or when you add a `CheckDAO`/`RunDAO` write in `recce/apis/*_api.py`. Read it
+before changing a tool description or response shape.
 
 ## Individual Preferences
 

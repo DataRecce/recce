@@ -47,12 +47,16 @@ Things you would not infer from reading the tree:
 - **A biome version change aborts the commit.** `js/.husky/pre-commit` pins
   `@biomejs/biome` (DRC-3460) and requires a deliberate ack; the hook prints the
   exact steps.
-- **Only one hook system is active at a time.** `make install-dev` unsets
-  `core.hooksPath` (so `.git/hooks` + the Python `pre-commit` framework win, and the
-  biome guard is bypassed); `cd js && pnpm install` sets it to `js/.husky/_` (so
-  husky wins, and black/isort/flake8 are bypassed). Whichever ran last silently
-  disables the other. Check `git config --get core.hooksPath` before trusting a
-  clean commit.
+- **`core.hooksPath` decides which hooks run, and the two states are not equal.**
+  `cd js && pnpm install` sets it to `js/.husky/_`: husky runs the biome guard,
+  `pnpm lint:staged`, **and** chains into the Python `pre-commit` framework
+  (`js/.husky/pre-commit`, the templated block at the end) — everything runs.
+  `make install-dev` unsets it, so `.git/hooks/pre-commit` wins and the biome
+  guard plus frontend lint are silently lost; `.git/hooks/pre-commit` does not
+  chain back to husky. Check `git config --get core.hooksPath` before trusting a
+  clean commit; if it prints nothing, restore with
+  `git config core.hooksPath js/.husky/_`. Never "repair" the husky state by
+  running `make install-dev` — that is the strictly weaker configuration.
 - **New MCP tools:** `list_tools` is one shared registry serving both local and
   cloud backends, so a tool description obliges both implementations. See the
   `recce-mcp-dev` skill.

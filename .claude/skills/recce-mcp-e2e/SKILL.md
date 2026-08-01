@@ -1,6 +1,6 @@
 ---
 name: recce-mcp-e2e
-description: Use when MCP server code is modified and needs full E2E verification against a real dbt project. Triggers after changes to recce/mcp_server.py, MCP tool handlers, single-env logic, or error classification. Also use before merging MCP PRs.
+description: Use when MCP server code is modified and needs smoke verification of the core diff tools against a real dbt project. Triggers after changes to recce/mcp_server.py, MCP tool handlers, single-env logic, or error classification. Also use before merging MCP PRs.
 ---
 
 # MCP E2E Verification
@@ -9,10 +9,12 @@ Full-stack verification against a real dbt project of the 8 MCP tools this harne
 covers: `lineage_diff`, `schema_diff`, `row_count_diff`, `query`, `query_diff`,
 `profile_diff`, `list_checks`, `run_check`.
 
-`list_tools` registers **20** tools (verify with `grep -c 'Tool(' recce/mcp_server.py`),
-so a green run here is a smoke test of the core diff surface, **not** full-surface
-coverage. Do not report it as "all tools verified". See the `recce-mcp-dev` skill for
-the uncovered list.
+`list_tools` registers **at most 20** tools, and the count is mode-dependent —
+7 always, `analyze_model` only in local mode, and 12 only in server mode, so
+preview and read-only mode expose 8. A green run here is a smoke test of the core
+diff surface, **not** full-surface coverage. Do not report it as "all tools
+verified". See the `recce-mcp-dev` skill for the per-mode breakdown and the
+uncovered list.
 
 ## When to Use
 
