@@ -5,7 +5,14 @@ description: Use when MCP server code is modified and needs full E2E verificatio
 
 # MCP E2E Verification
 
-Full-stack verification of all 8 MCP tools against a real dbt project.
+Full-stack verification against a real dbt project of the 8 MCP tools this harness
+covers: `lineage_diff`, `schema_diff`, `row_count_diff`, `query`, `query_diff`,
+`profile_diff`, `list_checks`, `run_check`.
+
+`list_tools` registers **20** tools (verify with `grep -c 'Tool(' recce/mcp_server.py`),
+so a green run here is a smoke test of the core diff surface, **not** full-surface
+coverage. Do not report it as "all tools verified". See the `recce-mcp-dev` skill for
+the uncovered list.
 
 ## When to Use
 
