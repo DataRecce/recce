@@ -127,7 +127,7 @@ describe("wholeModelTreatment tokens", () => {
   });
 
   // DRC-3813: a node whose own SQL is unchanged (change_category
-  // "non_breaking" / additive) but which the backend flagged impacted
+  // non_breaking / additive) but which the backend flagged impacted
   // (e.g. a downstream that only references a changed upstream column in a
   // WHERE/JOIN clause) must surface the more-actionable amber
   // column-impacted badge, NOT the benign green additive one. The impact

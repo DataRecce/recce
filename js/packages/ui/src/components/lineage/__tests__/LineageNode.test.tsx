@@ -792,7 +792,7 @@ describe("LineageNode", () => {
       // changed upstream column only in a WHERE/JOIN clause. The impact
       // signal must win over the benign own additive change.
       const props = createMockNodeProps({
-        changeCategory: "non_breaking",
+        changeCategory: "non_breaking", // wire-enum-ok
         isImpacted: true,
         newCllExperience: true,
       });
