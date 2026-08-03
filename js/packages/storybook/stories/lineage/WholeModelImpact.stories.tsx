@@ -248,3 +248,24 @@ export const LineageNode_ColumnImpactedBadge: LineageNodeStory = {
   },
   decorators: lineageNodeDecorator,
 };
+
+/**
+ * DRC-3813 repro — impact outranks additive.
+ *
+ * PARENT redefines column `c1`; CHILD only filters on `c1` in a WHERE clause
+ * (never selects it), so CHILD's own SQL is otherwise unchanged. The backend
+ * flags CHILD impacted (`isImpacted: true`) while its own change_category is
+ * `non_breaking` (additive). Before the fix this rendered a misleading green
+ * ADD badge; after the fix it renders the actionable amber COLUMN
+ * (column-impacted) badge — impact outranks a benign own additive change.
+ */
+export const LineageNode_ImpactedOutranksAdditive: LineageNodeStory = {
+  render: (args) => <LineageNode {...args} />,
+  args: {
+    ...lineageNodeBaseProps,
+    data: { ...lineageNodeBaseProps.data, label: "child" },
+    changeCategory: "non_breaking",
+    isImpacted: true,
+  },
+  decorators: lineageNodeDecorator,
+};
