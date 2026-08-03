@@ -177,6 +177,32 @@ class TestCllCacheSQLiteLayer(unittest.TestCase):
             cache.put_nodes_batch([])
             assert cache.stats["entries"] == 0
 
+    def test_schema_version_bump_is_cache_miss(self):
+        """Bumping _CACHE_SCHEMA_VERSION must invalidate all prior entries.
+
+        The version participates in make_node_key, so entries written under an
+        older version miss naturally — this is how a CLL algorithm change
+        (same model SQL, different lineage output) evicts stale cached
+        lineage. Content keys alone cannot detect code changes.
+        """
+        from unittest.mock import patch
+
+        from recce.util.cll import CllCache
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "cll_cache.db")
+            cache = CllCache(db_path=db_path)
+
+            # Write under the current version, verify hit.
+            cache.put_node("model.v", "k1", '{"algo": "current"}')
+            assert cache.get_node("model.v", "k1") is not None
+
+            # Same node_id + content_key under a bumped version: must miss.
+            import recce.util.cll as cll_module
+
+            with patch.object(cll_module, "_CACHE_SCHEMA_VERSION", cll_module._CACHE_SCHEMA_VERSION + 1):
+                assert cache.get_node("model.v", "k1") is None
+
     def test_put_overwrites_same_node_and_key(self):
         """Writing the same (node_id, content_key) again overwrites the value."""
         from recce.util.cll import CllCache
