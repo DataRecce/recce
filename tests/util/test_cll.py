@@ -935,3 +935,34 @@ class ColumnLevelLineageTest(unittest.TestCase):
             assert col.transformation_type == "derived", col
             deps = {(d.node, d.column) for d in col.depends_on}
             assert deps == {("T1", "REV"), ("T1", "MONTH")}, col
+
+    def test_unpivot_not_treated_as_pivot(self):
+        """UNPIVOT must NOT go through the pivot map (DRC-3809 review blocker).
+
+        sqlglot stores UNPIVOT in the same ``args["pivots"]`` slot as an
+        ``exp.Pivot`` with ``unpivot=True``. Mapping it like a PIVOT would
+        fabricate passthrough deps on base columns that do not exist (e.g.
+        ``month ← t1.month`` for ``t1(id, jan, feb)``). UNPIVOT must instead
+        stay on the pre-existing phantom path: every projection depends on the
+        unpivot alias ``u`` (not a real node, dropped downstream) and m2c stays
+        empty — identical to pre-PIVOT-fix behavior on main. Missing lineage is
+        safe; wrong lineage is not.
+        """
+        sql = """
+        select id, month, rev from t1 unpivot (rev for month in (jan, feb)) as u
+        """
+        schema = {"t1": {"id": "int", "jan": "int", "feb": "int"}}
+        result = cll(sql, schema=schema)
+        m2c, c2c = result
+
+        # No fabricated deps on nonexistent base columns.
+        for col in c2c.values():
+            deps = {(d.node, d.column) for d in col.depends_on}
+            assert ("t1", "month") not in deps, f"fabricated t1.month dep: {col}"
+            assert ("t1", "rev") not in deps, f"fabricated t1.rev dep: {col}"
+
+        # The safe phantom path: all projections depend on the unpivot alias
+        # only, and model-level lineage stays empty (matches main's behavior).
+        assert m2c == [], f"unexpected m2c deps: {[(d.node, d.column) for d in m2c]}"
+        for name in ("id", "month", "rev"):
+            assert_column(result, name, "passthrough", [("u", name)])

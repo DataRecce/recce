@@ -24,7 +24,7 @@ CllResult = Tuple[
 ]
 
 _DEFAULT_DB_PATH = os.path.join(os.path.expanduser("~"), ".recce", "cll_cache.db")
-_CACHE_SCHEMA_VERSION = 2
+_CACHE_SCHEMA_VERSION = 3
 _DEFAULT_TTL_SECONDS = 7 * 24 * 3600  # 7 days
 
 
@@ -104,8 +104,17 @@ class CllCache:
 
     @staticmethod
     def make_node_key(node_id: str, content_key: str) -> str:
-        """Build a cache key for a per-node CllData entry."""
+        """Build a cache key for a per-node CllData entry.
+
+        ``_CACHE_SCHEMA_VERSION`` participates in the key so that any change
+        to the CLL algorithm (bump the version alongside it) invalidates all
+        prior entries via natural cache misses — content keys alone cannot
+        detect code changes, and eviction is access-based, so hot entries
+        would otherwise serve stale lineage indefinitely.
+        """
         h = hashlib.sha256()
+        h.update(str(_CACHE_SCHEMA_VERSION).encode("utf-8"))
+        h.update(b"\x00")
         h.update(node_id.encode("utf-8"))
         h.update(content_key.encode("utf-8"))
         return h.hexdigest()
@@ -372,6 +381,13 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
         if not isinstance(base_source, exp.Table):
             continue
         for pivot in base_source.args.get("pivots") or []:
+            if pivot.args.get("unpivot"):
+                # UNPIVOT lives in the same ``args["pivots"]`` slot but inverts
+                # producer/consumer semantics; mapping it like a PIVOT would
+                # fabricate passthrough deps on nonexistent base columns. Leave
+                # it on the pre-existing phantom path (deps on the unpivot
+                # alias, dropped downstream).
+                continue
             alias = pivot.alias
             if not alias:
                 continue
