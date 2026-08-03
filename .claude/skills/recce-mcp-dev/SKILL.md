@@ -1,6 +1,6 @@
 ---
 name: recce-mcp-dev
-description: Use when modifying recce/mcp_server.py, MCP tool handlers, error classification, or MCP-related tests. Also use when adding new MCP tools or changing tool response formats.
+description: Use when modifying recce/mcp_server.py, MCP tool handlers, error classification, or MCP-related tests. Also use when adding new MCP tools or changing tool response formats, or when adding a CheckDAO/RunDAO write in recce/apis/*_api.py (cloud-mode exceptions bypass `except RecceException`).
 ---
 
 # Recce MCP Server Development
@@ -17,9 +17,58 @@ Entry point `run_mcp_server()` pops `single_env` before passing kwargs to `load_
 
 **MCP SDK quirk** — Handler must **raise** for SDK to set `isError=True`.
 
-**Response contracts** — See CLAUDE.md. Additive `_meta` only. `summary.py`: guard with `is None`, not `dict.get(key, 0)`. N/A display includes reason: `"N/A (table_not_found)"`.
-
 **Single-env** — `_maybe_add_single_env_warning()` adds `_warning` to diff results. Descriptions get conditional note.
+
+## Response Contracts
+
+An MCP tool description **is** the agent contract; it MUST match the actual
+response format.
+
+- Prefer additive changes (`_meta` fields) over modifying existing field types.
+- Row count consumers: frontend (int), `run.py` (int comparison), `summary.py`
+  (int arithmetic), `RowCountDiffResultDiffer` (3-format compat), MCP agents
+  (description-guided).
+- `summary.py` row count gotcha: `base`/`curr` can be `None`
+  (TABLE_NOT_FOUND, PERMISSION_DENIED). Guard with an `is None` check before
+  arithmetic — `dict.get(key, 0)` does NOT protect when the key exists with a
+  `None` value. N/A display includes the reason: `"N/A (table_not_found)"`.
+- Format changes require both deterministic tests AND BQ/LLM eval to prove agent
+  behaviour unchanged.
+
+### Shared tool descriptions cover both backends
+
+`list_tools` is a single shared registry: the same `Tool(description=...)` is served in
+local and cloud mode, and `call_tool` routes to `CloudBackend.call_tool` whenever
+`self.backend` is set — before any local `_tool_*` branch is reached. Widening a tool's
+description therefore obliges **both** implementations — `RecceMCPServer._tool_*` and
+`CloudBackend._tool_*` — or the description must state what the other backend returns
+instead. A description promising a field that only one backend emits is a broken agent
+contract even when both implementations are individually correct.
+
+**Worked example**: `schema_diff`'s description promises a `schema_coverage` block.
+`CloudBackend._tool_schema_diff` satisfies it by emitting `_schema_coverage(None)` —
+status `unknown`, "coverage unassessed" — rather than omitting the key.
+
+Origin: PR #1484 review (DRC-3997). Same local/cloud divergence trap as the
+exception-type note below, in a different guise.
+
+## Cloud vs Local Mode Exception Types
+
+`CheckDAO` / `RunDAO` operations have cloud-mode and local-mode branches that
+raise DIFFERENT exception classes. `RecceCloudException` (defined in
+`recce/util/recce_cloud.py`) inherits from `Exception`, NOT from
+`RecceException`. When wrapping a DAO operation in `try / except RecceException`,
+cloud-mode failures escape the wrapper and break the consistent error contract.
+
+**Rule**: For DAO operations that may run in cloud mode, either:
+- Use `except (RecceException, RecceCloudException)` to catch both, OR
+- Move the DAO call OUTSIDE the typed-exception wrapper (mirrors
+  `_tool_create_check`'s structure, which keeps `update_check_by_id`
+  unguarded so cloud failures propagate as expected).
+
+**Where this matters**: any new code in `mcp_server.py` or `*_api.py` that
+adds a DAO write inside an existing `try / except RecceException` block.
+Origin: PR #1342 review (DRC-3307).
 
 ## Testing (Three Layers)
 
@@ -27,7 +76,27 @@ Entry point `run_mcp_server()` pops `single_env` before passing kwargs to `load_
 |-------|------|-------------|---------|---------|
 | Unit | `tests/test_mcp_server.py` | Mock `RecceContext` | CI (`pytest`) | Logic correctness — tool handlers, error classification, response format |
 | Integration | `tests/test_mcp_e2e.py` | `DbtTestHelper` + DuckDB (fixed data) | CI (`pytest`) | MCP protocol works end-to-end via anyio memory streams |
-| Smoke (E2E) | `/recce-mcp-e2e` skill | User's real dbt project + real database | Manual | All 8 tools return valid results against real data |
+| Smoke (E2E) | `/recce-mcp-e2e` skill | User's real dbt project + real database | Manual | The 8 tools that harness covers return valid results against real data |
+
+**Tool count — mode-dependent, verify per mode.** `list_tools` registers **at
+most 20** tools, and how many it actually returns depends on the server mode:
+
+| Gate | Count | Tools |
+|------|-------|-------|
+| always | 7 | `lineage_diff`, `schema_diff`, `get_model`, `get_cll`, `get_server_info`, `set_backend`, `select_nodes` |
+| `self.backend is None` (local only) | 1 | `analyze_model` |
+| `self.mode == RecceServerMode.server` | 12 | `row_count_diff`, `query`, `query_diff`, `profile_diff`, `value_diff`, `value_diff_detail`, `top_k_diff`, `histogram_diff`, `list_checks`, `run_check`, `create_check`, `impact_analysis` |
+
+So preview and read-only mode expose 8; cloud mode never exceeds 19. `grep -c
+'Tool(' recce/mcp_server.py` counts **code sites**, not any single session's
+surface — read the `if` guards around the `analyze_model` and server-mode blocks
+before quoting a number.
+
+The `/recce-mcp-e2e` harness exercises 8 tools (2 always-on + 6 server-mode diff
+tools), so a green E2E run is **not** full-surface coverage. Not covered by that
+harness: `analyze_model`, `create_check`, `get_cll`, `get_model`,
+`get_server_info`, `histogram_diff`, `impact_analysis`, `select_nodes`,
+`set_backend`, `top_k_diff`, `value_diff`, `value_diff_detail`.
 
 Each new MCP feature or behavior change should be covered at all three layers.
 
@@ -68,12 +137,14 @@ If the user says yes, invoke `/recce-mcp-e2e`. If a dbt project path was used ea
 
 **Do NOT ask** after: test-only changes, comment/doc edits, import reordering.
 
-**This is separate from `tests/test_mcp_e2e.py`** — that file tests with DbtTestHelper + DuckDB in CI. `/recce-mcp-e2e` verifies all 8 tools against a real dbt project with a real database.
+**This is separate from `tests/test_mcp_e2e.py`** — that file tests with DbtTestHelper + DuckDB in CI. `/recce-mcp-e2e` verifies the 8 tools that harness covers (see the tool-count note above) against a real dbt project with a real database.
 
 ## Pitfalls
 
 - `sentry_sdk` import: `# pragma: no cover` on except (CI always has it)
-- Python 3.9: `Union[X, Y]` not `X | Y`
+- Typing: `pyproject.toml` sets `requires-python = ">=3.10"` (classifiers 3.10–3.13),
+  so `X | Y` unions are fine. A previous version of this pitfall claimed a Python
+  3.9 floor requiring `Union[X, Y]`; that is obsolete.
 - Pre-commit: black/isort may reformat — re-stage and commit
 - `run.py` `schema_diff_should_be_approved()` try/except is intentional (ensures check creation)
 

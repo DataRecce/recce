@@ -6,25 +6,14 @@
 
 ## Quick Reference
 
-For detailed documentation beyond AGENTS.md essentials:
-
 → `docs/KNOWLEDGE_BASE.md` - Architecture, code patterns, frontend structure, testing, debugging
-→ `js/CLAUDE.md` - Frontend-specific instructions (pnpm, Biome, @datarecce/ui, style conventions)
+→ `js/CLAUDE.md` - Frontend conventions and tooling (Node via `nave`, Biome, Vitest, pnpm v11
+  quirks, Storybook imports, CSS color format, rem vs px, shell vs shared code)
 
-## Package Manager & Tooling
+## Working Preferences
 
-- **Frontend (from `js/`):** this monorepo uses **pnpm** — never npm or npx. Run `cd js && pnpm install`, `cd js && pnpm test`, `cd js && pnpm lint`. There is no root `package.json`; pnpm commands from the repo root will fail.
-- **Python (from repo root):** linting and formatting are **Black + isort + flake8**, driven by the Makefile — `make format`, `make check`, `make flake8`. Pre-commit hooks (`.pre-commit-config.yaml`) enforce the same. There is no Ruff configuration in this repo.
-- **Integration tests** require dbt artifacts at `integration_tests/dbt/target/manifest.json` and `integration_tests/dbt/target-base/manifest.json`. `make test` (unit tests) runs without external services.
-
-For frontend-specific tooling details (Node version via `nave`, Biome, Vitest, pnpm v11 quirks), see `js/CLAUDE.md`.
-
-## Claude-Specific Notes
-
-- Keep responses concise and action-oriented
-- Ask clarifying questions before changes that alter product behavior
-- Prefer updating shared UI code in `js/packages/ui`; keep `js/app` thin
-- Run `cd js && pnpm run build` before `recce server` when validating frontend changes
+- Keep responses concise and action-oriented.
+- Ask clarifying questions before changes that alter product behavior.
 
 ## AI Agent Documentation
 
@@ -39,18 +28,6 @@ Use gitignored directories for temporary working documents:
 - When creating PR bodies with multi-line content, write to a temp file and pass `--body-file` instead of using heredocs (avoids quoting issues).
 - Verify the correct base branch before opening a PR (especially for extensions/multi-branch repos).
 
-## Dependency Update Workflow
-
-When asked to "update deps" or "check for updates":
-
-**Prerequisites:** `brew install dependabot` + Docker running
-
-0. **Scan:** `make deps-check` (runs Dependabot locally, outputs `deps-python.yml` and `deps-frontend.yml`)
-1. **Audit:** Frontend — see `js/CLAUDE.md` for `pnpm audit && pnpm outdated` workflow and overrides list. Python — `make deps-check-python`.
-2. **Present:** Group by SECURITY/MAJOR/MINOR with numbered list
-3. **Apply:** Frontend updates per `js/CLAUDE.md`; Python updates via `pyproject.toml`.
-4. **Verify:** Run all quality checks (`make test` for Python; `cd js && pnpm install && pnpm lint && pnpm type:check && pnpm test && pnpm run build` for frontend).
-
 ## Commit and PR Workflow
 
 **Commits:** Always use `--signoff` and include a `Co-Authored-By: Claude <noreply@anthropic.com>` trailer (version pin optional — if included, use the current model)
@@ -60,58 +37,42 @@ When asked to "update deps" or "check for updates":
 - Type, description, linked issues
 - Reviewer notes, user-facing changes
 
-## PR Review Response Workflow
+When a PR closes more than one issue or PR, give each its own `Closes #N` on its
+own line — GitHub's parser ignores the rest of a comma-separated list.
 
-- When fetching PR review comments via GitHub API, always use `--paginate` (gh) or paginate manually — PRs frequently have >30 comments.
-- Use the correct GitHub API endpoint for replying to review comments: `POST /repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies`.
-- For each review comment: validate the concern first, fix only real issues, run tests, commit, push, then reply individually.
+## PR Review Response
 
-## MCP Tool Response Contracts
+The `recce-dev:pr-review-response` skill drives the loop (name it in full — a bare
+`pr-review-response` also resolves to a personal user-level skill). Two things it is
+easy to get wrong:
 
-- MCP tool description = LLM agent contract. Description MUST match actual response format.
-- Prefer additive changes (`_meta` fields) over modifying existing field types in tool responses.
-- Row count consumers: frontend (int), `run.py` (int comparison), `summary.py` (int arithmetic), `RowCountDiffResultDiffer` (3-format compat), MCP agents (description-guided).
-- `summary.py` row count gotcha: `base`/`curr` can be `None` (TABLE_NOT_FOUND, PERMISSION_DENIED). Guard with `is None` check before arithmetic — `dict.get(key, 0)` does NOT protect when key exists with `None` value. N/A display includes reason: `"N/A (table_not_found)"`.
-- Format changes to MCP tool responses require both deterministic tests AND BQ/LLM eval to prove agent behavior unchanged.
+- Fetching review comments **requires** `--paginate` (gh) or manual pagination — PRs here frequently have >30 comments.
+- Replying to a review comment uses `POST /repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies`.
 
-### Shared tool descriptions cover both backends
+## Dependency Updates
 
-`list_tools` is a single shared registry: the same `Tool(description=...)` is served in
-local and cloud mode, and `call_tool` routes to `CloudBackend.call_tool` whenever
-`self.backend` is set — before any local `_tool_*` branch is reached. Widening a tool's
-description therefore obliges **both** implementations — `RecceMCPServer._tool_*` and
-`CloudBackend._tool_*` — or the description must state what the other backend returns
-instead. A description promising a field that only one backend emits is a broken agent
-contract even when both implementations are individually correct.
+The `recce-dev:address-dependabot` skill drives consolidation (name it in full —
+the bare name collides with project- and user-level skills of the same name).
+Non-obvious prerequisites and outputs:
 
-**Worked example**: `schema_diff`'s description promises a `schema_coverage` block.
-`CloudBackend._tool_schema_diff` satisfies it by emitting `_schema_coverage(None)` —
-status `unknown`, "coverage unassessed" — rather than omitting the key.
+- Requires `brew install dependabot` and a running Docker daemon.
+- `make deps-check` runs Dependabot locally and writes `deps-python.yml` and
+  `deps-frontend.yml`. `make deps-check-python` covers Python alone.
+- Python updates go through `pyproject.toml`; frontend updates follow `js/CLAUDE.md`.
 
-Origin: PR #1484 review (DRC-3997). Same local/cloud divergence trap as the
-"Cloud vs Local Mode Exception Types" note below, in a different guise.
+Verify a consolidated update with:
+```bash
+make test
+cd js && pnpm install && pnpm lint && pnpm type:check && pnpm test && pnpm run build
+```
 
-## Cloud vs Local Mode Exception Types
+## MCP Server Work
 
-`CheckDAO` / `RunDAO` operations have cloud-mode and local-mode branches that
-raise DIFFERENT exception classes. `RecceCloudException` (defined in
-`recce/util/recce_cloud.py`) inherits from `Exception`, NOT from
-`RecceException`. When wrapping a DAO operation in `try / except RecceException`,
-cloud-mode failures escape the wrapper and break the consistent error contract.
-
-**Rule**: For DAO operations that may run in cloud mode, either:
-- Use `except (RecceException, RecceCloudException)` to catch both, OR
-- Move the DAO call OUTSIDE the typed-exception wrapper (mirrors
-  `_tool_create_check`'s structure, which keeps `update_check_by_id`
-  unguarded so cloud failures propagate as expected).
-
-**Where this matters**: any new code in `mcp_server.py` or `*_api.py` that
-adds a DAO write inside an existing `try / except RecceException` block.
-Origin: PR #1342 review (DRC-3307).
-
-## Frontend Style Conventions
-
-See `js/CLAUDE.md` for frontend conventions (Storybook imports, CSS color format, rem vs px, shell vs shared code).
+Response-format contracts, the shared local/cloud tool registry, and the
+cloud-vs-local exception-type trap are in the **`recce-mcp-dev`** skill — it loads
+when you touch `recce/mcp_server.py`, MCP tool handlers, error classification, MCP
+tests, or when you add a `CheckDAO`/`RunDAO` write in `recce/apis/*_api.py`. Read it
+before changing a tool description or response shape.
 
 ## Individual Preferences
 
