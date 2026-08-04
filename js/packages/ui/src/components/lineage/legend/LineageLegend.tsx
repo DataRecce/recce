@@ -4,11 +4,14 @@ import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
+import { useIsDark } from "../../../hooks/useIsDark";
 import {
   CHANGE_CATEGORY_DETAILS,
   CHANGE_CATEGORY_LABELS,
 } from "../changeCategory";
 import { changeStatusColors, cllChangeStatusColors } from "../styles";
+import { TreatmentChip } from "../TreatmentChip";
+import { getGraphBadgeLegendEntries } from "../wholeModelTreatment";
 
 /**
  * Legend item for change status
@@ -54,9 +57,10 @@ export interface LineageLegendProps {
   className?: string;
 
   /**
-   * When true, render the muted CLL palette and include the "Impacted" entry.
-   * When false (default), render the original Tailwind palette and omit
-   * "Impacted" — matching the legend OSS users have always seen.
+   * When true, render the muted CLL palette, include the "Impacted" entry,
+   * and document the graph badges the canvas nodes carry. When false
+   * (default), render the original Tailwind palette and omit both — matching
+   * the legend OSS users have always seen.
    * @default false
    */
   newCllExperience?: boolean;
@@ -200,9 +204,12 @@ function TransformationChip({
 /**
  * LineageLegend Component
  *
- * A pure presentation component for displaying legends in lineage visualizations.
+ * A presentation component for displaying legends in lineage visualizations.
  * Supports both change status legends (added/removed/modified) and
  * transformation type legends (passthrough/renamed/derived/source/unknown).
+ *
+ * Takes its colour mode from `useIsDark` rather than a prop, so the badge
+ * swatches pick the same light/dark tokens the graph badges do.
  *
  * @example Change status legend
  * ```tsx
@@ -241,6 +248,7 @@ export function LineageLegend({
   className,
   newCllExperience = false,
 }: LineageLegendProps) {
+  const isDark = useIsDark();
   const changeStatusItems = newCllExperience
     ? defaultChangeStatusItems
     : defaultChangeStatusItems.filter((item) => item.status !== "impacted");
@@ -346,6 +354,50 @@ export function LineageLegend({
               content
             );
           })}
+        </Box>
+      )}
+
+      {variant === "changeStatus" && newCllExperience && (
+        <Box
+          sx={{
+            mt: 1,
+            pt: 1,
+            borderTop: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              display: "block",
+              fontWeight: 600,
+              mb: 0.5,
+              color: "text.secondary",
+            }}
+          >
+            Badges
+          </Typography>
+          {getGraphBadgeLegendEntries(isDark).map((entry) => (
+            <Box
+              key={entry.kind}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                mb: "4px",
+                "&:last-child": { mb: 0 },
+              }}
+            >
+              <TreatmentChip
+                tokens={entry.tokens}
+                testId={`legend-treatment-${entry.kind}`}
+                ariaLabel={entry.ariaLabel}
+              >
+                {entry.text}
+              </TreatmentChip>
+              <Typography variant="body2">{entry.tooltip}</Typography>
+            </Box>
+          ))}
         </Box>
       )}
 

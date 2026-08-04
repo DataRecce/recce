@@ -32,7 +32,8 @@ export const ChangeStatus: Story = {
 
 /**
  * Change status legend inside the new CLL experience.
- * Muted brown/yellow palette, includes "Impacted".
+ * Muted brown/yellow palette, includes "Impacted", and documents the ADD /
+ * COLUMN graph badges the canvas nodes carry.
  */
 export const ChangeStatusCll: Story = {
   args: {
@@ -40,6 +41,25 @@ export const ChangeStatusCll: Story = {
     title: "Changes",
     showTooltips: true,
     newCllExperience: true,
+  },
+};
+
+/**
+ * Same legend in dark mode — the badge swatches take their tokens from
+ * `useIsDark()`, so this is where a light/dark token regression shows up.
+ */
+export const ChangeStatusCllDark: Story = {
+  args: {
+    variant: "changeStatus",
+    title: "Changes",
+    showTooltips: true,
+    newCllExperience: true,
+  },
+  parameters: {
+    backgrounds: { default: "dark" },
+  },
+  globals: {
+    theme: "dark",
   },
 };
 
