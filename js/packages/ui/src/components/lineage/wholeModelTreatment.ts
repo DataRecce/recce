@@ -207,16 +207,23 @@ export function pickGraphBadge(
 }
 
 /**
- * Display order for the lineage legend's badge block. Fixed rather than
- * derived from `Object.keys(GRAPH_BADGE_LABELS)` so the legend's reading
- * order (benign → actionable) stays independent of the classifier's
- * precedence order.
+ * Reading order for the lineage legend's badge block (benign → actionable),
+ * kept separate from the classifier's precedence order.
  */
-const GRAPH_BADGE_LEGEND_ORDER: GraphBadgeKind[] = [
-  "additive",
-  "column-changed",
-  "column-impacted",
-];
+const GRAPH_BADGE_LEGEND_RANK: Record<GraphBadgeKind, number> = {
+  additive: 0,
+  "column-changed": 1,
+  "column-impacted": 2,
+};
+
+/**
+ * Derived from `GRAPH_BADGE_LABELS` rather than hand-listed, so a new
+ * `GraphBadgeKind` cannot reach the canvas without a legend row — the rank
+ * record above stops compiling until the new kind is ranked.
+ */
+const GRAPH_BADGE_LEGEND_ORDER: GraphBadgeKind[] = (
+  Object.keys(GRAPH_BADGE_LABELS) as GraphBadgeKind[]
+).sort((a, b) => GRAPH_BADGE_LEGEND_RANK[a] - GRAPH_BADGE_LEGEND_RANK[b]);
 
 /**
  * Every graph badge, resolved for display in the lineage legend. Unlike
