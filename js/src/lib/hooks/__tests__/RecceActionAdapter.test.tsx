@@ -87,6 +87,7 @@ const createMockRouter = (
   overrides: Partial<ReturnType<typeof useRouter>> = {},
 ) => ({
   back: vi.fn(),
+  bfcacheId: "mock-bfcache-id",
   forward: vi.fn(),
   prefetch: vi.fn(),
   push: vi.fn(),
