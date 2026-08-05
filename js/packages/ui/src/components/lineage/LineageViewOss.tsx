@@ -8,11 +8,6 @@ import {
   createLineageDiffCheck,
   createSchemaDiffCheck,
   getCll,
-  isHistogramDiffRun,
-  isProfileDiffRun,
-  isTopKDiffRun,
-  isValueDiffDetailRun,
-  isValueDiffRun,
   type LineageDiffViewOptions,
   select,
 } from "../../api";
@@ -125,7 +120,10 @@ import { LineageLegend } from "./legend";
 import { toReactFlow } from "./lineage";
 import { NodeViewOss as NodeView } from "./NodeViewOss";
 import type { NodeChangeStatus } from "./nodes/LineageNode";
-import { shouldCloseOrphanedRunResult } from "./runResultVisibility";
+import {
+  isNodeBoundRunResult,
+  shouldCloseOrphanedRunResult,
+} from "./runResultVisibility";
 import SetupConnectionBanner from "./SetupConnectionBannerOss";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
 import {
@@ -1195,16 +1193,9 @@ export function PrivateLineageView(
       return;
     }
 
-    let selectedRunModel = undefined;
-    if (
-      isTopKDiffRun(run) ||
-      isProfileDiffRun(run) ||
-      isHistogramDiffRun(run) ||
-      isValueDiffRun(run) ||
-      isValueDiffDetailRun(run)
-    ) {
-      selectedRunModel = run.params?.model;
-    }
+    const selectedRunModel = isNodeBoundRunResult(run)
+      ? run.params?.model
+      : undefined;
 
     const intentKey = JSON.stringify([
       runId ?? run.run_id,

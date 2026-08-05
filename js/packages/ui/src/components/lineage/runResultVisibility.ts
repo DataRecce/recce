@@ -1,11 +1,4 @@
-import {
-  isHistogramDiffRun,
-  isProfileDiffRun,
-  isTopKDiffRun,
-  isValueDiffDetailRun,
-  isValueDiffRun,
-  type Run,
-} from "../../api";
+import type { Run } from "../../api";
 import {
   isLineageGraphNode,
   type LineageGraphNodes,
@@ -15,6 +8,7 @@ import {
 type NodeBoundRun = Run & {
   type:
     | "top_k_diff"
+    | "profile"
     | "profile_diff"
     | "histogram_diff"
     | "value_diff"
@@ -22,11 +16,11 @@ type NodeBoundRun = Run & {
 };
 
 /**
- * A run result whose content is bound to a specific model node. Profile /
- * value / top-k / histogram / value-detail diffs render inside that model's
- * NodeView, so they only make sense while the model is part of the rendered
- * lineage. (row_count / query / query_diff results are NOT node-bound — they
- * render in their own pane regardless of the visible nodes.)
+ * A run result whose content is bound to a specific model node. Profile,
+ * value, top-k, histogram, and value-detail results carry a single model, so
+ * they only make sense while that model is part of the rendered lineage.
+ * (row_count / query / query_diff results are NOT node-bound — they render in
+ * their own pane regardless of the visible nodes.)
  *
  * Typed as a type guard so callers narrow `run` to `NodeBoundRun` and can read
  * `run.params?.model` without casting away the discriminated-union typing.
@@ -34,14 +28,17 @@ type NodeBoundRun = Run & {
 export function isNodeBoundRunResult(
   run: Run | undefined,
 ): run is NodeBoundRun {
-  return (
-    !!run &&
-    (isTopKDiffRun(run) ||
-      isProfileDiffRun(run) ||
-      isHistogramDiffRun(run) ||
-      isValueDiffRun(run) ||
-      isValueDiffDetailRun(run))
-  );
+  switch (run?.type) {
+    case "top_k_diff":
+    case "profile":
+    case "profile_diff":
+    case "histogram_diff":
+    case "value_diff":
+    case "value_diff_detail":
+      return true;
+    default:
+      return false;
+  }
 }
 
 /**
