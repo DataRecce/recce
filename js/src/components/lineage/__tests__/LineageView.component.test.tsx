@@ -320,11 +320,6 @@ vi.mock("@datarecce/ui/api", () => ({
   select: vi.fn().mockResolvedValue({ nodes: [] }),
   createLineageDiffCheck: vi.fn().mockResolvedValue({ check_id: "test-check" }),
   createSchemaDiffCheck: vi.fn().mockResolvedValue({ check_id: "test-check" }),
-  isHistogramDiffRun: vi.fn(() => false),
-  isProfileDiffRun: vi.fn(() => false),
-  isTopKDiffRun: vi.fn(() => false),
-  isValueDiffDetailRun: vi.fn(() => false),
-  isValueDiffRun: vi.fn(() => false),
 }));
 
 // Mock @datarecce/ui/components/lineage
