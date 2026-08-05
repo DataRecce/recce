@@ -38,7 +38,11 @@ if (typeof Object.groupBy === "undefined") {
 }
 
 import type { LineageGraph, LineageGraphNode } from "@datarecce/ui";
-import type { ColumnLineageData, ServerInfoResult } from "@datarecce/ui/api";
+import type {
+  ColumnLineageData,
+  Run,
+  ServerInfoResult,
+} from "@datarecce/ui/api";
 import {
   act,
   fireEvent,
@@ -193,19 +197,9 @@ vi.mock("@xyflow/react", () => ({
 // Mock @datarecce/ui contexts
 const mockRefetchLineageGraph = vi.fn();
 const mockRefetchRunsAggregated = vi.fn();
-let mockActiveRun:
-  | {
-      type: "schema_diff" | "profile_diff";
-      run_id: string;
-      run_at: string;
-      params?: {
-        model: string;
-      };
-    }
-  | undefined;
+let mockActiveRun: Run | undefined;
 let mockActiveRunId: string | undefined;
 let mockIsRunResultOpen = false;
-let mockIsProfileDiffRun = false;
 
 const mockLineageGraphContext = {
   lineageGraph: undefined as LineageGraph | undefined,
@@ -327,7 +321,7 @@ vi.mock("@datarecce/ui/api", () => ({
   createLineageDiffCheck: vi.fn().mockResolvedValue({ check_id: "test-check" }),
   createSchemaDiffCheck: vi.fn().mockResolvedValue({ check_id: "test-check" }),
   isHistogramDiffRun: vi.fn(() => false),
-  isProfileDiffRun: vi.fn(() => mockIsProfileDiffRun),
+  isProfileDiffRun: vi.fn(() => false),
   isTopKDiffRun: vi.fn(() => false),
   isValueDiffDetailRun: vi.fn(() => false),
   isValueDiffRun: vi.fn(() => false),
@@ -883,16 +877,41 @@ function setupWithLineageGraph(lineageGraph?: LineageGraph) {
   });
 }
 
-function setupOpenProfileRun(model: string) {
-  mockActiveRunId = `profile-${model}`;
+type ModelScopedRunType =
+  | "profile"
+  | "profile_diff"
+  | "top_k_diff"
+  | "histogram_diff"
+  | "value_diff"
+  | "value_diff_detail";
+
+function setupOpenModelRun(type: ModelScopedRunType, model: string) {
+  mockActiveRunId = `${type}-${model}`;
   mockIsRunResultOpen = true;
-  mockIsProfileDiffRun = true;
   mockActiveRun = {
-    type: "profile_diff",
+    type,
     run_id: mockActiveRunId,
     run_at: "2026-07-28T00:00:00Z",
     params: { model },
-  };
+  } as Run;
+}
+
+function setupOpenProfileRun(model: string) {
+  setupOpenModelRun("profile_diff", model);
+}
+
+function setupOpenRowCountRun(
+  type: "row_count" | "row_count_diff",
+  model: string,
+) {
+  mockActiveRunId = `${type}-${model}`;
+  mockIsRunResultOpen = true;
+  mockActiveRun = {
+    type,
+    run_id: mockActiveRunId,
+    run_at: "2026-07-28T00:00:00Z",
+    params: { node_names: [model] },
+  } as Run;
 }
 
 // ============================================================================
@@ -937,7 +956,6 @@ describe("LineageView Component", () => {
     mockActiveRun = undefined;
     mockActiveRunId = undefined;
     mockIsRunResultOpen = false;
-    mockIsProfileDiffRun = false;
 
     // Reset node state mock
     mockUseNodesStateReturnValue = [[], vi.fn(), vi.fn()];
@@ -1781,6 +1799,94 @@ describe("LineageView Component", () => {
       });
       expect(mockMutateAsync).not.toHaveBeenCalled();
     });
+  });
+
+  describe("run focus synchronization", () => {
+    it.each([
+      "profile",
+      "profile_diff",
+      "top_k_diff",
+      "histogram_diff",
+      "value_diff",
+      "value_diff_detail",
+    ] as const)(
+      "detaches an open %s result when the user focuses another node",
+      async (runType) => {
+        const lineageGraph = createMockLineageGraph();
+        setupWithLineageGraph(lineageGraph);
+        setupOpenModelRun(runType, "node1");
+
+        render(
+          <TestWrapper>
+            <TestablePrivateLineageView interactive={true} ref={null} />
+          </TestWrapper>,
+        );
+
+        await waitFor(() =>
+          expect(screen.getByTestId("node-view")).toHaveAttribute(
+            "data-node-id",
+            "model.test.node1",
+          ),
+        );
+
+        fireEvent.click(screen.getByTestId("click-model.test.node2"));
+        await act(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        });
+
+        expect(screen.getByTestId("node-view")).toHaveAttribute(
+          "data-node-id",
+          "model.test.node2",
+        );
+        expect(mockCloseRunResult).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(["row_count", "row_count_diff"] as const)(
+      "keeps node navigation independent of an open %s result",
+      async (runType) => {
+        const lineageGraph = createMockLineageGraph();
+        setupWithLineageGraph(lineageGraph);
+        const view = () => (
+          <TestWrapper>
+            <TestablePrivateLineageView interactive={true} ref={null} />
+          </TestWrapper>
+        );
+        const { rerender } = render(view());
+
+        await waitFor(() =>
+          expect(
+            screen.getByTestId("click-model.test.node1"),
+          ).toBeInTheDocument(),
+        );
+        fireEvent.click(screen.getByTestId("click-model.test.node1"));
+        expect(screen.getByTestId("node-view")).toHaveAttribute(
+          "data-node-id",
+          "model.test.node1",
+        );
+
+        setupOpenRowCountRun(runType, "node1");
+        rerender(view());
+        await act(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        });
+        expect(screen.getByTestId("node-view")).toHaveAttribute(
+          "data-node-id",
+          "model.test.node1",
+        );
+
+        fireEvent.click(screen.getByTestId("click-model.test.node2"));
+        await act(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        });
+
+        expect(screen.getByTestId("node-view")).toHaveAttribute(
+          "data-node-id",
+          "model.test.node2",
+        );
+        expect(mockCloseRunResult).not.toHaveBeenCalled();
+      },
+    );
   });
 
   describe("async layout ownership", () => {
