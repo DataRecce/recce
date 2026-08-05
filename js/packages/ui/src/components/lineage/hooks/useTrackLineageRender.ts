@@ -22,16 +22,14 @@ export const useTrackLineageRender = () => {
       rightSidebarOpen: boolean,
     ) => {
       const lineageGraphNodesOnly = nodes.filter(isLineageGraphNode);
-      const grouped = Object.groupBy(
-        lineageGraphNodesOnly,
-        (node) => node.data.changeStatus ?? "unchanged",
-      );
       // Prefix status counts with "nodes_"
-      const statusCounts = Object.fromEntries(
-        Object.entries(grouped).map(([status, nodes]) => [
-          `nodes_${status}`,
-          nodes?.length ?? 0,
-        ]),
+      const statusCounts = lineageGraphNodesOnly.reduce<Record<string, number>>(
+        (counts, node) => {
+          const key = `nodes_${node.data.changeStatus ?? "unchanged"}`;
+          counts[key] = (counts[key] ?? 0) + 1;
+          return counts;
+        },
+        {},
       );
       const trackingData = {
         node_count: lineageGraphNodesOnly.length,

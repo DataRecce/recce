@@ -8,6 +8,7 @@
     "build": "storybook build -o dist",
     "test": "vitest run",
     "test:watch": "vitest",
+    "type:check": "tsc --noEmit",
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots"
   },

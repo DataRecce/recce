@@ -32,7 +32,7 @@ vi.mock("ag-grid-community", () => ({
 
 // Mock ScreenshotDataGrid component
 vi.mock("../data/ScreenshotDataGrid", async () => {
-  const utils = await vi.importActual("@/testing-utils/resultViewTestUtils");
+  const utils = await vi.importActual("./createResultView.testUtils");
   return {
     ScreenshotDataGrid: (utils as { screenshotDataGridMock: unknown })
       .screenshotDataGridMock,
@@ -44,7 +44,7 @@ vi.mock("../data/ScreenshotDataGrid", async () => {
 
 // Mock ScreenshotBox component
 vi.mock("../ui/ScreenshotBox", async () => {
-  const utils = await vi.importActual("@/testing-utils/resultViewTestUtils");
+  const utils = await vi.importActual("./createResultView.testUtils");
   return {
     ScreenshotBox: (utils as { screenshotBoxMock: unknown }).screenshotBoxMock,
   };
@@ -62,10 +62,9 @@ vi.mock("../../hooks", () => ({
 
 import { screen } from "@testing-library/react";
 import { createRef, type ReactNode } from "react";
-import type { MockDataGridHandle } from "@/testing-utils/resultViewTestUtils";
-import { renderWithProviders } from "@/testing-utils/resultViewTestUtils";
 import type { DataGridHandle } from "../data/ScreenshotDataGrid";
 import { createResultView } from "./createResultView";
+import { renderWithProviders } from "./createResultView.testUtils";
 import type { ResultViewData } from "./types";
 
 // ============================================================================

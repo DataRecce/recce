@@ -19,7 +19,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
-    "type:check": "tsc --noEmit",
+    "type:check": "pnpm type:check:root && pnpm --filter @datarecce/ui type:check && pnpm --filter @datarecce/storybook type:check",
+    "type:check:root": "tsc --noEmit",
     "clean": "rimraf ../recce/data",
     "prepare": "cd .. && husky js/.husky"
   },
