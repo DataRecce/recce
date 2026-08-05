@@ -1,8 +1,9 @@
 ## Prerequisites
 
-1. Node (>18)
+1. Node.js 26.5.0 via [nave](https://github.com/isaacs/nave) (`.nvmrc` is the source of truth)
    ```
-   nvm use 20
+   nave install "$(cat .nvmrc)"
+   nave use "$(cat .nvmrc)"
    ```
 2. pnpm
 

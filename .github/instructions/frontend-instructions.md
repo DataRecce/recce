@@ -86,7 +86,7 @@ pnpm run clean
 
 ## Tech Stack
 
-- **Node.js >=24** - JavaScript runtime (required)
+- **Node.js >=26.5.0** - JavaScript runtime (required)
 - **pnpm 11** - Package manager (NOT npm or yarn)
 - **Next.js 16** - React framework with App Router
 - **React 19.2** - UI library with new JSX transform
@@ -108,7 +108,7 @@ pnpm run clean
 
 ```
 js/
-├── package.json         # Dependencies (Node >=24 required)
+├── package.json         # Dependencies (Node >=26.5.0 required)
 ├── tsconfig.json        # TypeScript config
 ├── next.config.js       # Next.js config (output: 'export')
 ├── biome.json           # Biome linter & formatter config
@@ -129,7 +129,7 @@ js/
 ## Configuration Files
 
 **package.json:**
-- Requires Node.js >=24
+- Requires Node.js >=26.5.0
 - Uses pnpm@11.1.1 as package manager (pinned via Corepack)
 - Key scripts:
   - `dev`: Start development server with Turbopack
@@ -224,7 +224,7 @@ pnpm test  # Watch mode
 **GitHub Actions workflow:** `.github/workflows/tests-js.yaml`
 
 **What it checks:**
-1. Node.js 24 setup
+1. Node.js 26.5.0 setup from `js/.nvmrc`
 2. pnpm 11 installation
 3. Dependency install with frozen lockfile
 4. Biome linting (`pnpm lint`)
@@ -268,7 +268,7 @@ make deps-check
 
 **Error: Build fails with Node version error**
 - **Cause:** Node.js version too old
-- **Fix:** Upgrade to Node.js 24 or later (`node --version` to check)
+- **Fix:** Upgrade to Node.js 26.5.0 or later (`node --version` to check)
 
 **Error: Biome lint failures**
 - **Cause:** Code doesn't meet Biome rules

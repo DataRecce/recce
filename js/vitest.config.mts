@@ -305,6 +305,8 @@ export default defineConfig({
   test: {
     // Environment
     environment: "happy-dom",
+    // Node.js 26's server-side localStorage shadows happy-dom without this.
+    execArgv: ["--no-experimental-webstorage"],
 
     // Setup files
     setupFiles: ["./vitest.setup.mts"],

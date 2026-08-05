@@ -122,7 +122,7 @@ pnpm type:check    # TypeScript compiler
 
 - Changes not appearing in `recce server`: Run `cd js && pnpm run build` then restart server
 - `pnpm: command not found`: Install with `npm install -g corepack@latest && corepack enable`
-- Build fails: Check Node version is >=24 (`node --version`)
+- Build fails: Check Node.js version is >=26.5.0 (`node --version`)
 - Type errors: Run `pnpm type:check` to see full error messages
 - Biome lint failures: Run `pnpm lint:fix` for auto-fixable issues
 
@@ -218,7 +218,7 @@ recce/
 
 ```
 js/
-├── package.json        # pnpm 11, Node >=24, React 19, Next.js 16
+├── package.json        # pnpm 11, Node >=26.5.0, React 19, Next.js 16
 ├── tsconfig.json       # TypeScript config
 ├── next.config.js      # Next.js config (output: 'export')
 ├── app/                # OSS Next.js App Router shell (routes/layout only)

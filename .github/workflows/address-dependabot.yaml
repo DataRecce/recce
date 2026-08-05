@@ -36,10 +36,10 @@ jobs:
       - name: Install Python dependencies
         run: uv sync --all-extras --python 3.10
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Node.js 26
+        uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version-file: 'js/.nvmrc'
 
       - uses: pnpm/action-setup@v6
         with:
