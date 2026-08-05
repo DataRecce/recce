@@ -22,6 +22,7 @@ import {
   isCellChanged,
   toRenderedValue,
 } from "../../../utils/dataGrid/gridUtils";
+import { hasOwn } from "../../../utils/hasOwn";
 import { DiffText, type DiffTextProps } from "../DiffText";
 import { DiffTextWithToast } from "../DiffTextWithToast";
 
@@ -100,12 +101,12 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
     const currentKey = `current__${columnKey}`.toLowerCase();
 
     // Handle case where neither base nor current values exist
-    if (!Object.hasOwn(row, baseKey) && !Object.hasOwn(row, currentKey)) {
+    if (!hasOwn(row, baseKey) && !hasOwn(row, currentKey)) {
       return "-";
     }
 
-    const hasBase = Object.hasOwn(row, baseKey);
-    const hasCurrent = Object.hasOwn(row, currentKey);
+    const hasBase = hasOwn(row, baseKey);
+    const hasCurrent = hasOwn(row, currentKey);
 
     const [baseValue, baseGrayOut] = toRenderedValue(
       row,

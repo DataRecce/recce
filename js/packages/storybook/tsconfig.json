@@ -8,5 +8,12 @@
       "@datarecce/ui/*": ["../ui/src/*"]
     }
   },
-  "include": ["stories/**/*", ".storybook/**/*", "vitest.config.ts"]
+  "include": [
+    "stories/**/*",
+    ".storybook/**/*",
+    "vitest.config.ts",
+    "../../mui-augmentations.d.ts",
+    "../ui/src/components/ui/mui-utils.ts",
+    "../ui/src/css.d.ts"
+  ]
 }

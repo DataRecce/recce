@@ -1,3 +1,4 @@
+import { hasOwn } from "../../utils/hasOwn";
 import type { ChangeCategory } from "./nodes/LineageNode";
 
 export const CHANGE_CATEGORY_LABELS: Record<ChangeCategory, string> = {
@@ -30,7 +31,7 @@ export const CHANGE_CATEGORY_DETAILS: ReadonlyArray<{
 ];
 
 function isChangeCategory(value: string | undefined): value is ChangeCategory {
-  return value !== undefined && Object.hasOwn(CHANGE_CATEGORY_LABELS, value);
+  return value !== undefined && hasOwn(CHANGE_CATEGORY_LABELS, value);
 }
 
 export function getChangeCategoryLabel(

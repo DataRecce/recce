@@ -56,6 +56,7 @@ import {
   toRowCountDiffDataGrid,
   toValueDiffGridConfigured as toValueDiffGrid,
 } from "../../../utils/dataGrid";
+import { hasOwn } from "../../../utils/hasOwn";
 import { getCaseInsensitive } from "../../../utils/transforms";
 import { buildColumnTooltip, DataTypeIcon } from "../DataTypeIcon";
 import { toValueDataGrid } from "./generators/toValueDataGrid";
@@ -330,7 +331,7 @@ export function injectProfileColumnNameRenderer(
   result: DataGridResult,
 ): DataGridResult {
   const isInlineDiff =
-    result.rows.length > 0 && Object.hasOwn(result.rows[0], "base__data_type");
+    result.rows.length > 0 && hasOwn(result.rows[0], "base__data_type");
 
   const columns = result.columns
     .filter((col) => {
