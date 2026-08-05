@@ -33,9 +33,8 @@ declare global {
 // Polyfills for test environment compatibility
 // ============================================================================
 
-// Polyfill localStorage for Node.js 22+ where the built-in localStorage
-// is a plain object without standard Storage methods (getItem, setItem, etc.).
-// happy-dom should provide these but Node's built-in takes precedence.
+// Polyfill localStorage when the environment exposes an incomplete
+// implementation without standard Storage methods.
 if (
   typeof globalThis.localStorage !== "undefined" &&
   typeof globalThis.localStorage.getItem !== "function"

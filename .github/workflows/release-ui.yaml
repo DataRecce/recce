@@ -48,10 +48,10 @@ jobs:
         with:
           version: 11.1.1
 
-      - name: Setup Node 24
-        uses: actions/setup-node@v4
+      - name: Setup Node.js 26
+        uses: actions/setup-node@v7
         with:
-          node-version: '24' # Node 24 includes npm 11+ with OIDC support
+          node-version-file: 'js/.nvmrc' # Node 26 includes npm 11+ with OIDC support
           cache: 'pnpm'
           cache-dependency-path: js/pnpm-lock.yaml
           registry-url: 'https://registry.npmjs.org'

@@ -35,10 +35,10 @@ jobs:
         with:
           version: "latest"
 
-      - name: Setup Node 24
-        uses: actions/setup-node@v4
+      - name: Setup Node.js 26
+        uses: actions/setup-node@v7
         with:
-          node-version: '24'
+          node-version-file: 'js/.nvmrc'
 
       - uses: pnpm/action-setup@v6
         with:

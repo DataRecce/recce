@@ -17,7 +17,7 @@
  * Source of truth: OSS functionality - these tests document current behavior
  */
 
-// Polyfill for Object.groupBy (not available in Node.js 18/jsdom)
+// Polyfill Object.groupBy for test environments that do not expose it.
 if (typeof Object.groupBy === "undefined") {
   // biome-ignore lint/suspicious/noExplicitAny: Object.groupBy polyfill requires type assertion on global Object
   (Object as any).groupBy = function <T>(

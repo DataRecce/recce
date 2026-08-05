@@ -50,7 +50,7 @@ digraph address_dependabot {
 
 This repo contains `@datarecce/ui`, a **published npm package** consumed by external projects. Its `dependencies` field is a contract with consumers. This shapes how dependency updates are applied.
 
-For frontend tooling context (pnpm v11 `strictDepBuilds`/`allowBuilds`, Biome migration on bump, Node version via `nave`), reference **[`js/CLAUDE.md`](../../../js/CLAUDE.md)** before applying npm updates.
+For frontend tooling context (pnpm v11 `strictDepBuilds`/`allowBuilds`, Biome migration on bump, Node.js 26 via `nave`), reference **[`js/CLAUDE.md`](../../../js/CLAUDE.md)** before applying npm updates.
 
 ### The Three Zones
 
@@ -216,7 +216,7 @@ Run the full quality gate for each ecosystem affected:
 
 ### Frontend (if npm/pnpm packages changed)
 ```bash
-# Activate nave for Node.js
+# Activate Node.js 26 with nave
 NAVE_DIR=~/.nave && NAVE_VER=$(cat js/.nvmrc) && \
   [ -d "$NAVE_DIR/installed/$NAVE_VER/bin" ] && \
   export PATH="$NAVE_DIR/installed/$NAVE_VER/bin:$PATH"

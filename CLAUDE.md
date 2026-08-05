@@ -7,7 +7,7 @@
 ## Quick Reference
 
 → `docs/KNOWLEDGE_BASE.md` - Architecture, code patterns, frontend structure, testing, debugging
-→ `js/CLAUDE.md` - Frontend conventions and tooling (Node via `nave`, Biome, Vitest, pnpm v11
+→ `js/CLAUDE.md` - Frontend conventions and tooling (Node.js 26 via `nave`, Biome, Vitest, pnpm v11
   quirks, Storybook imports, CSS color format, rem vs px, shell vs shared code)
 
 ## Working Preferences

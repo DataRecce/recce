@@ -9,7 +9,7 @@ For repo-wide guidance see `../CLAUDE.md` and `../AGENTS.md`.
 ## Package Manager & Tooling
 
 - This monorepo uses **pnpm** — never npm or npx for install/test/lint/build.
-- Node version: use `nave use $(cat .nvmrc)` (not `nvm`).
+- Node.js 26.5.0: use `nave use $(cat .nvmrc)` (not `nvm`); `.nvmrc` is the source of truth.
 - Linter/formatter: **Biome 2.4** — run `pnpm lint:fix` for autofix and `pnpm lint` for verification.
 - Type checking: `pnpm type:check`.
 - Tests: `pnpm test` (Vitest + React Testing Library).
@@ -30,7 +30,7 @@ Run `pnpm run build` before launching `recce server` whenever frontend changes n
 
 When asked to "publish ui" or "release ui package":
 
-1. **Node version:** `nave use $(cat .nvmrc)` for all commands.
+1. **Node.js 26:** `nave use $(cat .nvmrc)` for all commands.
 2. **Version check:** Compare local vs published (`npm view @datarecce/ui version`).
 3. **Verify:** Run all quality checks from `js/` (`pnpm lint:fix && pnpm type:check && pnpm test && pnpm run build`).
 4. **Publish:** `cd packages/ui && npm publish --access public`.
@@ -71,4 +71,4 @@ Cross-reference those for prior decisions on shared transitive deps (e.g., `prot
 | Frontend changes not appearing in `recce server` | `pnpm run build` then restart `recce server` |
 | Biome lint failures | `pnpm lint:fix` |
 | Type errors | `pnpm type:check` for details |
-| Tests fail with no obvious cause | Check Node version: `nave use $(cat .nvmrc)` |
+| Tests fail with no obvious cause | Check Node.js 26 is active: `nave use $(cat .nvmrc)` |
