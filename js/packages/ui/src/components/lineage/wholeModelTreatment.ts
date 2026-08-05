@@ -206,6 +206,43 @@ export function pickGraphBadge(
   };
 }
 
+/**
+ * Reading order for the lineage legend's badge block (benign → actionable),
+ * kept separate from the classifier's precedence order.
+ */
+const GRAPH_BADGE_LEGEND_RANK: Record<GraphBadgeKind, number> = {
+  additive: 0,
+  "column-changed": 1,
+  "column-impacted": 2,
+};
+
+/**
+ * Derived from `GRAPH_BADGE_LABELS` rather than hand-listed, so a new
+ * `GraphBadgeKind` cannot reach the canvas without a legend row — the rank
+ * record above stops compiling until the new kind is ranked.
+ */
+const GRAPH_BADGE_LEGEND_ORDER: GraphBadgeKind[] = (
+  Object.keys(GRAPH_BADGE_LABELS) as GraphBadgeKind[]
+).sort((a, b) => GRAPH_BADGE_LEGEND_RANK[a] - GRAPH_BADGE_LEGEND_RANK[b]);
+
+/**
+ * Every graph badge, resolved for display in the lineage legend. Unlike
+ * `pickGraphBadge` this takes no classification inputs — the legend documents
+ * all badges regardless of which ones the current graph happens to render.
+ *
+ * Both the copy and the tokens come from the same source the node badges use,
+ * so a legend swatch cannot drift from the badge it decodes.
+ */
+export function getGraphBadgeLegendEntries(
+  isDark: boolean,
+): GraphBadgeResolution[] {
+  return GRAPH_BADGE_LEGEND_ORDER.map((kind) => ({
+    kind,
+    ...GRAPH_BADGE_LABELS[kind],
+    tokens: tokensForKind(kind, isDark),
+  }));
+}
+
 // =============================================================================
 // Visual tokens
 // =============================================================================
