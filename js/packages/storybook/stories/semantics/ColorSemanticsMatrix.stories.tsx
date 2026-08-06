@@ -1,5 +1,9 @@
 import { RowCountSummary } from "@datarecce/ui/advanced";
 import {
+  ProfileDiffResultView,
+  QueryDiffResultView,
+} from "@datarecce/ui/components";
+import {
   DiffText,
   getSemanticColorTheme,
   HistogramChart,
@@ -16,6 +20,8 @@ import {
   useLayoutEffect,
   useState,
 } from "react";
+import { createProfileDiffRun } from "../profile/fixtures";
+import { createQueryDiffRunNonJoin } from "../query/fixtures";
 
 interface ColorSemanticsMatrixProps {
   isDark?: boolean;
@@ -114,39 +120,35 @@ function ComparisonPair({
   );
 }
 
-function DirectionCue({
+function ProductionDirectionCue({
   isDark,
   label,
-  cue,
+  base,
+  current,
 }: {
   isDark: boolean;
-  label: string;
-  cue: string;
+  label: "Increase" | "Decrease" | "Equal";
+  base: number;
+  current: number;
 }) {
   const direction = getSemanticColorTheme(isDark).direction;
 
   return (
     <span
-      aria-label={`${label}: ${cue}`}
+      data-production-direction={label.toLowerCase()}
       style={{
+        alignItems: "center",
         background: direction.background,
         border: `1px solid ${direction.border}`,
         borderRadius: "0.375rem",
         color: direction.foreground,
         display: "inline-flex",
-        gap: "0.25rem",
+        gap: "0.5rem",
         padding: "0.25rem 0.5rem",
       }}
     >
       <strong>{label}</strong>
-      {label === "Equal" ? (
-        <>
-          <RowCountSummary rowCount={{ base: 1000, curr: 1000 }} />
-          <span>{cue}</span>
-        </>
-      ) : (
-        <span>{cue}</span>
-      )}
+      <RowCountSummary rowCount={{ base, curr: current }} />
     </span>
   );
 }
@@ -268,184 +270,134 @@ function LineageMatrix({ isDark }: { isDark: boolean }) {
   );
 }
 
-const structuralRows: Array<{
-  surface: string;
-  example: string;
-  status: Exclude<StructuralChangeStatus, "unchanged">;
-  base?: string;
-  current?: string;
-}> = [
-  {
-    surface: "Query",
-    example: "Added row",
-    status: "added",
-    current: "order_1042",
-  },
-  {
-    surface: "Query",
-    example: "Removed row",
-    status: "removed",
-    base: "order_0991",
-  },
-  {
-    surface: "Profile",
-    example: "Changed paired value",
-    status: "modified",
-    base: "48.2",
-    current: "52.7",
-  },
-];
-
 const directionRows = [
   {
-    example: "Increase",
-    base: "800",
-    current: "1,000",
-    cue: "↑ +25.0%",
+    label: "Increase" as const,
+    base: 800,
+    current: 1000,
   },
   {
-    example: "Decrease",
-    base: "1,000",
-    current: "750",
-    cue: "↓ −25.0%",
+    label: "Decrease" as const,
+    base: 1000,
+    current: 750,
   },
   {
-    example: "Equal",
-    base: "1,000",
-    current: "1,000",
-    cue: "= 0%",
+    label: "Equal" as const,
+    base: 1000,
+    current: 1000,
   },
 ];
 
-function SurfaceRows({ isDark }: { isDark: boolean }) {
+const queryDiffRun = createQueryDiffRunNonJoin();
+const profileDiffRun = createProfileDiffRun();
+
+function ProductionSurfaceEvidence({ isDark }: { isDark: boolean }) {
+  const neutral = getSemanticColorTheme(isDark).structural.neutral;
+
   return (
-    <table
+    <div
       style={{
-        borderCollapse: "separate",
-        borderSpacing: 0,
-        fontSize: "0.8125rem",
-        width: "100%",
+        display: "grid",
+        gap: "1rem",
       }}
     >
-      <thead>
-        <tr>
-          {[
-            "Surface",
-            "Compound meaning",
-            "Structural / direction cue",
-            "Compared values",
-          ].map((heading) => (
-            <th
-              key={heading}
-              scope="col"
-              style={{
-                borderBottom: "1px solid var(--mui-palette-divider)",
-                padding: "0.5rem",
-                textAlign: "left",
+      <div
+        style={{
+          display: "grid",
+          gap: "1rem",
+          gridTemplateColumns: "1fr 1fr",
+        }}
+      >
+        <article data-production-surface="query">
+          <h3 style={{ fontSize: "0.875rem", margin: "0 0 0.5rem" }}>
+            Query diff — added, removed, and changed pair
+          </h3>
+          <div style={{ height: "290px", minWidth: 0 }}>
+            <QueryDiffResultView
+              run={queryDiffRun}
+              viewOptions={{
+                changed_only: true,
+                display_mode: "side_by_side",
+                pinned_columns: ["id"],
+                primary_keys: ["id"],
               }}
-            >
-              {heading}
-            </th>
+            />
+          </div>
+        </article>
+        <article data-production-surface="profile">
+          <h3 style={{ fontSize: "0.875rem", margin: "0 0 0.5rem" }}>
+            Profile diff — added, removed, and modified metrics
+          </h3>
+          <div style={{ height: "290px", minWidth: 0 }}>
+            <ProfileDiffResultView
+              run={profileDiffRun}
+              viewOptions={{
+                display_mode: "side_by_side",
+                pinned_columns: ["column_name"],
+              }}
+            />
+          </div>
+        </article>
+      </div>
+      <div>
+        <h3 style={{ fontSize: "0.875rem", margin: "0 0 0.5rem" }}>
+          Production row-count direction renderer
+        </h3>
+        <div
+          data-production-directions="row-count"
+          style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}
+        >
+          {directionRows.map(({ label, base, current }) => (
+            <ProductionDirectionCue
+              base={base}
+              current={current}
+              isDark={isDark}
+              key={label}
+              label={label}
+            />
           ))}
-        </tr>
-      </thead>
-      <tbody>
-        {structuralRows.map((row) => (
-          <tr key={row.example}>
-            <th
-              scope="row"
-              style={{
-                borderBottom: "1px solid var(--mui-palette-divider)",
-                padding: "0.5rem",
-                textAlign: "left",
-              }}
-            >
-              {row.surface}
-            </th>
-            <td
-              style={{
-                borderBottom: "1px solid var(--mui-palette-divider)",
-                padding: "0.5rem",
-              }}
-            >
-              {row.example}
-            </td>
-            <td
-              style={{
-                borderBottom: "1px solid var(--mui-palette-divider)",
-                padding: "0.5rem",
-              }}
-            >
-              <StructuralChangeIndicator
-                emphasis="neutral"
-                showLabel
-                size="sm"
-                status={row.status}
-              />
-            </td>
-            <td
-              style={{
-                borderBottom: "1px solid var(--mui-palette-divider)",
-                padding: "0.5rem",
-              }}
-            >
-              <ComparisonPair
-                base={row.base}
-                current={row.current}
-                isDark={isDark}
-              />
-            </td>
-          </tr>
-        ))}
-        {directionRows.map((row) => (
-          <tr key={row.example}>
-            <th
-              scope="row"
-              style={{
-                borderBottom: "1px solid var(--mui-palette-divider)",
-                padding: "0.5rem",
-                textAlign: "left",
-              }}
-            >
-              Profile
-            </th>
-            <td
-              style={{
-                borderBottom: "1px solid var(--mui-palette-divider)",
-                padding: "0.5rem",
-              }}
-            >
-              {row.example}
-            </td>
-            <td
-              style={{
-                borderBottom: "1px solid var(--mui-palette-divider)",
-                padding: "0.5rem",
-              }}
-            >
-              <DirectionCue cue={row.cue} isDark={isDark} label={row.example} />
-            </td>
-            <td
-              style={{
-                borderBottom: "1px solid var(--mui-palette-divider)",
-                padding: "0.5rem",
-              }}
-            >
-              <ComparisonPair
-                base={row.base}
-                current={row.current}
-                isDark={isDark}
-              />
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+        </div>
+        <p
+          style={{
+            borderLeft: `3px solid ${neutral.border}`,
+            fontSize: "0.75rem",
+            margin: "0.75rem 0 0",
+            paddingLeft: "0.5rem",
+          }}
+        >
+          Values, arrows, signed percentages, and No Change are rendered by the
+          production row-count component.
+        </p>
+      </div>
+    </div>
   );
 }
 
+const histogramBinLabels = ["0–20", "20–40", "40–60", "60–80", "80–100"];
+const histogramBaseCounts = [12, 25, 31, 18, 9];
+const histogramCurrentCounts = [8, 19, 35, 26, 14];
+const topKBase = {
+  counts: [90, 70, 45, 25],
+  valids: 230,
+  values: ["completed", "pending", "refunded", "failed"],
+};
+const topKCurrent = {
+  counts: [104, 62, 39, 31],
+  valids: 236,
+  values: ["completed", "pending", "refunded", "failed"],
+};
+
 function Charts({ isDark }: { isDark: boolean }) {
   const theme = isDark ? "dark" : "light";
+  const neutral = getSemanticColorTheme(isDark).structural.neutral;
+  const evidenceStyle: CSSProperties = {
+    border: `1px solid ${neutral.border}`,
+    borderRadius: "0.375rem",
+    color: neutral.foreground,
+    fontSize: "0.6875rem",
+    margin: "0.5rem 1rem 0",
+    padding: "0.5rem",
+  };
 
   return (
     <div
@@ -460,47 +412,55 @@ function Charts({ isDark }: { isDark: boolean }) {
         style={{ minWidth: 0 }}
       >
         <HistogramChart
-          baseData={{ label: "Base", counts: [12, 25, 31, 18, 9] }}
+          baseData={{ label: "Base", counts: histogramBaseCounts }}
           binEdges={[0, 20, 40, 60, 80, 100]}
-          currentData={{ label: "Current", counts: [8, 19, 35, 26, 14] }}
+          currentData={{ label: "Current", counts: histogramCurrentCounts }}
           height={230}
           samples={102}
           theme={theme}
           title="Histogram — Base / Current"
         />
+        <div data-series-evidence="histogram" style={evidenceStyle}>
+          <strong>Persistent series values by bin</strong>
+          <div
+            style={{
+              display: "grid",
+              gap: "0.25rem",
+              gridTemplateColumns: "repeat(5, 1fr)",
+              marginTop: "0.375rem",
+            }}
+          >
+            {histogramBinLabels.map((bin, index) => (
+              <span key={bin}>
+                {bin} Base {histogramBaseCounts[index]} Current{" "}
+                {histogramCurrentCounts[index]}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
       <div
         aria-label="Top-K chart comparing explicitly labelled Base and Current series"
         style={{ minWidth: 0 }}
       >
         <TopKBarChart
-          baseData={{
-            counts: [90, 70, 45, 25],
-            valids: 230,
-            values: ["completed", "pending", "refunded", "failed"],
-          }}
-          currentData={{
-            counts: [104, 62, 39, 31],
-            valids: 236,
-            values: ["completed", "pending", "refunded", "failed"],
-          }}
+          baseData={topKBase}
+          currentData={topKCurrent}
           maxItems={4}
           showComparison
           theme={theme}
           title="Top-K — Base / Current"
         />
+        <div data-series-evidence="top-k" style={evidenceStyle}>
+          <strong>Persistent position key:</strong> Upper bar Current; Lower bar
+          Base. Counts and percentages remain printed on every bar.
+        </div>
       </div>
     </div>
   );
 }
 
 function Legend({ isDark }: { isDark: boolean }) {
-  const directionExamples = [
-    { label: "Increase", cue: "↑ +25.0%" },
-    { label: "Decrease", cue: "↓ −25.0%" },
-    { label: "Equal", cue: "= 0%" },
-  ];
-
   return (
     <div
       aria-label="Semantic color legend"
@@ -537,8 +497,14 @@ function Legend({ isDark }: { isDark: boolean }) {
           Direction
         </h3>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-          {directionExamples.map(({ label, cue }) => (
-            <DirectionCue cue={cue} isDark={isDark} key={label} label={label} />
+          {directionRows.map(({ label, base, current }) => (
+            <ProductionDirectionCue
+              base={base}
+              current={current}
+              isDark={isDark}
+              key={label}
+              label={label}
+            />
           ))}
         </div>
       </div>
@@ -629,9 +595,9 @@ function ColorSemanticsMatrix({
 
         <Section
           isDark={isDark}
-          title="Query and profile rows — structure × comparison × direction"
+          title="Production query/profile grids and row-count direction"
         >
-          <SurfaceRows isDark={isDark} />
+          <ProductionSurfaceEvidence isDark={isDark} />
         </Section>
 
         <Section

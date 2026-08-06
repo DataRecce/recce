@@ -33,6 +33,8 @@ Physical-color component props are deprecated on introduction of role-first prop
 
 ## Phase B visual gate
 
-The compound semantics matrix is reviewed at a deterministic 1440 px width in Light, Dark, and Grayscale. It combines lineage nodes; query and profile rows; histogram and Top-K charts; and a legend split into Comparison, Structure, and Direction.
+The compound semantics matrix is reviewed at a deterministic 1440 px width in Light, Dark, and Grayscale. It combines lineage nodes; production query/profile grids and row-count direction renderers; histogram and Top-K charts; and a legend split into Comparison, Structure, and Direction. The histogram retains explicit Base/Current values for every bin, while Top-K labels Current as the upper bar and Base as the lower bar, so grayscale never leaves series identity to hue alone.
 
 On 2026-08-06, the Light and Dark stories were inspected with Chromium's DevTools vision-deficiency emulation for both Protanopia and Deuteranopia. Every structural row and node retained its `+`/`−`/`Δ` symbol and Added/Removed/Modified label. Increase and decrease retained arrows and signed percentages, while equal retained an equality cue and No Change text. Base and Current retained explicit labels and bordered treatments in value cells and chart legends. No compound meaning depended on the emulated color alone.
+
+The committed Phase B snapshots use Playwright's repository-default platform suffix and are canonical for Darwin arm64, Node 26.5.0, and Playwright 1.62.1's bundled Chromium. The repository's Ubuntu JavaScript workflow runs lint and unit/build gates but does not invoke `test:visual`, and the other existing visual suites do not commit cross-platform baselines. Do not relabel Darwin pixels as Linux baselines. If visual regression moves into Ubuntu CI, generate and review native Linux snapshots in that workflow before making them canonical.
