@@ -4,9 +4,9 @@
  *
  * Tests verify:
  * - Rendering of bezier edge path
- * - Change status styling (stroke color, dash array)
+ * - Change status styling (neutral stroke, status-specific dash array)
  * - Highlighting behavior (dim filter for non-highlighted edges)
- * - Integration with context and style utilities
+ * - Integration with context and style overrides
  *
  * Source of truth: OSS functionality - these tests document current behavior
  */
@@ -52,18 +52,12 @@ vi.mock("@datarecce/ui/contexts", () => ({
   useLineageViewContextSafe: vi.fn(),
 }));
 
-// Mock @datarecce/ui/components/lineage/styles
-vi.mock("@datarecce/ui/components/lineage/styles", () => ({
-  getIconForChangeStatus: vi.fn(),
-}));
-
 // ============================================================================
 // Imports
 // ============================================================================
 
 import type { LineageGraphEdge } from "@datarecce/ui";
 import GraphEdge from "@datarecce/ui/components/lineage/GraphEdgeOss";
-import { getIconForChangeStatus } from "@datarecce/ui/components/lineage/styles";
 import { useLineageViewContextSafe } from "@datarecce/ui/contexts";
 import { render, screen } from "@testing-library/react";
 import { getBezierPath, Position } from "@xyflow/react";
@@ -107,7 +101,6 @@ const createMockContext = (
 
 describe("GraphEdge", () => {
   const mockUseLineageViewContextSafe = useLineageViewContextSafe as Mock;
-  const mockGetIconForChangeStatus = getIconForChangeStatus as Mock;
   const mockGetBezierPath = getBezierPath as Mock;
 
   beforeEach(() => {
@@ -115,11 +108,6 @@ describe("GraphEdge", () => {
 
     // Default mock implementations
     mockUseLineageViewContextSafe.mockReturnValue(createMockContext());
-    mockGetIconForChangeStatus.mockReturnValue({
-      icon: () => <span>Icon</span>,
-      color: "#22c55e",
-      hexColor: "#22c55e",
-    });
     mockGetBezierPath.mockReturnValue(["M0,0 C100,0 200,100 300,100"]);
   });
 
@@ -179,60 +167,30 @@ describe("GraphEdge", () => {
   // ==========================================================================
 
   describe("change status styling", () => {
-    it("applies stroke color for added status", () => {
-      mockGetIconForChangeStatus.mockReturnValue({
-        hexColor: "#22c55e",
-      });
-      const props = createMockEdgeProps({ changeStatus: "added" });
+    it.each([
+      ["added", "0"],
+      ["removed", "3 3"],
+    ] as const)(
+      "uses a neutral stroke and the %s dash pattern",
+      (changeStatus, strokeDasharray) => {
+        const props = createMockEdgeProps({ changeStatus });
 
-      render(<GraphEdge {...props} />);
+        render(<GraphEdge {...props} />);
 
-      expect(mockGetIconForChangeStatus).toHaveBeenCalledWith("added");
-    });
+        const edge = screen.getByTestId("base-edge");
+        expect(edge.style.stroke).toBe("#737373");
+        expect(edge.style.strokeDasharray).toBe(strokeDasharray);
+      },
+    );
 
-    it("applies stroke color for removed status", () => {
-      mockGetIconForChangeStatus.mockReturnValue({
-        hexColor: "#ef4444",
-      });
-      const props = createMockEdgeProps({ changeStatus: "removed" });
-
-      render(<GraphEdge {...props} />);
-
-      expect(mockGetIconForChangeStatus).toHaveBeenCalledWith("removed");
-    });
-
-    it("applies stroke dash array for changed edges", () => {
-      mockGetIconForChangeStatus.mockReturnValue({
-        hexColor: "#22c55e",
-      });
-      const props = createMockEdgeProps({ changeStatus: "added" });
-
-      render(<GraphEdge {...props} />);
-
-      const edge = screen.getByTestId("base-edge");
-      // Style should include strokeDasharray: "5"
-      expect(edge.style.strokeDasharray).toBe("5");
-    });
-
-    it("does not apply change status styling when changeStatus is undefined", () => {
+    it("defaults missing change status to unchanged presentation", () => {
       const props = createMockEdgeProps({ changeStatus: undefined });
 
       render(<GraphEdge {...props} />);
 
-      // getIconForChangeStatus should not be called
-      expect(mockGetIconForChangeStatus).not.toHaveBeenCalled();
-    });
-
-    it("applies correct hex color to stroke", () => {
-      mockGetIconForChangeStatus.mockReturnValue({
-        hexColor: "#f59e0b",
-      });
-      const props = createMockEdgeProps({ changeStatus: "removed" });
-
-      render(<GraphEdge {...props} />);
-
       const edge = screen.getByTestId("base-edge");
-      expect(edge.style.stroke).toBe("#f59e0b");
+      expect(edge.style.stroke).toBe("#737373");
+      expect(edge.style.strokeDasharray).toBe("0");
     });
   });
 
@@ -305,10 +263,7 @@ describe("GraphEdge", () => {
       expect(edge.style.strokeWidth).toBe("2");
     });
 
-    it("combines style overrides with change status styling", () => {
-      mockGetIconForChangeStatus.mockReturnValue({
-        hexColor: "#22c55e",
-      });
+    it("combines style overrides with structural change styling", () => {
       const props = {
         ...createMockEdgeProps({ changeStatus: "added" }),
         style: {
@@ -320,7 +275,8 @@ describe("GraphEdge", () => {
 
       const edge = screen.getByTestId("base-edge");
       expect(edge.style.strokeWidth).toBe("3");
-      expect(edge.style.stroke).toBe("#22c55e");
+      expect(edge.style.stroke).toBe("#737373");
+      expect(edge.style.strokeDasharray).toBe("0");
     });
   });
 
@@ -330,9 +286,6 @@ describe("GraphEdge", () => {
 
   describe("integration", () => {
     it("renders highlighted edge with change status", () => {
-      mockGetIconForChangeStatus.mockReturnValue({
-        hexColor: "#22c55e",
-      });
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
           isEdgeHighlighted: vi.fn(() => true),
@@ -343,15 +296,12 @@ describe("GraphEdge", () => {
       render(<GraphEdge {...props} />);
 
       const edge = screen.getByTestId("base-edge");
-      expect(edge.style.stroke).toBe("#22c55e");
-      expect(edge.style.strokeDasharray).toBe("5");
+      expect(edge.style.stroke).toBe("#737373");
+      expect(edge.style.strokeDasharray).toBe("0");
       expect(edge.style.filter).toBe("");
     });
 
     it("renders non-highlighted edge with change status", () => {
-      mockGetIconForChangeStatus.mockReturnValue({
-        hexColor: "#ef4444",
-      });
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
           isEdgeHighlighted: vi.fn(() => false),
@@ -362,8 +312,8 @@ describe("GraphEdge", () => {
       render(<GraphEdge {...props} />);
 
       const edge = screen.getByTestId("base-edge");
-      expect(edge.style.stroke).toBe("#ef4444");
-      expect(edge.style.strokeDasharray).toBe("5");
+      expect(edge.style.stroke).toBe("#737373");
+      expect(edge.style.strokeDasharray).toBe("3 3");
       expect(edge.style.filter).toBe("opacity(0.4) grayscale(40%)");
     });
 
@@ -378,8 +328,8 @@ describe("GraphEdge", () => {
       render(<GraphEdge {...props} />);
 
       const edge = screen.getByTestId("base-edge");
-      expect(edge.style.stroke).toBe("");
-      expect(edge.style.strokeDasharray).toBe("");
+      expect(edge.style.stroke).toBe("#737373");
+      expect(edge.style.strokeDasharray).toBe("0");
       expect(edge.style.filter).toBe("");
     });
   });
