@@ -55,15 +55,6 @@ export interface LineageCanvasProps {
   fitViewOptions?: FitViewOptions;
 }
 
-const defaultNodeTypes = {
-  lineageNode: LineageNode,
-  lineageGraphColumnNode: LineageColumnNode,
-};
-
-const edgeTypes = {
-  lineageEdge: LineageEdge,
-};
-
 export function LineageCanvas({
   nodes: initialNodes,
   edges: initialEdges,
@@ -81,6 +72,19 @@ export function LineageCanvas({
 }: LineageCanvasProps) {
   const [nodes, _setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, _setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const defaultNodeTypes = useMemo(
+    () => ({
+      lineageNode: LineageNode,
+      lineageGraphColumnNode: LineageColumnNode,
+    }),
+    [],
+  );
+  const edgeTypes = useMemo(
+    () => ({
+      lineageEdge: LineageEdge,
+    }),
+    [],
+  );
 
   const handleNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
@@ -128,7 +132,7 @@ export function LineageCanvas({
       ...defaultNodeTypes,
       lineageNode: LineageNodeWithContextMenu,
     };
-  }, [hasContextMenu]);
+  }, [hasContextMenu, defaultNodeTypes]);
 
   return (
     <Box sx={{ width: "100%", height }}>
