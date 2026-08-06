@@ -782,8 +782,7 @@ class RecceMCPServer:
             tools.append(
                 Tool(
                     name="lineage_diff",
-                    description=textwrap.dedent(
-                        """
+                    description=textwrap.dedent("""
                         Get the lineage diff between production(base) and session(current) for changed models.
                         Returns nodes and edges (node dependencies) in compact dataframe format.
 
@@ -802,8 +801,7 @@ class RecceMCPServer:
                         - change_status="modified" AND impacted=true: fill:#fff3cd, stroke:#ffc107, color:#000000
                         - change_status=null AND impacted=true: fill:#ffffff, stroke:#ffc107, color:#000000
                         - change_status=null AND impacted=false: fill:#ffffff, stroke:#d3d3d3, color:#999999
-                    """
-                    ).strip(),
+                    """).strip(),
                     inputSchema={
                         "type": "object",
                         "properties": {
@@ -1445,8 +1443,7 @@ class RecceMCPServer:
                 tools.append(
                     Tool(
                         name="impact_analysis",
-                        description=textwrap.dedent(
-                            """
+                        description=textwrap.dedent("""
                             Discover the impact of dbt model changes. Returns which models are
                             modified or downstream-impacted, with row count and value-level signals
                             for non-view models.
@@ -1476,8 +1473,7 @@ class RecceMCPServer:
                             schema_changes value on any model is corroborated. unchecked_nodes holds
                             dbt node ids ('model.<package>.<name>') while confirmed_impacted_models
                             entries key on the bare model name.
-                        """
-                        ).strip(),
+                        """).strip(),
                         inputSchema={
                             "type": "object",
                             "properties": {

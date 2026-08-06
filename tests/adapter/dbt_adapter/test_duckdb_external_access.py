@@ -36,8 +36,7 @@ def test_dbt_adapter_duckdb_external_access_default_false():
     shared dbt-duckdb singleton connection, which would break subsequent tests
     that rely on Python DataFrame scanning (python_scan_all_frames).
     """
-    script = textwrap.dedent(
-        f"""
+    script = textwrap.dedent(f"""
         from unittest.mock import patch
         from recce.adapter.dbt_adapter import DbtAdapter
 
@@ -51,8 +50,7 @@ def test_dbt_adapter_duckdb_external_access_default_false():
             )
         assert adapter.duckdb_external_access is False, f"Expected False, got {{adapter.duckdb_external_access}}"
         print("OK")
-    """
-    )
+    """)
     _run_subprocess(script)
 
 
@@ -68,8 +66,7 @@ def test_external_access_setting_injected_into_credentials():
 
     This test pins the contract so the fix isn't accidentally undone.
     """
-    script = textwrap.dedent(
-        f"""
+    script = textwrap.dedent(f"""
         from unittest.mock import patch
         from recce.adapter.dbt_adapter import DbtAdapter
 
@@ -86,8 +83,7 @@ def test_external_access_setting_injected_into_credentials():
             f"credentials.settings missing or wrong: {{settings!r}}"
         )
         print("OK")
-    """
-    )
+    """)
     _run_subprocess(script)
 
 
@@ -102,8 +98,7 @@ def test_external_access_restriction_persists_across_thread_connections():
     Runs in a subprocess so the shared dbt-duckdb singleton is not
     contaminated for the rest of the pytest session.
     """
-    script = textwrap.dedent(
-        f"""
+    script = textwrap.dedent(f"""
         import threading
         from unittest.mock import patch
         from dbt.exceptions import DbtRuntimeError
@@ -147,8 +142,7 @@ def test_external_access_restriction_persists_across_thread_connections():
             f"Worker thread read_csv expected blocked, got {{results.get('read_csv')!r}}"
         )
         print("OK")
-    """
-    )
+    """)
     _run_subprocess(script)
 
 
@@ -175,8 +169,7 @@ def test_blocks_external_access_sql_when_disabled(sql, label):
     is_duckdb_external_access_blocked() will stop matching and this test
     fails with a wrong-exception-type — which is the signal we want.
     """
-    script = textwrap.dedent(
-        f"""
+    script = textwrap.dedent(f"""
         from unittest.mock import patch
         from recce.adapter.dbt_adapter import DbtAdapter
         from recce.exceptions import DuckDBExternalAccessBlocked
@@ -202,15 +195,13 @@ def test_blocks_external_access_sql_when_disabled(sql, label):
             raise AssertionError(f"Wrong exception type: {{type(e).__name__}}: {{e}}")
         assert raised, {label!r} + " should have been blocked but was not"
         print("OK")
-    """
-    )
+    """)
     _run_subprocess(script)
 
 
 def test_allows_ordinary_select_when_disabled():
     """External-access restriction must not interfere with ordinary SELECT queries."""
-    script = textwrap.dedent(
-        f"""
+    script = textwrap.dedent(f"""
         from unittest.mock import patch
         from recce.adapter.dbt_adapter import DbtAdapter
 
@@ -227,15 +218,13 @@ def test_allows_ordinary_select_when_disabled():
         _, table = adapter.execute("SELECT 1 AS x, 'a' AS y", fetch=True)
         assert len(table.rows) == 1, f"Expected 1 row, got {{len(table.rows)}}"
         print("OK")
-    """
-    )
+    """)
     _run_subprocess(script)
 
 
 def test_allows_external_access_sql_when_opted_in():
     """With duckdb_external_access=True, dangerous SQL must succeed (opt-out preserves old behavior)."""
-    script = textwrap.dedent(
-        f"""
+    script = textwrap.dedent(f"""
         import os, tempfile
         from unittest.mock import patch
         from recce.adapter.dbt_adapter import DbtAdapter
@@ -261,6 +250,5 @@ def test_allows_external_access_sql_when_opted_in():
             if os.path.exists(out_path):
                 os.unlink(out_path)
         print("OK")
-    """
-    )
+    """)
     _run_subprocess(script)

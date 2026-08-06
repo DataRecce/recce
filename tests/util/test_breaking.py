@@ -1459,8 +1459,7 @@ class UnresolvableCteChangeTest(unittest.TestCase):
     The analyzer should fail loudly with "unknown" rather than silently
     swallowing the change into a no-marker state."""
 
-    CTE_SQL_ORIGINAL = textwrap.dedent(
-        """
+    CTE_SQL_ORIGINAL = textwrap.dedent("""
         with renamed as (
             select order_id, customer_id, w from Orders
         ),
@@ -1468,11 +1467,9 @@ class UnresolvableCteChangeTest(unittest.TestCase):
             select order_id, customer_id, w from renamed
         )
         select order_id, customer_id, w from overridden
-        """
-    )
+        """)
 
-    CTE_SQL_MODIFIED = textwrap.dedent(
-        """
+    CTE_SQL_MODIFIED = textwrap.dedent("""
         with renamed as (
             select order_id, customer_id, w from Orders
         ),
@@ -1482,8 +1479,7 @@ class UnresolvableCteChangeTest(unittest.TestCase):
             from renamed
         )
         select order_id, customer_id, w from overridden
-        """
-    )
+        """)
 
     def test_cte_internal_change_detected_with_schema(self):
         """Sanity baseline: with schema, the CTE-internal change is detected."""
@@ -1519,18 +1515,14 @@ class UnresolvableCteChangeTest(unittest.TestCase):
     def test_outer_column_added_remains_visible_without_schema(self):
         """Loud-fail must not mask outer-level adds/removes — those are still
         observable even when qualify is skipped."""
-        original_sql = textwrap.dedent(
-            """
+        original_sql = textwrap.dedent("""
             with renamed as (select order_id, w from Orders)
             select order_id, w from renamed
-            """
-        )
-        modified_sql = textwrap.dedent(
-            """
+            """)
+        modified_sql = textwrap.dedent("""
             with renamed as (select order_id, w, x from Orders)
             select order_id, w, x from renamed
-            """
-        )
+            """)
         result = parse_change_category(original_sql, modified_sql)
         assert result.columns.get("x") == "added", f"expected x=added, got {result.columns}"
 
@@ -1541,8 +1533,7 @@ class UnresolvableCteChangeTest(unittest.TestCase):
         'unknown'. Previously the `not changed_columns` guard only fired in
         all-or-nothing cases, silently dropping the CTE-internal half here.
         Same shape as the original DRC-3409 bug."""
-        original_sql = textwrap.dedent(
-            """
+        original_sql = textwrap.dedent("""
             with renamed as (
                 select order_id, customer_id, w from Orders
             ),
@@ -1550,10 +1541,8 @@ class UnresolvableCteChangeTest(unittest.TestCase):
                 select order_id, customer_id, w from renamed
             )
             select order_id, customer_id, w from overridden
-            """
-        )
-        modified_sql = textwrap.dedent(
-            """
+            """)
+        modified_sql = textwrap.dedent("""
             with renamed as (
                 select order_id, customer_id, w from Orders
             ),
@@ -1563,8 +1552,7 @@ class UnresolvableCteChangeTest(unittest.TestCase):
                 from renamed
             )
             select order_id, customer_id, w, 1 as new_col from overridden
-            """
-        )
+            """)
         result = parse_change_category(original_sql, modified_sql)
         # Resolved outer add stays loud and accurate.
         assert result.columns.get("new_col") == "added", f"expected new_col=added, got {result.columns}"
@@ -1585,8 +1573,7 @@ class UnresolvableCteChangeTest(unittest.TestCase):
         columns still surface as 'unknown'. We don't downgrade partial_breaking
         to unknown — the loud partial signal stays, the unknown rides
         alongside."""
-        original_sql = textwrap.dedent(
-            """
+        original_sql = textwrap.dedent("""
             with renamed as (
                 select order_id, customer_id, w from Orders
             ),
@@ -1594,10 +1581,8 @@ class UnresolvableCteChangeTest(unittest.TestCase):
                 select order_id, customer_id, w from renamed
             )
             select order_id, customer_id, w from overridden
-            """
-        )
-        modified_sql = textwrap.dedent(
-            """
+            """)
+        modified_sql = textwrap.dedent("""
             with renamed as (
                 select order_id, customer_id, w from Orders
             ),
@@ -1607,8 +1592,7 @@ class UnresolvableCteChangeTest(unittest.TestCase):
                 from renamed
             )
             select order_id, customer_id + 1 as customer_id, w from overridden
-            """
-        )
+            """)
         result = parse_change_category(original_sql, modified_sql)
         # The outer-level modification of customer_id stays loud.
         assert result.columns.get("customer_id") == "modified", f"expected customer_id=modified, got {result.columns}"
@@ -1637,22 +1621,18 @@ class UnresolvableCteChangeTest(unittest.TestCase):
         Pinning current behavior so a future fix that broadens the loud-fail
         to tag columns even when the outer category is already "breaking"
         will visibly flip this assertion."""
-        original_sql = textwrap.dedent(
-            """
+        original_sql = textwrap.dedent("""
             with renamed as (
                 select order_id, customer_id, w from Orders
             )
             select order_id, customer_id, w from renamed
-            """
-        )
-        modified_sql = textwrap.dedent(
-            """
+            """)
+        modified_sql = textwrap.dedent("""
             with renamed as (
                 select distinct order_id, customer_id, w from Orders
             )
             select order_id, customer_id, w from renamed
-            """
-        )
+            """)
         result = parse_change_category(original_sql, modified_sql)
         # The DISTINCT inside the CTE is non-deterministic w.r.t. row counts,
         # so the outer category propagates as "breaking" via the upstream

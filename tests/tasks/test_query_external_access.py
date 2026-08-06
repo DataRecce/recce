@@ -98,9 +98,7 @@ set_default_context(context)
 def test_query_task_blocks_copy_to():
     """QueryTask with a COPY TO statement must raise DuckDBExternalAccessBlocked."""
     setup = _make_setup_script(_ADAPTER_PROJ_DIR)
-    script = (
-        setup
-        + """
+    script = setup + """
 import tempfile
 from recce.tasks import QueryTask
 from recce.exceptions import DuckDBExternalAccessBlocked
@@ -125,7 +123,6 @@ finally:
         os.unlink(out_path)
 print("OK")
 """
-    )
     _run_subprocess(script)
 
 
@@ -137,9 +134,7 @@ print("OK")
 def test_query_task_blocks_read_csv():
     """QueryTask with read_csv('/etc/hosts') must raise DuckDBExternalAccessBlocked."""
     setup = _make_setup_script(_ADAPTER_PROJ_DIR)
-    script = (
-        setup
-        + """
+    script = setup + """
 from recce.tasks import QueryTask
 from recce.exceptions import DuckDBExternalAccessBlocked
 
@@ -156,7 +151,6 @@ except Exception as e:
 assert raised, "read_csv should have been blocked when external access is disabled"
 print("OK")
 """
-    )
     _run_subprocess(script)
 
 
@@ -168,9 +162,7 @@ print("OK")
 def test_query_task_allows_legit_select():
     """External-access restriction must not block a plain SELECT."""
     setup = _make_setup_script(_ADAPTER_PROJ_DIR)
-    script = (
-        setup
-        + """
+    script = setup + """
 from recce.tasks import QueryTask
 
 task = QueryTask({"sql_template": "SELECT 1 AS x"})
@@ -179,7 +171,6 @@ assert result is not None, "Expected a result, got None"
 assert len(result.data) == 1, f"Expected 1 row, got {len(result.data)}"
 print("OK")
 """
-    )
     _run_subprocess(script)
 
 
@@ -191,9 +182,7 @@ print("OK")
 def test_create_run_returns_400_for_blocked_sql():
     """POST /api/runs with restricted SQL must return HTTP 400 with hint."""
     setup = _make_setup_script(_ADAPTER_PROJ_DIR)
-    script = (
-        setup
-        + """
+    script = setup + """
 import asyncio
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -219,7 +208,6 @@ with TestClient(app) as client:
     assert "external access" in detail.lower(), f"external-access mention missing in detail: {detail}"
 print("OK")
 """
-    )
     _run_subprocess(script)
 
 
@@ -235,9 +223,7 @@ def test_rerun_check_returns_400_for_blocked_sql():
     DuckDBExternalAccessBlocked guard, returning HTTP 500 instead of 400.
     """
     setup = _make_setup_script(_ADAPTER_PROJ_DIR)
-    script = (
-        setup
-        + """
+    script = setup + """
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from recce.apis.check_api import check_router
@@ -266,7 +252,6 @@ with TestClient(app) as client:
     assert "external access" in detail.lower(), f"external-access mention missing in detail: {detail}"
 print("OK")
 """
-    )
     _run_subprocess(script)
 
 
@@ -285,9 +270,7 @@ def test_export_run_returns_400_for_blocked_sql():
     (which restricts external access by default).
     """
     setup = _make_setup_script(_ADAPTER_PROJ_DIR)
-    script = (
-        setup
-        + """
+    script = setup + """
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from recce.apis.run_api import run_router
@@ -321,5 +304,4 @@ with TestClient(app) as client:
     assert "external access" in detail.lower(), f"external-access mention missing in detail: {detail}"
 print("OK")
 """
-    )
     _run_subprocess(script)
