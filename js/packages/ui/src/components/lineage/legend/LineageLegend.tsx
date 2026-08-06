@@ -5,11 +5,12 @@ import Chip from "@mui/material/Chip";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useIsDark } from "../../../hooks/useIsDark";
+import { StructuralChangeIndicator } from "../../ui/StructuralChangeIndicator";
 import {
   CHANGE_CATEGORY_DETAILS,
   CHANGE_CATEGORY_LABELS,
 } from "../changeCategory";
-import { changeStatusColors, cllChangeStatusColors } from "../styles";
+import { cllImpactedAccent } from "../styles";
 import { TreatmentChip } from "../TreatmentChip";
 import { getGraphBadgeLegendEntries } from "../wholeModelTreatment";
 
@@ -110,23 +111,6 @@ const defaultTransformationItems: TransformationLegendItem[] = [
 /**
  * Colors and symbols for change status indicators (default Tailwind palette).
  */
-const changeStatusStyles: Record<string, { color: string; symbol: string }> = {
-  added: { color: changeStatusColors.added, symbol: "+" },
-  removed: { color: changeStatusColors.removed, symbol: "-" },
-  modified: { color: changeStatusColors.modified, symbol: "~" },
-};
-
-/**
- * Colors and symbols for change status indicators (CLL muted palette).
- */
-const cllChangeStatusStyles: Record<string, { color: string; symbol: string }> =
-  {
-    added: { color: cllChangeStatusColors.added, symbol: "+" },
-    removed: { color: cllChangeStatusColors.removed, symbol: "-" },
-    modified: { color: cllChangeStatusColors.modified, symbol: "~" },
-    impacted: { color: cllChangeStatusColors.impacted, symbol: "!" },
-  };
-
 /**
  * Colors for transformation type chips
  */
@@ -146,23 +130,29 @@ const transformationStyles: Record<
  */
 function ChangeStatusIcon({
   status,
-  newCllExperience,
+  isDark,
 }: {
   status: "added" | "removed" | "modified" | "impacted";
-  newCllExperience: boolean;
+  isDark: boolean;
 }) {
-  const style = (newCllExperience ? cllChangeStatusStyles : changeStatusStyles)[
-    status
-  ];
+  if (status !== "impacted") {
+    return (
+      <StructuralChangeIndicator
+        status={status}
+        emphasis="secondary"
+        size="sm"
+      />
+    );
+  }
+
   return (
     <Box
+      aria-label="Impacted change"
       sx={{
         width: 16,
         height: 16,
-        borderRadius: "50%",
-        backgroundColor: style.color,
-        color: "white",
-        fontSize: 10,
+        color: isDark ? cllImpactedAccent.dark : cllImpactedAccent.light,
+        fontSize: "0.875rem",
         fontWeight: "bold",
         display: "flex",
         alignItems: "center",
@@ -170,7 +160,7 @@ function ChangeStatusIcon({
         flexShrink: 0,
       }}
     >
-      {style.symbol}
+      <span aria-hidden="true">!</span>
     </Box>
   );
 }
@@ -190,7 +180,7 @@ function TransformationChip({
       size="small"
       color={style.color}
       sx={{
-        fontSize: "8pt",
+        fontSize: "0.6667rem",
         height: 18,
         minWidth: 18,
         "& .MuiChip-label": {
@@ -294,10 +284,7 @@ export function LineageLegend({
                 "&:last-child": { mb: 0 },
               }}
             >
-              <ChangeStatusIcon
-                status={item.status}
-                newCllExperience={newCllExperience}
-              />
+              <ChangeStatusIcon status={item.status} isDark={isDark} />
               <Typography variant="body2">{item.label}</Typography>
             </Box>
           );

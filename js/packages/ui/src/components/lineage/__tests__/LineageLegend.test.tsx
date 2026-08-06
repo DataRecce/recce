@@ -4,6 +4,21 @@ import { LineageLegend } from "../legend";
 import { getGraphBadgeLegendEntries } from "../wholeModelTreatment";
 
 describe("LineageLegend", () => {
+  it.each([
+    ["+", "Added", "Added change"],
+    ["−", "Removed", "Removed change"],
+    ["Δ", "Modified", "Modified change"],
+  ])(
+    "renders the visible %s %s structural presentation",
+    (symbol, label, accessibleName) => {
+      render(<LineageLegend variant="changeStatus" />);
+
+      expect(screen.getByText(symbol)).toBeVisible();
+      expect(screen.getByText(label)).toBeVisible();
+      expect(screen.getByLabelText(accessibleName)).toBeInTheDocument();
+    },
+  );
+
   it("renders all change categories below the change statuses", () => {
     render(<LineageLegend variant="changeStatus" />);
 
@@ -76,8 +91,8 @@ describe("LineageLegend", () => {
       expect(container.textContent).toBe(
         [
           "+Added",
-          "-Removed",
-          "~Modified",
+          "−Removed",
+          "ΔModified",
           "!Impacted",
           "Badges",
           "ADDAdditive change",
