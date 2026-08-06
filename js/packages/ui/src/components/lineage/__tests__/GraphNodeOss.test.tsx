@@ -1,10 +1,14 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { vi } from "vitest";
 
-const { mockLineageNode, mockViewContext } = vi.hoisted(() => ({
-  mockLineageNode: vi.fn(),
-  mockViewContext: { current: undefined as unknown },
-}));
+const { mockGraphContext, mockLineageNode, mockViewContext } = vi.hoisted(
+  () => ({
+    mockGraphContext: { current: undefined as unknown },
+    mockLineageNode: vi.fn(),
+    mockViewContext: { current: undefined as unknown },
+  }),
+);
 
 vi.mock("@xyflow/react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@xyflow/react")>();
@@ -16,7 +20,7 @@ vi.mock("@xyflow/react", async (importOriginal) => {
 });
 
 vi.mock("../../../contexts", () => ({
-  useLineageGraphContext: () => ({}),
+  useLineageGraphContext: () => mockGraphContext.current,
   useLineageViewContextSafe: () => mockViewContext.current,
 }));
 
@@ -31,9 +35,9 @@ vi.mock("../nodes", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../nodes")>();
   return {
     ...actual,
-    LineageNode: (props: unknown) => {
+    LineageNode: (props: { runsAggregatedTag?: ReactNode }) => {
       mockLineageNode(props);
-      return <div data-testid="lineage-node" />;
+      return <div data-testid="lineage-node">{props.runsAggregatedTag}</div>;
     },
   };
 });
@@ -103,6 +107,7 @@ function createNodeProps(): GraphNodeProps {
 describe("GraphNode", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGraphContext.current = {};
   });
 
   it("uses the merged-lineage category in the legacy experience", () => {
@@ -161,4 +166,42 @@ describe("GraphNode", () => {
       }),
     );
   });
+
+  it.each([
+    [100, 150, "↑ +50.0% Rows", "increase"],
+    [100, 80, "↓ -20.0% Rows", "decrease"],
+    [null, 100, "Added · 100 Rows", "added"],
+    [100, null, "Removed · 100 Rows", "removed"],
+    [100, 100, "=", "unchanged"],
+    [null, null, "Failed to load", "unavailable"],
+  ])(
+    "renders the %s → %s row-count chip as %s",
+    (base, current, label, direction) => {
+      mockViewContext.current = createViewContext();
+      mockGraphContext.current = {
+        runsAggregated: {
+          "model.test.orders": {
+            row_count_diff: { result: { base, curr: current } },
+          },
+        },
+      };
+
+      render(<GraphNode {...createNodeProps()} />);
+
+      const chip = screen.getByText(label).closest(".MuiChip-root");
+      expect(chip).toHaveAttribute("data-row-count-direction", direction);
+      if (direction === "increase") {
+        expect(chip).toHaveStyle({
+          backgroundColor: "#E6F3FC",
+          color: "#245A85",
+        });
+      }
+      if (direction === "decrease") {
+        expect(chip).toHaveStyle({
+          backgroundColor: "#FFF3E6",
+          color: "#98471F",
+        });
+      }
+    },
+  );
 });
