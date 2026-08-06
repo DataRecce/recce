@@ -24,13 +24,21 @@ vi.mock("@xyflow/react", () => ({
     id,
     path,
     style,
+    ...props
   }: {
     id: string;
     path: string;
     style: Record<string, unknown>;
+    [key: string]: unknown;
   }) => (
     <svg>
-      <path data-testid="base-edge" data-id={id} d={path} style={style} />
+      <path
+        data-testid="base-edge"
+        data-id={id}
+        d={path}
+        style={style}
+        {...props}
+      />
     </svg>
   ),
   EdgeLabelRenderer: ({ children }: { children: React.ReactNode }) => (
@@ -46,13 +54,14 @@ vi.mock("@xyflow/react", () => ({
 import { render, screen } from "@testing-library/react";
 import { getBezierPath } from "@xyflow/react";
 import React from "react";
+import { getSemanticColorTheme, STRUCTURAL_EDGE_DASH } from "../../../theme";
+import { GraphEdge, type GraphEdgeProps } from "../edges/GraphEdge";
 import {
   type EdgeChangeStatus,
   LineageEdge,
   type LineageEdgeData,
   type LineageEdgeProps,
 } from "../edges/LineageEdge";
-import { cllChangeStatusColors } from "../styles";
 
 // ============================================================================
 // Test Fixtures
@@ -78,12 +87,30 @@ const createMockEdgeProps = (
     ...overrides,
   }) as unknown as LineageEdgeProps;
 
+const createMockGraphEdgeProps = (
+  changeStatus: EdgeChangeStatus,
+): GraphEdgeProps =>
+  ({
+    ...createMockEdgeProps(),
+    data: { changeStatus },
+  }) as unknown as GraphEdgeProps;
+
 // ============================================================================
 // Tests
 // ============================================================================
 
 describe("LineageEdge", () => {
   const mockGetBezierPath = getBezierPath as Mock;
+
+  it("publishes distinct redundant dash patterns for structural changes", () => {
+    expect(STRUCTURAL_EDGE_DASH.added).toBe("12 4");
+    expect(STRUCTURAL_EDGE_DASH.removed).toBe("3 3");
+    expect(STRUCTURAL_EDGE_DASH.modified).toBe("8 3 2 3");
+    expect(new Set(Object.values(STRUCTURAL_EDGE_DASH))).toHaveProperty(
+      "size",
+      4,
+    );
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -147,16 +174,12 @@ describe("LineageEdge", () => {
   // ==========================================================================
 
   describe("change status styling", () => {
-    const statusColors: Record<EdgeChangeStatus, string> = {
-      added: cllChangeStatusColors.added,
-      removed: cllChangeStatusColors.removed,
-      modified: cllChangeStatusColors.modified,
-      unchanged: cllChangeStatusColors.unchanged,
-    };
+    const neutralStroke =
+      getSemanticColorTheme(false).structural.neutral.border;
 
-    it.each(Object.entries(statusColors))(
-      "applies %s status stroke color",
-      (status, expectedColor) => {
+    it.each<EdgeChangeStatus>(["added", "removed", "modified", "unchanged"])(
+      "applies neutral stroke and the public %s dash pattern",
+      (status) => {
         const props = createMockEdgeProps(
           {},
           { changeStatus: status as EdgeChangeStatus },
@@ -165,9 +188,23 @@ describe("LineageEdge", () => {
         render(<LineageEdge {...props} />);
 
         const edge = screen.getByTestId("base-edge");
-        expect(edge.style.stroke).toBe(expectedColor);
+        expect(edge.style.stroke).toBe(neutralStroke);
+        expect(edge.style.strokeDasharray).toBe(STRUCTURAL_EDGE_DASH[status]);
       },
     );
+
+    it.each([
+      ["added", "Added change"],
+      ["removed", "Removed change"],
+      ["modified", "Modified change"],
+      ["unchanged", "Unchanged change"],
+    ] as const)("exposes %s status in its accessible name", (status, name) => {
+      render(
+        <LineageEdge {...createMockEdgeProps({}, { changeStatus: status })} />,
+      );
+
+      expect(screen.getByRole("img", { name })).toBeInTheDocument();
+    });
 
     it("defaults to unchanged status when not provided", () => {
       const props = createMockEdgeProps();
@@ -175,7 +212,8 @@ describe("LineageEdge", () => {
       render(<LineageEdge {...props} />);
 
       const edge = screen.getByTestId("base-edge");
-      expect(edge.style.stroke).toBe(statusColors.unchanged);
+      expect(edge.style.stroke).toBe(neutralStroke);
+      expect(edge.style.strokeDasharray).toBe(STRUCTURAL_EDGE_DASH.unchanged);
     });
 
     it("defaults to unchanged when data is undefined", () => {
@@ -184,7 +222,8 @@ describe("LineageEdge", () => {
       render(<LineageEdge {...props} />);
 
       const edge = screen.getByTestId("base-edge");
-      expect(edge.style.stroke).toBe(statusColors.unchanged);
+      expect(edge.style.stroke).toBe(neutralStroke);
+      expect(edge.style.strokeDasharray).toBe(STRUCTURAL_EDGE_DASH.unchanged);
     });
   });
 
@@ -324,7 +363,10 @@ describe("LineageEdge", () => {
       render(<LineageEdge {...props} />);
 
       const edge = screen.getByTestId("base-edge");
-      expect(edge.style.stroke).toBe(cllChangeStatusColors.added); // green for added
+      expect(edge.style.stroke).toBe(
+        getSemanticColorTheme(false).structural.neutral.border,
+      );
+      expect(edge.style.strokeDasharray).toBe(STRUCTURAL_EDGE_DASH.added);
       expect(edge.style.strokeWidth).toBe("2.5"); // highlighted
       expect(edge.style.opacity).toBe("1"); // highlighted
       expect(screen.getByText("new dependency")).toBeInTheDocument();
@@ -342,9 +384,31 @@ describe("LineageEdge", () => {
       render(<LineageEdge {...props} />);
 
       const edge = screen.getByTestId("base-edge");
-      expect(edge.style.stroke).toBe(cllChangeStatusColors.removed); // red for removed
+      expect(edge.style.stroke).toBe(
+        getSemanticColorTheme(false).structural.neutral.border,
+      );
+      expect(edge.style.strokeDasharray).toBe(STRUCTURAL_EDGE_DASH.removed);
       expect(edge.style.strokeWidth).toBe("1.5"); // not highlighted
       expect(edge.style.opacity).toBe("0.6"); // not highlighted
     });
   });
+});
+
+describe("GraphEdge", () => {
+  it.each([
+    ["added", "Added change"],
+    ["removed", "Removed change"],
+    ["modified", "Modified change"],
+    ["unchanged", "Unchanged change"],
+  ] as const)(
+    "uses redundant presentation with an accessible name for %s status",
+    (status, name) => {
+      render(<GraphEdge {...createMockGraphEdgeProps(status)} />);
+
+      const edge = screen.getByTestId("base-edge");
+      expect(edge.style.stroke).toBe("#737373");
+      expect(edge.style.strokeDasharray).toBe(STRUCTURAL_EDGE_DASH[status]);
+      expect(screen.getByRole("img", { name })).toBe(edge);
+    },
+  );
 });

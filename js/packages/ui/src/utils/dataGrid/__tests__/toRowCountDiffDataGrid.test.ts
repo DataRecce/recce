@@ -1,3 +1,4 @@
+import { render, screen } from "@testing-library/react";
 import type {
   CellClassParams,
   ColDef,
@@ -19,6 +20,11 @@ function formattedValueFor(column: ColDef<RowObjectType>, row: RowObjectType) {
     data: row,
     value: row.delta,
   } as ValueFormatterParams<RowObjectType>);
+}
+
+function renderedValueFor(column: ColDef<RowObjectType>, row: RowObjectType) {
+  if (typeof column.cellRenderer !== "function") return undefined;
+  return column.cellRenderer({ data: row } as never);
 }
 
 describe("toRowCountDiffDataGrid", () => {
@@ -61,5 +67,16 @@ describe("toRowCountDiffDataGrid", () => {
     ["removed", "Removed"],
   ])("adds a non-color cue to %s", (name, expectedValue) => {
     expect(formattedValueFor(columns[3], row(name))).toBe(expectedValue);
+  });
+
+  test.each([
+    ["added", "Added", "+"],
+    ["removed", "Removed", "−"],
+  ])("uses StructuralChangeIndicator for %s", (name, label, symbol) => {
+    render(renderedValueFor(columns[3], row(name)));
+
+    expect(screen.getByLabelText(`${label} change`)).toBeVisible();
+    expect(screen.getByText(symbol)).toBeVisible();
+    expect(screen.getByText(label)).toBeVisible();
   });
 });

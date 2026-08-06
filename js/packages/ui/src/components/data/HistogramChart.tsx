@@ -14,7 +14,7 @@ import {
 } from "chart.js";
 import { memo, useMemo } from "react";
 import { Chart } from "react-chartjs-2";
-import { getChartBarColors, getChartThemeColors } from "../../theme";
+import { getChartThemeColors, getSemanticColorTheme } from "../../theme";
 import {
   formatAsAbbreviatedNumber,
   formatIntervalMinMax,
@@ -141,7 +141,7 @@ function HistogramChartComponent({
 }: HistogramChartProps) {
   const isDark = theme === "dark";
   const themeColors = getChartThemeColors(isDark);
-  const barColors = getChartBarColors(isDark);
+  const comparisonColors = getSemanticColorTheme(isDark).comparison;
   const isDatetime = dataType === "datetime";
 
   // Build chart data
@@ -153,7 +153,7 @@ function HistogramChartComponent({
     const buildDataset = (
       data: HistogramDataset,
       label: string,
-      color: string,
+      colors: (typeof comparisonColors)["base"],
     ) => {
       const counts = data.counts ?? [];
       const chartValues = isDatetime
@@ -163,10 +163,10 @@ function HistogramChartComponent({
       return {
         label,
         data: chartValues as number[],
-        backgroundColor: color,
-        borderColor: color,
-        hoverBackgroundColor: color,
-        borderWidth: 0,
+        backgroundColor: colors.chartFill,
+        borderColor: colors.border,
+        hoverBackgroundColor: colors.chartFill,
+        borderWidth: 2,
         categoryPercentage: 1,
         barPercentage: 1,
         xAxisID: "x",
@@ -179,16 +179,12 @@ function HistogramChartComponent({
         buildDataset(
           currentData,
           currentData.label ?? "Current",
-          barColors.currentWithAlpha,
+          comparisonColors.current,
         ),
-        buildDataset(
-          baseData,
-          baseData.label ?? "Base",
-          barColors.baseWithAlpha,
-        ),
+        buildDataset(baseData, baseData.label ?? "Base", comparisonColors.base),
       ],
     };
-  }, [binEdges, baseData, currentData, barColors, isDatetime]);
+  }, [binEdges, baseData, comparisonColors, currentData, isDatetime]);
 
   // Build chart options
   const chartOptions = useMemo<ChartOptions<"bar">>(() => {

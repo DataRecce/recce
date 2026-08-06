@@ -6,10 +6,12 @@
  * Used for standard (non-diff) cell rendering in data grids.
  */
 
+import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import type { ColDef, ICellRendererParams } from "ag-grid-community";
 import type { ColumnRenderMode, ColumnType, RowObjectType } from "../../../api";
 import { toRenderedValue } from "../../../utils/dataGrid/gridUtils";
+import { StructuralChangeIndicator } from "../StructuralChangeIndicator";
 
 /**
  * Custom context data for Recce columns
@@ -18,6 +20,7 @@ import { toRenderedValue } from "../../../utils/dataGrid/gridUtils";
 export interface RecceColumnContext {
   columnType?: ColumnType;
   columnRenderMode?: ColumnRenderMode;
+  showStructuralIndicator?: boolean;
 }
 
 /**
@@ -56,6 +59,8 @@ export const defaultRenderCell = (
   const colDef = params.colDef as ColDefWithMetadata;
   const columnType = colDef?.context?.columnType;
   const columnRenderMode = colDef?.context?.columnRenderMode;
+  const showStructuralIndicator =
+    colDef?.context?.showStructuralIndicator === true;
   const fieldName = colDef?.field ?? "";
 
   if (!params.data) {
@@ -69,12 +74,31 @@ export const defaultRenderCell = (
     columnRenderMode,
   );
 
-  return (
+  const renderedCellValue = (
     <Typography
       component="span"
       style={{ color: grayOut ? "gray" : "inherit" }}
     >
       {renderedValue}
     </Typography>
+  );
+
+  if (!showStructuralIndicator || !params.data.__status) {
+    return renderedCellValue;
+  }
+
+  return (
+    <Box
+      component="span"
+      sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}
+    >
+      <StructuralChangeIndicator
+        status={params.data.__status}
+        size="sm"
+        showLabel={false}
+        emphasis="secondary"
+      />
+      {renderedCellValue}
+    </Box>
   );
 };

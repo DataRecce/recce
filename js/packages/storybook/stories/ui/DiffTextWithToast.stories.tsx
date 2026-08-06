@@ -19,9 +19,14 @@ const meta: Meta<typeof DiffTextWithToast> = {
       control: "text",
     },
     colorPalette: {
-      description: 'Color palette for the diff indicator ("red" or "green")',
+      description: "Deprecated physical color palette for legacy consumers",
       control: "select",
       options: ["red", "green"],
+    },
+    comparisonRole: {
+      description: "Semantic comparison role",
+      control: "select",
+      options: ["base", "current"],
     },
     grayOut: {
       description: "Whether to gray out the text (for null/missing values)",
@@ -57,7 +62,7 @@ export const Green: Story = {
   },
   args: {
     value: "current_value",
-    colorPalette: "green",
+    comparisonRole: "current",
   },
 };
 
@@ -73,7 +78,7 @@ export const Red: Story = {
   },
   args: {
     value: "base_value",
-    colorPalette: "red",
+    comparisonRole: "base",
   },
 };
 
@@ -93,7 +98,7 @@ export const WithToastNotification: Story = {
   },
   args: {
     value: "copy_me_to_see_toast",
-    colorPalette: "green",
+    comparisonRole: "current",
   },
 };
 
@@ -113,9 +118,9 @@ export const InDiffComparison: Story = {
   },
   render: () => (
     <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-      <DiffTextWithToast value="old_status" colorPalette="red" />
+      <DiffTextWithToast value="old_status" comparisonRole="base" />
       <span style={{ color: "#999" }}>→</span>
-      <DiffTextWithToast value="new_status" colorPalette="green" />
+      <DiffTextWithToast value="new_status" comparisonRole="current" />
     </div>
   ),
 };
@@ -149,9 +154,9 @@ export const MultipleValues: Story = {
             {row.label}:
           </div>
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            <DiffTextWithToast value={row.base} colorPalette="red" />
+            <DiffTextWithToast value={row.base} comparisonRole="base" />
             <span style={{ color: "#999" }}>→</span>
-            <DiffTextWithToast value={row.current} colorPalette="green" />
+            <DiffTextWithToast value={row.current} comparisonRole="current" />
           </div>
         </div>
       ))}
@@ -175,7 +180,7 @@ export const GrayedOut: Story = {
   },
   args: {
     value: "null",
-    colorPalette: "red",
+    comparisonRole: "base",
     grayOut: true,
   },
 };
@@ -184,7 +189,7 @@ export const NoCopyButton: Story = {
   name: "No Copy Button",
   args: {
     value: "no_copy",
-    colorPalette: "green",
+    comparisonRole: "current",
     noCopy: true,
   },
 };
@@ -197,7 +202,7 @@ export const SmallFont: Story = {
   name: "Small Font",
   args: {
     value: "small_text",
-    colorPalette: "green",
+    comparisonRole: "current",
     fontSize: "8pt",
   },
 };
@@ -206,7 +211,7 @@ export const LargeFont: Story = {
   name: "Large Font",
   args: {
     value: "large_text",
-    colorPalette: "green",
+    comparisonRole: "current",
     fontSize: "14pt",
   },
 };

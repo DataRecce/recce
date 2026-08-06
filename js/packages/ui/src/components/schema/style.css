@@ -5,12 +5,11 @@
  * Default palette is the long-standing pale yellow/orange "changed" hue.
  * The new CLL experience overrides "changed" with a deeper brown and adds
  * "impacted-accent" + impacted badge colors under the `.cll-experience`
- * selector below. JS counterparts live in ../lineage/styles.tsx and are kept
- * in sync by the guard test ../lineage/__tests__/cllPaletteSync.test.ts
- * (fails CI on drift):
- *   - cllChangeStatusColors / cllChangeStatusBackgrounds* — row & accent
- *   - cllImpactedAccent — --schema-color-impacted-accent
- *   - cllImpactedBadgeBg / cllImpactedBadgeFg — --schema-badge-impacted-*
+ * selector below. CLL impact and category counterparts live in
+ * ../lineage/styles.tsx and are kept in sync by the guard test
+ * ../lineage/__tests__/cllPaletteSync.test.ts. Structural status presentation
+ * belongs to ../theme/semanticColors.ts and is intentionally not mirrored by
+ * the lineage CLL palette guard.
  */
 
 /* Light mode (default) */
@@ -79,7 +78,8 @@
 /*
  * New CLL experience overrides — scoped to the schema sidebar wrapper
  * (`.cll-experience`) added by SchemaView when `new_cll_experience` is on.
- * Mirrors cllChangeStatus* in ../lineage/styles.tsx.
+ * These variables belong to schema-row interaction and CLL impact/category
+ * treatment; they are not lineage structural-status tokens.
  */
 .cll-experience {
   --schema-color-changed: rgb(255 237 175);

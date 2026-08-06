@@ -16,7 +16,7 @@ import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { memo } from "react";
-import { getComparisonThemeColors } from "../../../theme/chartTheme";
+import { getSemanticColorTheme } from "../../../theme";
 
 // =============================================================================
 // TYPES
@@ -162,7 +162,15 @@ function RowCountDisplay({
   isDark: boolean;
 }) {
   const { base, curr: current } = data;
-  const comparisonColors = getComparisonThemeColors(isDark);
+  const directionColors = getSemanticColorTheme(isDark).direction;
+  const directionSx = {
+    alignItems: "center",
+    backgroundColor: directionColors.background,
+    border: `1px solid ${directionColors.border}`,
+    borderRadius: "6px",
+    color: directionColors.foreground,
+    px: 0.5,
+  } as const;
   const baseLabel = base === null ? "N/A" : `${base.toLocaleString()} rows`;
   const currentLabel =
     current === null ? "N/A" : `${current.toLocaleString()} rows`;
@@ -179,13 +187,7 @@ function RowCountDisplay({
   // One null
   if (base === null || current === null) {
     return (
-      <Stack
-        direction="row"
-        spacing={0.5}
-        sx={{
-          alignItems: "center",
-        }}
-      >
+      <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
         <Typography variant="body2" component="span">
           {baseLabel}
         </Typography>
@@ -203,19 +205,18 @@ function RowCountDisplay({
   if (base === current) {
     return (
       <Stack
+        data-row-count-direction="equal"
         direction="row"
         spacing={0.5}
-        sx={{
-          alignItems: "center",
-        }}
+        sx={directionSx}
       >
         <Typography variant="body2" component="span">
           {currentLabel}
         </Typography>
-        <Box component="span" sx={{ color: "grey.500", display: "flex" }}>
+        <Box component="span" sx={{ display: "flex" }}>
           <SwapIcon />
         </Box>
-        <Typography variant="body2" component="span" sx={{ color: "grey.500" }}>
+        <Typography variant="body2" component="span">
           No Change
         </Typography>
       </Stack>
@@ -226,26 +227,21 @@ function RowCountDisplay({
   if (base < current) {
     return (
       <Stack
+        data-row-count-direction="increase"
         direction="row"
         spacing={0.5}
-        sx={{
-          alignItems: "center",
-        }}
+        sx={directionSx}
       >
         <Typography variant="body2" component="span">
           {currentLabel}
         </Typography>
-        <Box
-          component="span"
-          sx={{ color: comparisonColors.current.foreground, display: "flex" }}
-        >
+        <Box component="span" sx={{ display: "flex" }}>
           <ArrowUpIcon />
         </Box>
         <Typography
           variant="body2"
           component="span"
-          data-row-count-direction="increase"
-          sx={{ color: comparisonColors.current.foreground }}
+          sx={{ color: directionColors.foreground }}
         >
           {deltaPercentage(base, current)}
         </Typography>
@@ -256,26 +252,21 @@ function RowCountDisplay({
   // Decrease
   return (
     <Stack
+      data-row-count-direction="decrease"
       direction="row"
       spacing={0.5}
-      sx={{
-        alignItems: "center",
-      }}
+      sx={directionSx}
     >
       <Typography variant="body2" component="span">
         {currentLabel}
       </Typography>
-      <Box
-        component="span"
-        sx={{ color: comparisonColors.base.foreground, display: "flex" }}
-      >
+      <Box component="span" sx={{ display: "flex" }}>
         <ArrowDownIcon />
       </Box>
       <Typography
         variant="body2"
         component="span"
-        data-row-count-direction="decrease"
-        sx={{ color: comparisonColors.base.foreground }}
+        sx={{ color: directionColors.foreground }}
       >
         {deltaPercentage(base, current)}
       </Typography>

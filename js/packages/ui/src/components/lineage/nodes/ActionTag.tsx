@@ -17,7 +17,7 @@ import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import { memo } from "react";
 import { useIsDark } from "../../../hooks";
-import { getComparisonThemeColors } from "../../../theme/chartTheme";
+import { getSemanticColorTheme } from "../../../theme";
 import { getRowCountChangeDirection } from "../../../utils";
 
 // =============================================================================
@@ -219,22 +219,21 @@ function ValueDiffTag({ result }: { result: ValueDiffResult }) {
 function RowCountDiffTag({ result }: { result: RowCountDiffResult }) {
   const { base, current } = result;
   const isDark = useIsDark();
-  const comparisonColors = getComparisonThemeColors(isDark);
+  const directionColors = getSemanticColorTheme(isDark).direction;
   const direction = getRowCountChangeDirection(base, current);
+  const hasQuantitativeDirection = base !== null && current !== null;
   const baseLabel = base === null ? "N/A" : base.toLocaleString();
   const currentLabel = current === null ? "N/A" : current.toLocaleString();
 
   // Determine change direction
   let changeIndicator = "";
-  let changeColor = "grey.500";
+  const changeColor = directionColors.foreground;
 
   if (base !== null && current !== null) {
     if (direction === "increase") {
       changeIndicator = "↑";
-      changeColor = comparisonColors.current.foreground;
     } else if (direction === "decrease") {
       changeIndicator = "↓";
-      changeColor = comparisonColors.base.foreground;
     } else {
       changeIndicator = "=";
     }
@@ -243,7 +242,15 @@ function RowCountDiffTag({ result }: { result: RowCountDiffResult }) {
   return (
     <Chip
       size="small"
-      sx={{ bgcolor: "grey.100" }}
+      sx={{
+        ...(hasQuantitativeDirection
+          ? {
+              bgcolor: directionColors.background,
+              border: `1px solid ${directionColors.border}`,
+              color: directionColors.foreground,
+            }
+          : { bgcolor: "grey.100" }),
+      }}
       label={
         <Stack
           direction="row"
