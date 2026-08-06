@@ -15,6 +15,24 @@ describe("DiffText", () => {
       expect(screen.getByText("test_value")).toBeInTheDocument();
     });
 
+    test("renders the base comparison role", () => {
+      render(<DiffText value="before" comparisonRole="base" />);
+
+      expect(screen.getByText("before").parentElement).toHaveAttribute(
+        "data-comparison-role",
+        "base",
+      );
+    });
+
+    test("renders the current comparison role", () => {
+      render(<DiffText value="after" comparisonRole="current" />);
+
+      expect(screen.getByText("after").parentElement).toHaveAttribute(
+        "data-comparison-role",
+        "current",
+      );
+    });
+
     test("applies green color palette", () => {
       const { container } = render(
         <DiffText value="added" colorPalette="green" />,

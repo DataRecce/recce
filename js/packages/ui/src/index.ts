@@ -59,6 +59,7 @@ export type {
   LineageViewRef,
   SplitProps,
   SquareIconProps,
+  StructuralChangeIndicatorProps,
   TypeCategory,
 } from "./components";
 export {
@@ -75,6 +76,7 @@ export {
   LineageCanvas,
   LineageView,
   SquareIcon,
+  StructuralChangeIndicator,
   VSplit,
 } from "./components";
 

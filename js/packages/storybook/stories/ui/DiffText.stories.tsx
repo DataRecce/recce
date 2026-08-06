@@ -14,9 +14,14 @@ const meta: Meta<typeof DiffText> = {
       control: "text",
     },
     colorPalette: {
-      description: 'Color palette for the diff indicator ("red" or "green")',
+      description: "Deprecated physical color palette for legacy consumers",
       control: "select",
       options: ["red", "green"],
+    },
+    comparisonRole: {
+      description: "Semantic comparison role",
+      control: "select",
+      options: ["base", "current"],
     },
     grayOut: {
       description: "Whether to gray out the text (for null/missing values)",
@@ -43,7 +48,7 @@ type Story = StoryObj<typeof DiffText>;
 export const Default: Story = {
   args: {
     value: "current_value",
-    colorPalette: "green",
+    comparisonRole: "current",
   },
 };
 
@@ -62,9 +67,9 @@ export const DiffComparison: Story = {
           Column Type:
         </div>
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          <DiffText value="VARCHAR(50)" colorPalette="red" />
+          <DiffText value="VARCHAR(50)" comparisonRole="base" />
           <span style={{ color: "#999" }}>→</span>
-          <DiffText value="VARCHAR(100)" colorPalette="green" />
+          <DiffText value="VARCHAR(100)" comparisonRole="current" />
         </div>
       </div>
       <div>
@@ -79,9 +84,9 @@ export const DiffComparison: Story = {
           Default Value:
         </div>
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          <DiffText value="null" colorPalette="red" grayOut />
+          <DiffText value="null" comparisonRole="base" grayOut />
           <span style={{ color: "#999" }}>→</span>
-          <DiffText value="'active'" colorPalette="green" />
+          <DiffText value="'active'" comparisonRole="current" />
         </div>
       </div>
     </div>
@@ -91,7 +96,7 @@ export const DiffComparison: Story = {
 export const CopyInteraction: Story = {
   args: {
     value: "test_value",
-    colorPalette: "green",
+    comparisonRole: "current",
     onCopy: fn(),
   },
   play: async ({ canvasElement, args }) => {
@@ -102,5 +107,12 @@ export const CopyInteraction: Story = {
     const copyButton = canvas.getByRole("button", { name: /copy/i });
     await userEvent.click(copyButton);
     expect(args.onCopy).toHaveBeenCalledWith("test_value");
+  },
+};
+
+export const DeprecatedPhysicalPalette: Story = {
+  args: {
+    value: "legacy_current_value",
+    colorPalette: "green",
   },
 };
