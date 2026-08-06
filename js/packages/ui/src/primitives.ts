@@ -527,6 +527,16 @@ export {
   type SplitPaneProps,
 } from "./components/ui/SplitPane";
 /**
+ * Structural change indicator primitive with redundant symbol and label cues.
+ *
+ * @remarks
+ * Exports: StructuralChangeIndicator, StructuralChangeIndicatorProps.
+ */
+export {
+  StructuralChangeIndicator,
+  type StructuralChangeIndicatorProps,
+} from "./components/ui/StructuralChangeIndicator";
+/**
  * Toast notification system primitives.
  *
  * @remarks

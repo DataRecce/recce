@@ -6,16 +6,12 @@ import Tooltip from "@mui/material/Tooltip";
 import { type ReactNode, useState } from "react";
 import { PiCopy } from "react-icons/pi";
 import { useIsDark } from "../../hooks/useIsDark";
+import { type ComparisonRole, getSemanticColorTheme } from "../../theme";
 import { colors } from "../../theme/colors";
 
-/**
- * Props for the DiffText component
- */
-export interface DiffTextProps {
+export interface DiffTextCommonProps {
   /** The text value to display */
   value: string;
-  /** Color palette for the diff indicator */
-  colorPalette: "red" | "green";
   /** Whether to gray out the text (for null/missing values) */
   grayOut?: boolean;
   /** Hide the copy button */
@@ -30,28 +26,43 @@ export interface DiffTextProps {
   onCopy?: (value: string) => void;
 }
 
+export interface DiffTextSemanticProps {
+  comparisonRole: ComparisonRole;
+  colorPalette?: never;
+}
+
+export interface DiffTextLegacyProps {
+  comparisonRole?: never;
+  /** @deprecated Use comparisonRole="base" or comparisonRole="current". */
+  colorPalette: "red" | "green";
+}
+
+/** Props for the DiffText component. */
+export type DiffTextProps = DiffTextCommonProps &
+  (DiffTextSemanticProps | DiffTextLegacyProps);
+
 /**
  * DiffText Component
  *
- * Displays a text value with diff styling (red for removed, green for added).
+ * Displays a text value with semantic diff styling for base and current values.
  * Includes an optional copy-to-clipboard button on hover.
  *
  * @example Basic usage
  * ```tsx
  * import { DiffText } from '@datarecce/ui';
  *
- * // Show a value that was added (green)
- * <DiffText value="new_value" colorPalette="green" />
+ * // Show a current value
+ * <DiffText value="new_value" comparisonRole="current" />
  *
- * // Show a value that was removed (red)
- * <DiffText value="old_value" colorPalette="red" />
+ * // Show a base value
+ * <DiffText value="old_value" comparisonRole="base" />
  * ```
  *
  * @example With custom copy callback
  * ```tsx
  * <DiffText
  *   value="copy_me"
- *   colorPalette="green"
+ *   comparisonRole="current"
  *   onCopy={(value) => {
  *     navigator.clipboard.writeText(value);
  *     showToast(`${value} copied!`);
@@ -61,11 +72,12 @@ export interface DiffTextProps {
  *
  * @example Grayed out (null value)
  * ```tsx
- * <DiffText value="null" colorPalette="red" grayOut />
+ * <DiffText value="null" comparisonRole="base" grayOut />
  * ```
  */
 export function DiffText({
   value,
+  comparisonRole,
   colorPalette,
   grayOut,
   noCopy,
@@ -74,19 +86,23 @@ export function DiffText({
 }: DiffTextProps) {
   const [isHovered, setIsHovered] = useState(false);
   const isDark = useIsDark();
+  const semantic = getSemanticColorTheme(isDark);
 
-  // Get the color values from the theme colors
-  // In dark mode, use lighter text (300) on darker bg (900)
-  // In light mode, use darker text (800) on lighter bg (100)
-  const textColor = isDark
-    ? colors[colorPalette][300]
-    : colors[colorPalette][800];
-  const bgColor = isDark
-    ? colors[colorPalette][900]
-    : colors[colorPalette][100];
+  const { bgColor, textColor } = comparisonRole
+    ? {
+        textColor: semantic.comparison[comparisonRole].foreground,
+        bgColor: semantic.comparison[comparisonRole].background,
+      }
+    : {
+        textColor: isDark
+          ? colors[colorPalette][300]
+          : colors[colorPalette][800],
+        bgColor: isDark ? colors[colorPalette][900] : colors[colorPalette][100],
+      };
 
   return (
     <Box
+      data-comparison-role={comparisonRole}
       sx={{
         display: "flex",
         p: "2px 5px",
