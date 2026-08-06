@@ -6,6 +6,7 @@
 
 import { render, screen } from "@testing-library/react";
 import type { RowCount, RowCountDiff } from "../../../api";
+import { getSemanticColorTheme } from "../../../theme";
 import { RowCountSummary } from "../NodeTag";
 
 describe("RowCountSummary (single-env shape)", () => {
@@ -67,7 +68,11 @@ describe("RowCountSummary (diff shape)", () => {
     expect(
       screen.getByText(`${(1200).toLocaleString()} rows`),
     ).toBeInTheDocument();
-    expect(screen.getByText("No Change")).toBeInTheDocument();
+    const noChange = screen.getByText("No Change");
+    expect(noChange.closest("[data-row-count-direction]")).toHaveAttribute(
+      "data-row-count-direction",
+      "equal",
+    );
   });
 
   test("renders increase delta when curr > base", () => {
@@ -76,19 +81,31 @@ describe("RowCountSummary (diff shape)", () => {
     expect(
       screen.getByText(`${(1200).toLocaleString()} rows`),
     ).toBeInTheDocument();
-    expect(screen.getByText(/\+20/)).toHaveAttribute(
-      "data-row-count-direction",
-      "increase",
-    );
+    const direction = screen.getByText(/\+20/);
+    const surface = direction.closest("[data-row-count-direction]");
+    expect(surface).toHaveAttribute("data-row-count-direction", "increase");
+    expect(surface).toHaveStyle({
+      backgroundColor: getSemanticColorTheme(false).direction.background,
+      borderColor: getSemanticColorTheme(false).direction.border,
+    });
+    expect(direction).toHaveStyle({
+      color: getSemanticColorTheme(false).direction.foreground,
+    });
   });
 
   test("renders decrease delta when curr < base", () => {
     const rc: RowCountDiff = { base: 1000, curr: 800 };
     render(<RowCountSummary rowCount={rc} />);
     expect(screen.getByText("800 rows")).toBeInTheDocument();
-    expect(screen.getByText(/-20/)).toHaveAttribute(
-      "data-row-count-direction",
-      "decrease",
-    );
+    const direction = screen.getByText(/-20/);
+    const surface = direction.closest("[data-row-count-direction]");
+    expect(surface).toHaveAttribute("data-row-count-direction", "decrease");
+    expect(surface).toHaveStyle({
+      backgroundColor: getSemanticColorTheme(false).direction.background,
+      borderColor: getSemanticColorTheme(false).direction.border,
+    });
+    expect(direction).toHaveStyle({
+      color: getSemanticColorTheme(false).direction.foreground,
+    });
   });
 });

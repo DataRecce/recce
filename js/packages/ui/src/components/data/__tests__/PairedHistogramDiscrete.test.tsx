@@ -139,8 +139,13 @@ describe("PairedHistogramDiscrete", () => {
     const fills = Array.from(container.querySelectorAll("svg > g rect")).map(
       (r) => r.getAttribute("fill"),
     );
-    expect(fills.some((f) => f === "#FBD38DA5")).toBe(true);
-    expect(fills.some((f) => f === "#90CDF4A5")).toBe(true);
+    const semantic = getSemanticColorTheme(true);
+    expect(fills.some((f) => f === semantic.comparison.base.chartFill)).toBe(
+      true,
+    );
+    expect(fills.some((f) => f === semantic.comparison.current.chartFill)).toBe(
+      true,
+    );
   });
 
   it("uses semantic comparison fills with contrast-safe outlines", () => {

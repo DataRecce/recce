@@ -170,7 +170,7 @@ function SingleBarChartComponent({
   const themeColors = getChartThemeColors(isDark);
   const comparison = getSemanticColorTheme(isDark).comparison.current;
   const barColor = color ?? comparison.chartFill;
-  const borderColor = suppliedBorderColor ?? color ?? comparison.border;
+  const borderColor = suppliedBorderColor ?? comparison.border;
 
   const chartData = useMemo<ChartData<"bar">>(
     () => ({

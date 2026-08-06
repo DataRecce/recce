@@ -103,9 +103,13 @@ describe("LineageEdge", () => {
   const mockGetBezierPath = getBezierPath as Mock;
 
   it("publishes distinct redundant dash patterns for structural changes", () => {
-    expect(STRUCTURAL_EDGE_DASH.added).toBe("0");
+    expect(STRUCTURAL_EDGE_DASH.added).toBe("12 4");
     expect(STRUCTURAL_EDGE_DASH.removed).toBe("3 3");
     expect(STRUCTURAL_EDGE_DASH.modified).toBe("8 3 2 3");
+    expect(new Set(Object.values(STRUCTURAL_EDGE_DASH))).toHaveProperty(
+      "size",
+      4,
+    );
   });
 
   beforeEach(() => {

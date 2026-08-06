@@ -4,6 +4,19 @@ import {
   STRUCTURAL_CHANGE_PRESENTATION,
 } from "../semanticColors";
 
+function compositeHex(foreground: string, background: string): string {
+  const parse = (value: string) =>
+    [1, 3, 5].map((i) => Number.parseInt(value.slice(i, i + 2), 16));
+  const foregroundRgb = parse(foreground);
+  const backgroundRgb = parse(background);
+  const alpha = Number.parseInt(foreground.slice(7, 9), 16) / 255;
+  return `rgb(${foregroundRgb
+    .map((channel, i) =>
+      Math.round(channel * alpha + backgroundRgb[i] * (1 - alpha)),
+    )
+    .join(", ")})`;
+}
+
 describe.each([false, true])("semantic colors, dark=%s", (isDark) => {
   const semantic = getSemanticColorTheme(isDark);
 
@@ -35,6 +48,21 @@ describe.each([false, true])("semantic colors, dark=%s", (isDark) => {
       semantic.comparison.current.foreground,
     );
   });
+
+  test.each(["base", "current"] as const)(
+    "%s chart outline contrasts with its composited fill",
+    (role) => {
+      const token = semantic.comparison[role];
+      const compositedFill = compositeHex(
+        token.chartFill,
+        semantic.structural.neutral.background,
+      );
+
+      expect(
+        getContrastRatio(token.border, compositedFill),
+      ).toBeGreaterThanOrEqual(3);
+    },
+  );
 
   test.each(["added", "removed", "modified", "unchanged"] as const)(
     "%s secondary accent has non-text contrast",
