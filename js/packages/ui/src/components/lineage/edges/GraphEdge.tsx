@@ -69,8 +69,8 @@ export interface GraphEdgeProps extends EdgeProps<LineageGraphEdge> {
  * Graph edge component for lineage visualization
  *
  * Renders a bezier edge with:
- * - Color based on change status (green for added, red for removed)
- * - Dashed line for changed edges
+ * - Neutral structural stroke across change statuses
+ * - Status-specific dash patterns as a redundant non-color cue
  * - Dimmed appearance for non-highlighted edges
  *
  * @param props - Edge props including source/target coordinates and data
