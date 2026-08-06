@@ -29,7 +29,7 @@ import {
   useLineageViewContextSafe,
 } from "../../contexts";
 import { useThemeColors } from "../../hooks";
-import { getComparisonThemeColors } from "../../theme/chartTheme";
+import { getSemanticColorTheme } from "../../theme";
 import { deltaPercentageString, getRowCountChangeDirection } from "../../utils";
 import { findByRunType } from "../run";
 import { resolveChangeCategory } from "./changeCategory";
@@ -64,16 +64,13 @@ function RowCountDiffTag({
 }) {
   const base = rowCount.base;
   const current = rowCount.curr;
-  const comparisonColors = getComparisonThemeColors(isDark);
+  const directionColors = getSemanticColorTheme(isDark).direction;
   const direction = getRowCountChangeDirection(base, current);
   const baseLabel = rowCount.base === null ? "N/A" : `${rowCount.base} Rows`;
   const currentLabel = rowCount.curr === null ? "N/A" : `${rowCount.curr} Rows`;
 
   let tagLabel: string;
-  let directionColors:
-    | (typeof comparisonColors)["current"]
-    | (typeof comparisonColors)["base"]
-    | undefined;
+  let directionStyle: typeof directionColors | undefined;
 
   if (base === null && current === null) {
     tagLabel = "Failed to load";
@@ -83,12 +80,13 @@ function RowCountDiffTag({
     tagLabel = `Removed · ${baseLabel}`;
   } else if (direction === "unchanged") {
     tagLabel = "=";
+    directionStyle = directionColors;
   } else if (direction === "increase") {
     tagLabel = `↑ ${deltaPercentageString(base, current)} Rows`;
-    directionColors = comparisonColors.current;
+    directionStyle = directionColors;
   } else {
     tagLabel = `↓ ${deltaPercentageString(base, current)} Rows`;
-    directionColors = comparisonColors.base;
+    directionStyle = directionColors;
   }
 
   const RowCountIcon = findByRunType("row_count_diff").icon;
@@ -102,10 +100,10 @@ function RowCountDiffTag({
       sx={{
         height: 20,
         fontSize: "0.7rem",
-        ...(directionColors && {
-          bgcolor: directionColors.background,
-          border: `1px solid ${directionColors.accent}`,
-          color: directionColors.foreground,
+        ...(directionStyle && {
+          bgcolor: directionStyle.background,
+          border: `1px solid ${directionStyle.border}`,
+          color: directionStyle.foreground,
         }),
       }}
     />

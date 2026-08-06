@@ -32,8 +32,9 @@ import {
 } from "react-icons/md";
 import type { LineageGraphNode } from "../../contexts/lineage/types";
 import { useThemeColors } from "../../hooks";
+import { getSemanticColorTheme } from "../../theme";
+import { StructuralChangeIndicator } from "../ui/StructuralChangeIndicator";
 import {
-  changeStatusColors,
   cllChangeStatusColors,
   cllImpactedAccent,
   cllImpactedBadgeBg,
@@ -112,10 +113,10 @@ function effectiveStatus(
   return status === "unchanged" && cllImpacted ? "impacted" : status;
 }
 
-function colorForEffective(status: EffectiveStatus): string {
+function colorForEffective(status: EffectiveStatus, isDark: boolean): string {
   return status === "impacted"
     ? cllChangeStatusColors.impacted
-    : changeStatusColors[status];
+    : getSemanticColorTheme(isDark).structural.secondaryAccent[status];
 }
 
 function getDisplayName(
@@ -155,20 +156,45 @@ function StatusDot({
   /** When true, color the dot as impacted (matches canvas). */
   cllImpacted?: boolean;
 }) {
+  const { isDark } = useThemeColors();
   const effective = effectiveStatus(status, cllImpacted);
+  if (effective !== "impacted") {
+    return (
+      <Box
+        component="span"
+        data-testid="lineage-status-dot"
+        data-status={effective}
+        sx={{ display: "inline-flex", flex: "0 0 auto" }}
+      >
+        <StructuralChangeIndicator
+          emphasis="secondary"
+          showLabel
+          size="sm"
+          status={effective}
+        />
+      </Box>
+    );
+  }
+
   return (
     <Box
       component="span"
+      aria-label="Impacted model"
       data-testid="lineage-status-dot"
       data-status={effective}
       sx={{
-        width: "8px",
-        height: "8px",
-        borderRadius: "2px",
-        backgroundColor: colorForEffective(effective),
+        alignItems: "center",
+        color: impactedTextColor(isDark),
+        display: "inline-flex",
+        fontSize: "10px",
+        fontWeight: 600,
+        gap: "2px",
         flex: "0 0 auto",
       }}
-    />
+    >
+      <MdArrowDownward aria-hidden="true" size={11} />
+      <span aria-hidden="true">Impacted</span>
+    </Box>
   );
 }
 
@@ -545,7 +571,7 @@ function FocusCard({
   const status = getChangeStatus(node);
   const effective = effectiveStatus(status, cllImpacted);
   const { isDark, background } = useThemeColors();
-  const accentColor = colorForEffective(effective);
+  const accentColor = colorForEffective(effective, isDark);
   // Pill text needs more contrast than the canvas amber on a paper bg —
   // use the deeper "text" amber when the status is impacted.
   const pillTextColor =
@@ -604,24 +630,33 @@ function FocusCard({
           </IconButton>
         </Tooltip>
       )}
-      <Box
-        component="span"
-        sx={{
-          fontSize: "10px",
-          fontWeight: 600,
-          px: 0.875,
-          py: "2px",
-          borderRadius: "3px",
-          color: pillTextColor,
-          backgroundColor: "background.paper",
-          border: "1px solid",
-          borderColor: pillBorderColor,
-          textTransform: "capitalize",
-          flex: "0 0 auto",
-        }}
-      >
-        {effective}
-      </Box>
+      {effective === "impacted" ? (
+        <Box
+          component="span"
+          aria-label="Impacted model"
+          sx={{
+            fontSize: "10px",
+            fontWeight: 600,
+            px: 0.875,
+            py: "2px",
+            borderRadius: "3px",
+            color: pillTextColor,
+            backgroundColor: "background.paper",
+            border: "1px solid",
+            borderColor: pillBorderColor,
+            flex: "0 0 auto",
+          }}
+        >
+          ↓ Impacted
+        </Box>
+      ) : (
+        <StructuralChangeIndicator
+          emphasis="secondary"
+          showLabel
+          size="sm"
+          status={effective}
+        />
+      )}
     </Stack>
   );
 }

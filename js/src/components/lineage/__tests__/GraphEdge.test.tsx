@@ -59,6 +59,7 @@ vi.mock("@datarecce/ui/contexts", () => ({
 import type { LineageGraphEdge } from "@datarecce/ui";
 import GraphEdge from "@datarecce/ui/components/lineage/GraphEdgeOss";
 import { useLineageViewContextSafe } from "@datarecce/ui/contexts";
+import { STRUCTURAL_EDGE_DASH } from "@datarecce/ui/theme";
 import { render, screen } from "@testing-library/react";
 import { getBezierPath, Position } from "@xyflow/react";
 import React from "react";
@@ -168,8 +169,8 @@ describe("GraphEdge", () => {
 
   describe("change status styling", () => {
     it.each([
-      ["added", "0"],
-      ["removed", "3 3"],
+      ["added", STRUCTURAL_EDGE_DASH.added],
+      ["removed", STRUCTURAL_EDGE_DASH.removed],
     ] as const)(
       "uses a neutral stroke and the %s dash pattern",
       (changeStatus, strokeDasharray) => {
@@ -190,7 +191,7 @@ describe("GraphEdge", () => {
 
       const edge = screen.getByTestId("base-edge");
       expect(edge.style.stroke).toBe("#737373");
-      expect(edge.style.strokeDasharray).toBe("0");
+      expect(edge.style.strokeDasharray).toBe(STRUCTURAL_EDGE_DASH.unchanged);
     });
   });
 
@@ -276,7 +277,7 @@ describe("GraphEdge", () => {
       const edge = screen.getByTestId("base-edge");
       expect(edge.style.strokeWidth).toBe("3");
       expect(edge.style.stroke).toBe("#737373");
-      expect(edge.style.strokeDasharray).toBe("0");
+      expect(edge.style.strokeDasharray).toBe(STRUCTURAL_EDGE_DASH.added);
     });
   });
 
@@ -297,7 +298,7 @@ describe("GraphEdge", () => {
 
       const edge = screen.getByTestId("base-edge");
       expect(edge.style.stroke).toBe("#737373");
-      expect(edge.style.strokeDasharray).toBe("0");
+      expect(edge.style.strokeDasharray).toBe(STRUCTURAL_EDGE_DASH.added);
       expect(edge.style.filter).toBe("");
     });
 
@@ -313,7 +314,7 @@ describe("GraphEdge", () => {
 
       const edge = screen.getByTestId("base-edge");
       expect(edge.style.stroke).toBe("#737373");
-      expect(edge.style.strokeDasharray).toBe("3 3");
+      expect(edge.style.strokeDasharray).toBe(STRUCTURAL_EDGE_DASH.removed);
       expect(edge.style.filter).toBe("opacity(0.4) grayscale(40%)");
     });
 

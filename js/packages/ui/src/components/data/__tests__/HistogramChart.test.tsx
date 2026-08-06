@@ -110,8 +110,11 @@ describe("HistogramChart", () => {
 
       expect(colors.current).toBe("#90CDF4");
       expect(colors.base).toBe("#FBD38D");
-      expect(colors.currentWithAlpha).toBe("#90CDF4A5");
-      expect(colors.baseWithAlpha).toBe("#FBD38DA5");
+      const semantic = getSemanticColorTheme(true);
+      expect(colors.currentWithAlpha).toBe(
+        semantic.comparison.current.chartFill,
+      );
+      expect(colors.baseWithAlpha).toBe(semantic.comparison.base.chartFill);
     });
 
     it("returns all required bar color properties", () => {
@@ -200,8 +203,13 @@ describe("HistogramChart", () => {
       const data = JSON.parse(chart.getAttribute("data-data") || "{}");
 
       // Dark mode colors
-      expect(data.datasets[0].backgroundColor).toBe("#90CDF4A5");
-      expect(data.datasets[1].backgroundColor).toBe("#FBD38DA5");
+      const semantic = getSemanticColorTheme(true);
+      expect(data.datasets[0].backgroundColor).toBe(
+        semantic.comparison.current.chartFill,
+      );
+      expect(data.datasets[1].backgroundColor).toBe(
+        semantic.comparison.base.chartFill,
+      );
     });
 
     it("uses semantic comparison fills with contrast-safe outlines", () => {

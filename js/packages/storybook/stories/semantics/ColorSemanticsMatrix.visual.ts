@@ -34,6 +34,28 @@ test("uses production grid and direction renderers", async ({ page }) => {
   await expect(
     directions.locator('[data-production-direction="equal"]'),
   ).toContainText("No Change");
+
+  for (const label of ["increase", "decrease", "equal"] as const) {
+    const cue = directions.locator(`[data-production-direction="${label}"]`);
+    const renderer = cue.locator(`[data-row-count-direction="${label}"]`);
+    const cueStyles = await cue.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        backgroundColor: style.backgroundColor,
+        borderColor: style.borderColor,
+        color: style.color,
+      };
+    });
+    const rendererStyles = await renderer.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        backgroundColor: style.backgroundColor,
+        borderColor: style.borderColor,
+        color: style.color,
+      };
+    });
+    expect(rendererStyles).toEqual(cueStyles);
+  }
 });
 
 test("grayscale charts retain visible series roles", async ({ page }) => {

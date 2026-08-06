@@ -84,6 +84,9 @@ describe("TopKBarChart", () => {
       const data = JSON.parse(chart.getAttribute("data-data") || "{}");
 
       expect(data.datasets[0].backgroundColor).toBe("#ff0000");
+      expect(data.datasets[0].borderColor).toBe(
+        getSemanticColorTheme(false).comparison.current.border,
+      );
     });
 
     it("uses the semantic current border for a supplied chart fill", () => {

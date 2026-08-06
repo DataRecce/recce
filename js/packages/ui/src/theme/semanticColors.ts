@@ -37,7 +37,7 @@ export const STRUCTURAL_CHANGE_PRESENTATION = {
 >;
 
 export const STRUCTURAL_EDGE_DASH = {
-  added: "0",
+  added: "12 4",
   removed: "3 3",
   modified: "8 3 2 3",
   unchanged: "0",
@@ -101,14 +101,14 @@ const dark: SemanticColorTheme = {
       foreground: "#FBD38D",
       background: "#4A2A14",
       border: "#FBD38D",
-      chartFill: "#FBD38DA5",
+      chartFill: "#FBD38D66",
     },
     current: {
       accent: "#90CDF4",
       foreground: "#90CDF4",
       background: "#173B57",
       border: "#90CDF4",
-      chartFill: "#90CDF4A5",
+      chartFill: "#90CDF466",
     },
   },
   structural: {
