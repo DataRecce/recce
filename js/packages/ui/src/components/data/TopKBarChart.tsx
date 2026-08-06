@@ -69,6 +69,8 @@ export interface SingleBarChartProps {
   total: number;
   /** Bar color */
   color?: string;
+  /** Optional bar outline color */
+  borderColor?: string;
   /** Theme mode */
   theme?: "light" | "dark";
   /** Chart height in pixels */
@@ -160,6 +162,7 @@ function SingleBarChartComponent({
   count,
   total,
   color,
+  borderColor: suppliedBorderColor,
   theme = "light",
   height = 16,
 }: SingleBarChartProps) {
@@ -167,7 +170,7 @@ function SingleBarChartComponent({
   const themeColors = getChartThemeColors(isDark);
   const comparison = getSemanticColorTheme(isDark).comparison.current;
   const barColor = color ?? comparison.chartFill;
-  const borderColor = color ?? comparison.border;
+  const borderColor = suppliedBorderColor ?? color ?? comparison.border;
 
   const chartData = useMemo<ChartData<"bar">>(
     () => ({
@@ -287,6 +290,7 @@ function TopKSummaryListComponent({
                 count={item.count}
                 total={data.valids}
                 color={comparison.current.chartFill}
+                borderColor={comparison.current.border}
                 theme={theme}
               />
             </Box>
