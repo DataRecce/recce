@@ -140,9 +140,9 @@ export function PairedHistogramContinuous({
         const currH = (bin.currentDensity / layout.maxDensity) * chartHeight;
         const minH = Math.min(baseH, currH);
         const maxH = Math.max(baseH, currH);
-        const diffFill = baseH > currH ? baseFill : currentFill;
-        const diffBorder =
-          baseH > currH ? comparison.base.border : comparison.current.border;
+        const dominantColors =
+          baseH > currH ? comparison.base : comparison.current;
+        const diffFill = dominantColors.chartFill;
         // Bars touch (continuous data should read continuously); a tiny
         // -0.25 px inset prevents adjacent bins from blurring into one
         // shape at very tight slot widths.
@@ -172,6 +172,8 @@ export function PairedHistogramContinuous({
                 width={w}
                 height={minH}
                 fill={`url(#${patternId})`}
+                stroke={dominantColors.border}
+                strokeWidth={2}
                 pointerEvents="none"
               />
             )}
@@ -182,7 +184,7 @@ export function PairedHistogramContinuous({
                 width={w}
                 height={maxH - minH}
                 fill={diffFill}
-                stroke={diffBorder}
+                stroke={dominantColors.border}
                 strokeWidth={2}
                 pointerEvents="none"
               />

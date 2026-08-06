@@ -86,6 +86,27 @@ describe("TopKBarChart", () => {
       expect(data.datasets[0].backgroundColor).toBe("#ff0000");
     });
 
+    it("uses the semantic current border for a supplied chart fill", () => {
+      const semantic = getSemanticColorTheme(false);
+      render(
+        <SingleBarChart
+          count={50}
+          total={100}
+          color={semantic.comparison.current.chartFill}
+          borderColor={semantic.comparison.current.border}
+        />,
+      );
+
+      const chart = screen.getByTestId("mock-bar-chart");
+      const data = JSON.parse(chart.getAttribute("data-data") || "{}");
+
+      expect(data.datasets[0]).toMatchObject({
+        backgroundColor: semantic.comparison.current.chartFill,
+        borderColor: semantic.comparison.current.border,
+        borderWidth: 2,
+      });
+    });
+
     it("accepts theme prop", () => {
       render(<SingleBarChart count={50} total={100} theme="dark" />);
 
@@ -117,6 +138,24 @@ describe("TopKBarChart", () => {
       // Should render items
       expect(screen.getByText("apple")).toBeInTheDocument();
       expect(screen.getByText("banana")).toBeInTheDocument();
+    });
+
+    it("passes a semantic fill and high-contrast border to summary bars", () => {
+      const semantic = getSemanticColorTheme(false);
+      render(
+        <TopKSummaryList
+          data={{ values: ["apple"], counts: [100], valids: 100 }}
+        />,
+      );
+
+      const chart = screen.getByTestId("mock-bar-chart");
+      const data = JSON.parse(chart.getAttribute("data-data") || "{}");
+
+      expect(data.datasets[0]).toMatchObject({
+        backgroundColor: semantic.comparison.current.chartFill,
+        borderColor: semantic.comparison.current.border,
+        borderWidth: 2,
+      });
     });
 
     it("renders all items from dataset", () => {

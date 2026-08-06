@@ -109,16 +109,16 @@ describe("PairedHistogramContinuous", () => {
     expect(fills.some((f) => f === "#90CDF4A5")).toBe(true);
   });
 
-  it("uses semantic comparison fills and outlines for differential bars", () => {
+  it("uses semantic comparison outlines for every painted bar segment", () => {
     const { container } = render(
       <PairedHistogramContinuous data={sampleData} />,
     );
     const semantic = getSemanticColorTheme(false);
     const bars = Array.from(container.querySelectorAll("svg > g rect")).filter(
-      (rect) => {
-        const fill = rect.getAttribute("fill");
-        return fill !== "none" && !fill?.startsWith("url(");
-      },
+      (rect) => rect.getAttribute("fill") !== "none",
+    );
+    const agreementBars = bars.filter((bar) =>
+      bar.getAttribute("fill")?.startsWith("url("),
     );
 
     expect(
@@ -144,6 +144,16 @@ describe("PairedHistogramContinuous", () => {
           bar.getAttribute("stroke") === semantic.comparison.current.border,
       ),
     ).toBe(true);
+    expect(agreementBars).not.toHaveLength(0);
+    expect(agreementBars.map((bar) => bar.getAttribute("stroke"))).toEqual(
+      computeContinuousLayout(sampleData, 140)
+        .bins.filter((bin) => bin.baseDensity > 0 && bin.currentDensity > 0)
+        .map((bin) =>
+          bin.baseDensity > bin.currentDensity
+            ? semantic.comparison.base.border
+            : semantic.comparison.current.border,
+        ),
+    );
     expect(bars.every((bar) => bar.getAttribute("stroke-width") === "2")).toBe(
       true,
     );
