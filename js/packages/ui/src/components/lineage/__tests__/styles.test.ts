@@ -8,6 +8,7 @@
  * - getIconForResourceType returns correct colors and icons
  */
 
+import { getSemanticColorTheme } from "../../../theme";
 import {
   getIconForChangeStatus,
   getIconForResourceType,
@@ -61,12 +62,32 @@ describe("getStyleForImpacted", () => {
 // getIconForChangeStatus Tests (default Tailwind palette)
 // =============================================================================
 
-describe("getIconForChangeStatus (default palette)", () => {
+describe("getIconForChangeStatus (semantic structural palette)", () => {
+  it.each([false, true])(
+    "uses a neutral surface with only a secondary status accent when isDark=%s",
+    (isDark) => {
+      const semantic = getSemanticColorTheme(isDark);
+
+      for (const status of ["added", "removed", "modified"] as const) {
+        const result = getIconForChangeStatus(status, isDark);
+
+        expect(result.color).toBe(semantic.structural.neutral.border);
+        expect(result.backgroundColor).toBe(
+          semantic.structural.neutral.background,
+        );
+        expect(result.borderColor).toBe(semantic.structural.neutral.border);
+        expect(result.secondaryAccent).toBe(
+          semantic.structural.secondaryAccent[status],
+        );
+      }
+    },
+  );
+
   describe("added status", () => {
-    it("returns Tailwind green for added status", () => {
+    it("returns the neutral border for added status", () => {
       const result = getIconForChangeStatus("added");
-      expect(result.color).toBe("#22C55E"); // colors.green[500]
-      expect(result.hexColor).toBe("#22C55E");
+      expect(result.color).toBe("#737373");
+      expect(result.hexColor).toBe("#737373");
     });
 
     it("returns IconAdded icon for added status", () => {
@@ -74,21 +95,21 @@ describe("getIconForChangeStatus (default palette)", () => {
       expect(result.icon).toBe(IconAdded);
     });
 
-    it("returns light background in light mode", () => {
+    it("returns a neutral light background in light mode", () => {
       const result = getIconForChangeStatus("added", false);
-      expect(result.backgroundColor).toBe("#DCFCE7"); // colors.green[100]
+      expect(result.backgroundColor).toBe("#FAFAFA");
     });
 
-    it("returns dark background in dark mode", () => {
+    it("returns a neutral dark background in dark mode", () => {
       const result = getIconForChangeStatus("added", true);
-      expect(result.backgroundColor).toBe("#14532D"); // colors.green[900]
+      expect(result.backgroundColor).toBe("#171717");
     });
   });
 
   describe("removed status", () => {
-    it("returns Tailwind red for removed status", () => {
+    it("returns the neutral border for removed status", () => {
       const result = getIconForChangeStatus("removed");
-      expect(result.color).toBe("#EF4444"); // colors.red[500]
+      expect(result.color).toBe("#737373");
     });
 
     it("returns IconRemoved icon for removed status", () => {
@@ -98,9 +119,9 @@ describe("getIconForChangeStatus (default palette)", () => {
   });
 
   describe("modified status", () => {
-    it("returns Tailwind amber for modified status", () => {
+    it("returns the neutral border for modified status", () => {
       const result = getIconForChangeStatus("modified");
-      expect(result.color).toBe("#F59E0B"); // colors.amber[500]
+      expect(result.color).toBe("#737373");
     });
 
     it("returns IconModified icon for modified status", () => {
@@ -110,9 +131,9 @@ describe("getIconForChangeStatus (default palette)", () => {
   });
 
   describe("undefined/default status", () => {
-    it("returns gray color when no status provided", () => {
+    it("returns the neutral border when no status is provided", () => {
       const result = getIconForChangeStatus(undefined);
-      expect(result.color).toBe("#737373"); // colors.neutral[500]
+      expect(result.color).toBe("#737373");
       expect(result.hexColor).toBe("#737373");
     });
 
@@ -121,14 +142,14 @@ describe("getIconForChangeStatus (default palette)", () => {
       expect(result.icon).toBeUndefined();
     });
 
-    it("returns white background in light mode when no status", () => {
+    it("returns a neutral background in light mode when no status", () => {
       const result = getIconForChangeStatus(undefined, false);
-      expect(result.backgroundColor).toBe("#FFFFFF");
+      expect(result.backgroundColor).toBe("#FAFAFA");
     });
 
-    it("returns dark background in dark mode when no status", () => {
+    it("returns a neutral background in dark mode when no status", () => {
       const result = getIconForChangeStatus(undefined, true);
-      expect(result.backgroundColor).toBe("#404040"); // colors.neutral[700]
+      expect(result.backgroundColor).toBe("#171717");
     });
   });
 });
@@ -137,30 +158,33 @@ describe("getIconForChangeStatus (default palette)", () => {
 // getIconForChangeStatus with palette: "cll" (muted CLL palette)
 // =============================================================================
 
-describe('getIconForChangeStatus (palette: "cll")', () => {
-  it("returns muted green for added", () => {
+describe('getIconForChangeStatus (legacy palette: "cll")', () => {
+  it("does not remap structural added status into the CLL palette", () => {
     const result = getIconForChangeStatus("added", false, "cll");
-    expect(result.color).toBe("rgb(46 160 67)");
+    expect(result.color).toBe("#737373");
+    expect(result.secondaryAccent).toBe("#16A34A");
   });
 
-  it("returns muted red for removed", () => {
+  it("does not remap structural removed status into the CLL palette", () => {
     const result = getIconForChangeStatus("removed", false, "cll");
-    expect(result.color).toBe("rgb(248 81 73)");
+    expect(result.color).toBe("#737373");
+    expect(result.secondaryAccent).toBe("#DC2626");
   });
 
-  it("returns brown for modified (distinct from impacted yellow)", () => {
+  it("does not remap structural modified status into the CLL palette", () => {
     const result = getIconForChangeStatus("modified", false, "cll");
-    expect(result.color).toBe("rgb(212 133 11)");
+    expect(result.color).toBe("#737373");
+    expect(result.secondaryAccent).toBe("#B45309");
   });
 
-  it("returns light background in light mode for added", () => {
+  it("returns a neutral background in light mode", () => {
     const result = getIconForChangeStatus("added", false, "cll");
-    expect(result.backgroundColor).toBe("rgb(222 248 227)");
+    expect(result.backgroundColor).toBe("#FAFAFA");
   });
 
-  it("returns dark background in dark mode for modified", () => {
+  it("returns a neutral background in dark mode", () => {
     const result = getIconForChangeStatus("modified", true, "cll");
-    expect(result.backgroundColor).toBe("rgb(75 65 33)");
+    expect(result.backgroundColor).toBe("#171717");
   });
 });
 

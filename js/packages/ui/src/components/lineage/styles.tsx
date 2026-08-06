@@ -13,6 +13,7 @@
 
 import { type ComponentType, type SVGProps, useId } from "react";
 import { colors } from "../../theme/colors";
+import { getSemanticColorTheme } from "../../theme/semanticColors";
 
 // =============================================================================
 // TYPES
@@ -52,6 +53,10 @@ export interface ChangeStatusStyle {
   backgroundColor: string;
   /** Hex background color (same as backgroundColor for compatibility) */
   hexBackgroundColor: string;
+  /** Neutral border color for structural presentation */
+  borderColor: string;
+  /** Transitional accent for a narrow rail or status symbol only */
+  secondaryAccent: string;
   /** Icon component for the status, undefined if no change */
   icon: IconComponent | undefined;
 }
@@ -117,8 +122,7 @@ export const IconRemoved: IconComponent = (props) => (
 );
 
 /**
- * Tilde icon for "modified" status
- * Based on VSCode's VscDiffModified
+ * Delta icon for "modified" status
  */
 export const IconModified: IconComponent = (props) => (
   <svg
@@ -131,8 +135,7 @@ export const IconModified: IconComponent = (props) => (
     xmlns="http://www.w3.org/2000/svg"
     {...props}
   >
-    <path d="M1.5 1h13l.5.5v13l-.5.5h-13l-.5-.5v-13l.5-.5zM2 2v12h12V2H2z" />
-    <path d="M10.6 8.7c-.1.1-.3.2-.5.2h-.1l-1.4-.3c-.5-.1-1.1-.3-1.8-.3-.6 0-1 .2-1.3.5-.2.2-.2.4-.2.7v.1l-.9.3v-.2c0-.3 0-.6.1-.9.2-.4.5-.8 1-1.1.5-.4 1.2-.5 2-.5h.2l1.5.4h.1c.5.1 1 .3 1.5.3.6 0 .9-.2 1.2-.4.2-.2.3-.5.3-.8v-.3l.8-.3h.1v.3c0 .6-.2 1.2-.6 1.6-.2.2-.3.4-.5.5l-.5.2z" />
+    <path d="M8 2 1.5 14h13L8 2zm0 2.4 4.3 8.1H3.7L8 4.4z" />
   </svg>
 );
 
@@ -471,27 +474,10 @@ const changeStatusIcons: Record<string, IconComponent | undefined> = {
 
 type PaletteKey = "default" | "cll";
 
-function paletteFor(
-  key: PaletteKey,
-  isDark?: boolean,
-): { colors: Record<string, string>; bg: Record<string, string> } {
-  if (key === "cll") {
-    return {
-      colors: cllChangeStatusColors,
-      bg: isDark
-        ? cllChangeStatusBackgroundsDark
-        : cllChangeStatusBackgroundsLight,
-    };
-  }
-  return {
-    colors: changeStatusColors,
-    bg: isDark ? changeStatusBackgroundsDark : changeStatusBackgroundsLight,
-  };
-}
-
 /**
- * Get icon and colors for a change status. Pass `palette: "cll"` for the
- * muted brown/yellow palette used inside the new CLL experience.
+ * Get icon and semantic channels for a structural change status. The palette
+ * argument remains for compatibility, but structural statuses no longer move
+ * into the CLL transformation/impact namespace.
  *
  * @example
  * ```tsx
@@ -502,39 +488,56 @@ function paletteFor(
 export function getIconForChangeStatus(
   changeStatus?: ChangeStatus | "impacted",
   isDark?: boolean,
-  palette: PaletteKey = "default",
+  _palette: PaletteKey = "default",
 ): ChangeStatusStyle {
   const status = changeStatus ?? "unchanged";
-  const { colors: colorMap, bg: bgMap } = paletteFor(palette, isDark);
-  const color = colorMap[status];
-  const bg = bgMap[status];
+
+  if (status === "impacted") {
+    const color = cllChangeStatusColors.impacted;
+    const backgroundColor = (
+      isDark ? cllChangeStatusBackgroundsDark : cllChangeStatusBackgroundsLight
+    ).impacted;
+    return {
+      color,
+      hexColor: color,
+      backgroundColor,
+      hexBackgroundColor: backgroundColor,
+      borderColor: color,
+      secondaryAccent: color,
+      icon: IconImpacted,
+    };
+  }
+
+  const semantic = getSemanticColorTheme(isDark ?? false);
+  const neutral = semantic.structural.neutral;
 
   return {
-    color,
-    hexColor: color,
-    backgroundColor: bg,
-    hexBackgroundColor: bg,
+    color: neutral.border,
+    hexColor: neutral.border,
+    backgroundColor: neutral.background,
+    hexBackgroundColor: neutral.background,
+    borderColor: neutral.border,
+    secondaryAccent: semantic.structural.secondaryAccent[status],
     icon: changeStatusIcons[status],
   };
 }
 
 /**
- * Get style for impacted nodes — a peer status alongside added/removed/modified
- * inside the new CLL experience.
+ * Get style for the separate CLL impact state.
  */
 export function getStyleForImpacted(isDark?: boolean): ChangeStatusStyle {
   return getIconForChangeStatus("impacted", isDark, "cll");
 }
 
 /**
- * Resolve a lineage node's accent style (color + background + icon) from its
- * change/impact state. This is the single source of truth for a node card's
- * color: `LineageNode` renders from it, and the MiniMap copies the resulting
- * color so the canvas and the minimap can never drift apart.
+ * Resolve a lineage node's presentation channels from its structural and CLL
+ * impact state. Structural statuses use a neutral surface/border plus the
+ * transitional secondary accent. The MiniMap copies the neutral structural
+ * color from this helper so it cannot drift from the canvas.
  *
  * In the new CLL experience a node with no change of its own but downstream of
- * an upstream change is "impacted" (amber); otherwise the change status drives
- * the color, using the muted "cll" palette inside the new experience.
+ * an upstream change is "impacted" (amber); otherwise the structural semantic
+ * contract applies independently of the CLL experience flag.
  */
 export function getNodeChangeStyle(
   state: {
@@ -775,7 +778,7 @@ export const cllImpactedBadgeFg = {
  * and `--schema-badge-changed-{bg,fg}` in ../schema/style.css under
  * `.cll-experience` — kept in sync by __tests__/cllPaletteSync.test.ts.
  */
-export const cllChangedAccent = cllChangeStatusColors.modified;
+export const cllChangedAccent = "rgb(212 133 11)";
 
 export const cllChangedBadgeBg = {
   light: "rgb(255 173 21 / 0.25)",
@@ -793,7 +796,7 @@ export const cllChangedBadgeFg = {
  * by __tests__/cllPaletteSync.test.ts.
  */
 export const cllAdditiveAccent = {
-  light: cllChangeStatusColors.added,
+  light: "rgb(46 160 67)",
   dark: "rgb(80 200 100)",
 } as const;
 

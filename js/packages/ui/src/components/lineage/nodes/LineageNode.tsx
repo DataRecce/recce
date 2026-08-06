@@ -35,6 +35,7 @@ import {
   useState,
 } from "react";
 import { colors } from "../../../theme/colors";
+import { StructuralChangeIndicator } from "../../ui/StructuralChangeIndicator";
 import { getChangeCategoryLabel } from "../changeCategory";
 import { DIM_FILTER } from "../config/zoomConstants";
 import {
@@ -342,13 +343,13 @@ function LineageNodeComponent({
   const showColumns = columnCount > 0;
   const hasAction = selectMode === "action_result" && actionTag;
 
-  // Get icons and colors — impacted only when not already changed. This is the
-  // node's authoritative accent color; the MiniMap copies it via the same
-  // helper so the two stay in lockstep (DRC-3250).
+  // Structural presentation wins over impact when the node itself changed.
+  // The MiniMap resolves the same neutral structural channel through this
+  // helper, while CLL impact remains in its separate amber namespace.
   const {
-    icon: IconChangeStatus,
-    color: colorChangeStatus,
     backgroundColor: backgroundColorChangeStatus,
+    borderColor,
+    secondaryAccent,
   } = getNodeChangeStyle(
     { changeStatus, isImpacted, newCllExperience },
     isDark,
@@ -360,67 +361,28 @@ function LineageNodeComponent({
 
   // Calculate styles based on state
   const borderWidth = "2px";
-  const borderColor = colorChangeStatus;
+  const hasStructuralChange = changeStatus !== "unchanged";
 
-  // Themed surface + text colors, sourced from the shared `colors` design
-  // tokens (the codebase's dark-mode mechanism) and selected by the `isDark`
-  // prop — rather than inline hex literals. The dark card surface uses
-  // neutral[800] (#262626), matching the sibling LineageColumnNode card.
-  const paperBg = isDark ? colors.neutral[800] : colors.white;
+  // Text and interaction colors remain neutral and independent of structural
+  // status. The status-specific secondary accent is limited to the rail and
+  // StructuralChangeIndicator below.
   const primaryText = isDark ? colors.white : colors.black;
-  const invertedText = isDark ? colors.black : colors.white;
 
-  // Node background color logic
-  const nodeBackgroundColor = (() => {
-    if (showContent) {
-      if (selectMode === "selecting") {
-        return isSelected ? colorChangeStatus : paperBg;
-      }
-      if (selectMode === "action_result") {
-        if (!hasAction) return paperBg;
-        return isFocused || isSelected || isHovered
-          ? backgroundColorChangeStatus
-          : colorChangeStatus;
-      }
-      return isFocused || isSelected || isHovered
-        ? backgroundColorChangeStatus
-        : paperBg;
-    }
-    return isFocused || isSelected || isHovered
-      ? colorChangeStatus
-      : backgroundColorChangeStatus;
-  })();
+  const isImpactPresentation =
+    newCllExperience && isImpacted && !hasStructuralChange;
+  const neutralHoverBg = isDark ? colors.neutral[800] : colors.neutral[100];
+  const neutralSelectedBg = isDark ? colors.neutral[700] : colors.neutral[200];
+  const nodeBackgroundColor = isImpactPresentation
+    ? backgroundColorChangeStatus
+    : isFocused || isSelected
+      ? neutralSelectedBg
+      : isHovered
+        ? neutralHoverBg
+        : backgroundColorChangeStatus;
 
   // Text color logic
-  const titleColor = (() => {
-    if (selectMode === "selecting") {
-      return isSelected ? invertedText : primaryText;
-    }
-    if (selectMode === "action_result") {
-      return hasAction && !isSelected ? invertedText : primaryText;
-    }
-    return primaryText;
-  })();
-
-  const iconColor = (() => {
-    if (selectMode === "selecting") {
-      return isSelected ? invertedText : primaryText;
-    }
-    if (selectMode === "action_result") {
-      return hasAction && !isSelected ? invertedText : primaryText;
-    }
-    return primaryText;
-  })();
-
-  const changeStatusIconColor = (() => {
-    if (selectMode === "selecting") {
-      return isSelected ? invertedText : colorChangeStatus;
-    }
-    if (selectMode === "action_result") {
-      return hasAction && !isSelected ? invertedText : primaryText;
-    }
-    return colorChangeStatus;
-  })();
+  const titleColor = primaryText;
+  const iconColor = primaryText;
 
   // Filter for dimming
   const nodeFilter = (() => {
@@ -547,10 +509,13 @@ function LineageNodeComponent({
 
       {/* Main node container */}
       <Box
+        data-testid="lineage-node-card"
         sx={{
           display: "flex",
           borderColor,
           borderWidth,
+          borderLeftColor: hasStructuralChange ? secondaryAccent : borderColor,
+          borderLeftWidth: hasStructuralChange ? "3px" : borderWidth,
           borderStyle: "solid",
           borderTopLeftRadius: 8,
           borderTopRightRadius: 8,
@@ -564,11 +529,11 @@ function LineageNodeComponent({
         <Box
           sx={{
             display: "flex",
-            bgcolor: colorChangeStatus,
+            bgcolor: nodeBackgroundColor,
             padding: interactive ? "8px" : "2px",
             borderRightWidth: borderWidth,
             borderRightStyle: "solid",
-            borderColor: selectMode === "selecting" ? "#00000020" : borderColor,
+            borderColor,
             alignItems: "top",
             visibility: showContent ? "inherit" : "hidden",
           }}
@@ -634,11 +599,11 @@ function LineageNodeComponent({
                   <ResourceIcon aria-hidden="true" />
                 </Box>
               )}
-              {changeStatus && IconChangeStatus && (
-                <Box sx={{ color: changeStatusIconColor }}>
-                  <IconChangeStatus aria-hidden="true" />
-                </Box>
-              )}
+              <StructuralChangeIndicator
+                status={changeStatus}
+                emphasis="secondary"
+                size="sm"
+              />
             </Box>
           </Tooltip>
 
@@ -686,6 +651,10 @@ function LineageNodeComponent({
             p: "10px 10px",
             borderColor,
             borderWidth,
+            borderLeftColor: hasStructuralChange
+              ? secondaryAccent
+              : borderColor,
+            borderLeftWidth: hasStructuralChange ? "3px" : borderWidth,
             borderStyle: "solid",
             borderTopWidth: 0,
             borderBottomLeftRadius: 8,

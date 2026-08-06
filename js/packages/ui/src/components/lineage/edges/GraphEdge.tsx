@@ -16,8 +16,13 @@
 import { BaseEdge, type EdgeProps, getBezierPath } from "@xyflow/react";
 import { memo } from "react";
 import type { LineageGraphEdge } from "../../../contexts/lineage/types";
+import { useIsDark } from "../../../hooks/useIsDark";
+import {
+  getSemanticColorTheme,
+  STRUCTURAL_EDGE_DASH,
+  type StructuralChangeStatus,
+} from "../../../theme";
 import { DIM_FILTER } from "../config/zoomConstants";
-import { type ChangeStatus, getIconForChangeStatus } from "../styles";
 
 // =============================================================================
 // TYPES
@@ -97,20 +102,16 @@ function GraphEdgeComponent(props: GraphEdgeProps) {
     data,
     isEdgeHighlighted,
   } = props;
+  const isDark = useIsDark();
+  const semantic = getSemanticColorTheme(isDark);
+  const changeStatus = (data?.changeStatus ??
+    "unchanged") as StructuralChangeStatus;
 
   const style: React.CSSProperties = {
     ...styleOverride,
+    stroke: semantic.structural.neutral.border,
+    strokeDasharray: STRUCTURAL_EDGE_DASH[changeStatus],
   };
-
-  // Apply change status styling
-  if (data?.changeStatus) {
-    // Cast to ChangeStatus from styles module (added, removed, modified, unchanged)
-    const statusStyle = getIconForChangeStatus(
-      data.changeStatus as ChangeStatus,
-    );
-    style.stroke = statusStyle.hexColor;
-    style.strokeDasharray = "5";
-  }
 
   // Apply highlighting filter via dependency injection
   // Default to highlighted (true) if no function provided
@@ -133,11 +134,7 @@ function GraphEdgeComponent(props: GraphEdgeProps) {
 
   return (
     <>
-      <BaseEdge
-        path={edgePath}
-        markerEnd={markerEnd}
-        style={{ ...style, ...styleOverride }}
-      />
+      <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
     </>
   );
 }
