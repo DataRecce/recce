@@ -363,6 +363,14 @@ export {
   getChartBarColors,
   getChartThemeColors,
 } from "./theme/chartTheme";
+export {
+  type ComparisonRole,
+  getSemanticColorTheme,
+  type QuantitativeDirection,
+  type SemanticColorChannel,
+  type SemanticColorTheme,
+  type StructuralChangeStatus,
+} from "./theme/semanticColors";
 
 // =============================================================================
 // SCHEMA PRIMITIVES

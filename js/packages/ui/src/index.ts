@@ -240,9 +240,16 @@ export {
   useRouting,
 } from "./providers";
 // Theme - colors palette and MUI theme with CSS Variables
-// NOTE: `colors` and `getChartThemeColors` canonical in @datarecce/ui/theme
-export type { Theme } from "./theme";
-export { colors, theme } from "./theme";
+// NOTE: `colors` and semantic color constants are canonical in @datarecce/ui/theme
+export type {
+  ComparisonRole,
+  QuantitativeDirection,
+  SemanticColorChannel,
+  SemanticColorTheme,
+  StructuralChangeStatus,
+  Theme,
+} from "./theme";
+export { colors, getSemanticColorTheme, theme } from "./theme";
 // Utils - utility functions for data manipulation and formatting
 // NOTE: `deltaPercentageString`, `formatTimestamp`, `formatTimeToNow`, `isSchemaChanged`
 // canonical in @datarecce/ui/utils
