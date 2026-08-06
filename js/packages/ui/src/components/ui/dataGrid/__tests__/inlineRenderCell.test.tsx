@@ -139,15 +139,18 @@ describe("inlineRenderCell - Diff Rendering", () => {
   test("renders both values when they differ", () => {
     const colDef: ColDefWithMetadata = { field: "price" };
     const params = createParams(
-      { base__price: 100, current__price: 150 },
+      { base__price: "before", current__price: "after" },
       colDef,
     );
 
     render(<>{inlineRenderCell(params)}</>);
 
-    // Both values should be present via DiffText
-    expect(screen.getByText("100")).toBeInTheDocument();
-    expect(screen.getByText("150")).toBeInTheDocument();
+    expect(
+      screen.getByText("before").closest("[data-comparison-role]"),
+    ).toHaveAttribute("data-comparison-role", "base");
+    expect(
+      screen.getByText("after").closest("[data-comparison-role]"),
+    ).toHaveAttribute("data-comparison-role", "current");
   });
 
   test("renders only current when base is missing", () => {
@@ -180,16 +183,19 @@ describe("inlineRenderCell - Delta Mode", () => {
       context: { columnType: "number", columnRenderMode: "delta" },
     };
     const params = createParams(
-      { base__price: 100, current__price: 150 },
+      { base__price: 100, current__price: 105 },
       colDef,
     );
 
     render(<>{inlineRenderCell(params)}</>);
 
     // Current value should be shown
-    expect(screen.getByText("150")).toBeInTheDocument();
-    // Delta should be shown as (+50)
-    expect(screen.getByText("(+50)")).toBeInTheDocument();
+    expect(screen.getByText("105")).toBeInTheDocument();
+    expect(screen.getByText("(+5)")).toHaveAttribute(
+      "data-direction",
+      "increase",
+    );
+    expect(screen.getByText("↑", { exact: false })).toBeInTheDocument();
   });
 
   test("shows negative delta correctly", () => {

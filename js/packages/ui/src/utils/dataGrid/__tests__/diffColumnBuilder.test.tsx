@@ -10,10 +10,17 @@
  * - Render component injection
  */
 
-import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
+import { render, screen } from "@testing-library/react";
+import type {
+  CellClassParams,
+  ColDef,
+  ColGroupDef,
+  ICellRendererParams,
+} from "ag-grid-community";
 import React from "react";
 import { vi } from "vitest";
 import type { RowObjectType } from "../../../api";
+import { defaultRenderCell } from "../../../components/ui/dataGrid/defaultRenderCell";
 import type { ColumnConfig } from "../columnBuilders";
 import {
   BuildDiffColumnDefinitionsConfig,
@@ -198,6 +205,27 @@ describe("buildDiffColumnDefinitions - Primary Key Columns", () => {
     }
   });
 
+  test("derives primary key header structure only from column status", () => {
+    const result = buildDiffColumnDefinitions(
+      createConfig({
+        columns: [
+          createColumnConfig({
+            key: "id",
+            name: "id",
+            isPrimaryKey: true,
+            columnStatus: "modified",
+          }),
+        ],
+      }),
+    );
+    const pkColumn = findColumnByKey(result.columns, "id");
+
+    expect(pkColumn && isColumn(pkColumn)).toBe(true);
+    expect((pkColumn as SingleColumn).headerClass).toBe(
+      "structural-header-modified",
+    );
+  });
+
   test("primary key columns have cellClass function", () => {
     const result = buildDiffColumnDefinitions(createConfig());
 
@@ -208,7 +236,7 @@ describe("buildDiffColumnDefinitions - Primary Key Columns", () => {
     }
   });
 
-  test("primary key cellClass returns status-based class", () => {
+  test("primary key cellClass returns structural row classes", () => {
     const result = buildDiffColumnDefinitions(createConfig());
 
     const pkColumn = findColumnByKey(result.columns, "id");
@@ -221,14 +249,14 @@ describe("buildDiffColumnDefinitions - Primary Key Columns", () => {
         ) => string | undefined;
 
         expect(cellClassFn(createCellClassParams({ __status: "added" }))).toBe(
-          "diff-header-added",
+          "structural-row-added",
         );
         expect(
           cellClassFn(createCellClassParams({ __status: "removed" })),
-        ).toBe("diff-header-removed");
+        ).toBe("structural-row-removed");
         expect(
           cellClassFn(createCellClassParams({ __status: "modified" })),
-        ).toBe("diff-header-modified");
+        ).toBe("structural-row-modified");
         expect(
           cellClassFn(createCellClassParams({ __status: undefined })),
         ).toBeUndefined();
@@ -277,6 +305,73 @@ describe("buildDiffColumnDefinitions - Primary Key Columns", () => {
     );
     expect(pinnedColumns).toHaveLength(2);
   });
+
+  test("selects only the first primary key as the structural indicator anchor", () => {
+    const result = buildDiffColumnDefinitions(
+      createConfig({
+        columns: [
+          createColumnConfig({
+            key: "region",
+            name: "region",
+            isPrimaryKey: true,
+          }),
+          createColumnConfig({
+            key: "product",
+            name: "product",
+            isPrimaryKey: true,
+          }),
+        ],
+        headerProps: { primaryKeys: ["region", "product"] },
+      }),
+    );
+
+    expect(
+      findColumnByKey(result.columns, "region")?.context
+        ?.showStructuralIndicator,
+    ).toBe(true);
+    expect(
+      findColumnByKey(result.columns, "product")?.context
+        ?.showStructuralIndicator,
+    ).toBe(false);
+  });
+
+  test.each([
+    ["added", "+"],
+    ["removed", "−"],
+    ["modified", "Δ"],
+  ] as const)(
+    "renders %s symbol before the first primary-key value",
+    (status, symbol) => {
+      const result = buildDiffColumnDefinitions(
+        createConfig({
+          renderComponents: {
+            ...mockRenderComponents,
+            defaultRenderCell,
+          },
+        }),
+      );
+      const pkColumn = findColumnByKey(result.columns, "id");
+
+      expect(pkColumn && isColumn(pkColumn)).toBe(true);
+      if (!pkColumn || !isColumn(pkColumn)) return;
+      const pk = pkColumn as SingleColumn;
+
+      const renderer = pk.cellRenderer as (
+        params: ICellRendererParams<RowObjectType>,
+      ) => React.ReactNode;
+      render(
+        <>
+          {renderer({
+            data: { id: 7, __status: status },
+            colDef: pk,
+          } as unknown as ICellRendererParams<RowObjectType>)}
+        </>,
+      );
+
+      expect(screen.getByText(symbol)).toBeInTheDocument();
+      expect(screen.getByText("7")).toBeInTheDocument();
+    },
+  );
 });
 
 // ============================================================================
@@ -319,7 +414,17 @@ describe("buildDiffColumnDefinitions - Index Fallback", () => {
       expect(col.headerName).toBe("");
       expect(col.width).toBe(50);
       expect(col.maxWidth).toBe(100);
-      expect(col.cellClass).toBe("index-column");
+      expect(typeof col.cellClass).toBe("function");
+      if (typeof col.cellClass === "function") {
+        const cellClass = col.cellClass as (
+          params: CellClassParams<RowObjectType>,
+        ) => string;
+        expect(cellClass(createCellClassParams({ __status: "added" }))).toBe(
+          "index-column structural-row-added",
+        );
+      }
+      expect(col.context?.showStructuralIndicator).toBe(true);
+      expect(col.cellRenderer).toBe(mockRenderComponents.defaultRenderCell);
     }
   });
 

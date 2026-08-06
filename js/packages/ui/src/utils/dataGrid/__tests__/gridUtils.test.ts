@@ -462,39 +462,39 @@ describe("determineRowStatus", () => {
 // ============================================================================
 
 describe("getCellClass", () => {
-  test("returns 'diff-cell-removed' for removed row", () => {
+  test("returns the removed structural row class for removed rows", () => {
     const row = createRow({}, "removed");
 
     const result = getCellClass(row, undefined, "value", false);
 
-    expect(result).toBe("diff-cell-removed");
+    expect(result).toContain("structural-row-removed");
   });
 
-  test("returns 'diff-cell-added' for added row", () => {
+  test("returns the added structural row class for added rows", () => {
     const row = createRow({}, "added");
 
     const result = getCellClass(row, undefined, "value", false);
 
-    expect(result).toBe("diff-cell-added");
+    expect(result).toContain("structural-row-added");
   });
 
-  test("returns undefined for added column status", () => {
-    const row = createRow({});
+  test("keeps comparison styling independent of added column status", () => {
+    const row = createRow({ base__value: 100, current__value: 200 });
 
     const result = getCellClass(row, "added", "value", false);
 
-    expect(result).toBeUndefined();
+    expect(result).toBe("comparison-cell-current");
   });
 
-  test("returns undefined for removed column status", () => {
-    const row = createRow({});
+  test("keeps comparison styling independent of removed column status", () => {
+    const row = createRow({ base__value: 100, current__value: 200 });
 
     const result = getCellClass(row, "removed", "value", false);
 
-    expect(result).toBeUndefined();
+    expect(result).toBe("comparison-cell-current");
   });
 
-  test("returns 'diff-cell-removed' for base column when values differ", () => {
+  test("returns the base comparison class when values differ", () => {
     const row = createRow({
       base__value: 100,
       current__value: 200,
@@ -502,10 +502,10 @@ describe("getCellClass", () => {
 
     const result = getCellClass(row, undefined, "value", true);
 
-    expect(result).toBe("diff-cell-removed");
+    expect(result).toBe("comparison-cell-base");
   });
 
-  test("returns 'diff-cell-added' for current column when values differ", () => {
+  test("returns the current comparison class when values differ", () => {
     const row = createRow({
       base__value: 100,
       current__value: 200,
@@ -513,7 +513,7 @@ describe("getCellClass", () => {
 
     const result = getCellClass(row, undefined, "value", false);
 
-    expect(result).toBe("diff-cell-added");
+    expect(result).toBe("comparison-cell-current");
   });
 
   test("returns undefined when base and current are equal", () => {
@@ -548,7 +548,7 @@ describe("getCellClass", () => {
     });
 
     expect(getCellClass(row, undefined, "value", false, "number")).toBe(
-      "diff-cell-added",
+      "comparison-cell-current",
     );
   });
 
@@ -559,7 +559,18 @@ describe("getCellClass", () => {
     });
 
     expect(getCellClass(row, undefined, "value", true)).toBe(
-      "diff-cell-removed",
+      "comparison-cell-base",
+    );
+  });
+
+  test("joins comparison and structural classes for modified rows", () => {
+    const row = createRow(
+      { base__value: 100, current__value: 200 },
+      "modified",
+    );
+
+    expect(getCellClass(row, undefined, "value", false)).toBe(
+      "comparison-cell-current structural-row-modified",
     );
   });
 });
@@ -569,16 +580,16 @@ describe("getCellClass", () => {
 // ============================================================================
 
 describe("getHeaderCellClass", () => {
-  test("returns 'diff-header-added' for added status", () => {
+  test("returns the added structural header class", () => {
     const result = getHeaderCellClass("added");
 
-    expect(result).toBe("diff-header-added");
+    expect(result).toBe("structural-header-added");
   });
 
-  test("returns 'diff-header-removed' for removed status", () => {
+  test("returns the removed structural header class", () => {
     const result = getHeaderCellClass("removed");
 
-    expect(result).toBe("diff-header-removed");
+    expect(result).toBe("structural-header-removed");
   });
 
   test("returns undefined for empty status", () => {
@@ -587,10 +598,10 @@ describe("getHeaderCellClass", () => {
     expect(result).toBeUndefined();
   });
 
-  test("returns undefined for other statuses", () => {
+  test("returns the modified structural header class", () => {
     const result = getHeaderCellClass("modified");
 
-    expect(result).toBeUndefined();
+    expect(result).toBe("structural-header-modified");
   });
 });
 
