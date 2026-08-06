@@ -108,11 +108,13 @@ export type {
 export { buildDiffRows } from "./rowBuilders";
 // Row count utilities
 export type {
+  RowCountChangeDirection,
   RowCountDiffRowData,
   RowCountRowData,
 } from "./rowCountUtils";
 export {
   calculateDelta,
+  getRowCountChangeDirection,
   getRowCountDiffStatus,
   rowCountDiffResultToDataFrame,
   rowCountResultToDataFrame,

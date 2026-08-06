@@ -32,7 +32,10 @@ describe("NodeRunsAggregated - row count diff", () => {
     );
 
     expect(screen.getByText("150 rows")).toBeInTheDocument();
-    expect(screen.getByText("+50.0%")).toBeInTheDocument();
+    expect(screen.getByText("+50.0%")).toHaveAttribute(
+      "data-row-count-direction",
+      "increase",
+    );
   });
 
   it("shows decrease indicator when current < base", () => {
@@ -45,7 +48,10 @@ describe("NodeRunsAggregated - row count diff", () => {
     );
 
     expect(screen.getByText("100 rows")).toBeInTheDocument();
-    expect(screen.getByText("-50.0%")).toBeInTheDocument();
+    expect(screen.getByText("-50.0%")).toHaveAttribute(
+      "data-row-count-direction",
+      "decrease",
+    );
   });
 
   it("shows no change indicator when counts are equal", () => {

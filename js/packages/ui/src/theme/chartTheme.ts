@@ -132,3 +132,56 @@ export function getChartBarColors(isDark: boolean): ChartBarColors {
     info: isDark ? INFO_VAL_COLOR_DARK : INFO_VAL_COLOR,
   };
 }
+
+export interface ComparisonColorPair {
+  /** Existing chart color that identifies the environment. */
+  accent: string;
+  /** Low-intensity fill for directional comparison cells. */
+  background: string;
+  /** Text/icon color with at least 4.5:1 contrast against the fill. */
+  foreground: string;
+}
+
+export interface ComparisonThemeColors {
+  /** Current environment; also represents an increase from base. */
+  current: ComparisonColorPair;
+  /** Base environment; also represents a decrease from base. */
+  base: ComparisonColorPair;
+}
+
+/**
+ * Theme-aware colors for base/current comparisons outside charts.
+ *
+ * These reuse the chart accents so an increase reads as "more current" (blue)
+ * and a decrease reads as "more base" (orange). Background intensity is fixed;
+ * it does not imply the magnitude of the change.
+ */
+export function getComparisonThemeColors(
+  isDark: boolean,
+): ComparisonThemeColors {
+  return isDark
+    ? {
+        current: {
+          accent: CURRENT_BAR_COLOR_DARK,
+          background: "#173B57",
+          foreground: "#90CDF4",
+        },
+        base: {
+          accent: BASE_BAR_COLOR_DARK,
+          background: "#4A2A14",
+          foreground: "#FBD38D",
+        },
+      }
+    : {
+        current: {
+          accent: CURRENT_BAR_COLOR,
+          background: "#E6F3FC",
+          foreground: "#245A85",
+        },
+        base: {
+          accent: BASE_BAR_COLOR,
+          background: "#FFF3E6",
+          foreground: "#98471F",
+        },
+      };
+}

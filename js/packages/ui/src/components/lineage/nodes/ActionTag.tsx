@@ -16,6 +16,9 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import { memo } from "react";
+import { useIsDark } from "../../../hooks";
+import { getComparisonThemeColors } from "../../../theme/chartTheme";
+import { getRowCountChangeDirection } from "../../../utils";
 
 // =============================================================================
 // TYPES
@@ -215,6 +218,9 @@ function ValueDiffTag({ result }: { result: ValueDiffResult }) {
  */
 function RowCountDiffTag({ result }: { result: RowCountDiffResult }) {
   const { base, current } = result;
+  const isDark = useIsDark();
+  const comparisonColors = getComparisonThemeColors(isDark);
+  const direction = getRowCountChangeDirection(base, current);
   const baseLabel = base === null ? "N/A" : base.toLocaleString();
   const currentLabel = current === null ? "N/A" : current.toLocaleString();
 
@@ -223,12 +229,12 @@ function RowCountDiffTag({ result }: { result: RowCountDiffResult }) {
   let changeColor = "grey.500";
 
   if (base !== null && current !== null) {
-    if (current > base) {
+    if (direction === "increase") {
       changeIndicator = "↑";
-      changeColor = "success.main";
-    } else if (current < base) {
+      changeColor = comparisonColors.current.foreground;
+    } else if (direction === "decrease") {
       changeIndicator = "↓";
-      changeColor = "error.main";
+      changeColor = comparisonColors.base.foreground;
     } else {
       changeIndicator = "=";
     }
@@ -251,7 +257,11 @@ function RowCountDiffTag({ result }: { result: RowCountDiffResult }) {
           <Box>→</Box>
           <Box>{currentLabel}</Box>
           {changeIndicator && (
-            <Box component="span" sx={{ color: changeColor, ml: 0.5 }}>
+            <Box
+              component="span"
+              data-row-count-direction={direction}
+              sx={{ color: changeColor, ml: 0.5 }}
+            >
               {changeIndicator}
             </Box>
           )}

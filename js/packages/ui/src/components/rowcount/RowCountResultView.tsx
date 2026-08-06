@@ -13,6 +13,7 @@
  * - RowCountDiffResultView: Diff between environments (name, base, current, delta)
  */
 
+import Box from "@mui/material/Box";
 import type { ForwardRefExoticComponent, RefAttributes } from "react";
 import {
   isRowCountDiffRun,
@@ -21,10 +22,15 @@ import {
   type RowCountResult,
   type Run,
 } from "../../api";
+import { getComparisonThemeColors } from "../../theme/chartTheme";
 import { toRowCountDataGrid, toRowCountDiffDataGrid } from "../../utils";
 import type { DataGridHandle } from "../data/ScreenshotDataGrid";
 import { createResultView } from "../result/createResultView";
-import type { CreatedResultViewProps, ResultViewData } from "../result/types";
+import type {
+  CreatedResultViewProps,
+  ResultViewData,
+  ResultViewTransformOptions,
+} from "../result/types";
 
 // ============================================================================
 // Type Definitions
@@ -92,6 +98,7 @@ function transformRowCountData(run: RowCountRun): ResultViewData | null {
  */
 function transformRowCountDiffData(
   run: RowCountDiffRun,
+  { isDark }: ResultViewTransformOptions<unknown>,
 ): ResultViewData | null {
   if (!run.result) {
     return null;
@@ -103,7 +110,71 @@ function transformRowCountDiffData(
     columns: gridData.columns,
     rows: gridData.rows,
     isEmpty: gridData.rows.length === 0,
+    footer: <RowCountDiffLegend isDark={isDark} />,
   };
+}
+
+export function RowCountDiffLegend({ isDark }: { isDark: boolean }) {
+  const comparisonColors = getComparisonThemeColors(isDark);
+  const items = [
+    {
+      label: "Decrease",
+      accent: comparisonColors.base.accent,
+      background: comparisonColors.base.background,
+    },
+    {
+      label: "No change",
+      accent: isDark ? "#6B7280" : "#9CA3AF",
+      background: isDark ? "#252A31" : "#F3F4F6",
+    },
+    {
+      label: "Increase",
+      accent: comparisonColors.current.accent,
+      background: comparisonColors.current.background,
+    },
+  ];
+
+  return (
+    <Box
+      component="ul"
+      aria-label="Row count change legend"
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 3,
+        m: 0,
+        px: 2,
+        py: 1,
+        borderTop: 1,
+        borderColor: "divider",
+        listStyle: "none",
+        color: "text.primary",
+        fontSize: "0.8125rem",
+      }}
+    >
+      {items.map((item) => (
+        <Box
+          component="li"
+          key={item.label}
+          sx={{ display: "inline-flex", alignItems: "center", gap: 0.75 }}
+        >
+          <Box
+            component="span"
+            aria-hidden="true"
+            sx={{
+              width: 14,
+              height: 14,
+              borderRadius: 0.5,
+              bgcolor: item.background,
+              border: `1px solid ${item.accent}`,
+            }}
+          />
+          {item.label}
+        </Box>
+      ))}
+    </Box>
+  );
 }
 
 // ============================================================================
@@ -139,7 +210,8 @@ export const RowCountResultView = createResultView<
  * Result view for comparing row counts between base and current environments
  *
  * Displays a grid with model names, base counts, current counts, and delta.
- * Cells are styled to indicate added (green) or removed (red) rows.
+ * The Delta cell uses current blue for increases and base orange for decreases,
+ * with arrows and signed values as non-color cues.
  *
  * @example
  * ```tsx

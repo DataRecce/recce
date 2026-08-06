@@ -31,6 +31,7 @@ import React, {
 } from "react";
 
 import { useIsDark } from "../../hooks";
+import { getComparisonThemeColors } from "../../theme/chartTheme";
 import "./agGridStyles.css";
 import { dataGridThemeDark, dataGridThemeLight } from "./agGridTheme";
 
@@ -182,6 +183,7 @@ function _ScreenshotDataGrid<TData = DataGridRow>(
 
   // Use useIsDark for reliable dark mode detection with CSS Variables
   const isDark = useIsDark();
+  const comparisonColors = getComparisonThemeColors(isDark);
 
   // Select AG Grid theme based on dark mode
   const gridTheme = useMemo(
@@ -290,6 +292,28 @@ function _ScreenshotDataGrid<TData = DataGridRow>(
         "& .diff-cell-modified": {
           backgroundColor: isDark ? "#713F12 !important" : "#FEF3C7 !important",
           color: "var(--mui-palette-text-primary)",
+        },
+        // Row count direction uses the existing base/current visualization
+        // palette. The fixed tint does not encode change magnitude.
+        "& .row-count-delta-increase": {
+          backgroundColor: `${comparisonColors.current.background} !important`,
+          boxShadow: `inset 3px 0 ${comparisonColors.current.accent}`,
+          color: `${comparisonColors.current.foreground} !important`,
+          fontWeight: 600,
+        },
+        "& .row-count-delta-decrease": {
+          backgroundColor: `${comparisonColors.base.background} !important`,
+          boxShadow: `inset 3px 0 ${comparisonColors.base.accent}`,
+          color: `${comparisonColors.base.foreground} !important`,
+          fontWeight: 600,
+        },
+        "& .row-count-delta-unchanged": {
+          color: "var(--mui-palette-text-secondary)",
+          fontWeight: 600,
+        },
+        "& .row-count-delta-structural": {
+          color: "var(--mui-palette-text-secondary)",
+          fontWeight: 600,
         },
         // Diff header styling
         "& .diff-header-added": {

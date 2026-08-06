@@ -1,9 +1,30 @@
 import {
   calculateDelta,
+  getRowCountChangeDirection,
   getRowCountDiffStatus,
   rowCountDiffResultToDataFrame,
   rowCountResultToDataFrame,
 } from "../rowCountUtils";
+
+// ============================================================================
+// getRowCountChangeDirection Tests
+// ============================================================================
+
+describe("getRowCountChangeDirection", () => {
+  test.each([
+    { base: 100, current: 150, expected: "increase" },
+    { base: 150, current: 100, expected: "decrease" },
+    { base: 100, current: 100, expected: "unchanged" },
+    { base: null, current: 100, expected: "added" },
+    { base: 100, current: null, expected: "removed" },
+    { base: null, current: null, expected: "unavailable" },
+  ])(
+    "returns $expected for base=$base and current=$current",
+    ({ base, current, expected }) => {
+      expect(getRowCountChangeDirection(base, current)).toBe(expected);
+    },
+  );
+});
 
 // ============================================================================
 // calculateDelta Tests

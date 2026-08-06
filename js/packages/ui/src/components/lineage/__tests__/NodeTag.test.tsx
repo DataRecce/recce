@@ -76,13 +76,19 @@ describe("RowCountSummary (diff shape)", () => {
     expect(
       screen.getByText(`${(1200).toLocaleString()} rows`),
     ).toBeInTheDocument();
-    expect(screen.getByText(/\+20/)).toBeInTheDocument();
+    expect(screen.getByText(/\+20/)).toHaveAttribute(
+      "data-row-count-direction",
+      "increase",
+    );
   });
 
   test("renders decrease delta when curr < base", () => {
     const rc: RowCountDiff = { base: 1000, curr: 800 };
     render(<RowCountSummary rowCount={rc} />);
     expect(screen.getByText("800 rows")).toBeInTheDocument();
-    expect(screen.getByText(/-20/)).toBeInTheDocument();
+    expect(screen.getByText(/-20/)).toHaveAttribute(
+      "data-row-count-direction",
+      "decrease",
+    );
   });
 });
