@@ -75,22 +75,20 @@ function RowCountDiffTag({
     | (typeof comparisonColors)["base"]
     | undefined;
 
-  if (direction === "unavailable") {
+  if (base === null && current === null) {
     tagLabel = "Failed to load";
-  } else if (direction === "added") {
+  } else if (base === null) {
     tagLabel = `Added · ${currentLabel}`;
-  } else if (direction === "removed") {
+  } else if (current === null) {
     tagLabel = `Removed · ${baseLabel}`;
   } else if (direction === "unchanged") {
     tagLabel = "=";
-  } else if (direction === "increase" && base !== null && current !== null) {
+  } else if (direction === "increase") {
     tagLabel = `↑ ${deltaPercentageString(base, current)} Rows`;
     directionColors = comparisonColors.current;
-  } else if (base !== null && current !== null) {
+  } else {
     tagLabel = `↓ ${deltaPercentageString(base, current)} Rows`;
     directionColors = comparisonColors.base;
-  } else {
-    tagLabel = `${baseLabel} → ${currentLabel}`;
   }
 
   const RowCountIcon = findByRunType("row_count_diff").icon;

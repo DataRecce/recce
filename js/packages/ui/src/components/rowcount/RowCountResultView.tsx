@@ -125,7 +125,7 @@ export function RowCountDiffLegend({ isDark }: { isDark: boolean }) {
     {
       label: "No change",
       accent: isDark ? "#6B7280" : "#9CA3AF",
-      background: isDark ? "#252A31" : "#F3F4F6",
+      background: "transparent",
     },
     {
       label: "Increase",
