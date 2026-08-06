@@ -30,3 +30,9 @@ Phase B permits `structural.secondaryAccent` on a rail or structural symbol only
 ## Compatibility
 
 Physical-color component props are deprecated on introduction of role-first props and removed only in a future major package release.
+
+## Phase B visual gate
+
+The compound semantics matrix is reviewed at a deterministic 1440 px width in Light, Dark, and Grayscale. It combines lineage nodes; query and profile rows; histogram and Top-K charts; and a legend split into Comparison, Structure, and Direction.
+
+On 2026-08-06, the Light and Dark stories were inspected with Chromium's DevTools vision-deficiency emulation for both Protanopia and Deuteranopia. Every structural row and node retained its `+`/`−`/`Δ` symbol and Added/Removed/Modified label. Increase and decrease retained arrows and signed percentages, while equal retained an equality cue and No Change text. Base and Current retained explicit labels and bordered treatments in value cells and chart legends. No compound meaning depended on the emulated color alone.
