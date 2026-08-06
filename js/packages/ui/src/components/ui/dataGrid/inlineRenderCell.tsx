@@ -33,6 +33,7 @@ import { DiffTextWithToast } from "../DiffTextWithToast";
 interface RecceColumnContext {
   columnType?: ColumnType;
   columnRenderMode?: ColumnRenderMode;
+  showStructuralIndicator?: boolean;
 }
 
 /**
@@ -160,6 +161,10 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
       // Only show delta if both values are valid numbers
       if (Number.isFinite(baseNum) && Number.isFinite(currentNum)) {
         const netChange = currentNum - baseNum;
+        const direction =
+          netChange > 0 ? "increase" : netChange < 0 ? "decrease" : "equal";
+        const symbol =
+          direction === "increase" ? "↑" : direction === "decrease" ? "↓" : "=";
         const changePercent = baseNum !== 0 ? (netChange / baseNum) * 100 : 0;
 
         // Format current value and delta with smart decimals (up to 2, no trailing zeros)
@@ -194,16 +199,17 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
             >
               <DiffTextComp
                 value={formattedCurrent}
-                colorPalette="green"
+                comparisonRole="current"
                 grayOut={currentGrayOut}
               />
               <Typography
+                data-direction={direction}
                 sx={{
-                  color: netChange >= 0 ? "green.600" : "red.600",
+                  color: "text.secondary",
                   fontSize: "0.75rem",
                 }}
               >
-                {deltaText}
+                <span aria-hidden="true">{symbol}</span> {deltaText}
               </Typography>
             </Box>
           </Tooltip>
@@ -225,14 +231,14 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
         {hasBase && (
           <DiffTextComp
             value={baseValue}
-            colorPalette="red"
+            comparisonRole="base"
             grayOut={baseGrayOut}
           />
         )}
         {hasCurrent && (
           <DiffTextComp
             value={currentValue}
-            colorPalette="green"
+            comparisonRole="current"
             grayOut={currentGrayOut}
           />
         )}

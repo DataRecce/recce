@@ -6,9 +6,12 @@
  * supporting both inline and side-by-side display modes.
  */
 
+import Box from "@mui/material/Box";
 import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
 import type { ColumnRenderMode, ColumnType, RowObjectType } from "../../api";
-import { getHeaderCellClass, isCellChanged } from "./gridUtils";
+import { StructuralChangeIndicator } from "../../components/ui/StructuralChangeIndicator";
+import type { StructuralChangeStatus } from "../../theme";
+import { getCellClass, getHeaderCellClass } from "./gridUtils";
 import type {
   DataFrameColumnGroupHeaderProps,
   DiffColumnRenderComponents,
@@ -25,6 +28,7 @@ import type {
 export interface RecceColumnContext {
   columnType?: ColumnType;
   columnRenderMode?: ColumnRenderMode;
+  showStructuralIndicator?: boolean;
 }
 
 /**
@@ -79,22 +83,7 @@ export function createCellClassBase(
   return (params: CellClassParams<RowObjectType>) => {
     const row = params.data;
     if (!row) return undefined;
-
-    const rowStatus = row.__status;
-
-    if (rowStatus === "removed") return "diff-cell-removed";
-    if (rowStatus === "added") return "diff-cell-added";
-    if (columnStatus === "added" || columnStatus === "removed")
-      return undefined;
-
-    const baseKey = `base__${columnName}`.toLowerCase();
-    const currentKey = `current__${columnName}`.toLowerCase();
-
-    if (isCellChanged(row[baseKey], row[currentKey], columnType)) {
-      return "diff-cell-removed";
-    }
-
-    return undefined;
+    return getCellClass(row, columnStatus, columnName, true, columnType);
   };
 }
 
@@ -113,23 +102,21 @@ export function createCellClassCurrent(
   return (params: CellClassParams<RowObjectType>) => {
     const row = params.data;
     if (!row) return undefined;
-
-    const rowStatus = row.__status;
-
-    if (rowStatus === "removed") return "diff-cell-removed";
-    if (rowStatus === "added") return "diff-cell-added";
-    if (columnStatus === "added" || columnStatus === "removed")
-      return undefined;
-
-    const baseKey = `base__${columnName}`.toLowerCase();
-    const currentKey = `current__${columnName}`.toLowerCase();
-
-    if (isCellChanged(row[baseKey], row[currentKey], columnType)) {
-      return "diff-cell-added";
-    }
-
-    return undefined;
+    return getCellClass(row, columnStatus, columnName, false, columnType);
   };
+}
+
+function createStructuralRowCellClass(
+  params: CellClassParams<RowObjectType>,
+): string | undefined {
+  const status = params.data?.__status;
+  return status ? `structural-row-${status}` : undefined;
+}
+
+function isStructuralChangeStatus(
+  status: string,
+): status is Exclude<StructuralChangeStatus, "unchanged"> {
+  return status === "added" || status === "removed" || status === "modified";
 }
 
 // ============================================================================
@@ -204,12 +191,22 @@ export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
 
   // Build the header component
   const headerComponent = () => (
-    <DataFrameColumnGroupHeader
-      name={name}
-      columnStatus={columnStatus}
-      columnType={columnType}
-      {...headerProps}
-    />
+    <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
+      {isStructuralChangeStatus(columnStatus) && (
+        <StructuralChangeIndicator
+          status={columnStatus}
+          size="sm"
+          showLabel={false}
+          emphasis="secondary"
+        />
+      )}
+      <DataFrameColumnGroupHeader
+        name={name}
+        columnStatus={columnStatus}
+        columnType={columnType}
+        {...headerProps}
+      />
+    </Box>
   );
 
   if (displayMode === "inline") {
@@ -218,8 +215,13 @@ export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
       headerName: name,
       headerClass: headerCellClass,
       headerComponent,
+      cellClass: createStructuralRowCellClass,
       cellRenderer: inlineRenderCell,
-      context: { columnType, columnRenderMode },
+      context: {
+        columnType,
+        columnRenderMode,
+        showStructuralIndicator: false,
+      },
     };
   }
 
@@ -235,7 +237,11 @@ export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
     headerName: name,
     headerClass: headerCellClass,
     headerGroupComponent: headerComponent,
-    context: { columnType, columnRenderMode },
+    context: {
+      columnType,
+      columnRenderMode,
+      showStructuralIndicator: false,
+    },
     children: [
       {
         field: `base__${name}`,
@@ -243,7 +249,11 @@ export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
         headerClass: headerCellClass,
         cellClass: cellClassBase,
         cellRenderer: defaultRenderCell,
-        context: { columnType, columnRenderMode },
+        context: {
+          columnType,
+          columnRenderMode,
+          showStructuralIndicator: false,
+        },
       } as ColDef<RowObjectType>,
       {
         field: `current__${name}`,
@@ -251,7 +261,11 @@ export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
         headerClass: headerCellClass,
         cellClass: cellClassCurrent,
         cellRenderer: defaultRenderCell,
-        context: { columnType, columnRenderMode },
+        context: {
+          columnType,
+          columnRenderMode,
+          showStructuralIndicator: false,
+        },
       } as ColDef<RowObjectType>,
     ],
   };
