@@ -6,10 +6,16 @@
  * between base and current environments across multiple models.
  */
 
-import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
+import type {
+  CellClassParams,
+  ColDef,
+  ColGroupDef,
+  ValueFormatterParams,
+} from "ag-grid-community";
 import type { RowCountDiffResult, RowObjectType } from "../../../api";
 import { dataFrameToRowObjects } from "../../transforms";
 import {
+  getRowCountChangeDirection,
   getRowCountDiffStatus,
   rowCountDiffResultToDataFrame,
 } from "../rowCountUtils";
@@ -28,51 +34,63 @@ export interface RowCountDiffDataGridResult {
 // ============================================================================
 
 /**
- * Creates a cell class function for row count diff cells
+ * Creates a cell class function for the row count Delta cell.
  *
- * Returns appropriate diff-cell-* class based on row status
+ * Directional classes are deliberately row-count-specific: the generic
+ * diff-cell-added/removed classes describe structural diffs and use the
+ * app-wide green/red palette.
  */
-function createRowCountDiffCellClass(): (
+function createRowCountDeltaCellClass(): (
   params: CellClassParams<RowObjectType>,
 ) => string | undefined {
   return (params: CellClassParams<RowObjectType>) => {
     const row = params.data;
     if (!row) return undefined;
 
-    const base = row.base as number | string | null;
-    const current = row.current as number | string | null;
+    const base = typeof row.base === "number" ? row.base : null;
+    const current = typeof row.current === "number" ? row.current : null;
+    const direction = getRowCountChangeDirection(base, current);
 
-    // Handle "N/A" string values
-    const baseValue = base === "N/A" ? null : base;
-    const currentValue = current === "N/A" ? null : current;
-
-    // Both null or equal - no styling
-    if (baseValue === currentValue) {
-      return undefined;
+    switch (direction) {
+      case "increase":
+        return "row-count-delta-increase";
+      case "decrease":
+        return "row-count-delta-decrease";
+      case "unchanged":
+        return "row-count-delta-unchanged";
+      case "added":
+      case "removed":
+      case "unavailable":
+        return "row-count-delta-structural";
     }
-
-    // Current increased or newly added
-    if (
-      baseValue === null ||
-      (typeof baseValue === "number" &&
-        typeof currentValue === "number" &&
-        baseValue < currentValue)
-    ) {
-      return "diff-cell-added";
-    }
-
-    // Current decreased or removed
-    if (
-      currentValue === null ||
-      (typeof baseValue === "number" &&
-        typeof currentValue === "number" &&
-        baseValue > currentValue)
-    ) {
-      return "diff-cell-removed";
-    }
-
-    return undefined;
   };
+}
+
+function formatRowCountDelta(
+  params: ValueFormatterParams<RowObjectType>,
+): string {
+  const row = params.data;
+  if (!row) return String(params.value ?? "");
+
+  const base = typeof row.base === "number" ? row.base : null;
+  const current = typeof row.current === "number" ? row.current : null;
+  const direction = getRowCountChangeDirection(base, current);
+  const value = String(params.value ?? "");
+
+  switch (direction) {
+    case "increase":
+      return `↑ ${value}`;
+    case "decrease":
+      return `↓ ${value}`;
+    case "unchanged":
+      return "= 0%";
+    case "added":
+      return "Added";
+    case "removed":
+      return "Removed";
+    case "unavailable":
+      return "N/A";
+  }
 }
 
 // ============================================================================
@@ -117,34 +135,29 @@ export function toRowCountDiffDataGrid(
     };
   });
 
-  // Create cell class function
-  const cellClass = createRowCountDiffCellClass();
-
   // Build columns
   const columns: ColDef<RowObjectType>[] = [
     {
       field: "name",
       headerName: "Name",
       resizable: true,
-      cellClass,
     },
     {
       field: "base",
       headerName: "Base Rows",
       resizable: true,
-      cellClass,
     },
     {
       field: "current",
       headerName: "Current Rows",
       resizable: true,
-      cellClass,
     },
     {
       field: "delta",
       headerName: "Delta",
       resizable: true,
-      cellClass,
+      cellClass: createRowCountDeltaCellClass(),
+      valueFormatter: formatRowCountDelta,
     },
   ];
 

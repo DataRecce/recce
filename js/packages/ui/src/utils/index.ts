@@ -92,6 +92,7 @@ export {
   getDisplayColumns,
   getHeaderCellClass,
   getPrimaryKeyValue,
+  getRowCountChangeDirection,
   getRowCountDiffStatus,
   getSimpleDisplayColumns,
   isExcludedColumn,
@@ -100,6 +101,7 @@ export {
   type MergeColumnMapEntry,
   type RecceColumnContext,
   // Row count utilities
+  type RowCountChangeDirection,
   type RowCountDiffRowData,
   type RowCountRowData,
   type RowStats,

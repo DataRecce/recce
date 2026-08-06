@@ -46,6 +46,14 @@ vi.mock("@datarecce/ui/utils", () => ({
     const delta = ((current - base) / base) * 100;
     return `${delta > 0 ? "+" : ""}${delta.toFixed(1)}%`;
   }),
+  getRowCountChangeDirection: vi.fn((base, current) => {
+    if (base === null && current === null) return "unavailable";
+    if (base === null) return "added";
+    if (current === null) return "removed";
+    if (current > base) return "increase";
+    if (current < base) return "decrease";
+    return "unchanged";
+  }),
 }));
 
 // Mock LineageViewContext (included with other @datarecce/ui/contexts mocks)

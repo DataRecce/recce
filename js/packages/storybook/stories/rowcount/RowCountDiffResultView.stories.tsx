@@ -14,7 +14,7 @@ const meta: Meta<typeof RowCountDiffResultView> = {
     docs: {
       description: {
         component:
-          "Result view for comparing row counts between base and current environments. Displays a grid with model names, base counts, current counts, and delta. Cells are styled to indicate added or removed rows.",
+          "Result view for comparing row counts between base and current environments. The Delta cell uses current blue for increases and base orange for decreases, with arrows and signed values as redundant cues.",
       },
     },
     layout: "fullscreen",
@@ -62,7 +62,7 @@ export const WithChanges: Story = {
     docs: {
       description: {
         story:
-          "Row count diff showing added models (green), removed models (red), and significant increases/decreases.",
+          "Row count diff showing blue increases, orange decreases, neutral unchanged values, and explicit added/removed labels.",
       },
     },
   },

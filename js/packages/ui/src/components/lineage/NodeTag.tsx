@@ -23,7 +23,8 @@ import {
 } from "../../contexts";
 import type { LineageGraphNode } from "../../contexts/lineage/types";
 import { useIsDark } from "../../hooks";
-import { deltaPercentageString } from "../../utils";
+import { getComparisonThemeColors } from "../../theme/chartTheme";
+import { deltaPercentageString, getRowCountChangeDirection } from "../../utils";
 import { SetupConnectionPopover } from "../app";
 import { findByRunType } from "../run";
 import { getTagRootSx, tagStartElementSx } from "./tags";
@@ -49,7 +50,7 @@ export interface RowCountSummaryProps {
  */
 export function RowCountSummary({ rowCount }: RowCountSummaryProps) {
   if ("base" in rowCount) {
-    return <_RowCountByRate rowCount={rowCount} />;
+    return <RowCountByRate rowCount={rowCount} />;
   }
   return <span>{formatRowCountValue(rowCount.curr)}</span>;
 }
@@ -65,16 +66,19 @@ function formatRowCountValue(n: number | null): string {
   return `${n.toLocaleString()} ${n === 1 ? "row" : "rows"}`;
 }
 
-function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
+function RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
   const base = rowCount.base;
   const current = rowCount.curr;
+  const isDark = useIsDark();
+  const comparisonColors = getComparisonThemeColors(isDark);
+  const direction = getRowCountChangeDirection(base, current);
   const baseLabel = formatRowCountValue(base);
   const currentLabel = formatRowCountValue(current);
 
-  if (base === null && current === null) {
+  if (direction === "unavailable") {
     return <>Failed to load</>;
   }
-  if (base === null || current === null) {
+  if (direction === "added" || direction === "removed") {
     return (
       <Stack
         component="span"
@@ -95,7 +99,12 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
       </Stack>
     );
   }
-  if (base === current) {
+  // The direction classifier above guarantees this for quantitative states;
+  // keep the guard explicit so TypeScript can narrow the values below.
+  if (base === null || current === null) {
+    return <>Failed to load</>;
+  }
+  if (direction === "unchanged") {
     return (
       <Stack
         component="span"
@@ -118,7 +127,7 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
       </Stack>
     );
   }
-  if (base < current) {
+  if (direction === "increase" && base !== null && current !== null) {
     return (
       <Stack
         component="span"
@@ -132,13 +141,17 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
         <Typography variant="body2" component="span">
           {currentLabel}
         </Typography>
-        <Box component="span" sx={{ color: "success.main", display: "flex" }}>
+        <Box
+          component="span"
+          sx={{ color: comparisonColors.current.foreground, display: "flex" }}
+        >
           <RiArrowUpSFill />
         </Box>
         <Typography
           variant="body2"
           component="span"
-          sx={{ color: "success.main" }}
+          data-row-count-direction="increase"
+          sx={{ color: comparisonColors.current.foreground }}
         >
           {deltaPercentageString(base, current)}
         </Typography>
@@ -158,10 +171,18 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
       <Typography variant="body2" component="span">
         {currentLabel}
       </Typography>
-      <Box component="span" sx={{ color: "error.main", display: "flex" }}>
+      <Box
+        component="span"
+        sx={{ color: comparisonColors.base.foreground, display: "flex" }}
+      >
         <RiArrowDownSFill />
       </Box>
-      <Typography variant="body2" component="span" sx={{ color: "error.main" }}>
+      <Typography
+        variant="body2"
+        component="span"
+        data-row-count-direction="decrease"
+        sx={{ color: comparisonColors.base.foreground }}
+      >
         {deltaPercentageString(base, current)}
       </Typography>
     </Stack>
@@ -223,7 +244,7 @@ export function RowCountDiffTag({
             isFetching ? (
               <Skeleton width={30} height={16} />
             ) : rowsToShow != null ? (
-              <_RowCountByRate rowCount={rowsToShow} />
+              <RowCountByRate rowCount={rowsToShow} />
             ) : (
               <Typography variant="caption">row count</Typography>
             )

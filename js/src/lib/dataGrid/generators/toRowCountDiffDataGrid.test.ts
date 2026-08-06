@@ -108,13 +108,14 @@ describe("toRowCountDiffDataGrid - Column Structure", () => {
     });
   });
 
-  test("columns have cellClass function", () => {
+  test("only the Delta column has a cellClass function", () => {
     const result = createResult({ orders: { base: 100, curr: 100 } });
     const { columns } = toRowCountDiffDataGrid(result);
 
-    columns.forEach((col) => {
-      expect(typeof getColumn([col], 0).cellClass).toBe("function");
-    });
+    expect(getColumn(columns, 0).cellClass).toBeUndefined();
+    expect(getColumn(columns, 1).cellClass).toBeUndefined();
+    expect(getColumn(columns, 2).cellClass).toBeUndefined();
+    expect(typeof getColumn(columns, 3).cellClass).toBe("function");
   });
 });
 
@@ -191,57 +192,63 @@ describe("toRowCountDiffDataGrid - Row Status", () => {
 // ============================================================================
 
 describe("toRowCountDiffDataGrid - Cell Classes", () => {
-  test("unchanged rows return undefined cellClass", () => {
+  test("unchanged rows return the neutral row count class", () => {
     const result = createResult({ orders: { base: 100, curr: 100 } });
     const { columns, rows } = toRowCountDiffDataGrid(result);
 
-    const cellClassFn = getColumn(columns, 0).cellClass as (
-      params: CellClassParams<RowObjectType>,
-    ) => string | undefined;
-    expect(cellClassFn(createCellClassParams(rows[0]))).toBeUndefined();
-  });
-
-  test("increased counts return 'diff-cell-added'", () => {
-    const result = createResult({ orders: { base: 100, curr: 150 } });
-    const { columns, rows } = toRowCountDiffDataGrid(result);
-
-    const cellClassFn = getColumn(columns, 0).cellClass as (
-      params: CellClassParams<RowObjectType>,
-    ) => string | undefined;
-    expect(cellClassFn(createCellClassParams(rows[0]))).toBe("diff-cell-added");
-  });
-
-  test("decreased counts return 'diff-cell-removed'", () => {
-    const result = createResult({ orders: { base: 150, curr: 100 } });
-    const { columns, rows } = toRowCountDiffDataGrid(result);
-
-    const cellClassFn = getColumn(columns, 0).cellClass as (
+    const cellClassFn = getColumn(columns, 3).cellClass as (
       params: CellClassParams<RowObjectType>,
     ) => string | undefined;
     expect(cellClassFn(createCellClassParams(rows[0]))).toBe(
-      "diff-cell-removed",
+      "row-count-delta-unchanged",
     );
   });
 
-  test("added models (null base) return 'diff-cell-added'", () => {
-    const result = createResult({ new_model: { base: null, curr: 100 } });
+  test("increased counts return the current-blue class", () => {
+    const result = createResult({ orders: { base: 100, curr: 150 } });
     const { columns, rows } = toRowCountDiffDataGrid(result);
 
-    const cellClassFn = getColumn(columns, 0).cellClass as (
-      params: CellClassParams<RowObjectType>,
-    ) => string | undefined;
-    expect(cellClassFn(createCellClassParams(rows[0]))).toBe("diff-cell-added");
-  });
-
-  test("removed models (null current) return 'diff-cell-removed'", () => {
-    const result = createResult({ old_model: { base: 100, curr: null } });
-    const { columns, rows } = toRowCountDiffDataGrid(result);
-
-    const cellClassFn = getColumn(columns, 0).cellClass as (
+    const cellClassFn = getColumn(columns, 3).cellClass as (
       params: CellClassParams<RowObjectType>,
     ) => string | undefined;
     expect(cellClassFn(createCellClassParams(rows[0]))).toBe(
-      "diff-cell-removed",
+      "row-count-delta-increase",
+    );
+  });
+
+  test("decreased counts return the base-orange class", () => {
+    const result = createResult({ orders: { base: 150, curr: 100 } });
+    const { columns, rows } = toRowCountDiffDataGrid(result);
+
+    const cellClassFn = getColumn(columns, 3).cellClass as (
+      params: CellClassParams<RowObjectType>,
+    ) => string | undefined;
+    expect(cellClassFn(createCellClassParams(rows[0]))).toBe(
+      "row-count-delta-decrease",
+    );
+  });
+
+  test("added models (null base) remain structurally neutral", () => {
+    const result = createResult({ new_model: { base: null, curr: 100 } });
+    const { columns, rows } = toRowCountDiffDataGrid(result);
+
+    const cellClassFn = getColumn(columns, 3).cellClass as (
+      params: CellClassParams<RowObjectType>,
+    ) => string | undefined;
+    expect(cellClassFn(createCellClassParams(rows[0]))).toBe(
+      "row-count-delta-structural",
+    );
+  });
+
+  test("removed models (null current) remain structurally neutral", () => {
+    const result = createResult({ old_model: { base: 100, curr: null } });
+    const { columns, rows } = toRowCountDiffDataGrid(result);
+
+    const cellClassFn = getColumn(columns, 3).cellClass as (
+      params: CellClassParams<RowObjectType>,
+    ) => string | undefined;
+    expect(cellClassFn(createCellClassParams(rows[0]))).toBe(
+      "row-count-delta-structural",
     );
   });
 });

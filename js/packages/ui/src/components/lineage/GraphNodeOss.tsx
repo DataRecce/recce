@@ -29,7 +29,8 @@ import {
   useLineageViewContextSafe,
 } from "../../contexts";
 import { useThemeColors } from "../../hooks";
-import { deltaPercentageString } from "../../utils";
+import { getComparisonThemeColors } from "../../theme/chartTheme";
+import { deltaPercentageString, getRowCountChangeDirection } from "../../utils";
 import { findByRunType } from "../run";
 import { resolveChangeCategory } from "./changeCategory";
 import {
@@ -54,27 +55,42 @@ export type GraphNodeProps = NodeProps<LineageGraphNode>;
 /**
  * Row count diff tag component with OSS icon injection
  */
-function RowCountDiffTag({ rowCount }: { rowCount: RowCountDiff }) {
+function RowCountDiffTag({
+  rowCount,
+  isDark,
+}: {
+  rowCount: RowCountDiff;
+  isDark: boolean;
+}) {
   const base = rowCount.base;
   const current = rowCount.curr;
+  const comparisonColors = getComparisonThemeColors(isDark);
+  const direction = getRowCountChangeDirection(base, current);
   const baseLabel = rowCount.base === null ? "N/A" : `${rowCount.base} Rows`;
   const currentLabel = rowCount.curr === null ? "N/A" : `${rowCount.curr} Rows`;
 
   let tagLabel: string;
-  let chipColor: "default" | "success" | "error";
+  let directionColors:
+    | (typeof comparisonColors)["current"]
+    | (typeof comparisonColors)["base"]
+    | undefined;
 
-  if (base === null && current === null) {
+  if (direction === "unavailable") {
     tagLabel = "Failed to load";
-    chipColor = "default";
-  } else if (base === null || current === null) {
-    tagLabel = `${baseLabel} -> ${currentLabel}`;
-    chipColor = base === null ? "success" : "error";
-  } else if (base === current) {
+  } else if (direction === "added") {
+    tagLabel = `Added · ${currentLabel}`;
+  } else if (direction === "removed") {
+    tagLabel = `Removed · ${baseLabel}`;
+  } else if (direction === "unchanged") {
     tagLabel = "=";
-    chipColor = "default";
+  } else if (direction === "increase" && base !== null && current !== null) {
+    tagLabel = `↑ ${deltaPercentageString(base, current)} Rows`;
+    directionColors = comparisonColors.current;
+  } else if (base !== null && current !== null) {
+    tagLabel = `↓ ${deltaPercentageString(base, current)} Rows`;
+    directionColors = comparisonColors.base;
   } else {
-    tagLabel = `${deltaPercentageString(base, current)} Rows`;
-    chipColor = base < current ? "success" : "error";
+    tagLabel = `${baseLabel} → ${currentLabel}`;
   }
 
   const RowCountIcon = findByRunType("row_count_diff").icon;
@@ -82,10 +98,18 @@ function RowCountDiffTag({ rowCount }: { rowCount: RowCountDiff }) {
   return (
     <Chip
       size="small"
-      color={chipColor}
       icon={RowCountIcon ? <RowCountIcon /> : undefined}
       label={tagLabel}
-      sx={{ height: 20, fontSize: "0.7rem" }}
+      data-row-count-direction={direction}
+      sx={{
+        height: 20,
+        fontSize: "0.7rem",
+        ...(directionColors && {
+          bgcolor: directionColors.background,
+          border: `1px solid ${directionColors.accent}`,
+          color: directionColors.foreground,
+        }),
+      }}
     />
   );
 }
@@ -159,6 +183,7 @@ function NodeRunsAggregatedDisplay({
           <Box>
             <RowCountDiffTag
               rowCount={runs.row_count_diff.result as RowCountDiff}
+              isDark={isDark}
             />
           </Box>
         </MuiTooltip>
@@ -178,6 +203,7 @@ function ActionTagDisplay({
   nodeId: string;
   nodeName: string;
 }) {
+  const { isDark } = useThemeColors();
   const { getNodeAction } = useLineageViewContextSafe();
   const action = getNodeAction(nodeId);
 
@@ -240,7 +266,7 @@ function ActionTagDisplay({
     const result = run.result;
     const nodeResult = result[nodeName];
     if (nodeResult) {
-      return <RowCountDiffTag rowCount={nodeResult} />;
+      return <RowCountDiffTag rowCount={nodeResult} isDark={isDark} />;
     }
   }
 

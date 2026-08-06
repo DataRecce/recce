@@ -28,6 +28,14 @@ export interface RowCountRowData {
   current: number | null;
 }
 
+export type RowCountChangeDirection =
+  | "increase"
+  | "decrease"
+  | "unchanged"
+  | "added"
+  | "removed"
+  | "unavailable";
+
 // ============================================================================
 // Delta Calculation
 // ============================================================================
@@ -106,6 +114,25 @@ export function rowCountResultToDataFrame(result: RowCountResult): DataFrame {
 // ============================================================================
 // Row Status Determination
 // ============================================================================
+
+/**
+ * Describes how the current row count relates to the base row count.
+ *
+ * This is intentionally separate from diff status: "added" and "removed"
+ * describe model presence, while "increase" and "decrease" describe a
+ * quantitative change between two present models.
+ */
+export function getRowCountChangeDirection(
+  base: number | null,
+  current: number | null,
+): RowCountChangeDirection {
+  if (base === null && current === null) return "unavailable";
+  if (base === null) return "added";
+  if (current === null) return "removed";
+  if (current > base) return "increase";
+  if (current < base) return "decrease";
+  return "unchanged";
+}
 
 /**
  * Determines the diff status for a row count entry

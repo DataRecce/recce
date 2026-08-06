@@ -238,7 +238,10 @@ describe("ActionTag - success with row count diff", () => {
 
     expect(screen.getByText("100")).toBeInTheDocument();
     expect(screen.getByText("150")).toBeInTheDocument();
-    expect(screen.getByText("↑")).toBeInTheDocument();
+    expect(screen.getByText("↑")).toHaveAttribute(
+      "data-row-count-direction",
+      "increase",
+    );
   });
 
   it("shows row counts with decrease indicator", () => {
@@ -256,7 +259,10 @@ describe("ActionTag - success with row count diff", () => {
 
     expect(screen.getByText("200")).toBeInTheDocument();
     expect(screen.getByText("50")).toBeInTheDocument();
-    expect(screen.getByText("↓")).toBeInTheDocument();
+    expect(screen.getByText("↓")).toHaveAttribute(
+      "data-row-count-direction",
+      "decrease",
+    );
   });
 
   it("shows equal indicator when counts match", () => {

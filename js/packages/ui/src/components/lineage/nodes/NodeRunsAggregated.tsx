@@ -16,6 +16,7 @@ import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { memo } from "react";
+import { getComparisonThemeColors } from "../../../theme/chartTheme";
 
 // =============================================================================
 // TYPES
@@ -153,8 +154,15 @@ function deltaPercentage(base: number, current: number): string {
 /**
  * Display row count comparison
  */
-function RowCountDisplay({ data }: { data: RowCountDiffData }) {
+function RowCountDisplay({
+  data,
+  isDark,
+}: {
+  data: RowCountDiffData;
+  isDark: boolean;
+}) {
   const { base, curr: current } = data;
+  const comparisonColors = getComparisonThemeColors(isDark);
   const baseLabel = base === null ? "N/A" : `${base.toLocaleString()} rows`;
   const currentLabel =
     current === null ? "N/A" : `${current.toLocaleString()} rows`;
@@ -227,13 +235,17 @@ function RowCountDisplay({ data }: { data: RowCountDiffData }) {
         <Typography variant="body2" component="span">
           {currentLabel}
         </Typography>
-        <Box component="span" sx={{ color: "success.main", display: "flex" }}>
+        <Box
+          component="span"
+          sx={{ color: comparisonColors.current.foreground, display: "flex" }}
+        >
           <ArrowUpIcon />
         </Box>
         <Typography
           variant="body2"
           component="span"
-          sx={{ color: "success.main" }}
+          data-row-count-direction="increase"
+          sx={{ color: comparisonColors.current.foreground }}
         >
           {deltaPercentage(base, current)}
         </Typography>
@@ -253,10 +265,18 @@ function RowCountDisplay({ data }: { data: RowCountDiffData }) {
       <Typography variant="body2" component="span">
         {currentLabel}
       </Typography>
-      <Box component="span" sx={{ color: "error.main", display: "flex" }}>
+      <Box
+        component="span"
+        sx={{ color: comparisonColors.base.foreground, display: "flex" }}
+      >
         <ArrowDownIcon />
       </Box>
-      <Typography variant="body2" component="span" sx={{ color: "error.main" }}>
+      <Typography
+        variant="body2"
+        component="span"
+        data-row-count-direction="decrease"
+        sx={{ color: comparisonColors.base.foreground }}
+      >
         {deltaPercentage(base, current)}
       </Typography>
     </Stack>
@@ -328,7 +348,7 @@ function NodeRunsAggregatedComponent({
           title={`${rowCountDiff.base ?? "N/A"} → ${rowCountDiff.curr ?? "N/A"} rows`}
         >
           <Box component="span" sx={tagRootSx}>
-            <RowCountDisplay data={rowCountDiff} />
+            <RowCountDisplay data={rowCountDiff} isDark={isDark} />
           </Box>
         </Tooltip>
       )}
