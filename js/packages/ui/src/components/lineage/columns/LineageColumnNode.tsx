@@ -279,9 +279,6 @@ function LineageColumnNodeComponent({
     return null;
   }
 
-  // Determine what indicator to show based on showChangeAnalysis mode
-  const shouldShowChangeStatus = showChangeAnalysis && changeStatus;
-
   // Structural status owns the neutral surface plus secondary-accent rail.
   // CLL impact keeps its separate amber presentation only when the column has
   // no structural status of its own.
@@ -348,10 +345,9 @@ function LineageColumnNodeComponent({
           height: `${COLUMN_NODE_HEIGHT - 1}px`,
         }}
       >
-        {/* Status indicator - based on showChangeAnalysis mode */}
-        {shouldShowChangeStatus ? (
-          <ChangeStatusIndicator changeStatus={changeStatus} />
-        ) : (
+        {/* Structural status and transformation are independent meanings. */}
+        {changeStatus && <ChangeStatusIndicator changeStatus={changeStatus} />}
+        {(!showChangeAnalysis || !changeStatus) && (
           <TransformationIndicator transformationType={transformationType} />
         )}
 

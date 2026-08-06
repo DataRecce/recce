@@ -19,6 +19,7 @@ import type { LineageGraphEdge } from "../../../contexts/lineage/types";
 import { useIsDark } from "../../../hooks/useIsDark";
 import {
   getSemanticColorTheme,
+  STRUCTURAL_CHANGE_PRESENTATION,
   STRUCTURAL_EDGE_DASH,
   type StructuralChangeStatus,
 } from "../../../theme";
@@ -106,6 +107,7 @@ function GraphEdgeComponent(props: GraphEdgeProps) {
   const semantic = getSemanticColorTheme(isDark);
   const changeStatus = (data?.changeStatus ??
     "unchanged") as StructuralChangeStatus;
+  const accessibleName = `${STRUCTURAL_CHANGE_PRESENTATION[changeStatus].label} change`;
 
   const style: React.CSSProperties = {
     ...styleOverride,
@@ -134,7 +136,13 @@ function GraphEdgeComponent(props: GraphEdgeProps) {
 
   return (
     <>
-      <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
+      <BaseEdge
+        path={edgePath}
+        markerEnd={markerEnd}
+        style={style}
+        role="img"
+        aria-label={accessibleName}
+      />
     </>
   );
 }

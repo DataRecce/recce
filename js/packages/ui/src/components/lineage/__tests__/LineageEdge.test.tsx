@@ -24,13 +24,21 @@ vi.mock("@xyflow/react", () => ({
     id,
     path,
     style,
+    ...props
   }: {
     id: string;
     path: string;
     style: Record<string, unknown>;
+    [key: string]: unknown;
   }) => (
     <svg>
-      <path data-testid="base-edge" data-id={id} d={path} style={style} />
+      <path
+        data-testid="base-edge"
+        data-id={id}
+        d={path}
+        style={style}
+        {...props}
+      />
     </svg>
   ),
   EdgeLabelRenderer: ({ children }: { children: React.ReactNode }) => (
@@ -180,6 +188,19 @@ describe("LineageEdge", () => {
         expect(edge.style.strokeDasharray).toBe(STRUCTURAL_EDGE_DASH[status]);
       },
     );
+
+    it.each([
+      ["added", "Added change"],
+      ["removed", "Removed change"],
+      ["modified", "Modified change"],
+      ["unchanged", "Unchanged change"],
+    ] as const)("exposes %s status in its accessible name", (status, name) => {
+      render(
+        <LineageEdge {...createMockEdgeProps({}, { changeStatus: status })} />,
+      );
+
+      expect(screen.getByRole("img", { name })).toBeInTheDocument();
+    });
 
     it("defaults to unchanged status when not provided", () => {
       const props = createMockEdgeProps();
@@ -370,14 +391,20 @@ describe("LineageEdge", () => {
 });
 
 describe("GraphEdge", () => {
-  it.each<EdgeChangeStatus>(["added", "removed", "modified", "unchanged"])(
-    "uses a neutral stroke and redundant dash pattern for %s status",
-    (status) => {
+  it.each([
+    ["added", "Added change"],
+    ["removed", "Removed change"],
+    ["modified", "Modified change"],
+    ["unchanged", "Unchanged change"],
+  ] as const)(
+    "uses redundant presentation with an accessible name for %s status",
+    (status, name) => {
       render(<GraphEdge {...createMockGraphEdgeProps(status)} />);
 
       const edge = screen.getByTestId("base-edge");
       expect(edge.style.stroke).toBe("#737373");
       expect(edge.style.strokeDasharray).toBe(STRUCTURAL_EDGE_DASH[status]);
+      expect(screen.getByRole("img", { name })).toBe(edge);
     },
   );
 });
