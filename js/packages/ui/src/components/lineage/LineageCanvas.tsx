@@ -21,6 +21,7 @@ import {
   useRef,
 } from "react";
 
+import { useIsDark } from "../../hooks/useIsDark";
 import { LineageColumnNode } from "./columns";
 import { LineageEdge, type LineageEdgeData } from "./edges";
 import { LineageNode, type LineageNodeData } from "./nodes";
@@ -70,6 +71,7 @@ export function LineageCanvas({
   maxZoom,
   fitViewOptions,
 }: LineageCanvasProps) {
+  const isDark = useIsDark();
   const [nodes, _setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, _setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const defaultNodeTypes = useMemo(
@@ -134,6 +136,24 @@ export function LineageCanvas({
     };
   }, [hasContextMenu, defaultNodeTypes]);
 
+  // Copy the node card's accent color from the shared source of truth so the
+  // minimap can't drift from the canvas. Impact lives on `node.data` in this
+  // stack, so impacted-but-unchanged nodes are amber here too.
+  const getMiniMapNodeColor = useCallback(
+    (node: Node) => {
+      const data = node.data as LineageNodeData;
+      return getNodeChangeStyle(
+        {
+          changeStatus: data.changeStatus,
+          isImpacted: data.isImpacted,
+          newCllExperience: data.newCllExperience,
+        },
+        isDark,
+      ).color;
+    },
+    [isDark],
+  );
+
   return (
     <Box sx={{ width: "100%", height }}>
       <ReactFlow
@@ -156,23 +176,7 @@ export function LineageCanvas({
       >
         {showBackground && <Background />}
         {showControls && <Controls />}
-        {showMiniMap && (
-          <MiniMap
-            nodeColor={(node) => {
-              // Copy the node card's accent color from the shared source of
-              // truth so the minimap can't drift from the canvas. Impact lives
-              // on `node.data` in this stack (the OSS stack reads it from
-              // context instead), so impacted-but-unchanged nodes are amber
-              // here too (DRC-3250). Mirrors LineageNode's resolution.
-              const data = node.data as LineageNodeData;
-              return getNodeChangeStyle({
-                changeStatus: data.changeStatus,
-                isImpacted: data.isImpacted,
-                newCllExperience: data.newCllExperience,
-              }).color;
-            }}
-          />
-        )}
+        {showMiniMap && <MiniMap nodeColor={getMiniMapNodeColor} />}
       </ReactFlow>
     </Box>
   );
