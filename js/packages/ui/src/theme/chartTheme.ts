@@ -4,6 +4,11 @@
  * SVG-rendered paired histogram cells.
  */
 
+import { getSemanticColorTheme } from "./semanticColors";
+
+const LIGHT_SEMANTIC_COLORS = getSemanticColorTheme(false);
+const DARK_SEMANTIC_COLORS = getSemanticColorTheme(true);
+
 export interface ChartThemeColors {
   gridColor: string;
   textColor: string;
@@ -86,16 +91,22 @@ export function getThemedPluginOptions(isDark: boolean) {
 }
 
 // Bar color constants - Light mode
-export const CURRENT_BAR_COLOR = "#63B3ED";
-export const BASE_BAR_COLOR = "#F6AD55";
-export const CURRENT_BAR_COLOR_WITH_ALPHA = `${CURRENT_BAR_COLOR}A5`;
-export const BASE_BAR_COLOR_WITH_ALPHA = `${BASE_BAR_COLOR}A5`;
+export const CURRENT_BAR_COLOR =
+  LIGHT_SEMANTIC_COLORS.comparison.current.accent;
+export const BASE_BAR_COLOR = LIGHT_SEMANTIC_COLORS.comparison.base.accent;
+export const CURRENT_BAR_COLOR_WITH_ALPHA =
+  LIGHT_SEMANTIC_COLORS.comparison.current.chartFill;
+export const BASE_BAR_COLOR_WITH_ALPHA =
+  LIGHT_SEMANTIC_COLORS.comparison.base.chartFill;
 
 // Bar color constants - Dark mode (slightly brighter for better visibility)
-export const CURRENT_BAR_COLOR_DARK = "#90CDF4";
-export const BASE_BAR_COLOR_DARK = "#FBD38D";
-export const CURRENT_BAR_COLOR_DARK_WITH_ALPHA = `${CURRENT_BAR_COLOR_DARK}A5`;
-export const BASE_BAR_COLOR_DARK_WITH_ALPHA = `${BASE_BAR_COLOR_DARK}A5`;
+export const CURRENT_BAR_COLOR_DARK =
+  DARK_SEMANTIC_COLORS.comparison.current.accent;
+export const BASE_BAR_COLOR_DARK = DARK_SEMANTIC_COLORS.comparison.base.accent;
+export const CURRENT_BAR_COLOR_DARK_WITH_ALPHA =
+  DARK_SEMANTIC_COLORS.comparison.current.chartFill;
+export const BASE_BAR_COLOR_DARK_WITH_ALPHA =
+  DARK_SEMANTIC_COLORS.comparison.base.chartFill;
 
 // `info`-style accent color used by some chart legends. Equal to the current
 // bar color today but kept as a named export so consumers can pull a stable
@@ -136,52 +147,38 @@ export function getChartBarColors(isDark: boolean): ChartBarColors {
 export interface ComparisonColorPair {
   /** Existing chart color that identifies the environment. */
   accent: string;
-  /** Low-intensity fill for directional comparison cells. */
+  /** Low-intensity fill for comparison cells. */
   background: string;
   /** Text/icon color with at least 4.5:1 contrast against the fill. */
   foreground: string;
 }
 
 export interface ComparisonThemeColors {
-  /** Current environment; also represents an increase from base. */
+  /** Current environment. */
   current: ComparisonColorPair;
-  /** Base environment; also represents a decrease from base. */
+  /** Base environment. */
   base: ComparisonColorPair;
 }
 
 /**
  * Theme-aware colors for base/current comparisons outside charts.
  *
- * These reuse the chart accents so an increase reads as "more current" (blue)
- * and a decrease reads as "more base" (orange). Background intensity is fixed;
- * it does not imply the magnitude of the change.
+ * These reuse the chart accents for a consistent base/current identity.
  */
 export function getComparisonThemeColors(
   isDark: boolean,
 ): ComparisonThemeColors {
-  return isDark
-    ? {
-        current: {
-          accent: CURRENT_BAR_COLOR_DARK,
-          background: "#173B57",
-          foreground: "#90CDF4",
-        },
-        base: {
-          accent: BASE_BAR_COLOR_DARK,
-          background: "#4A2A14",
-          foreground: "#FBD38D",
-        },
-      }
-    : {
-        current: {
-          accent: CURRENT_BAR_COLOR,
-          background: "#E6F3FC",
-          foreground: "#245A85",
-        },
-        base: {
-          accent: BASE_BAR_COLOR,
-          background: "#FFF3E6",
-          foreground: "#98471F",
-        },
-      };
+  const { base, current } = getSemanticColorTheme(isDark).comparison;
+  return {
+    current: {
+      accent: current.accent,
+      background: current.background,
+      foreground: current.foreground,
+    },
+    base: {
+      accent: base.accent,
+      background: base.background,
+      foreground: base.foreground,
+    },
+  };
 }
