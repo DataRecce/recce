@@ -2,7 +2,7 @@
 
 import { useId, useMemo } from "react";
 import { useIsDark } from "../../hooks/useIsDark";
-import { getChartBarColors, getChartThemeColors } from "../../theme";
+import { getChartThemeColors, getSemanticColorTheme } from "../../theme";
 import { formatAsAbbreviatedNumber } from "../../utils/formatters";
 import {
   BaselineRule,
@@ -46,9 +46,9 @@ import {
  * and detail surfaces where its title/legend/tooltip machinery is welcome —
  * just not in a 140×28 grid cell.
  *
- * Bar palette + theme colors come from `getChartBarColors` /
- * `getChartThemeColors` (canonical in `@datarecce/ui/theme`), so all
- * chart surfaces stay in lockstep.
+ * Comparison fills/outlines and theme colors come from
+ * `getSemanticColorTheme` / `getChartThemeColors` (canonical in
+ * `@datarecce/ui/theme`), so all chart surfaces stay in lockstep.
  */
 
 /**
@@ -92,10 +92,10 @@ export function PairedHistogramContinuous({
   className,
 }: PairedHistogramContinuousProps) {
   const isDark = useIsDark();
-  const bars = getChartBarColors(isDark);
+  const comparison = getSemanticColorTheme(isDark).comparison;
   const theme = getChartThemeColors(isDark);
-  const baseFill = bars.base;
-  const currentFill = bars.current;
+  const baseFill = comparison.base.chartFill;
+  const currentFill = comparison.current.chartFill;
   const baselineColor = theme.borderColor;
 
   // SVG pattern IDs are document-global; useId() gives each cell instance
@@ -141,6 +141,8 @@ export function PairedHistogramContinuous({
         const minH = Math.min(baseH, currH);
         const maxH = Math.max(baseH, currH);
         const diffFill = baseH > currH ? baseFill : currentFill;
+        const diffBorder =
+          baseH > currH ? comparison.base.border : comparison.current.border;
         // Bars touch (continuous data should read continuously); a tiny
         // -0.25 px inset prevents adjacent bins from blurring into one
         // shape at very tight slot widths.
@@ -180,6 +182,8 @@ export function PairedHistogramContinuous({
                 width={w}
                 height={maxH - minH}
                 fill={diffFill}
+                stroke={diffBorder}
+                strokeWidth={2}
                 pointerEvents="none"
               />
             )}

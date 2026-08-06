@@ -7,6 +7,7 @@
 import { render } from "@testing-library/react";
 import { vi } from "vitest";
 import { useIsDark } from "../../../hooks/useIsDark";
+import { getSemanticColorTheme } from "../../../theme";
 import { CELL_WIDTH } from "../PairedHistogramCanvas";
 import {
   computeDiscreteSlots,
@@ -58,7 +59,7 @@ describe("PairedHistogramDiscrete", () => {
     // the base side of the slot.
     expect(visibleRects.length).toBe(1);
     const rect = visibleRects[0];
-    expect(rect.getAttribute("fill")).toBe("#63B3ED");
+    expect(rect.getAttribute("fill")).toBe("#63B3EDA5");
     // Current bar sits on the right half of its slot (slot midpoint = CELL_WIDTH / 2
     // when there's a single slot).
     const x = Number.parseFloat(rect.getAttribute("x") ?? "0");
@@ -79,7 +80,7 @@ describe("PairedHistogramDiscrete", () => {
     ).filter((r) => r.getAttribute("fill") !== "none");
     expect(visibleRects.length).toBe(1);
     const rect = visibleRects[0];
-    expect(rect.getAttribute("fill")).toBe("#F6AD55");
+    expect(rect.getAttribute("fill")).toBe("#F6AD55A5");
     // Base bar sits on the left half of its slot.
     const x = Number.parseFloat(rect.getAttribute("x") ?? "0");
     expect(x).toBeLessThan(CELL_WIDTH / 2);
@@ -138,8 +139,43 @@ describe("PairedHistogramDiscrete", () => {
     const fills = Array.from(container.querySelectorAll("svg > g rect")).map(
       (r) => r.getAttribute("fill"),
     );
-    expect(fills.some((f) => f === "#FBD38D")).toBe(true);
-    expect(fills.some((f) => f === "#90CDF4")).toBe(true);
+    expect(fills.some((f) => f === "#FBD38DA5")).toBe(true);
+    expect(fills.some((f) => f === "#90CDF4A5")).toBe(true);
+  });
+
+  it("uses semantic comparison fills with contrast-safe outlines", () => {
+    const { container } = render(<PairedHistogramDiscrete data={sampleData} />);
+    const semantic = getSemanticColorTheme(false);
+    const bars = Array.from(container.querySelectorAll("svg > g rect")).filter(
+      (rect) => rect.getAttribute("fill") !== "none",
+    );
+
+    expect(
+      bars.some(
+        (bar) =>
+          bar.getAttribute("fill") === semantic.comparison.base.chartFill,
+      ),
+    ).toBe(true);
+    expect(
+      bars.some(
+        (bar) =>
+          bar.getAttribute("fill") === semantic.comparison.current.chartFill,
+      ),
+    ).toBe(true);
+    expect(
+      bars.some(
+        (bar) => bar.getAttribute("stroke") === semantic.comparison.base.border,
+      ),
+    ).toBe(true);
+    expect(
+      bars.some(
+        (bar) =>
+          bar.getAttribute("stroke") === semantic.comparison.current.border,
+      ),
+    ).toBe(true);
+    expect(bars.every((bar) => bar.getAttribute("stroke-width") === "2")).toBe(
+      true,
+    );
   });
 
   it("hover-title carries percentage breakdown per value", () => {
@@ -316,7 +352,7 @@ describe("PairedHistogramDiscrete — ranks mode", () => {
     ).filter((r) => r.getAttribute("fill") !== "none");
     // Only base bar drawn — orange palette in light theme.
     expect(visible.length).toBe(1);
-    expect(visible[0].getAttribute("fill")).toBe("#F6AD55");
+    expect(visible[0].getAttribute("fill")).toBe("#F6AD55A5");
     // Base bar sits on the left half of its slot.
     const x = Number.parseFloat(visible[0].getAttribute("x") ?? "0");
     expect(x).toBeLessThan(CELL_WIDTH / 2);
@@ -337,7 +373,7 @@ describe("PairedHistogramDiscrete — ranks mode", () => {
       groups[groups.length - 1].querySelectorAll("rect"),
     ).filter((r) => r.getAttribute("fill") !== "none");
     expect(lastBars.length).toBe(1);
-    expect(lastBars[0].getAttribute("fill")).toBe("#63B3ED");
+    expect(lastBars[0].getAttribute("fill")).toBe("#63B3EDA5");
     // And the slot itself is on the right two-thirds of the chart.
     const lastSlotX = Number.parseFloat(lastBars[0].getAttribute("x") ?? "0");
     expect(lastSlotX).toBeGreaterThan(CELL_WIDTH * (2 / 3));

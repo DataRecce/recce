@@ -12,7 +12,11 @@
 
 import { render } from "@testing-library/react";
 import { vi } from "vitest";
-import { getChartBarColors, getChartThemeColors } from "../../../theme";
+import {
+  getChartBarColors,
+  getChartThemeColors,
+  getSemanticColorTheme,
+} from "../../../theme";
 import { HistogramChart } from "../HistogramChart";
 
 // Mock Chart.js to avoid canvas rendering issues in tests
@@ -198,6 +202,25 @@ describe("HistogramChart", () => {
       // Dark mode colors
       expect(data.datasets[0].backgroundColor).toBe("#90CDF4A5");
       expect(data.datasets[1].backgroundColor).toBe("#FBD38DA5");
+    });
+
+    it("uses semantic comparison fills with contrast-safe outlines", () => {
+      const { getByTestId } = render(<HistogramChart {...defaultProps} />);
+      const data = JSON.parse(
+        getByTestId("mock-chart").getAttribute("data-data") || "{}",
+      );
+      const semantic = getSemanticColorTheme(false);
+
+      expect(data.datasets[0]).toMatchObject({
+        backgroundColor: semantic.comparison.current.chartFill,
+        borderColor: semantic.comparison.current.border,
+        borderWidth: 2,
+      });
+      expect(data.datasets[1]).toMatchObject({
+        backgroundColor: semantic.comparison.base.chartFill,
+        borderColor: semantic.comparison.base.border,
+        borderWidth: 2,
+      });
     });
 
     it("accepts dataType prop", () => {

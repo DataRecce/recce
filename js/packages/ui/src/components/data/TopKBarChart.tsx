@@ -18,7 +18,7 @@ import {
 } from "chart.js";
 import { Fragment, memo, useMemo } from "react";
 import { Bar } from "react-chartjs-2";
-import { getChartBarColors, getChartThemeColors } from "../../theme";
+import { getChartThemeColors, getSemanticColorTheme } from "../../theme";
 import {
   formatAsAbbreviatedNumber,
   formatIntervalMinMax,
@@ -165,8 +165,9 @@ function SingleBarChartComponent({
 }: SingleBarChartProps) {
   const isDark = theme === "dark";
   const themeColors = getChartThemeColors(isDark);
-  const barColors = getChartBarColors(isDark);
-  const barColor = color ?? barColors.current;
+  const comparison = getSemanticColorTheme(isDark).comparison.current;
+  const barColor = color ?? comparison.chartFill;
+  const borderColor = color ?? comparison.border;
 
   const chartData = useMemo<ChartData<"bar">>(
     () => ({
@@ -177,14 +178,14 @@ function SingleBarChartComponent({
           data: [count],
           backgroundColor: barColor,
           hoverBackgroundColor: barColor,
-          borderWidth: 0,
-          borderColor: barColor,
+          borderWidth: 2,
+          borderColor,
           barPercentage: 1,
           categoryPercentage: 0.6,
         },
       ],
     }),
-    [count, barColor],
+    [count, barColor, borderColor],
   );
 
   const chartOptions = useMemo<ChartOptions<"bar">>(
@@ -248,7 +249,7 @@ function TopKSummaryListComponent({
   className,
 }: TopKSummaryListProps) {
   const isDark = theme === "dark";
-  const barColors = getChartBarColors(isDark);
+  const comparison = getSemanticColorTheme(isDark).comparison;
   const items = useMemo(
     () => prepareSummaryList(data, maxItems),
     [data, maxItems],
@@ -285,7 +286,7 @@ function TopKSummaryListComponent({
               <SingleBarChart
                 count={item.count}
                 total={data.valids}
-                color={barColors.current}
+                color={comparison.current.chartFill}
                 theme={theme}
               />
             </Box>
@@ -364,7 +365,7 @@ function TopKBarChartComponent({
   className,
 }: TopKBarChartProps) {
   const isDark = theme === "dark";
-  const barColors = getChartBarColors(isDark);
+  const comparison = getSemanticColorTheme(isDark).comparison;
   const themeColors = getChartThemeColors(isDark);
 
   const currentItems = useMemo(
@@ -408,9 +409,10 @@ function TopKBarChartComponent({
       {
         label: "Current",
         data: displayItems.map(({ current }) => current.count / currentTotal),
-        backgroundColor: barColors.current,
-        hoverBackgroundColor: barColors.current,
-        borderWidth: 0,
+        backgroundColor: comparison.current.chartFill,
+        hoverBackgroundColor: comparison.current.chartFill,
+        borderColor: comparison.current.border,
+        borderWidth: 2,
         borderRadius: 3,
         barPercentage: showBase ? 0.9 : 1,
         categoryPercentage: showBase ? 0.75 : 0.6,
@@ -421,9 +423,10 @@ function TopKBarChartComponent({
       datasets.push({
         label: "Base",
         data: displayItems.map(({ base }) => (base?.count ?? 0) / baseTotal),
-        backgroundColor: barColors.base,
-        hoverBackgroundColor: barColors.base,
-        borderWidth: 0,
+        backgroundColor: comparison.base.chartFill,
+        hoverBackgroundColor: comparison.base.chartFill,
+        borderColor: comparison.base.border,
+        borderWidth: 2,
         borderRadius: 3,
         barPercentage: 0.9,
         categoryPercentage: 0.75,
@@ -431,7 +434,7 @@ function TopKBarChartComponent({
     }
 
     return { labels, datasets };
-  }, [displayItems, barColors, showBase, currentTotal, baseTotal]);
+  }, [displayItems, comparison, showBase, currentTotal, baseTotal]);
 
   const chartOptions = useMemo<ChartOptions<"bar">>(
     () => ({

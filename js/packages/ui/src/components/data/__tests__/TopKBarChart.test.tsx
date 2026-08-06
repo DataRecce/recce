@@ -13,6 +13,7 @@
 
 import { render, screen } from "@testing-library/react";
 import { vi } from "vitest";
+import { getSemanticColorTheme } from "../../../theme";
 import {
   SingleBarChart,
   TopKBarChart,
@@ -260,6 +261,32 @@ describe("TopKBarChart", () => {
       const labels = data.datasets.map((d: { label: string }) => d.label);
       expect(labels).toContain("Base");
       expect(labels).toContain("Current");
+    });
+
+    it("uses semantic comparison fills with contrast-safe outlines", () => {
+      render(
+        <TopKBarChart
+          currentData={mockDataset}
+          baseData={mockBaseDataset}
+          showComparison={true}
+        />,
+      );
+
+      const data = getChartData();
+      const semantic = getSemanticColorTheme(false);
+
+      expect(data.datasets[0]).toMatchObject({
+        label: "Current",
+        backgroundColor: semantic.comparison.current.chartFill,
+        borderColor: semantic.comparison.current.border,
+        borderWidth: 2,
+      });
+      expect(data.datasets[1]).toMatchObject({
+        label: "Base",
+        backgroundColor: semantic.comparison.base.chartFill,
+        borderColor: semantic.comparison.base.border,
+        borderWidth: 2,
+      });
     });
 
     it("includes only current dataset when showComparison=false", () => {
