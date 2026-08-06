@@ -16,6 +16,7 @@
 import { render } from "@testing-library/react";
 import { vi } from "vitest";
 import { useIsDark } from "../../../hooks/useIsDark";
+import { getSemanticColorTheme } from "../../../theme";
 import {
   computeContinuousLayout,
   PairedHistogramContinuous,
@@ -85,18 +86,18 @@ describe("PairedHistogramContinuous", () => {
     expect(svg?.getAttribute("height")).toBe("28");
   });
 
-  it("light theme uses the light bar palette (#F6AD55 / #63B3ED)", () => {
+  it("light theme uses the light semantic chart fills", () => {
     const { container } = render(
       <PairedHistogramContinuous data={sampleData} />,
     );
     const fills = Array.from(container.querySelectorAll("svg rect")).map((r) =>
       r.getAttribute("fill"),
     );
-    expect(fills.some((f) => f === "#F6AD55")).toBe(true);
-    expect(fills.some((f) => f === "#63B3ED")).toBe(true);
+    expect(fills.some((f) => f === "#F6AD55A5")).toBe(true);
+    expect(fills.some((f) => f === "#63B3EDA5")).toBe(true);
   });
 
-  it("dark theme uses the dark bar palette (#FBD38D / #90CDF4)", () => {
+  it("dark theme uses the dark semantic chart fills", () => {
     vi.mocked(useIsDark).mockReturnValueOnce(true);
     const { container } = render(
       <PairedHistogramContinuous data={sampleData} />,
@@ -104,8 +105,48 @@ describe("PairedHistogramContinuous", () => {
     const fills = Array.from(container.querySelectorAll("svg rect")).map((r) =>
       r.getAttribute("fill"),
     );
-    expect(fills.some((f) => f === "#FBD38D")).toBe(true);
-    expect(fills.some((f) => f === "#90CDF4")).toBe(true);
+    expect(fills.some((f) => f === "#FBD38DA5")).toBe(true);
+    expect(fills.some((f) => f === "#90CDF4A5")).toBe(true);
+  });
+
+  it("uses semantic comparison fills and outlines for differential bars", () => {
+    const { container } = render(
+      <PairedHistogramContinuous data={sampleData} />,
+    );
+    const semantic = getSemanticColorTheme(false);
+    const bars = Array.from(container.querySelectorAll("svg > g rect")).filter(
+      (rect) => {
+        const fill = rect.getAttribute("fill");
+        return fill !== "none" && !fill?.startsWith("url(");
+      },
+    );
+
+    expect(
+      bars.some(
+        (bar) =>
+          bar.getAttribute("fill") === semantic.comparison.base.chartFill,
+      ),
+    ).toBe(true);
+    expect(
+      bars.some(
+        (bar) =>
+          bar.getAttribute("fill") === semantic.comparison.current.chartFill,
+      ),
+    ).toBe(true);
+    expect(
+      bars.some(
+        (bar) => bar.getAttribute("stroke") === semantic.comparison.base.border,
+      ),
+    ).toBe(true);
+    expect(
+      bars.some(
+        (bar) =>
+          bar.getAttribute("stroke") === semantic.comparison.current.border,
+      ),
+    ).toBe(true);
+    expect(bars.every((bar) => bar.getAttribute("stroke-width") === "2")).toBe(
+      true,
+    );
   });
 
   it("differential rect is blue when current density exceeds base", () => {
@@ -127,7 +168,7 @@ describe("PairedHistogramContinuous", () => {
       // rects (fill="none").
       .filter((f) => f && f !== "none");
     // Only the differential rect should remain — it's blue (current dominates).
-    expect(fills).toContain("#63B3ED");
+    expect(fills).toContain("#63B3EDA5");
   });
 
   it("differential rect is orange when base density exceeds current", () => {
@@ -146,8 +187,8 @@ describe("PairedHistogramContinuous", () => {
     const fills = Array.from(container.querySelectorAll("svg > g rect"))
       .map((r) => r.getAttribute("fill"))
       .filter((f) => f && f !== "none");
-    expect(fills).toContain("#F6AD55");
-    expect(fills).not.toContain("#63B3ED");
+    expect(fills).toContain("#F6AD55A5");
+    expect(fills).not.toContain("#63B3EDA5");
   });
 
   it("handles bin-edge / density length mismatch by rendering an empty SVG", () => {
