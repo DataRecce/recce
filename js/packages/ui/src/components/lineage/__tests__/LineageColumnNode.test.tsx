@@ -174,16 +174,27 @@ describe("LineageColumnNode", () => {
       expect(screen.getByLabelText("Modified change")).toBeInTheDocument();
     });
 
-    it("does not render change status indicator when showChangeAnalysis is false", () => {
-      const props = createMockColumnNodeProps(
-        { showChangeAnalysis: false },
-        { changeStatus: "added" },
-      );
+    it.each([
+      ["added", "+", "Added change"],
+      ["removed", "−", "Removed change"],
+      ["modified", "Δ", "Modified change"],
+    ] as const)(
+      "keeps %s structural status alongside the transformation chip outside change-analysis mode",
+      (changeStatus, symbol, accessibleName) => {
+        render(
+          <LineageColumnNode
+            {...createMockColumnNodeProps(
+              { showChangeAnalysis: false },
+              { changeStatus, transformationType: "passthrough" },
+            )}
+          />,
+        );
 
-      render(<LineageColumnNode {...props} />);
-
-      expect(screen.queryByText("+")).not.toBeInTheDocument();
-    });
+        expect(screen.getByText(symbol)).toBeVisible();
+        expect(screen.getByLabelText(accessibleName)).toBeInTheDocument();
+        expect(screen.getByText("P")).toBeVisible();
+      },
+    );
 
     it("does not render change status indicator when not provided", () => {
       const props = createMockColumnNodeProps(
@@ -194,6 +205,7 @@ describe("LineageColumnNode", () => {
       render(<LineageColumnNode {...props} />);
 
       expect(screen.queryByText("+")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Added change")).not.toBeInTheDocument();
       expect(screen.queryByText("−")).not.toBeInTheDocument();
       expect(screen.queryByText("Δ")).not.toBeInTheDocument();
     });
@@ -266,7 +278,8 @@ describe("LineageColumnNode", () => {
 
       // Transformation type shown when showChangeAnalysis is false (default)
       expect(screen.getByText("P")).toBeInTheDocument();
-      expect(screen.queryByText("+")).not.toBeInTheDocument();
+      expect(screen.getByText("+")).toBeInTheDocument();
+      expect(screen.getByLabelText("Added change")).toBeInTheDocument();
     });
 
     it("does not render transformation indicator when not provided", () => {
@@ -462,7 +475,8 @@ describe("LineageColumnNode", () => {
       render(<LineageColumnNode {...props} />);
 
       expect(screen.getByText("P")).toBeInTheDocument();
-      expect(screen.queryByText("+")).not.toBeInTheDocument();
+      expect(screen.getByText("+")).toBeInTheDocument();
+      expect(screen.getByLabelText("Added change")).toBeInTheDocument();
     });
 
     it("shows change status when showChangeAnalysis is true", () => {

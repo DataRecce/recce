@@ -9,7 +9,11 @@ import {
 } from "@xyflow/react";
 import { memo } from "react";
 import { useIsDark } from "../../../hooks/useIsDark";
-import { getSemanticColorTheme, STRUCTURAL_EDGE_DASH } from "../../../theme";
+import {
+  getSemanticColorTheme,
+  STRUCTURAL_CHANGE_PRESENTATION,
+  STRUCTURAL_EDGE_DASH,
+} from "../../../theme";
 
 export type EdgeChangeStatus = "added" | "removed" | "modified" | "unchanged";
 
@@ -39,6 +43,7 @@ function LineageEdgeComponent({
 }: LineageEdgeProps) {
   const isDark = useIsDark();
   const changeStatus: EdgeChangeStatus = data?.changeStatus ?? "unchanged";
+  const accessibleName = `${STRUCTURAL_CHANGE_PRESENTATION[changeStatus].label} change`;
   const isHighlighted = data?.isHighlighted ?? false;
   const label = data?.label;
 
@@ -60,6 +65,8 @@ function LineageEdgeComponent({
       <BaseEdge
         id={id}
         path={edgePath}
+        role="img"
+        aria-label={accessibleName}
         style={{
           stroke: strokeColor,
           strokeDasharray: STRUCTURAL_EDGE_DASH[changeStatus],
