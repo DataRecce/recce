@@ -46,7 +46,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-mcp = ["mcp~=1.23"]
+mcp = ["mcp>=1.23,<3.0"]
 dev = [
     "pytest>=4.6",
     "pytest-asyncio>=0.23,<2.0",
