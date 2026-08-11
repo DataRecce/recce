@@ -82,3 +82,13 @@ jobs:
         run: |
           source .venv/bin/activate
           ./integration_tests/dbt/smoke_test.sh
+
+      # The step above is the only place either major gets installed: the tox envs
+      # that run pytest resolve one mcp release, so on their own they leave the other
+      # major's compat path untested. The smoke test proves the server boots; these
+      # prove the handlers behave.
+      - name: Run MCP tests
+        run: |
+          source .venv/bin/activate
+          uv pip install pytest pytest-asyncio pandas duckdb
+          python -m pytest tests/test_mcp_server.py tests/test_mcp_cloud_backend.py tests/test_mcp_e2e.py -q
