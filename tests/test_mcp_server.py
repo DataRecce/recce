@@ -3467,3 +3467,33 @@ class TestLocalModeRunBacked:
         # The FAILED Run is still persisted for citation, not dropped.
         assert len(self._context.runs) == 1
         assert self._context.runs[0].status == RunStatus.FAILED
+
+
+class TestHandlerRegistration:
+    """Both mcp SDK registration paths, whichever version is installed.
+
+    `MCP_V2` is patched so each branch of `_build_server` is exercised on any
+    install: the constructor kwargs are 2.0-only and the decorators are 1.x-only,
+    so neither path can be reached natively by the other version's SDK.
+    """
+
+    def test_mcp2_registers_handlers_via_constructor(self):
+        with patch("recce.mcp_server.MCP_V2", True), patch("recce.mcp_server.Server") as mock_server:
+            server = RecceMCPServer(MagicMock(spec=RecceContext))
+
+        kwargs = mock_server.call_args.kwargs
+        assert kwargs["on_list_tools"] == server._handle_list_tools
+        assert kwargs["on_call_tool"] == server._handle_call_tool
+        # The decorators no longer exist on 2.0, so they must not be touched.
+        mock_server.return_value.list_tools.assert_not_called()
+        mock_server.return_value.call_tool.assert_not_called()
+
+    def test_mcp1_registers_handlers_via_decorators(self):
+        with patch("recce.mcp_server.MCP_V2", False), patch("recce.mcp_server.Server") as mock_server:
+            server = RecceMCPServer(MagicMock(spec=RecceContext))
+
+        instance = mock_server.return_value
+        # The 1.x SDK consumes the handlers in their native shapes, undecorated.
+        instance.list_tools.return_value.assert_called_once_with(server._list_tools)
+        instance.call_tool.return_value.assert_called_once_with(server._call_tool)
+        assert "on_list_tools" not in mock_server.call_args.kwargs
