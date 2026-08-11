@@ -3497,3 +3497,60 @@ class TestHandlerRegistration:
         instance.list_tools.return_value.assert_called_once_with(server._list_tools)
         instance.call_tool.return_value.assert_called_once_with(server._call_tool)
         assert "on_list_tools" not in mock_server.call_args.kwargs
+
+
+class TestCallToolInputValidation:
+    """`tools/call` argument validation, which only one SDK major performs for us.
+
+    mcp 1.x validates arguments against `inputSchema` inside
+    `Server.call_tool(validate_input=True)`; mcp 2.0's low-level server dropped that
+    entirely. Without an equivalent in the adapter a wrongly-typed argument reaches the
+    tool and is silently coerced — `"false"` is a truthy string, so a skip flag flips on
+    and the comparison it guards is quietly not run.
+    """
+
+    @pytest.mark.asyncio
+    async def test_wrong_type_is_rejected(self, mcp_server):
+        server, _ = mcp_server
+        result = await invoke_call_tool(server, "impact_analysis", {"skip_value_diff": "false"})
+        assert result.isError is True
+        assert "Input validation error" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_missing_required_argument_is_rejected(self, mcp_server):
+        server, _ = mcp_server
+        result = await invoke_call_tool(server, "value_diff", {"model": "customers"})
+        assert result.isError is True
+        assert "Input validation error" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_well_typed_arguments_are_not_blocked(self, mcp_server):
+        """A correctly shaped call must reach the tool, whatever the tool then does."""
+        server, _ = mcp_server
+        result = await invoke_call_tool(server, "impact_analysis", {"skip_value_diff": True})
+        assert "Input validation error" not in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_unknown_tool_is_not_reported_as_a_validation_error(self, mcp_server):
+        """Having no schema to validate against is not the same as failing validation."""
+        server, _ = mcp_server
+        result = await invoke_call_tool(server, "nonexistent_tool", {})
+        assert result.isError is True
+        assert "Input validation error" not in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_schema_lookup_does_not_re_announce_the_tool_list(self, mcp_server, caplog):
+        """Validation must not make every tool call look like a `tools/list`.
+
+        `_list_tools` logs its result and writes an MCPLogger entry, so rebuilding the
+        list per call would forge a `Returning N tools` line on every `tools/call`.
+        """
+        import logging
+
+        server, _ = mcp_server
+        with caplog.at_level(logging.INFO, logger="recce.mcp_server"):
+            await invoke_call_tool(server, "value_diff", {"model": "customers"})
+            caplog.clear()
+            await invoke_call_tool(server, "value_diff", {"model": "customers"})
+
+        assert "Returning" not in caplog.text

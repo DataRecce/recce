@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import quote
 
+import jsonschema
 import requests
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
@@ -47,6 +48,20 @@ logger = logging.getLogger(__name__)
 # favour of constructor handlers with a `(ctx, params) -> Result` signature. This
 # flag selects the registration path; the 1.x branch can go once the floor is mcp>=2.
 MCP_V2 = not hasattr(Server, "list_tools")
+
+
+def _tool_input_schema(tool: Tool) -> Dict[str, Any]:
+    """Read a tool's JSON schema regardless of SDK field naming.
+
+    `Tool.inputSchema` on mcp 1.x, `Tool.input_schema` on 2.0. Tested for `None`
+    rather than falsiness so an empty schema does not fall through to the attribute
+    the other major does not have.
+    """
+    schema = getattr(tool, "input_schema", None)
+    if schema is None:
+        schema = tool.inputSchema
+    return schema
+
 
 try:
     from sentry_sdk import metrics as sentry_metrics
@@ -666,6 +681,7 @@ class RecceMCPServer:
         self.api_token = api_token
         self._backend_lock = asyncio.Lock()
         self._local_cache_key: Optional[tuple] = None
+        self._tool_schema_cache: Dict[str, Dict[str, Any]] = {}
         self.mcp_logger = MCPLogger(debug=debug, log_file=log_file)
         self.server = self._build_server()
 
@@ -709,6 +725,19 @@ class RecceMCPServer:
         """`tools/list` in the mcp 2.0 handler signature (also used by tests on 1.x)."""
         return ListToolsResult(tools=await self._list_tools())
 
+    async def _get_tool_input_schema(self, name: str) -> Optional[Dict[str, Any]]:
+        """Look up a tool's JSON schema, refreshing the cache on a miss.
+
+        Mirrors the `_tool_cache` the mcp 1.x SDK keeps: `set_backend` can change the
+        advertised surface at runtime, so a miss means "re-read the list", not "unknown
+        tool". The cache is what keeps validation quiet — `_list_tools` logs its result
+        and writes an MCPLogger entry, so rebuilding it per call would forge a
+        `Returning N tools` line on every `tools/call`.
+        """
+        if name not in self._tool_schema_cache:
+            self._tool_schema_cache = {tool.name: _tool_input_schema(tool) for tool in await self._list_tools()}
+        return self._tool_schema_cache.get(name)
+
     async def _handle_call_tool(self, ctx, params) -> CallToolResult:
         """`tools/call` in the mcp 2.0 handler signature (also used by tests on 1.x).
 
@@ -716,9 +745,26 @@ class RecceMCPServer:
         JSON-RPC protocol error instead, which an agent reads as a transport
         failure rather than a tool failure. Return the tool error explicitly to
         keep the response identical across both versions.
+
+        Argument validation is here for the same reason. 1.x runs it inside
+        `Server.call_tool(validate_input=True)`; 2.0's low-level server dropped it, and
+        an unvalidated argument fails silently rather than loudly — `"false"` is a
+        truthy string, so a skip flag arrives flipped and the work it guards is quietly
+        not done. The message matches what 1.x emits so the contract reads the same.
         """
+        arguments = params.arguments or {}
+        schema = await self._get_tool_input_schema(params.name)
+        if schema is not None:
+            try:
+                jsonschema.validate(instance=arguments, schema=schema)
+            except jsonschema.ValidationError as e:
+                return CallToolResult(
+                    content=[TextContent(type="text", text=f"Input validation error: {e.message}")],
+                    isError=True,
+                )
+
         try:
-            content = await self._call_tool(params.name, params.arguments or {})
+            content = await self._call_tool(params.name, arguments)
         except Exception as e:
             return CallToolResult(content=[TextContent(type="text", text=str(e))], isError=True)
         return CallToolResult(content=content)
