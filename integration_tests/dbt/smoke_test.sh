@@ -7,19 +7,20 @@ pwd
 
 # Which server surface to smoke test: "server" (default) or "mcp-server".
 SMOKE_SERVER="${SMOKE_SERVER:-server}"
-# Only used when SMOKE_SERVER=mcp-server. The mcp SDK majors register tool
-# handlers differently, so the version under test has to be explicit.
-SMOKE_MCP_VERSION="${SMOKE_MCP_VERSION:-2.0.0}"
+# Only used when SMOKE_SERVER=mcp-server. Major.minor, e.g. "1.29" or "2.0":
+# the mcp SDK majors register tool handlers differently, so the version under
+# test has to be explicit, but `~=` still picks up the latest patch release.
+SMOKE_MCP_VERSION="${SMOKE_MCP_VERSION:-2.0}"
 
 case "$SMOKE_SERVER" in
     server) ;;
     mcp-server)
         # `mcp` is an optional extra, so CI's install does not carry it.
-        echo "Installing mcp==$SMOKE_MCP_VERSION"
+        echo "Installing mcp~=$SMOKE_MCP_VERSION"
         if command -v uv > /dev/null; then
-            uv pip install "mcp==$SMOKE_MCP_VERSION"
+            uv pip install "mcp~=$SMOKE_MCP_VERSION"
         else
-            python -m pip install "mcp==$SMOKE_MCP_VERSION"
+            python -m pip install "mcp~=$SMOKE_MCP_VERSION"
         fi
         ;;
     *)
@@ -128,37 +129,46 @@ function check_server_status() {
 }
 
 # Recce MCP Server
-# Stdio, not HTTP: there is no port to poll, so speak the protocol instead. The
-# startup path is what breaks (tool registration differs between mcp 1.x and
-# 2.0), so the handshake plus a non-empty tool list is the whole check.
-function check_mcp_server_status() {
-    echo "Starting the MCP server..."
-    local stderr_log output server_name tool_count
-    stderr_log=$(mktemp)
+# Stdio, not HTTP: there is no port to poll, so the server is started with the
+# handshake on stdin and its replies land in a file. The startup path is what
+# breaks (tool registration differs between mcp 1.x and 2.0), so the handshake
+# plus a non-empty tool list is the whole check.
+MCP_REQUESTS=$(mktemp)
+MCP_RESPONSES=$(mktemp)
+MCP_STDERR=$(mktemp)
+cat > "$MCP_REQUESTS" << 'EOF'
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}
+{"jsonrpc":"2.0","method":"notifications/initialized"}
+{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+EOF
 
-    if ! output=$( {
-        echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}'
-        echo '{"jsonrpc":"2.0","method":"notifications/initialized"}'
-        echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
-    } | timeout 60 recce mcp-server 2>"$stderr_log" ); then
-        echo "The MCP server failed to start:"
-        cat "$stderr_log"
+# Takes the pid of the backgrounded `recce mcp-server`. The server exits once it
+# reaches the end of the request file, so waiting on it is the readiness signal.
+function check_mcp_server_status() {
+    local mcp_pid="$1"
+    echo "Waiting for the MCP server to respond..."
+    if ! wait "$mcp_pid"; then
+        echo "Failed to start the MCP server."
+        cat "$MCP_STDERR"
         exit 1
     fi
 
-    server_name=$(jq -r 'select(.id == 1) | .result.serverInfo.name' <<< "$output")
-    tool_count=$(jq -r 'select(.id == 2) | .result.tools | length' <<< "$output")
+    local server_name tool_count
+    server_name=$(jq -r 'select(.id == 1) | .result.serverInfo.name' "$MCP_RESPONSES")
+    tool_count=$(jq -r 'select(.id == 2) | .result.tools | length' "$MCP_RESPONSES")
     assert_string_value "$server_name" "recce"
     if [ "${tool_count:-0}" -lt 1 ]; then
         echo "The MCP server started but advertised no tools."
-        cat "$stderr_log"
+        cat "$MCP_STDERR"
         exit 1
     fi
     echo "MCP server is up and advertised $tool_count tools."
 }
 
 if [ "$SMOKE_SERVER" = "mcp-server" ]; then
-    check_mcp_server_status
+    echo "Starting the MCP server..."
+    timeout 60 recce mcp-server < "$MCP_REQUESTS" > "$MCP_RESPONSES" 2> "$MCP_STDERR" &
+    check_mcp_server_status $!
 else
     echo "Starting the server..."
     recce server &

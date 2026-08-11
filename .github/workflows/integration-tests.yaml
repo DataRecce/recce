@@ -14,6 +14,9 @@ on:
       - "js/**"
       - "recce/data/**"
 
+permissions:
+  contents: read
+
 jobs:
   smoke-test:
     if: github.actor != 'dependabot[bot]'
@@ -57,7 +60,7 @@ jobs:
       # `mcp` is an optional extra pinned to >=1.23,<3, and the two majors
       # register tool handlers differently. Both have to boot.
       matrix:
-        mcp-version: ["1.28.1", "2.0.0"]
+        mcp-version: ["1.29", "2.0"]
     steps:
       - uses: actions/checkout@v4
 

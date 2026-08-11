@@ -44,8 +44,8 @@ from recce.util.recce_cloud import RECCE_CLOUD_API_HOST, RecceCloudException
 logger = logging.getLogger(__name__)
 
 # mcp 2.0 dropped the `@server.list_tools()` / `@server.call_tool()` decorators in
-# favour of constructor handlers with a `(ctx, params) -> Result` signature.
-# ponytail: one flag, two registration paths; drop the 1.x branch when the floor is mcp>=2.
+# favour of constructor handlers with a `(ctx, params) -> Result` signature. This
+# flag selects the registration path; the 1.x branch can go once the floor is mcp>=2.
 MCP_V2 = not hasattr(Server, "list_tools")
 
 try:
