@@ -726,15 +726,15 @@ class RecceMCPServer:
         return ListToolsResult(tools=await self._list_tools())
 
     async def _get_tool_input_schema(self, name: str) -> Optional[Dict[str, Any]]:
-        """Look up a tool's JSON schema, refreshing the cache on a miss.
+        """Look up a tool's JSON schema, building the cache on first use.
 
-        Mirrors the `_tool_cache` the mcp 1.x SDK keeps: `set_backend` can change the
-        advertised surface at runtime, so a miss means "re-read the list", not "unknown
-        tool". The cache is what keeps validation quiet — `_list_tools` logs its result
-        and writes an MCPLogger entry, so rebuilding it per call would forge a
-        `Returning N tools` line on every `tools/call`.
+        A miss must not mean "re-read the list": an unknown name misses every time, so
+        that would rebuild on every bad call and forge a `Returning N tools` line each
+        time — `_list_tools` logs its result and writes an MCPLogger entry. `set_backend`
+        is the only thing that moves the advertised surface after `__init__`, and it
+        clears this cache itself, so building once is enough.
         """
-        if name not in self._tool_schema_cache:
+        if not self._tool_schema_cache:
             self._tool_schema_cache = {tool.name: _tool_input_schema(tool) for tool in await self._list_tools()}
         return self._tool_schema_cache.get(name)
 
@@ -2563,6 +2563,10 @@ class RecceMCPServer:
             raise ValueError(f"Invalid mode '{mode}'. Use 'local' or 'cloud'.")
 
         async with self._backend_lock:
+            # Both branches below change what _list_tools advertises (backend, context,
+            # single_env), so the schemas validation reads have to be re-derived.
+            self._tool_schema_cache = {}
+
             if mode == "cloud":
                 session_id = arguments.get("session_id")
                 if not session_id:

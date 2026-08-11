@@ -199,7 +199,10 @@ function check_mcp_server_status() {
     fi
     echo "MCP server is up and advertised $tool_count tools."
 
-    if ! jq -e 'select(.id == 3) | .result.isError != true' > /dev/null <<< "$responses"; then
+    # `.result != null` first: on a JSON-RPC error response there is no `result` at all,
+    # and `null.isError != true` is true — which is exactly the escaped-exception
+    # regression this call is here to catch.
+    if ! jq -e 'select(.id == 3) | .result != null and .result.isError != true' > /dev/null <<< "$responses"; then
         echo "The MCP server failed a get_server_info tool call."
         exit 1
     fi
