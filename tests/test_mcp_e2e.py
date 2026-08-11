@@ -23,6 +23,7 @@ from mcp.shared.message import SessionMessage  # noqa: E402
 from recce.core import set_default_context  # noqa: E402
 from recce.mcp_server import RecceMCPServer  # noqa: E402
 from tests.adapter.dbt_adapter.dbt_test_helper import DbtTestHelper  # noqa: E402
+from tests.mcp_compat import is_error  # noqa: E402
 
 
 @asynccontextmanager
@@ -1262,7 +1263,7 @@ class TestMCPProtocolE2E:
             async with create_mcp_client(server) as client:
                 # Before swap: normal tools blocked.
                 blocked = await client.call_tool("lineage_diff", {})
-                assert blocked.isError
+                assert is_error(blocked)
                 assert "No backend configured" in blocked.content[0].text
 
                 # Flip via protocol-level set_backend.
@@ -1270,7 +1271,7 @@ class TestMCPProtocolE2E:
                     "set_backend",
                     {"mode": "cloud", "session_id": "sess-123"},
                 )
-                assert not swap.isError
+                assert not is_error(swap)
                 swap_data = json.loads(swap.content[0].text)
                 assert swap_data == {
                     "mode": "cloud",
@@ -1280,7 +1281,7 @@ class TestMCPProtocolE2E:
 
                 # After swap: get_server_info delegates to the cloud backend.
                 info = await client.call_tool("get_server_info", {})
-                assert not info.isError
+                assert not is_error(info)
                 info_data = json.loads(info.content[0].text)
                 assert info_data["mode"] == "cloud"
                 assert info_data["session_id"] == "sess-123"
@@ -1290,7 +1291,7 @@ class TestMCPProtocolE2E:
         server, _ = mcp_e2e_with_data
         async with create_mcp_client(server) as client:
             result = await client.call_tool("row_count_diff", {"node_names": ["customers"]})
-            assert not result.isError
+            assert not is_error(result)
             data = json.loads(result.content[0].text)
             assert data["customers"]["base"] == 2
             assert data["customers"]["curr"] == 3
@@ -1300,7 +1301,7 @@ class TestMCPProtocolE2E:
         server, _ = mcp_e2e_with_data
         async with create_mcp_client(server) as client:
             result = await client.call_tool("lineage_diff", {})
-            assert not result.isError
+            assert not is_error(result)
             data = json.loads(result.content[0].text)
             assert "nodes" in data
             assert "edges" in data
@@ -1314,7 +1315,7 @@ class TestMCPProtocolE2E:
                 "query",
                 {"sql_template": f"SELECT count(*) as cnt FROM {schema}.customers"},
             )
-            assert not result.isError
+            assert not is_error(result)
             data = json.loads(result.content[0].text)
             assert data["data"][0][0] == 3
 
@@ -1323,7 +1324,7 @@ class TestMCPProtocolE2E:
         server, _ = mcp_e2e_with_data
         async with create_mcp_client(server) as client:
             result = await client.call_tool("list_checks", {})
-            assert not result.isError
+            assert not is_error(result)
             data = json.loads(result.content[0].text)
             assert data["total"] == 0
             assert data["checks"] == []
