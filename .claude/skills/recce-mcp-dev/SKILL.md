@@ -11,11 +11,32 @@ description: Use when modifying recce/mcp_server.py, MCP tool handlers, error cl
 
 Entry point `run_mcp_server()` pops `single_env` before passing kwargs to `load_context()`.
 
+**Two SDK majors are supported** (`mcp>=1.23,<3`), and `_build_server()` picks the
+registration path from the `MCP_V2` flag: decorators on 1.x, `on_list_tools` /
+`on_call_tool` constructor kwargs on 2.0. The handler bodies keep their 1.x shapes
+(`List[Tool]` / `List[TextContent]`, errors raised); `_handle_list_tools` /
+`_handle_call_tool` adapt them for 2.0. Tests drive the `_handle_*` adapters on both
+majors via `tests/mcp_compat.py` — never `server.server.request_handlers[...]`, which
+does not exist on 2.0.
+
 ## Key Patterns
 
 **Error classification** — Shared indicator lists defined in `recce/tasks/rowcount.py`. Priority order (`PERMISSION_DENIED` > `TABLE_NOT_FOUND` > `SYNTAX_ERROR`) enforced by `_classify_db_error()` in `mcp_server.py` and `_query_row_count()` in `rowcount.py`. Classified → `logger.warning()` + `sentry_metrics.count()` (when sentry_sdk available). Unclassified → `logger.error()` + traceback.
 
-**MCP SDK quirk** — Handler must **raise** for SDK to set `isError=True`.
+**MCP SDK quirk — version-dependent, do not generalise.** On mcp 1.x the handler must
+**raise** for the SDK to set `isError=True`. On 2.0 a raised exception becomes a JSON-RPC
+*protocol* error instead, which an agent reads as a transport failure rather than a tool
+failure — `_handle_call_tool` catches and returns `CallToolResult(isError=True)` so the
+response is the same on both. Inner handlers still raise; only the adapter converts.
+
+**Input validation is not free on 2.0.** mcp 1.x validated `tools/call` arguments against
+the tool's `inputSchema` inside `Server.call_tool(validate_input=True)`; 2.0's low-level
+server dropped that entirely (`jsonschema` survives only client-side, for output schemas).
+`_handle_call_tool` validates explicitly, with 1.x's `Input validation error: ...` wording.
+This matters because the failure is silent: `"false"` is a truthy string, so a boolean skip
+flag arrives flipped and the work it guards is quietly not done. Any new tool gets this for
+free — but only as far as its declared schema goes, so `"type"` and `"required"` in
+`inputSchema` are load-bearing, not documentation.
 
 **Single-env** — `_maybe_add_single_env_warning()` adds `_warning` to diff results. Descriptions get conditional note.
 
@@ -77,6 +98,14 @@ Origin: PR #1342 review (DRC-3307).
 | Unit | `tests/test_mcp_server.py` | Mock `RecceContext` | CI (`pytest`) | Logic correctness — tool handlers, error classification, response format |
 | Integration | `tests/test_mcp_e2e.py` | `DbtTestHelper` + DuckDB (fixed data) | CI (`pytest`) | MCP protocol works end-to-end via anyio memory streams |
 | Smoke (E2E) | `/recce-mcp-e2e` skill | User's real dbt project + real database | Manual | The 8 tools that harness covers return valid results against real data |
+
+**Which mcp version each layer runs against is itself a coverage question.** The tox envs
+resolve one mcp release, so on their own they leave the other major untested — that is how
+a module failing 5/60 on mcp 2.0 once shipped CI-green. The `mcp-smoke-test` job in
+`.github/workflows/integration-tests.yaml` installs each major in turn and runs both the
+shell smoke check and the three MCP pytest modules. Anything that touches the `MCP_V2`
+branches, the `_handle_*` adapters, or `tests/mcp_compat.py` has to be checked there, not
+only in the default pytest run.
 
 **Tool count — mode-dependent, verify per mode.** `list_tools` registers **at
 most 20** tools, and how many it actually returns depends on the server mode:
