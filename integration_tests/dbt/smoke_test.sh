@@ -5,6 +5,29 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 pwd
 
+# Which server surface to smoke test: "server" (default) or "mcp-server".
+SMOKE_SERVER="${SMOKE_SERVER:-server}"
+# Only used when SMOKE_SERVER=mcp-server. The mcp SDK majors register tool
+# handlers differently, so the version under test has to be explicit.
+SMOKE_MCP_VERSION="${SMOKE_MCP_VERSION:-2.0.0}"
+
+case "$SMOKE_SERVER" in
+    server) ;;
+    mcp-server)
+        # `mcp` is an optional extra, so CI's install does not carry it.
+        echo "Installing mcp==$SMOKE_MCP_VERSION"
+        if command -v uv > /dev/null; then
+            uv pip install "mcp==$SMOKE_MCP_VERSION"
+        else
+            python -m pip install "mcp==$SMOKE_MCP_VERSION"
+        fi
+        ;;
+    *)
+        echo "Unknown SMOKE_SERVER '$SMOKE_SERVER' (expected 'server' or 'mcp-server')."
+        exit 1
+        ;;
+esac
+
 # Prepare env
 git restore models/customers.sql
 dbt --version
@@ -104,10 +127,44 @@ function check_server_status() {
     echo "Server stopped."
 }
 
-echo "Starting the server..."
-recce server &
-check_server_status false
+# Recce MCP Server
+# Stdio, not HTTP: there is no port to poll, so speak the protocol instead. The
+# startup path is what breaks (tool registration differs between mcp 1.x and
+# 2.0), so the handshake plus a non-empty tool list is the whole check.
+function check_mcp_server_status() {
+    echo "Starting the MCP server..."
+    local stderr_log output server_name tool_count
+    stderr_log=$(mktemp)
 
-echo "Starting the server (review mode)..."
-recce server --review recce_state.json &
-check_server_status true
+    if ! output=$( {
+        echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}'
+        echo '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+        echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
+    } | timeout 60 recce mcp-server 2>"$stderr_log" ); then
+        echo "The MCP server failed to start:"
+        cat "$stderr_log"
+        exit 1
+    fi
+
+    server_name=$(jq -r 'select(.id == 1) | .result.serverInfo.name' <<< "$output")
+    tool_count=$(jq -r 'select(.id == 2) | .result.tools | length' <<< "$output")
+    assert_string_value "$server_name" "recce"
+    if [ "${tool_count:-0}" -lt 1 ]; then
+        echo "The MCP server started but advertised no tools."
+        cat "$stderr_log"
+        exit 1
+    fi
+    echo "MCP server is up and advertised $tool_count tools."
+}
+
+if [ "$SMOKE_SERVER" = "mcp-server" ]; then
+    check_mcp_server_status
+else
+    echo "Starting the server..."
+    recce server &
+    check_server_status false
+
+    echo "Starting the server (review mode)..."
+    recce server --review recce_state.json &
+    check_server_status true
+fi
