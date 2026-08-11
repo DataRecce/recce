@@ -6,12 +6,6 @@ import pytest
 # Skip all tests in this module if mcp is not available
 pytest.importorskip("mcp")
 
-from mcp.types import (  # noqa: E402
-    CallToolRequest,
-    CallToolRequestParams,
-    ListToolsRequest,
-)
-
 from recce.core import RecceContext  # noqa: E402
 from recce.mcp_server import (  # noqa: E402
     _UNCHECKED_NODE_LIMIT,
@@ -26,6 +20,11 @@ from recce.tasks.query import QueryDiffTask, QueryTask  # noqa: E402
 from recce.tasks.rowcount import RowCountDiffTask  # noqa: E402
 from recce.tasks.top_k import TopKDiffTask  # noqa: E402
 from recce.tasks.valuediff import ValueDiffDetailTask, ValueDiffTask  # noqa: E402
+from tests.mcp_compat import (  # noqa: E402
+    input_schema,
+    invoke_call_tool,
+    invoke_list_tools,
+)
 
 
 @pytest.fixture
@@ -1308,10 +1307,8 @@ class TestRecceMCPServer:
         a 'Unknown tool' error because RecceMCPCloudBackend doesn't implement it."""
         local_server = RecceMCPServer(MagicMock(spec=RecceContext), backend=None)
         cloud_server = RecceMCPServer(MagicMock(spec=RecceContext), backend=MagicMock())
-        req = ListToolsRequest(method="tools/list", params=None)
-
-        local_tools = (await local_server.server.request_handlers[ListToolsRequest](req)).root.tools
-        cloud_tools = (await cloud_server.server.request_handlers[ListToolsRequest](req)).root.tools
+        local_tools = await invoke_list_tools(local_server)
+        cloud_tools = await invoke_list_tools(cloud_server)
 
         assert any(t.name == "analyze_model" for t in local_tools)
         assert not any(t.name == "analyze_model" for t in cloud_tools)
@@ -1857,18 +1854,14 @@ class TestMCPServerModes:
         blocked_tools = ["value_diff", "value_diff_detail", "top_k_diff", "histogram_diff"]
         for tool_name in blocked_tools:
             result = await TestCallToolHandler._invoke_call_tool(server, tool_name, {})
-            assert result.root.isError is True
+            assert result.isError is True
 
     @pytest.mark.asyncio
     async def test_create_check_in_server_mode_tools(self):
         """create_check tool is available in server mode."""
-        from mcp.types import ListToolsRequest
-
         mock_context = MagicMock(spec=RecceContext)
         server = RecceMCPServer(mock_context, mode=RecceServerMode.server)
-        handler = server.server.request_handlers[ListToolsRequest]
-        result = await handler(ListToolsRequest(method="tools/list"))
-        tools = result.root.tools
+        tools = await invoke_list_tools(server)
         tool_names = [t.name for t in tools]
         assert "create_check" in tool_names
 
@@ -1882,7 +1875,7 @@ class TestMCPServerModes:
             "create_check",
             {"type": "row_count_diff", "params": {}, "name": "test"},
         )
-        assert r.root.isError is True
+        assert r.isError is True
 
 
 @pytest.fixture
@@ -2003,12 +1996,8 @@ class TestMCPServerSingleEnv:
     @pytest.mark.asyncio
     async def test_diff_tool_descriptions_have_single_env_note(self, mcp_server_single_env):
         """Diff tool descriptions should include single-env note when in single-env mode"""
-        from mcp.types import ListToolsRequest
-
         server, _ = mcp_server_single_env
-        handler = server.server.request_handlers[ListToolsRequest]
-        result = await handler(ListToolsRequest(method="tools/list"))
-        tools = result.root.tools
+        tools = await invoke_list_tools(server)
 
         diff_tool_names = {
             "row_count_diff",
@@ -2028,12 +2017,8 @@ class TestMCPServerSingleEnv:
     @pytest.mark.asyncio
     async def test_diff_tool_descriptions_no_note_in_normal_mode(self, mcp_server):
         """Diff tool descriptions should NOT include single-env note in normal mode"""
-        from mcp.types import ListToolsRequest
-
         server, _ = mcp_server
-        handler = server.server.request_handlers[ListToolsRequest]
-        result = await handler(ListToolsRequest(method="tools/list"))
-        tools = result.root.tools
+        tools = await invoke_list_tools(server)
 
         note_text = "base environment is not configured"
 
@@ -2046,16 +2031,12 @@ class TestMCPServerSingleEnv:
     async def test_select_param_descriptions_warn_selector_grammar(self, mcp_server):
         """Every tool exposing a `select` param must warn about dbt selector grammar:
         a comma is intersection, so comma-joining distinct model names silently returns empty."""
-        from mcp.types import ListToolsRequest
-
         server, _ = mcp_server
-        handler = server.server.request_handlers[ListToolsRequest]
-        result = await handler(ListToolsRequest(method="tools/list"))
-        tools = result.root.tools
+        tools = await invoke_list_tools(server)
 
         checked = 0
         for tool in tools:
-            select = tool.inputSchema.get("properties", {}).get("select")
+            select = input_schema(tool).get("properties", {}).get("select")
             if select is None:
                 continue
             checked += 1
@@ -2177,12 +2158,7 @@ class TestCallToolHandler:
     @staticmethod
     async def _invoke_call_tool(server, tool_name, arguments=None):
         """Invoke the registered call_tool handler directly via MCP Server internals."""
-        handler = server.server.request_handlers[CallToolRequest]
-        req = CallToolRequest(
-            method="tools/call",
-            params=CallToolRequestParams(name=tool_name, arguments=arguments or {}),
-        )
-        return await handler(req)
+        return await invoke_call_tool(server, tool_name, arguments)
 
     @pytest.mark.asyncio
     async def test_classified_error_logs_warning(self, mcp_server, caplog):
@@ -2195,7 +2171,7 @@ class TestCallToolHandler:
         with caplog.at_level(logging.WARNING, logger="recce.mcp_server"):
             result = await self._invoke_call_tool(server, "lineage_diff")
 
-        assert result.root.isError is True
+        assert result.isError is True
         assert "Expected table_not_found error" in caplog.text
 
     @pytest.mark.asyncio
@@ -2209,7 +2185,7 @@ class TestCallToolHandler:
         with caplog.at_level(logging.ERROR, logger="recce.mcp_server"):
             result = await self._invoke_call_tool(server, "lineage_diff")
 
-        assert result.root.isError is True
+        assert result.isError is True
         assert "Error executing tool lineage_diff" in caplog.text
 
     @pytest.mark.asyncio
@@ -2235,7 +2211,7 @@ class TestCallToolHandler:
         with patch("recce.mcp_server.sentry_metrics", None):
             result = await self._invoke_call_tool(server, "lineage_diff")
 
-        assert result.root.isError is True
+        assert result.isError is True
 
     @pytest.mark.asyncio
     async def test_existing_tools_dispatch_via_call_tool(self, mcp_server):
@@ -2250,33 +2226,33 @@ class TestCallToolHandler:
         }
         mock_context.get_lineage_diff.return_value = mock_lineage_diff
         r = await self._invoke_call_tool(server, "schema_diff", {})
-        assert r.root.isError is not True
+        assert r.isError is not True
 
         # row_count_diff
         with patch.object(RowCountDiffTask, "execute", return_value={"m": {"base": 1, "curr": 1}}):
             r = await self._invoke_call_tool(server, "row_count_diff", {"node_names": ["m"]})
-        assert r.root.isError is not True
+        assert r.isError is not True
 
         # query
         mock_qr = MagicMock()
         mock_qr.model_dump.return_value = {"columns": ["c"], "data": [[1]]}
         with patch.object(QueryTask, "execute", return_value=mock_qr):
             r = await self._invoke_call_tool(server, "query", {"sql_template": "SELECT 1"})
-        assert r.root.isError is not True
+        assert r.isError is not True
 
         # query_diff
         mock_qdr = MagicMock()
         mock_qdr.model_dump.return_value = {"diff": {"added": [], "removed": [], "modified": []}}
         with patch.object(QueryDiffTask, "execute", return_value=mock_qdr):
             r = await self._invoke_call_tool(server, "query_diff", {"sql_template": "SELECT 1"})
-        assert r.root.isError is not True
+        assert r.isError is not True
 
         # profile_diff
         mock_pdr = MagicMock()
         mock_pdr.model_dump.return_value = {"columns": {}}
         with patch.object(ProfileDiffTask, "execute", return_value=mock_pdr):
             r = await self._invoke_call_tool(server, "profile_diff", {"model": "m"})
-        assert r.root.isError is not True
+        assert r.isError is not True
 
         # list_checks
         mock_check_dao = MagicMock()
@@ -2284,7 +2260,7 @@ class TestCallToolHandler:
         mock_check_dao.status.return_value = {"total": 0, "approved": 0}
         with patch("recce.models.CheckDAO", return_value=mock_check_dao):
             r = await self._invoke_call_tool(server, "list_checks", {})
-        assert r.root.isError is not True
+        assert r.isError is not True
 
         # run_check (successful dispatch via lineage_diff path)
         from uuid import uuid4
@@ -2315,11 +2291,11 @@ class TestCallToolHandler:
             patch("recce.apis.check_func.export_persistent_state"),
         ):
             r = await self._invoke_call_tool(server, "run_check", {"check_id": str(check_id)})
-        assert r.root.isError is not True
+        assert r.isError is not True
 
         # unknown tool
         r = await self._invoke_call_tool(server, "nonexistent_tool", {})
-        assert r.root.isError is True
+        assert r.isError is True
 
     @pytest.mark.asyncio
     async def test_create_check_dispatches_via_call_tool(self, mcp_server):
@@ -2352,7 +2328,7 @@ class TestCallToolHandler:
                     "name": "test",
                 },
             )
-        assert r.root.isError is not True
+        assert r.isError is not True
 
     @pytest.mark.asyncio
     async def test_new_syntax_error_logs_warning(self, mcp_server, caplog):
@@ -2365,7 +2341,7 @@ class TestCallToolHandler:
         )
         with caplog.at_level(logging.WARNING, logger="recce.mcp_server"):
             result = await self._invoke_call_tool(server, "lineage_diff")
-        assert result.root.isError is True
+        assert result.isError is True
         assert "Expected syntax_error error" in caplog.text
 
     @pytest.mark.asyncio
@@ -2376,7 +2352,7 @@ class TestCallToolHandler:
         large_result = {"data": "x" * 2000}
         with patch.object(RowCountDiffTask, "execute", return_value=large_result):
             r = await self._invoke_call_tool(server, "row_count_diff", {"node_names": ["m"]})
-        assert r.root.isError is not True
+        assert r.isError is not True
 
     @pytest.mark.asyncio
     async def test_new_tools_dispatch_via_call_tool(self, mcp_server):
@@ -2388,31 +2364,31 @@ class TestCallToolHandler:
         mock_vd.model_dump.return_value = {"summary": {}, "data": {}}
         with patch.object(ValueDiffTask, "execute", return_value=mock_vd):
             r = await self._invoke_call_tool(server, "value_diff", {"model": "m", "primary_key": "id"})
-        assert r.root.isError is not True
+        assert r.isError is not True
 
         # value_diff_detail
         mock_vdd = MagicMock()
         mock_vdd.model_dump.return_value = {"columns": [], "data": []}
         with patch.object(ValueDiffDetailTask, "execute", return_value=mock_vdd):
             r = await self._invoke_call_tool(server, "value_diff_detail", {"model": "m", "primary_key": "id"})
-        assert r.root.isError is not True
+        assert r.isError is not True
 
         # top_k_diff
         with patch.object(TopKDiffTask, "execute", return_value={"base": {}, "current": {}}):
             r = await self._invoke_call_tool(server, "top_k_diff", {"model": "m", "column_name": "c"})
-        assert r.root.isError is not True
+        assert r.isError is not True
 
         # histogram_diff
         mock_context.build_name_to_unique_id_index.return_value = {"m": "model.p.m"}
         mock_context.get_model.return_value = {"columns": {"c": {"name": "c", "type": "INTEGER"}}}
         with patch.object(HistogramDiffTask, "execute", return_value={"base": {}, "current": {}}):
             r = await self._invoke_call_tool(server, "histogram_diff", {"model": "m", "column_name": "c"})
-        assert r.root.isError is not True
+        assert r.isError is not True
 
         # get_model
         mock_context.get_model.side_effect = [{"columns": {}}, {"columns": {}}]
         r = await self._invoke_call_tool(server, "get_model", {"model_id": "model.p.m"})
-        assert r.root.isError is not True
+        assert r.isError is not True
 
         # get_cll
         mock_context.adapter_type = "dbt"
@@ -2420,7 +2396,7 @@ class TestCallToolHandler:
         mock_cll.model_dump.return_value = {"nodes": {}, "columns": {}, "parent_map": {}, "child_map": {}}
         mock_context.adapter.get_cll.return_value = mock_cll
         r = await self._invoke_call_tool(server, "get_cll", {})
-        assert r.root.isError is not True
+        assert r.isError is not True
 
         # get_server_info
         mock_context.adapter_type = "dbt"
@@ -2428,13 +2404,13 @@ class TestCallToolHandler:
         mock_context.support_tasks.return_value = {}
         mock_context.state_loader = None
         r = await self._invoke_call_tool(server, "get_server_info", {})
-        assert r.root.isError is not True
+        assert r.isError is not True
 
         # select_nodes
         mock_context.adapter_type = "dbt"
         mock_context.adapter.select_nodes.return_value = {"model.p.m"}
         r = await self._invoke_call_tool(server, "select_nodes", {})
-        assert r.root.isError is not True
+        assert r.isError is not True
 
 
 class TestLineageDiffEdgeCases:
@@ -2650,25 +2626,17 @@ class TestImpactAnalysisRegistration:
 
     @pytest.mark.asyncio
     async def test_impact_analysis_in_tool_list(self, mcp_server):
-        from mcp.types import ListToolsRequest
-
         server, mock_context = mcp_server
-        handler = server.server.request_handlers[ListToolsRequest]
-        result = await handler(ListToolsRequest(method="tools/list"))
-        tool_names = [t.name for t in result.root.tools]
+        tool_names = [t.name for t in await invoke_list_tools(server)]
         assert "impact_analysis" in tool_names
 
     @pytest.mark.asyncio
     async def test_impact_analysis_schema_has_select(self, mcp_server):
-        from mcp.types import ListToolsRequest
-
         server, mock_context = mcp_server
-        handler = server.server.request_handlers[ListToolsRequest]
-        result = await handler(ListToolsRequest(method="tools/list"))
-        tool = next(t for t in result.root.tools if t.name == "impact_analysis")
-        assert "select" in tool.inputSchema["properties"]
-        assert "skip_value_diff" in tool.inputSchema["properties"]
-        assert "skip_downstream_value_diff" in tool.inputSchema["properties"]
+        tool = next(t for t in await invoke_list_tools(server) if t.name == "impact_analysis")
+        assert "select" in input_schema(tool)["properties"]
+        assert "skip_value_diff" in input_schema(tool)["properties"]
+        assert "skip_downstream_value_diff" in input_schema(tool)["properties"]
 
 
 class TestImpactAnalysisBehavior:
@@ -2837,15 +2805,10 @@ class TestImpactAnalysisBehavior:
     @staticmethod
     async def _call_impact_analysis(server, **extra_args):
         """Invoke impact_analysis via the MCP call_tool handler."""
-        handler = server.server.request_handlers[CallToolRequest]
-        req = CallToolRequest(
-            method="tools/call",
-            params=CallToolRequestParams(name="impact_analysis", arguments=extra_args),
-        )
-        result = await handler(req)
+        result = await invoke_call_tool(server, "impact_analysis", extra_args)
         import json
 
-        return json.loads(result.root.content[0].text)
+        return json.loads(result.content[0].text)
 
     # ---------------------------------------------------------------------------
     # Tests
@@ -3498,9 +3461,9 @@ class TestLocalModeRunBacked:
             result = await TestCallToolHandler._invoke_call_tool(
                 server, "query_diff", {"sql_template": "SELECT bad_col", "primary_keys": ["id"]}
             )
-        assert result.root.isError is True
+        assert result.isError is True
         # The original message is surfaced so _classify_db_error / the agent can see it.
-        assert "bad_col" in result.root.content[0].text
+        assert "bad_col" in result.content[0].text
         # The FAILED Run is still persisted for citation, not dropped.
         assert len(self._context.runs) == 1
         assert self._context.runs[0].status == RunStatus.FAILED
