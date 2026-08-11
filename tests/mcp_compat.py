@@ -19,13 +19,22 @@ class ToolResult:
     isError: bool
 
 
+def is_error(result) -> bool:
+    """Read the error flag off a ``CallToolResult`` regardless of SDK field naming.
+
+    Also takes results built by a real ``ClientSession``, which is why this is a free
+    function rather than something only ``invoke_call_tool`` uses.
+    """
+    value = getattr(result, "is_error", None)
+    if value is None:
+        value = getattr(result, "isError", None)
+    return bool(value)
+
+
 async def invoke_call_tool(server, name: str, arguments: Optional[Dict[str, Any]] = None) -> ToolResult:
     """Call a tool and normalise the result, including the error case."""
     result = await server._handle_call_tool(None, CallToolRequestParams(name=name, arguments=arguments or {}))
-    is_error = getattr(result, "is_error", None)
-    if is_error is None:
-        is_error = getattr(result, "isError", None)
-    return ToolResult(content=list(result.content), isError=bool(is_error))
+    return ToolResult(content=list(result.content), isError=is_error(result))
 
 
 async def invoke_list_tools(server) -> List[Tool]:
@@ -34,5 +43,12 @@ async def invoke_list_tools(server) -> List[Tool]:
 
 
 def input_schema(tool: Tool) -> Dict[str, Any]:
-    """Read a tool's JSON schema regardless of SDK field naming."""
-    return getattr(tool, "input_schema", None) or tool.inputSchema
+    """Read a tool's JSON schema regardless of SDK field naming.
+
+    Tested for ``None`` rather than falsiness: an empty schema would otherwise fall
+    through to the attribute the other major does not have.
+    """
+    schema = getattr(tool, "input_schema", None)
+    if schema is None:
+        schema = tool.inputSchema
+    return schema
