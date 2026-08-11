@@ -5,8 +5,6 @@ import pytest
 
 pytest.importorskip("mcp")
 
-from mcp.types import CallToolRequest, CallToolRequestParams  # noqa: E402
-
 from recce.mcp_server import (  # noqa: E402
     CloudBackend,
     InstanceSpawningError,
@@ -14,6 +12,7 @@ from recce.mcp_server import (  # noqa: E402
     run_mcp_server,
 )
 from recce.util.recce_cloud import RecceCloudException  # noqa: E402
+from tests.mcp_compat import invoke_call_tool  # noqa: E402
 
 
 class MockResponse:
@@ -258,17 +257,11 @@ async def test_recce_mcp_server_delegates_tool_calls_to_backend():
     backend.call_tool.return_value = {"ok": True}
     server = RecceMCPServer(backend=backend)
 
-    handler = server.server.request_handlers[CallToolRequest]
-    request = CallToolRequest(
-        method="tools/call",
-        params=CallToolRequestParams(name="get_server_info", arguments={}),
-    )
-
-    result = await handler(request)
+    result = await invoke_call_tool(server, "get_server_info")
 
     backend.call_tool.assert_awaited_once_with("get_server_info", {})
     # DRC-3758: tool results are now serialized compactly (no indent).
-    assert result.root.content[0].text == '{"ok":true}'
+    assert result.content[0].text == '{"ok":true}'
 
 
 @pytest.mark.asyncio
@@ -422,26 +415,14 @@ async def test_set_backend_invalid_mode_raises():
 async def test_unconfigured_server_blocks_normal_tools_but_allows_set_backend():
     """Tools other than set_backend / get_server_info are gated when unconfigured."""
     server = RecceMCPServer()
-    handler = server.server.request_handlers[CallToolRequest]
-
     # Normal tool blocked
-    blocked = await handler(
-        CallToolRequest(
-            method="tools/call",
-            params=CallToolRequestParams(name="lineage_diff", arguments={}),
-        )
-    )
-    assert blocked.root.isError is True
-    assert "No backend configured" in blocked.root.content[0].text
+    blocked = await invoke_call_tool(server, "lineage_diff")
+    assert blocked.isError is True
+    assert "No backend configured" in blocked.content[0].text
 
     # get_server_info returns mode='none'
-    info = await handler(
-        CallToolRequest(
-            method="tools/call",
-            params=CallToolRequestParams(name="get_server_info", arguments={}),
-        )
-    )
-    assert '"mode":"none"' in info.root.content[0].text
+    info = await invoke_call_tool(server, "get_server_info")
+    assert '"mode":"none"' in info.content[0].text
 
 
 @pytest.mark.asyncio
@@ -898,21 +879,16 @@ async def test_set_backend_api_token_redacted_in_logs(caplog):
     backend.call_tool.return_value = {"ok": True}
     server = RecceMCPServer(api_token=None)
 
-    handler = server.server.request_handlers[CallToolRequest]
-    request = CallToolRequest(
-        method="tools/call",
-        params=CallToolRequestParams(
-            name="set_backend",
-            arguments={"mode": "cloud", "session_id": "sess-123", "api_token": "sk-real-secret"},
-        ),
-    )
-
     with (
         caplog.at_level(logging.INFO, logger="recce.mcp_server"),
         patch("recce.mcp_server.CloudBackend.create", return_value=backend),
         patch.object(server.mcp_logger, "log_tool_call") as mock_log_tool_call,
     ):
-        await handler(request)
+        await invoke_call_tool(
+            server,
+            "set_backend",
+            {"mode": "cloud", "session_id": "sess-123", "api_token": "sk-real-secret"},
+        )
 
     # Stderr/console logs must not contain the raw token
     assert "sk-real-secret" not in caplog.text
