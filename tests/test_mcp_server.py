@@ -3544,6 +3544,9 @@ class TestCallToolInputValidation:
 
         `_list_tools` logs its result and writes an MCPLogger entry, so rebuilding the
         list per call would forge a `Returning N tools` line on every `tools/call`.
+        An unknown name is the case that matters: it misses the cache every time, so
+        "refresh on a miss" would re-announce the list on every bad call — and a
+        hallucinated tool name is the normal way an agent produces one.
         """
         import logging
 
@@ -3552,5 +3555,20 @@ class TestCallToolInputValidation:
             await invoke_call_tool(server, "value_diff", {"model": "customers"})
             caplog.clear()
             await invoke_call_tool(server, "value_diff", {"model": "customers"})
+            await invoke_call_tool(server, "nonexistent_tool", {})
+            await invoke_call_tool(server, "nonexistent_tool", {})
 
         assert "Returning" not in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_set_backend_invalidates_the_schema_cache(self, mcp_server):
+        """The cache is built once, so the only thing that moves the advertised surface
+        has to clear it — otherwise validation keeps checking against the old schemas."""
+        server, _ = mcp_server
+        await invoke_call_tool(server, "value_diff", {"model": "customers"})
+        assert server._tool_schema_cache
+
+        with patch("recce.mcp_server.CloudBackend.create", return_value=AsyncMock()):
+            await server._tool_set_backend({"mode": "cloud", "session_id": "sess-1", "api_token": "tok"})
+
+        assert server._tool_schema_cache == {}
