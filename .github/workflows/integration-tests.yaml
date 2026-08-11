@@ -49,3 +49,33 @@ jobs:
         run: |
           source .venv/bin/activate
           ./integration_tests/dbt/smoke_test.sh
+
+  mcp-smoke-test:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    strategy:
+      # `mcp` is an optional extra pinned to >=1.23,<3, and the two majors
+      # register tool handlers differently. Both have to boot.
+      matrix:
+        mcp-version: ["1.28.1", "2.0.0"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install Recce and dbt
+        run: |
+          uv venv
+          uv sync --no-dev --python 3.12
+          uv pip install dbt-core dbt-duckdb
+
+      - name: Run smoke test - mcp server
+        env:
+          SMOKE_SERVER: mcp-server
+          SMOKE_MCP_VERSION: ${{ matrix.mcp-version }}
+        run: |
+          source .venv/bin/activate
+          ./integration_tests/dbt/smoke_test.sh
