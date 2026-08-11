@@ -129,46 +129,72 @@ function check_server_status() {
 }
 
 # Recce MCP Server
-# Stdio, not HTTP: there is no port to poll, so the server is started with the
-# handshake on stdin and its replies land in a file. The startup path is what
-# breaks (tool registration differs between mcp 1.x and 2.0), so the handshake
-# plus a non-empty tool list is the whole check.
-MCP_REQUESTS=$(mktemp)
-MCP_RESPONSES=$(mktemp)
-MCP_STDERR=$(mktemp)
-cat > "$MCP_REQUESTS" << 'EOF'
-{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}
-{"jsonrpc":"2.0","method":"notifications/initialized"}
-{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
-EOF
+# The MCP server talks HTTP/SSE: responses arrive on the GET /sse stream, and
+# requests are POSTed to the session endpoint that stream hands out in its first
+# event. Liveness alone is not enough — tool registration differs between mcp
+# 1.x and 2.0, so the handshake plus a non-empty tool list is the real check.
+MCP_PORT=8765
 
-# Takes the pid of the backgrounded `recce mcp-server`. The server exits once it
-# reaches the end of the request file, so waiting on it is the readiness signal.
 function check_mcp_server_status() {
-    local mcp_pid="$1"
+    local base="http://localhost:$MCP_PORT"
+    local stream stream_pid endpoint responses server_name tool_count
+    stream=$(mktemp)
+
     echo "Waiting for the MCP server to respond..."
-    if ! wait "$mcp_pid"; then
-        echo "Failed to start the MCP server."
-        cat "$MCP_STDERR"
+    if ! timeout 60 bash -c "until curl -sf $base/health > /dev/null; do
+    echo \"MCP server not ready yet...\"
+    sleep 2
+    done"; then
+        echo "Failed to start the MCP server within the time limit."
         exit 1
     fi
 
-    local server_name tool_count
-    server_name=$(jq -r 'select(.id == 1) | .result.serverInfo.name' "$MCP_RESPONSES")
-    tool_count=$(jq -r 'select(.id == 2) | .result.tools | length' "$MCP_RESPONSES")
+    # The response stream has to be open before any request is sent.
+    curl -sN "$base/sse" > "$stream" &
+    stream_pid=$!
+    if ! timeout 20 bash -c "until grep -q '^data: /' '$stream'; do sleep 0.5; done"; then
+        echo "The MCP server did not hand out a session endpoint."
+        exit 1
+    fi
+    # SSE lines are CRLF-terminated; a trailing CR makes the POST url malformed.
+    endpoint=$(awk '/^data: \//{sub(/^data: /,""); sub(/\r$/,""); print; exit}' "$stream")
+
+    for request in \
+        '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}' \
+        '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+        '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'; do
+        if ! curl -sf -o /dev/null -X POST "$base$endpoint" -H 'Content-Type: application/json' -d "$request"; then
+            echo "The MCP server rejected a request: $request"
+            exit 1
+        fi
+    done
+
+    if ! timeout 20 bash -c "until grep -q '\"id\":2' '$stream'; do sleep 0.5; done"; then
+        echo "The MCP server did not answer tools/list."
+        exit 1
+    fi
+
+    responses=$(awk '/^data: \{/{sub(/^data: /,""); print}' "$stream")
+    kill "$stream_pid" 2>/dev/null || true
+    server_name=$(jq -r 'select(.id == 1) | .result.serverInfo.name' <<< "$responses")
+    tool_count=$(jq -r 'select(.id == 2) | .result.tools | length' <<< "$responses")
     assert_string_value "$server_name" "recce"
     if [ "${tool_count:-0}" -lt 1 ]; then
         echo "The MCP server started but advertised no tools."
-        cat "$MCP_STDERR"
         exit 1
     fi
     echo "MCP server is up and advertised $tool_count tools."
+
+    echo "Stopping the MCP server..."
+    kill $(jobs -p) 2>/dev/null || true
+    wait || true
+    echo "MCP server stopped."
 }
 
 if [ "$SMOKE_SERVER" = "mcp-server" ]; then
     echo "Starting the MCP server..."
-    timeout 60 recce mcp-server < "$MCP_REQUESTS" > "$MCP_RESPONSES" 2> "$MCP_STDERR" &
-    check_mcp_server_status $!
+    recce mcp-server --sse --port "$MCP_PORT" &
+    check_mcp_server_status
 else
     echo "Starting the server..."
     recce server &
