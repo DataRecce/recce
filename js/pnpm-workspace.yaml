@@ -18,7 +18,7 @@ overrides:
   '@biomejs/biome': 2.5.7
   '@testing-library/jest-dom': 7.0.0
   '@testing-library/react': 16.3.2
-  happy-dom: ^20.11.1
+  happy-dom: ^20.11.2
   '@emotion/styled': ^11.14.1
   '@mui/material': ^9.0.0
   '@mui/system': ^9.0.0
