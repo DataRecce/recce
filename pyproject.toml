@@ -58,7 +58,7 @@ dev = [
     "pytest-mypy",
     "pytest-cov",
     # twine<7 monkeypatches packaging to cap Metadata-Version at 2.4, which
-    # rejects the 2.5 metadata current hatchling emits (DRC-4132).
+    # rejects the 2.5 metadata current hatchling emits.
     "twine>=7",
     "tox",
     "tox-uv",
