@@ -1977,12 +1977,15 @@ class TestListProjects(unittest.TestCase):
     def test_no_org_available(self):
         """Exit with code 2 when no organization can be resolved."""
         with patch.dict(os.environ, {"RECCE_API_TOKEN": "test_token"}, clear=True):
+            # resolver.py binds get_project_binding at import time, so the patch
+            # must target the resolver module, not project_config.
             with patch(
-                "recce_cloud.config.project_config.get_project_binding",
+                "recce_cloud.config.resolver.get_project_binding",
                 return_value=None,
-            ):
+            ) as mock_binding:
                 result = self.runner.invoke(cloud_cli, ["list-projects"])
 
+        self.assertTrue(mock_binding.called, "get_project_binding was not patched in the code under test")
         self.assertEqual(result.exit_code, 2, f"Output: {result.output}")
         self.assertIn("recce-cloud list-orgs", result.output)
 
