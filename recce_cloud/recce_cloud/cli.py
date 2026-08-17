@@ -339,8 +339,7 @@ def init(org, project, status, clear):
         # Filter out archived projects
         project_choices = []
         for p in projects:
-            # Skip archived projects (check status field and archived flags)
-            if p.get("status") == "archived" or p.get("archived") or p.get("is_archived"):
+            if _is_archived_project(p):
                 continue
             project_id = str(p.get("id"))
             project_name = p.get("name") or p.get("slug") or project_id
@@ -1017,6 +1016,195 @@ def list_sessions_cmd(session_type, output_json):
         adapter = session.get("adapter_type", "-")
 
         table.add_row(name or "(unnamed)", session_id, s_type, created_at, adapter or "-")
+
+    console.print(table)
+    sys.exit(0)
+
+
+def _require_api_token(console: Console) -> str:
+    """Return the API token, or exit with code 2 if the user is not authenticated."""
+    from recce_cloud.auth.profile import get_api_token
+
+    token = os.getenv("RECCE_API_TOKEN") or get_api_token()
+    if not token:
+        console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
+        console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
+        sys.exit(2)
+    return token
+
+
+def _is_archived_project(project: dict) -> bool:
+    return bool(project.get("status") == "archived" or project.get("archived") or project.get("is_archived"))
+
+
+@cloud_cli.command(name="list-orgs", cls=TrackedCommand)
+@click.option(
+    "--json",
+    "output_json",
+    is_flag=True,
+    help="Output in JSON format",
+)
+def list_orgs_cmd(output_json):
+    """
+    List the organizations you have access to.
+
+    \b
+    Requires:
+    - RECCE_API_TOKEN env var or 'recce-cloud login'
+
+    \b
+    Examples:
+      # List organizations
+      recce-cloud list-orgs
+    \b
+      # Output as JSON (for scripts and agents)
+      recce-cloud list-orgs --json
+    """
+    from rich.table import Table
+
+    from recce_cloud.api.client import RecceCloudClient
+
+    console = Console()
+    token = _require_api_token(console)
+
+    try:
+        orgs = RecceCloudClient(token).list_organizations()
+    except Exception as e:
+        logger.debug("Failed to list organizations: %s", e, exc_info=True)
+        console.print(f"[red]Error:[/red] Failed to list organizations: {e}")
+        sys.exit(2)
+
+    if output_json:
+        # The rich console wraps output past 80 columns, and reads a value
+        # like "[dim]" as a style tag. Both damage the JSON.
+        click.echo(json.dumps(orgs, indent=2, default=str))
+        sys.exit(0)
+
+    if not orgs:
+        console.print("[yellow]No organizations found[/yellow]")
+        console.print(f"Please create an organization at {get_base_url()} first")
+        sys.exit(0)
+
+    table = Table(title=f"Organizations ({len(orgs)} total)")
+    table.add_column("ID", style="cyan", no_wrap=True)
+    table.add_column("Name")
+
+    for org in orgs:
+        table.add_row(
+            str(org.get("id", "-")),
+            org.get("display_name") or org.get("name") or "-",
+        )
+
+    console.print(table)
+    sys.exit(0)
+
+
+@cloud_cli.command(name="list-projects", cls=TrackedCommand)
+@click.option(
+    "--org",
+    help="Organization ID or name (default: the configured organization)",
+)
+@click.option(
+    "--all",
+    "show_archived",
+    is_flag=True,
+    help="Include archived projects",
+)
+@click.option(
+    "--json",
+    "output_json",
+    is_flag=True,
+    help="Output in JSON format",
+)
+def list_projects_cmd(org, show_archived, output_json):
+    """
+    List the projects in an organization.
+
+    \b
+    Requires:
+    - RECCE_API_TOKEN env var or 'recce-cloud login'
+    - An organization from --org, RECCE_ORG, or 'recce-cloud init'
+
+    \b
+    Examples:
+      # List projects in the configured organization
+      recce-cloud list-projects
+    \b
+      # List projects in a specific organization
+      recce-cloud list-projects --org myorg
+    \b
+      # Output as JSON (for scripts and agents)
+      recce-cloud list-projects --org 42 --json
+    """
+    from rich.table import Table
+
+    from recce_cloud.api.client import RecceCloudClient
+    from recce_cloud.config.resolver import resolve_org_id
+
+    console = Console()
+    token = _require_api_token(console)
+
+    org_ref = org or resolve_org_id()
+    if not org_ref:
+        console.print("[red]Error:[/red] No organization specified")
+        console.print(
+            "Pass --org, set the RECCE_ORG environment variable, " "or run 'recce-cloud init' to bind this directory"
+        )
+        console.print("Run 'recce-cloud list-orgs' to see the available organizations")
+        sys.exit(2)
+
+    try:
+        client = RecceCloudClient(token)
+        org_obj = client.get_organization(org_ref)
+        if not org_obj:
+            console.print(f"[red]Error:[/red] Organization '{org_ref}' not found or you don't have access")
+            sys.exit(2)
+        org_id = org_obj.get("id")
+        if not org_id:
+            console.print(f"[red]Error:[/red] Organization '{org_ref}' response missing ID")
+            sys.exit(2)
+        projects = client.list_projects(org_id)
+    except Exception as e:
+        logger.debug("Failed to list projects: %s", e, exc_info=True)
+        console.print(f"[red]Error:[/red] Failed to list projects: {e}")
+        sys.exit(2)
+
+    all_projects = projects
+    if not show_archived:
+        projects = [p for p in all_projects if not _is_archived_project(p)]
+
+    if output_json:
+        click.echo(json.dumps(projects, indent=2, default=str))
+        sys.exit(0)
+
+    org_display = org_obj.get("display_name") or org_obj.get("name") or org_ref
+
+    if not projects:
+        if all_projects:
+            console.print(f"[yellow]No active projects found in {org_display}[/yellow]")
+            console.print("Pass --all to include archived projects")
+        else:
+            console.print(f"[yellow]No projects found in {org_display}[/yellow]")
+            console.print(f"Please create a project at {get_base_url()} first")
+        sys.exit(0)
+
+    console.print(f"[cyan]Organization:[/cyan] {org_display} (id={org_id})")
+    console.print()
+
+    table = Table(title=f"Projects ({len(projects)} total)")
+    table.add_column("ID", style="cyan", no_wrap=True)
+    table.add_column("Name")
+    table.add_column("Repository", style="dim")
+    table.add_column("Status", style="green")
+
+    for project in projects:
+        repository = project.get("repository") or {}
+        table.add_row(
+            str(project.get("id", "-")),
+            project.get("display_name") or project.get("name") or "-",
+            repository.get("full_name") or "-",
+            "archived" if _is_archived_project(project) else "active",
+        )
 
     console.print(table)
     sys.exit(0)
