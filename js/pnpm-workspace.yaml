@@ -16,7 +16,7 @@ overrides:
   '@types/react-dom': 19.2.4
   '@vitejs/plugin-react': ^6.0.5
   '@biomejs/biome': 2.5.7
-  '@testing-library/jest-dom': 7.0.0
+  '@testing-library/jest-dom': 7.0.1
   '@testing-library/react': 16.3.2
   happy-dom: ^20.11.2
   '@emotion/styled': ^11.14.1
