@@ -136,8 +136,8 @@
     }
   },
   "dependencies": {
-    "@amplitude/analytics-core": "^2.54.1",
-    "@amplitude/unified": "1.1.28",
+    "@amplitude/analytics-core": "^2.54.2",
+    "@amplitude/unified": "1.1.29",
     "@codemirror/lang-sql": "^6.10.0",
     "@codemirror/lang-yaml": "^6.1.0",
     "@codemirror/merge": "^6.12.0",
@@ -152,7 +152,7 @@
     "@tanstack/react-query": "^5.0.0",
     "@uiw/codemirror-theme-github": "^4.25.11",
     "@uiw/react-codemirror": "^4.25.11",
-    "@xyflow/react": "^12.10.1",
+    "@xyflow/react": "^12.11.3",
     "@zumer/snapdom": "^2.23.2",
     "ag-grid-community": "^36.0.1",
     "ag-grid-react": "^36.0.1",
@@ -163,7 +163,7 @@
     "js-cookie": "^3.0.7",
     "lodash": "^4.17.21",
     "next-themes": "^0.4.0",
-    "posthog-js": "^1.410.9",
+    "posthog-js": "^1.417.4",
     "react-chartjs-2": "^5.3.0",
     "react-icons": "^5.7.0",
     "react-markdown": "^10.1.0",
