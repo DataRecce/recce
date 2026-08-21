@@ -7,10 +7,16 @@
 
 import { useCopyToClipboard } from "usehooks-ts";
 import { useClipBoardToast } from "../../hooks/useClipBoardToast";
-import { DiffText, type DiffTextProps } from "./DiffText";
+import {
+  DiffText,
+  type DiffTextCommonProps,
+  type DiffTextLegacyProps,
+  type DiffTextSemanticProps,
+} from "./DiffText";
 
 // Re-export the type for consumers (without onCopy since we handle it)
-export type DiffTextWithToastProps = Omit<DiffTextProps, "onCopy">;
+export type DiffTextWithToastProps = Omit<DiffTextCommonProps, "onCopy"> &
+  (DiffTextSemanticProps | DiffTextLegacyProps);
 
 /**
  * DiffText component with automatic copy-to-clipboard toast notifications.

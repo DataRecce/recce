@@ -11,6 +11,7 @@
  */
 
 import { render, screen } from "@testing-library/react";
+import { getSemanticColorTheme } from "../../../../theme";
 import {
   NodeRunsAggregated,
   type NodeRunsAggregatedProps,
@@ -32,10 +33,16 @@ describe("NodeRunsAggregated - row count diff", () => {
     );
 
     expect(screen.getByText("150 rows")).toBeInTheDocument();
-    expect(screen.getByText("+50.0%")).toHaveAttribute(
-      "data-row-count-direction",
-      "increase",
-    );
+    const direction = screen.getByText("+50.0%");
+    const surface = direction.closest("[data-row-count-direction]");
+    expect(surface).toHaveAttribute("data-row-count-direction", "increase");
+    expect(surface).toHaveStyle({
+      backgroundColor: getSemanticColorTheme(false).direction.background,
+      borderColor: getSemanticColorTheme(false).direction.border,
+    });
+    expect(direction).toHaveStyle({
+      color: getSemanticColorTheme(false).direction.foreground,
+    });
   });
 
   it("shows decrease indicator when current < base", () => {
@@ -48,10 +55,16 @@ describe("NodeRunsAggregated - row count diff", () => {
     );
 
     expect(screen.getByText("100 rows")).toBeInTheDocument();
-    expect(screen.getByText("-50.0%")).toHaveAttribute(
-      "data-row-count-direction",
-      "decrease",
-    );
+    const direction = screen.getByText("-50.0%");
+    const surface = direction.closest("[data-row-count-direction]");
+    expect(surface).toHaveAttribute("data-row-count-direction", "decrease");
+    expect(surface).toHaveStyle({
+      backgroundColor: getSemanticColorTheme(false).direction.background,
+      borderColor: getSemanticColorTheme(false).direction.border,
+    });
+    expect(direction).toHaveStyle({
+      color: getSemanticColorTheme(false).direction.foreground,
+    });
   });
 
   it("shows no change indicator when counts are equal", () => {
@@ -64,7 +77,9 @@ describe("NodeRunsAggregated - row count diff", () => {
     );
 
     expect(screen.getByText("100 rows")).toBeInTheDocument();
-    expect(screen.getByText("No Change")).toBeInTheDocument();
+    expect(
+      screen.getByText("No Change").closest("[data-row-count-direction]"),
+    ).toHaveAttribute("data-row-count-direction", "equal");
   });
 
   it("shows N/A for null base", () => {

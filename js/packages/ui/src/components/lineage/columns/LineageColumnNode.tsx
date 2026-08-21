@@ -5,15 +5,11 @@ import Chip from "@mui/material/Chip";
 import { Handle, Position } from "@xyflow/react";
 import type { MouseEvent } from "react";
 import { memo, useState } from "react";
+import { getSemanticColorTheme } from "../../../theme";
 import { DataTypeIcon } from "../../ui/DataTypeIcon";
+import { StructuralChangeIndicator } from "../../ui/StructuralChangeIndicator";
 import { DIM_FILTER } from "../config/zoomConstants";
-import {
-  changeStatusColors,
-  cllChangeStatusBackgroundsDark,
-  cllChangeStatusBackgroundsLight,
-  cllChangeStatusColors,
-  getStyleForImpacted,
-} from "../styles";
+import { getStyleForImpacted } from "../styles";
 
 /**
  * Transformation type for column-level lineage
@@ -157,41 +153,19 @@ function KebabMenuIcon({ size = 14 }: { size?: number }) {
  */
 function ChangeStatusIndicator({
   changeStatus,
-  newCllExperience,
 }: {
   changeStatus?: ColumnChangeStatus;
-  newCllExperience: boolean;
 }) {
   if (!changeStatus) {
     return null;
   }
 
-  const palette = newCllExperience ? cllChangeStatusColors : changeStatusColors;
-  const color = palette[changeStatus];
-  const symbols: Record<ColumnChangeStatus, string> = {
-    added: "+",
-    removed: "-",
-    modified: "~",
-  };
-
   return (
-    <Box
-      sx={{
-        width: 14,
-        height: 14,
-        borderRadius: "50%",
-        backgroundColor: color,
-        color: "white",
-        fontSize: 10,
-        fontWeight: "bold",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexShrink: 0,
-      }}
-    >
-      {symbols[changeStatus]}
-    </Box>
+    <StructuralChangeIndicator
+      status={changeStatus}
+      emphasis="secondary"
+      size="sm"
+    />
   );
 }
 
@@ -215,7 +189,7 @@ function TransformationIndicator({
       size="small"
       color={config.color}
       sx={{
-        fontSize: "8pt",
+        fontSize: "0.6667rem",
         height: 18,
         minWidth: 18,
         "& .MuiChip-label": {
@@ -296,6 +270,7 @@ function LineageColumnNodeComponent({
   } = data;
   const newCllExperience =
     newCllExperienceProp ?? data.newCllExperience ?? false;
+  const semantic = getSemanticColorTheme(isDark);
 
   const [isHovered, setIsHovered] = useState(false);
 
@@ -304,23 +279,21 @@ function LineageColumnNodeComponent({
     return null;
   }
 
-  // Determine what indicator to show based on showChangeAnalysis mode
-  const shouldShowChangeStatus = showChangeAnalysis && changeStatus;
-
-  // Resolve tinted background + left accent for this row.
-  // In new CLL experience: changeStatus → tinted bg + accent; impacted →
-  // amber bg (only when no changeStatus). Outside the flag: only impacted
-  // gets a tinted bg (original behavior); no accent border.
-  const statusBg =
-    newCllExperience && changeStatus
-      ? (isDark
-          ? cllChangeStatusBackgroundsDark
-          : cllChangeStatusBackgroundsLight)[changeStatus]
-      : undefined;
-  const statusAccent =
-    newCllExperience && changeStatus
-      ? cllChangeStatusColors[changeStatus]
-      : undefined;
+  // Structural status owns the neutral surface plus secondary-accent rail.
+  // CLL impact keeps its separate amber presentation only when the column has
+  // no structural status of its own.
+  const neutralHoverBg = isDark ? "#262626" : "#F5F5F5";
+  const neutralSelectedBg = isDark ? "#404040" : "#E5E5E5";
+  const statusBg = changeStatus
+    ? isFocused
+      ? neutralSelectedBg
+      : isHovered
+        ? neutralHoverBg
+        : semantic.structural.neutral.background
+    : undefined;
+  const statusAccent = changeStatus
+    ? semantic.structural.secondaryAccent[changeStatus]
+    : undefined;
   const impactedStyle =
     isImpacted && !changeStatus ? getStyleForImpacted(isDark) : undefined;
 
@@ -343,7 +316,9 @@ function LineageColumnNodeComponent({
         width: COLUMN_NODE_WIDTH,
         padding: "0px 10px",
         border: "1px solid",
-        borderColor: "divider",
+        borderColor: changeStatus
+          ? semantic.structural.neutral.border
+          : "divider",
         backgroundColor: tintedBg
           ? tintedBg
           : isFocused
@@ -362,7 +337,7 @@ function LineageColumnNodeComponent({
       <Box
         sx={{
           display: "flex",
-          fontSize: "11px",
+          fontSize: "0.6875rem",
           color: textColor,
           width: "100%",
           gap: "6px",
@@ -370,13 +345,9 @@ function LineageColumnNodeComponent({
           height: `${COLUMN_NODE_HEIGHT - 1}px`,
         }}
       >
-        {/* Status indicator - based on showChangeAnalysis mode */}
-        {shouldShowChangeStatus ? (
-          <ChangeStatusIndicator
-            changeStatus={changeStatus}
-            newCllExperience={newCllExperience}
-          />
-        ) : (
+        {/* Structural status and transformation are independent meanings. */}
+        {changeStatus && <ChangeStatusIndicator changeStatus={changeStatus} />}
+        {(!showChangeAnalysis || !changeStatus) && (
           <TransformationIndicator transformationType={transformationType} />
         )}
 

@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useIsDark } from "../../hooks/useIsDark";
-import { getChartBarColors, getChartThemeColors } from "../../theme";
+import { getChartThemeColors, getSemanticColorTheme } from "../../theme";
 import {
   BaselineRule,
   CELL_HEIGHT,
@@ -42,8 +42,9 @@ import {
  * if either side has no counts, both are returned as rank-only. The cell
  * never has to mix counts on one side with ranks on the other.
  *
- * Bar palette + theme colors come from `getChartBarColors` /
- * `getChartThemeColors` (canonical in `@datarecce/ui/theme`).
+ * Comparison fills/outlines and theme colors come from
+ * `getSemanticColorTheme` / `getChartThemeColors` (canonical in
+ * `@datarecce/ui/theme`).
  */
 
 /**
@@ -162,10 +163,10 @@ export function PairedHistogramDiscrete({
   className,
 }: PairedHistogramDiscreteProps) {
   const isDark = useIsDark();
-  const bars = getChartBarColors(isDark);
+  const comparison = getSemanticColorTheme(isDark).comparison;
   const theme = getChartThemeColors(isDark);
-  const baseFill = bars.base;
-  const currentFill = bars.current;
+  const baseFill = comparison.base.chartFill;
+  const currentFill = comparison.current.chartFill;
   const baselineColor = theme.borderColor;
   const trimColor = theme.secondaryTextColor;
 
@@ -226,6 +227,8 @@ export function PairedHistogramDiscrete({
                 width={pairBarW}
                 height={s.baseH}
                 fill={baseFill}
+                stroke={comparison.base.border}
+                strokeWidth={2}
                 pointerEvents="none"
               />
             )}
@@ -236,6 +239,8 @@ export function PairedHistogramDiscrete({
                 width={pairBarW}
                 height={s.currH}
                 fill={currentFill}
+                stroke={comparison.current.border}
+                strokeWidth={2}
                 pointerEvents="none"
               />
             )}

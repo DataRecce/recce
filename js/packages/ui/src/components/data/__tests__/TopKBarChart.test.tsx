@@ -13,6 +13,7 @@
 
 import { render, screen } from "@testing-library/react";
 import { vi } from "vitest";
+import { getSemanticColorTheme } from "../../../theme";
 import {
   SingleBarChart,
   TopKBarChart,
@@ -83,6 +84,30 @@ describe("TopKBarChart", () => {
       const data = JSON.parse(chart.getAttribute("data-data") || "{}");
 
       expect(data.datasets[0].backgroundColor).toBe("#ff0000");
+      expect(data.datasets[0].borderColor).toBe(
+        getSemanticColorTheme(false).comparison.current.border,
+      );
+    });
+
+    it("uses the semantic current border for a supplied chart fill", () => {
+      const semantic = getSemanticColorTheme(false);
+      render(
+        <SingleBarChart
+          count={50}
+          total={100}
+          color={semantic.comparison.current.chartFill}
+          borderColor={semantic.comparison.current.border}
+        />,
+      );
+
+      const chart = screen.getByTestId("mock-bar-chart");
+      const data = JSON.parse(chart.getAttribute("data-data") || "{}");
+
+      expect(data.datasets[0]).toMatchObject({
+        backgroundColor: semantic.comparison.current.chartFill,
+        borderColor: semantic.comparison.current.border,
+        borderWidth: 2,
+      });
     });
 
     it("accepts theme prop", () => {
@@ -116,6 +141,24 @@ describe("TopKBarChart", () => {
       // Should render items
       expect(screen.getByText("apple")).toBeInTheDocument();
       expect(screen.getByText("banana")).toBeInTheDocument();
+    });
+
+    it("passes a semantic fill and high-contrast border to summary bars", () => {
+      const semantic = getSemanticColorTheme(false);
+      render(
+        <TopKSummaryList
+          data={{ values: ["apple"], counts: [100], valids: 100 }}
+        />,
+      );
+
+      const chart = screen.getByTestId("mock-bar-chart");
+      const data = JSON.parse(chart.getAttribute("data-data") || "{}");
+
+      expect(data.datasets[0]).toMatchObject({
+        backgroundColor: semantic.comparison.current.chartFill,
+        borderColor: semantic.comparison.current.border,
+        borderWidth: 2,
+      });
     });
 
     it("renders all items from dataset", () => {
@@ -260,6 +303,32 @@ describe("TopKBarChart", () => {
       const labels = data.datasets.map((d: { label: string }) => d.label);
       expect(labels).toContain("Base");
       expect(labels).toContain("Current");
+    });
+
+    it("uses semantic comparison fills with contrast-safe outlines", () => {
+      render(
+        <TopKBarChart
+          currentData={mockDataset}
+          baseData={mockBaseDataset}
+          showComparison={true}
+        />,
+      );
+
+      const data = getChartData();
+      const semantic = getSemanticColorTheme(false);
+
+      expect(data.datasets[0]).toMatchObject({
+        label: "Current",
+        backgroundColor: semantic.comparison.current.chartFill,
+        borderColor: semantic.comparison.current.border,
+        borderWidth: 2,
+      });
+      expect(data.datasets[1]).toMatchObject({
+        label: "Base",
+        backgroundColor: semantic.comparison.base.chartFill,
+        borderColor: semantic.comparison.base.border,
+        borderWidth: 2,
+      });
     });
 
     it("includes only current dataset when showComparison=false", () => {

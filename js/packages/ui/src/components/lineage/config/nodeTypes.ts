@@ -39,6 +39,8 @@ export interface NodeColorOptions {
   impactedNodeIds?: Set<string>;
   /** Whether the new CLL experience is active (`new_cll_experience` flag). */
   newCllExperience?: boolean;
+  /** Whether semantic lineage colors should resolve against the dark theme. */
+  isDark?: boolean;
 }
 
 /**
@@ -57,10 +59,13 @@ export interface NodeColorOptions {
 export const makeGetNodeColor =
   (options: NodeColorOptions = {}) =>
   (node: LineageGraphNode): string => {
-    const { impactedNodeIds, newCllExperience } = options;
-    return getNodeChangeStyle({
-      changeStatus: node.data.changeStatus,
-      isImpacted: newCllExperience ? impactedNodeIds?.has(node.id) : false,
-      newCllExperience,
-    }).color;
+    const { impactedNodeIds, isDark, newCllExperience } = options;
+    return getNodeChangeStyle(
+      {
+        changeStatus: node.data.changeStatus,
+        isImpacted: newCllExperience ? impactedNodeIds?.has(node.id) : false,
+        newCllExperience,
+      },
+      isDark,
+    ).color;
   };

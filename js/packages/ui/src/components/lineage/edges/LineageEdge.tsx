@@ -8,7 +8,12 @@ import {
   getBezierPath,
 } from "@xyflow/react";
 import { memo } from "react";
-import { cllChangeStatusColors } from "../styles";
+import { useIsDark } from "../../../hooks/useIsDark";
+import {
+  getSemanticColorTheme,
+  STRUCTURAL_CHANGE_PRESENTATION,
+  STRUCTURAL_EDGE_DASH,
+} from "../../../theme";
 
 export type EdgeChangeStatus = "added" | "removed" | "modified" | "unchanged";
 
@@ -36,7 +41,9 @@ function LineageEdgeComponent({
   data,
   selected,
 }: LineageEdgeProps) {
+  const isDark = useIsDark();
   const changeStatus: EdgeChangeStatus = data?.changeStatus ?? "unchanged";
+  const accessibleName = `${STRUCTURAL_CHANGE_PRESENTATION[changeStatus].label} change`;
   const isHighlighted = data?.isHighlighted ?? false;
   const label = data?.label;
 
@@ -49,7 +56,7 @@ function LineageEdgeComponent({
     targetPosition,
   });
 
-  const strokeColor = cllChangeStatusColors[changeStatus];
+  const strokeColor = getSemanticColorTheme(isDark).structural.neutral.border;
   const strokeWidth = isHighlighted || selected ? 2.5 : 1.5;
   const strokeOpacity = isHighlighted || selected ? 1 : 0.6;
 
@@ -58,8 +65,11 @@ function LineageEdgeComponent({
       <BaseEdge
         id={id}
         path={edgePath}
+        role="img"
+        aria-label={accessibleName}
         style={{
           stroke: strokeColor,
+          strokeDasharray: STRUCTURAL_EDGE_DASH[changeStatus],
           strokeWidth,
           opacity: strokeOpacity,
         }}
