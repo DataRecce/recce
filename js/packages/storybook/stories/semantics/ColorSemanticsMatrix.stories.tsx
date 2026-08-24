@@ -407,10 +407,7 @@ function Charts({ isDark }: { isDark: boolean }) {
         gridTemplateColumns: "1fr 1fr",
       }}
     >
-      <div
-        aria-label="Histogram comparing explicitly labelled Base and Current series"
-        style={{ minWidth: 0 }}
-      >
+      <div data-production-chart="histogram" style={{ minWidth: 0 }}>
         <HistogramChart
           baseData={{ label: "Base", counts: histogramBaseCounts }}
           binEdges={[0, 20, 40, 60, 80, 100]}
@@ -439,10 +436,7 @@ function Charts({ isDark }: { isDark: boolean }) {
           </div>
         </div>
       </div>
-      <div
-        aria-label="Top-K chart comparing explicitly labelled Base and Current series"
-        style={{ minWidth: 0 }}
-      >
+      <div data-production-chart="top-k" style={{ minWidth: 0 }}>
         <TopKBarChart
           baseData={topKBase}
           currentData={topKCurrent}

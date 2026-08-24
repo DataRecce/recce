@@ -10,7 +10,7 @@
  * - Light/dark theme support
  */
 
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { vi } from "vitest";
 import {
   getChartBarColors,
@@ -21,8 +21,25 @@ import { HistogramChart } from "../HistogramChart";
 
 // Mock Chart.js to avoid canvas rendering issues in tests
 vi.mock("react-chartjs-2", () => ({
-  Chart: ({ data }: { data: unknown }) => (
-    <div data-testid="mock-chart" data-data={JSON.stringify(data)} />
+  Chart: ({
+    data,
+    fallbackContent,
+    role,
+    "aria-label": ariaLabel,
+  }: {
+    data: unknown;
+    fallbackContent?: React.ReactNode;
+    role?: string;
+    "aria-label"?: string;
+  }) => (
+    <div
+      data-testid="mock-chart"
+      data-data={JSON.stringify(data)}
+      role={role}
+      aria-label={ariaLabel}
+    >
+      {fallbackContent}
+    </div>
   ),
 }));
 
@@ -165,6 +182,17 @@ describe("HistogramChart", () => {
       expect(data.datasets[0].label).toBe("Current");
       // Second dataset should be "Base"
       expect(data.datasets[1].label).toBe("Base");
+    });
+
+    it("owns accessible Base and Current semantics on the production chart", () => {
+      render(<HistogramChart {...defaultProps} />);
+
+      const chart = screen.getByRole("img", {
+        name: "Test Histogram. Histogram comparing Base and Current series.",
+      });
+      expect(chart).toHaveTextContent(
+        "Test Histogram. Histogram comparing Base and Current series.",
+      );
     });
 
     it("uses custom labels when provided", () => {
