@@ -33,6 +33,28 @@ describe("DiffText", () => {
       );
     });
 
+    test.each([
+      ["base", "Base: ", "before"],
+      ["current", "Current: ", "after"],
+    ] as const)(
+      "includes the %s role in screen-reader text without changing the visible value",
+      (comparisonRole, accessiblePrefix, value) => {
+        render(<DiffText value={value} comparisonRole={comparisonRole} />);
+
+        const visibleValue = screen.getByText(value);
+        const screenReaderPrefix = screen.getByText(accessiblePrefix.trim());
+
+        expect(visibleValue).toBeVisible();
+        expect(screenReaderPrefix).toHaveStyle({
+          clip: "rect(0 0 0 0)",
+          position: "absolute",
+        });
+        expect(visibleValue.parentElement).toHaveTextContent(
+          `${accessiblePrefix}${value}`,
+        );
+      },
+    );
+
     test("applies green color palette", () => {
       const { container } = render(
         <DiffText value="added" colorPalette="green" />,
@@ -136,6 +158,22 @@ describe("DiffText", () => {
 
       const copyButton = screen.getByRole("button", { name: "Copy" });
       fireEvent.click(copyButton);
+
+      expect(onCopy).toHaveBeenCalledWith("copy_value");
+    });
+
+    test("copies only the value when semantic screen-reader text is present", () => {
+      const onCopy = vi.fn();
+      render(
+        <DiffText
+          value="copy_value"
+          comparisonRole="current"
+          onCopy={onCopy}
+        />,
+      );
+
+      fireEvent.mouseEnter(screen.getByText("copy_value").parentElement!);
+      fireEvent.click(screen.getByRole("button", { name: "Copy" }));
 
       expect(onCopy).toHaveBeenCalledWith("copy_value");
     });
