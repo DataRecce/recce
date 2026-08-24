@@ -1,6 +1,7 @@
 import type {
   Chart,
   ChartEvent,
+  ChartType,
   Color,
   Element,
   LegendElement,
@@ -109,8 +110,8 @@ function intersectBars(
   return { left, top, width: right - left, height: bottom - top };
 }
 
-export function createHistogramLegendLabels(
-  chart: Chart<"bar">,
+export function createHistogramLegendLabels<TType extends ChartType>(
+  chart: Chart<TType>,
   labels: { base: string; current: string },
   palette: HistogramOverlapPalette,
 ): LegendItem[] {

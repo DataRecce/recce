@@ -19,6 +19,11 @@ import {
   formatAsAbbreviatedNumber,
   formatIntervalMinMax,
 } from "../../utils/formatters";
+import {
+  createHistogramLegendLabels,
+  createHistogramOverlapPlugin,
+  handleHistogramLegendClick,
+} from "./histogramOverlap";
 
 // Register Chart.js modules once
 ChartJS.register(
@@ -141,9 +146,22 @@ function HistogramChartComponent({
 }: HistogramChartProps) {
   const isDark = theme === "dark";
   const themeColors = getChartThemeColors(isDark);
-  const comparisonColors = getSemanticColorTheme(isDark).comparison;
+  const semanticColors = getSemanticColorTheme(isDark);
+  const comparisonColors = semanticColors.comparison;
   const isDatetime = dataType === "datetime";
-  const accessibleDescription = `${title}. Histogram comparing Base and Current series.`;
+  const accessibleDescription = `${title}. Histogram comparing Base and Current series. Overlap marks their shared distribution.`;
+  const overlapPalette = useMemo(
+    () => ({
+      base: comparisonColors.base,
+      current: comparisonColors.current,
+      overlap: semanticColors.categorical.overlap,
+    }),
+    [comparisonColors, semanticColors.categorical.overlap],
+  );
+  const overlapPlugin = useMemo(
+    () => createHistogramOverlapPlugin(overlapPalette),
+    [overlapPalette],
+  );
 
   // Build chart data
   const chartData = useMemo<ChartData<"bar">>(() => {
@@ -170,6 +188,7 @@ function HistogramChartComponent({
         borderWidth: 2,
         categoryPercentage: 1,
         barPercentage: 1,
+        grouped: false,
         xAxisID: "x",
       };
     };
@@ -206,9 +225,18 @@ function HistogramChartComponent({
       animation: animate ? undefined : false,
       plugins: {
         legend: {
-          reverse: true,
+          onClick: handleHistogramLegendClick,
           labels: {
             color: themeColors.textColor,
+            generateLabels: (chart) =>
+              createHistogramLegendLabels(
+                chart,
+                {
+                  base: baseData.label ?? "Base",
+                  current: currentData.label ?? "Current",
+                },
+                overlapPalette,
+              ),
           },
         },
         title: {
@@ -268,7 +296,6 @@ function HistogramChartComponent({
                 },
                 color: themeColors.textColor,
               },
-              stacked: true,
             },
         y: {
           display: !hideAxis,
@@ -300,6 +327,7 @@ function HistogramChartComponent({
     hideAxis,
     animate,
     themeColors,
+    overlapPalette,
   ]);
 
   return (
@@ -311,6 +339,7 @@ function HistogramChartComponent({
         role="img"
         aria-label={accessibleDescription}
         fallbackContent={accessibleDescription}
+        plugins={[overlapPlugin]}
       />
     </div>
   );

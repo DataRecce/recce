@@ -11,6 +11,7 @@
  */
 
 import { render, screen } from "@testing-library/react";
+import type { Chart, LegendItem, Plugin } from "chart.js";
 import { vi } from "vitest";
 import {
   getChartBarColors,
@@ -19,28 +20,48 @@ import {
 } from "../../../theme";
 import { HistogramChart } from "../HistogramChart";
 
+interface MockChartProps {
+  data: {
+    datasets: Record<string, unknown>[];
+  };
+  fallbackContent?: React.ReactNode;
+  options?: {
+    plugins?: {
+      legend?: {
+        labels?: {
+          generateLabels?: (chart: Chart<"bar">) => LegendItem[];
+        };
+      };
+    };
+    scales?: {
+      x?: {
+        type?: string;
+      };
+    };
+  };
+  plugins?: Plugin<"bar">[];
+  role?: string;
+  "aria-label"?: string;
+}
+
+const { chartSpy } = vi.hoisted(() => ({ chartSpy: vi.fn() }));
+
 // Mock Chart.js to avoid canvas rendering issues in tests
 vi.mock("react-chartjs-2", () => ({
-  Chart: ({
-    data,
-    fallbackContent,
-    role,
-    "aria-label": ariaLabel,
-  }: {
-    data: unknown;
-    fallbackContent?: React.ReactNode;
-    role?: string;
-    "aria-label"?: string;
-  }) => (
-    <div
-      data-testid="mock-chart"
-      data-data={JSON.stringify(data)}
-      role={role}
-      aria-label={ariaLabel}
-    >
-      {fallbackContent}
-    </div>
-  ),
+  Chart: (props: MockChartProps) => {
+    chartSpy(props);
+    const { data, fallbackContent, role, "aria-label": ariaLabel } = props;
+    return (
+      <div
+        data-testid="mock-chart"
+        data-data={JSON.stringify(data)}
+        role={role}
+        aria-label={ariaLabel}
+      >
+        {fallbackContent}
+      </div>
+    );
+  },
 }));
 
 // Mock Chart.js register
@@ -56,6 +77,40 @@ vi.mock("chart.js", () => ({
   Legend: {},
   Tooltip: {},
 }));
+
+function getLastChartProps(): MockChartProps {
+  const props = chartSpy.mock.lastCall?.[0] as MockChartProps | undefined;
+  if (!props) throw new Error("Chart was not rendered");
+  return props;
+}
+
+function createLegendChart() {
+  const pattern = {} as CanvasPattern;
+  const tileContext = {
+    beginPath: vi.fn(),
+    fillRect: vi.fn(),
+    lineTo: vi.fn(),
+    moveTo: vi.fn(),
+    stroke: vi.fn(),
+  };
+  const context = {
+    canvas: {
+      ownerDocument: {
+        createElement: vi.fn(() => ({
+          getContext: vi.fn(() => tileContext),
+          height: 0,
+          width: 0,
+        })),
+      },
+    },
+    createPattern: vi.fn(() => pattern),
+  } as unknown as CanvasRenderingContext2D;
+  const chart = {
+    ctx: context,
+    isDatasetVisible: vi.fn(() => true),
+  } as unknown as Chart<"bar">;
+  return { chart, pattern };
+}
 
 describe("HistogramChart", () => {
   // Test fixtures
@@ -188,11 +243,67 @@ describe("HistogramChart", () => {
       render(<HistogramChart {...defaultProps} />);
 
       const chart = screen.getByRole("img", {
-        name: "Test Histogram. Histogram comparing Base and Current series.",
+        name: "Test Histogram. Histogram comparing Base and Current series. Overlap marks their shared distribution.",
       });
       expect(chart).toHaveTextContent(
-        "Test Histogram. Histogram comparing Base and Current series.",
+        "Test Histogram. Histogram comparing Base and Current series. Overlap marks their shared distribution.",
       );
+    });
+
+    it.each(["numeric", "string", "datetime"] as const)(
+      "co-locates source datasets for %s histograms",
+      (dataType) => {
+        render(<HistogramChart {...defaultProps} dataType={dataType} />);
+
+        const { data, options } = getLastChartProps();
+        expect(data.datasets).toHaveLength(2);
+        expect(
+          data.datasets.every((dataset) => dataset.grouped === false),
+        ).toBe(true);
+        expect(options?.scales?.x?.type).toBe(
+          dataType === "datetime" ? "timeseries" : "category",
+        );
+      },
+    );
+
+    it.each(["light", "dark"] as const)(
+      "generates the three semantic legend entries in %s mode",
+      (theme) => {
+        render(<HistogramChart {...defaultProps} theme={theme} />);
+        const { chart, pattern } = createLegendChart();
+        const { options } = getLastChartProps();
+        const generateLabels = options?.plugins?.legend?.labels?.generateLabels;
+        expect(typeof generateLabels).toBe("function");
+
+        const labels = generateLabels?.(chart) ?? [];
+        const semantic = getSemanticColorTheme(theme === "dark");
+        expect(labels.map(({ text }) => text)).toEqual([
+          "Base",
+          "Current",
+          "Overlap",
+        ]);
+        expect(labels).toHaveLength(3);
+        expect(labels[0]).toMatchObject({
+          fillStyle: semantic.comparison.base.chartFill,
+          strokeStyle: semantic.comparison.base.border,
+        });
+        expect(labels[1]).toMatchObject({
+          fillStyle: semantic.comparison.current.chartFill,
+          strokeStyle: semantic.comparison.current.border,
+        });
+        expect(labels[2]).toMatchObject({
+          fillStyle: pattern,
+          strokeStyle: semantic.categorical.overlap.border,
+        });
+      },
+    );
+
+    it("registers one explicit histogram overlap painter", () => {
+      render(<HistogramChart {...defaultProps} />);
+
+      expect(getLastChartProps().plugins?.map(({ id }) => id)).toEqual([
+        "histogramOverlap",
+      ]);
     });
 
     it("uses custom labels when provided", () => {
