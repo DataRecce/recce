@@ -8,6 +8,7 @@
  *   honor the cancel and the backend wrote a result anyway).
  */
 
+import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -16,10 +17,16 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { Run } from "../../api";
 import { RunResultPane } from "./RunResultPane";
 
+const statusTheme = createTheme({
+  palette: { text: { secondary: "#59636e" } },
+});
+
 function renderWithProviders(ui: ReactNode) {
   const client = new QueryClient();
   return render(
-    <QueryClientProvider client={client}>{ui}</QueryClientProvider>,
+    <ThemeProvider theme={statusTheme}>
+      <QueryClientProvider client={client}>{ui}</QueryClientProvider>
+    </ThemeProvider>,
   );
 }
 
@@ -32,7 +39,6 @@ function makeRunWithResult(): Run {
     type: "query",
     status: "finished",
     result: { rows: [], schema: [] },
-    // biome-ignore lint/suspicious/noExplicitAny: test fixture
   } as any;
 }
 
@@ -71,7 +77,6 @@ describe("RunResultPane sticky-cancel gating", () => {
     const runWithCheck = {
       ...makeRunWithResult(),
       check_id: "check-123",
-      // biome-ignore lint/suspicious/noExplicitAny: test fixture
     } as any;
 
     renderWithProviders(
@@ -121,7 +126,6 @@ describe("RunResultPane sticky-cancel gating", () => {
       type: "query",
       status: "Running",
       run_at: new Date().toISOString(),
-      // biome-ignore lint/suspicious/noExplicitAny: test fixture
     } as any;
 
     renderWithProviders(
@@ -138,6 +142,32 @@ describe("RunResultPane sticky-cancel gating", () => {
     const headerText = document.body.textContent ?? "";
     expect(headerText).toMatch(/Cancelled/);
     expect(headerText).not.toMatch(/Running・/);
+  });
+
+  test("status header presents a successful run as neutral history", () => {
+    renderWithProviders(
+      <RunResultPane
+        runId="run-finished"
+        run={
+          {
+            run_id: "run-finished",
+            run_at: new Date().toISOString(),
+            status: "Finished",
+            type: "query",
+            result: { rows: [], schema: [] },
+          } as never
+        }
+        isRunning={false}
+        onAddToChecklist={vi.fn()}
+        onGoToCheck={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Last computed")).toHaveStyle({
+      color: "#59636e",
+    });
+    expect(document.body.textContent).not.toMatch(/Finished・/);
+    expect(document.body.textContent).toMatch(/・.*ago/);
   });
 
   test("invokes copySelectedRows from the export menu", async () => {

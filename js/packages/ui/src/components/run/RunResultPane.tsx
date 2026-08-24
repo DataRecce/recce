@@ -59,6 +59,7 @@ import { useCanceledRuns } from "../../hooks/useCanceledRuns";
 import { useIsDark } from "../../hooks/useIsDark";
 import { CodeEditor } from "../../primitives";
 import { formatRowCount } from "../../utils";
+import { getStatusDisplay, inferRunStatus } from "./RunStatusBadge";
 import { RunView } from "./RunView";
 import type { RunResultViewProps, RunResultViewRef } from "./types";
 
@@ -606,25 +607,8 @@ const RunStatusAndDateDisplay = memo(({ run }: { run: Run }) => {
   // cancels, briefly reverting the header from "Cancelled" to "Running".
   const canceledRuns = useCanceledRuns();
   const userCanceled = !!run.run_id && canceledRuns.has(run.run_id);
-  const statusText = userCanceled
-    ? "Cancelled"
-    : run.status ||
-      (run.result ? "Finished" : run.error ? "Failed" : "unknown");
-
-  // Determine color based on status
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "finished":
-        return "success.main";
-      case "failed":
-        return "error.main";
-      case "running":
-        return "primary.main";
-      case "cancelled":
-      default:
-        return "text.secondary";
-    }
-  };
+  const status = userCanceled ? "Cancelled" : inferRunStatus(run);
+  const { color, label } = getStatusDisplay(status);
 
   const relativeTime = run.run_at
     ? formatDistanceToNow(new Date(run.run_at), { addSuffix: true })
@@ -636,10 +620,10 @@ const RunStatusAndDateDisplay = memo(({ run }: { run: Run }) => {
         component="span"
         sx={{
           fontWeight: 600,
-          color: getStatusColor(statusText),
+          color,
         }}
       >
-        {statusText}
+        {label}
       </Box>
       {"・"}
       {relativeTime}

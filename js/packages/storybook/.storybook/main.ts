@@ -23,6 +23,10 @@ const config: StorybookConfig = {
     config.resolve = config.resolve || {};
     config.resolve.alias = {
       ...config.resolve.alias,
+      "@datarecce/ui/components/run": resolve(
+        __dirname,
+        "../../ui/src/components/run/index.ts",
+      ),
       "@datarecce/ui/styles": resolve(
         __dirname,
         "../../ui/src/styles/index.ts",
