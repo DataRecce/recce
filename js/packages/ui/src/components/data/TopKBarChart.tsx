@@ -383,6 +383,9 @@ function TopKBarChartComponent({
   );
 
   const showBase = showComparison && baseData && baseItems.length > 0;
+  const accessibleDescription = showBase
+    ? "Top-K chart comparing Base and Current series."
+    : "Top-K chart showing the Current series.";
 
   const currentTotal = currentData.valids || 1;
   const baseTotal = baseData?.valids || 1;
@@ -561,6 +564,9 @@ function TopKBarChartComponent({
           data={chartData}
           options={chartOptions}
           plugins={[barLabelsPlugin]}
+          role="img"
+          aria-label={accessibleDescription}
+          fallbackContent={accessibleDescription}
         />
       </div>
     </Box>

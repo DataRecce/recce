@@ -23,8 +23,25 @@ import {
 
 // Mock Chart.js to avoid canvas rendering issues in tests
 vi.mock("react-chartjs-2", () => ({
-  Bar: ({ data }: { data: unknown }) => (
-    <div data-testid="mock-bar-chart" data-data={JSON.stringify(data)} />
+  Bar: ({
+    data,
+    fallbackContent,
+    role,
+    "aria-label": ariaLabel,
+  }: {
+    data: unknown;
+    fallbackContent?: React.ReactNode;
+    role?: string;
+    "aria-label"?: string;
+  }) => (
+    <div
+      data-testid="mock-bar-chart"
+      data-data={JSON.stringify(data)}
+      role={role}
+      aria-label={ariaLabel}
+    >
+      {fallbackContent}
+    </div>
   ),
 }));
 
@@ -303,6 +320,33 @@ describe("TopKBarChart", () => {
       const labels = data.datasets.map((d: { label: string }) => d.label);
       expect(labels).toContain("Base");
       expect(labels).toContain("Current");
+    });
+
+    it("owns accessible Base and Current semantics in comparison mode", () => {
+      render(
+        <TopKBarChart
+          currentData={mockDataset}
+          baseData={mockBaseDataset}
+          showComparison
+        />,
+      );
+
+      const chart = screen.getByRole("img", {
+        name: "Top-K chart comparing Base and Current series.",
+      });
+      expect(chart).toHaveTextContent(
+        "Top-K chart comparing Base and Current series.",
+      );
+    });
+
+    it("describes the Current series when comparison mode is off", () => {
+      render(<TopKBarChart currentData={mockDataset} />);
+
+      expect(
+        screen.getByRole("img", {
+          name: "Top-K chart showing the Current series.",
+        }),
+      ).toBeInTheDocument();
     });
 
     it("uses semantic comparison fills with contrast-safe outlines", () => {

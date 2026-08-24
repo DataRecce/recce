@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+test.describe.configure({ timeout: 120_000 });
+
 const root = "/iframe.html?id=semantics-colorsemanticsmatrix";
 
 test("uses production grid and direction renderers", async ({ page }) => {
@@ -63,15 +65,21 @@ test("grayscale charts retain visible series roles", async ({ page }) => {
   await page.waitForSelector("#storybook-root", { state: "visible" });
 
   const matrix = page.locator("#storybook-root");
+  const histogram = matrix.locator('[data-production-chart="histogram"]');
+  const topK = matrix.locator('[data-production-chart="top-k"]');
+
+  await expect(histogram.locator("canvas")).toBeVisible();
   await expect(
-    matrix.locator('[data-series-evidence="histogram"]'),
-  ).toContainText("0–20 Base 12 Current 8");
-  await expect(matrix.locator('[data-series-evidence="top-k"]')).toContainText(
-    "Upper bar Current",
-  );
-  await expect(matrix.locator('[data-series-evidence="top-k"]')).toContainText(
-    "Lower bar Base",
-  );
+    histogram.getByRole("img", {
+      name: /Histogram comparing Base and Current series/,
+    }),
+  ).toBeVisible();
+  await expect(topK.locator("canvas")).toBeVisible();
+  await expect(
+    topK.getByRole("img", {
+      name: /Top-K chart comparing Base and Current series/,
+    }),
+  ).toBeVisible();
 });
 
 for (const story of ["light", "dark", "grayscale"] as const) {

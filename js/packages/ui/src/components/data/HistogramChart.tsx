@@ -143,6 +143,7 @@ function HistogramChartComponent({
   const themeColors = getChartThemeColors(isDark);
   const comparisonColors = getSemanticColorTheme(isDark).comparison;
   const isDatetime = dataType === "datetime";
+  const accessibleDescription = `${title}. Histogram comparing Base and Current series.`;
 
   // Build chart data
   const chartData = useMemo<ChartData<"bar">>(() => {
@@ -303,7 +304,14 @@ function HistogramChartComponent({
 
   return (
     <div className={className} style={{ height }}>
-      <Chart type="bar" options={chartOptions} data={chartData} />
+      <Chart
+        type="bar"
+        options={chartOptions}
+        data={chartData}
+        role="img"
+        aria-label={accessibleDescription}
+        fallbackContent={accessibleDescription}
+      />
     </div>
   );
 }
