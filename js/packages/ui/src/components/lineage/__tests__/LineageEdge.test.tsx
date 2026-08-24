@@ -411,4 +411,17 @@ describe("GraphEdge", () => {
       expect(screen.getByRole("img", { name })).toBe(edge);
     },
   );
+
+  it("preserves caller stroke and dash overrides over semantic defaults", () => {
+    render(
+      <GraphEdge
+        {...createMockGraphEdgeProps("added")}
+        style={{ stroke: "#123456", strokeDasharray: "1 7" }}
+      />,
+    );
+
+    const edge = screen.getByTestId("base-edge");
+    expect(edge.style.stroke).toBe("#123456");
+    expect(edge.style.strokeDasharray).toBe("1 7");
+  });
 });

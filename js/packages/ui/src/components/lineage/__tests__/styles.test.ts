@@ -162,7 +162,7 @@ describe('getIconForChangeStatus (legacy palette: "cll")', () => {
   it("does not remap structural added status into the CLL palette", () => {
     const result = getIconForChangeStatus("added", false, "cll");
     expect(result.color).toBe("#737373");
-    expect(result.secondaryAccent).toBe("#16A34A");
+    expect(result.secondaryAccent).toBe("#15803D");
   });
 
   it("does not remap structural removed status into the CLL palette", () => {

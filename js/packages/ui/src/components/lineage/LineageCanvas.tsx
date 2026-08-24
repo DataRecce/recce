@@ -14,11 +14,11 @@ import {
 import "@xyflow/react/dist/style.css";
 import Box from "@mui/material/Box";
 import {
+  type ComponentProps,
+  createContext,
   type MouseEvent,
   useCallback,
-  useEffect,
-  useMemo,
-  useRef,
+  useContext,
 } from "react";
 
 import { useIsDark } from "../../hooks/useIsDark";
@@ -26,6 +26,38 @@ import { LineageColumnNode } from "./columns";
 import { LineageEdge, type LineageEdgeData } from "./edges";
 import { LineageNode, type LineageNodeData } from "./nodes";
 import { getNodeChangeStyle } from "./styles";
+
+type NodeContextMenuHandler = (event: MouseEvent, nodeId: string) => void;
+
+const NodeContextMenuContext = createContext<
+  NodeContextMenuHandler | undefined
+>(undefined);
+
+function ThemedLineageNode(props: ComponentProps<typeof LineageNode>) {
+  const isDark = useIsDark();
+  const onContextMenu = useContext(NodeContextMenuContext);
+
+  return (
+    <LineageNode {...props} isDark={isDark} onContextMenu={onContextMenu} />
+  );
+}
+
+function ThemedLineageColumnNode(
+  props: ComponentProps<typeof LineageColumnNode>,
+) {
+  const isDark = useIsDark();
+
+  return <LineageColumnNode {...props} isDark={isDark} />;
+}
+
+const NODE_TYPES = {
+  lineageNode: ThemedLineageNode,
+  lineageGraphColumnNode: ThemedLineageColumnNode,
+};
+
+const EDGE_TYPES = {
+  lineageEdge: LineageEdge,
+};
 
 export interface LineageCanvasProps {
   /** Nodes to display */
@@ -74,19 +106,6 @@ export function LineageCanvas({
   const isDark = useIsDark();
   const [nodes, _setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, _setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const defaultNodeTypes = useMemo(
-    () => ({
-      lineageNode: LineageNode,
-      lineageGraphColumnNode: LineageColumnNode,
-    }),
-    [],
-  );
-  const edgeTypes = useMemo(
-    () => ({
-      lineageEdge: LineageEdge,
-    }),
-    [],
-  );
 
   const handleNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
@@ -105,36 +124,6 @@ export function LineageCanvas({
     },
     [onNodeDoubleClick],
   );
-
-  // Wrap LineageNode so the context-menu callback flows through ReactFlow's
-  // node-type registry to every node instance. ReactFlow re-mounts all nodes
-  // whenever the `nodeTypes` map changes identity, so we route the caller's
-  // callback through a ref-backed stable wrapper: the wrapper component is
-  // created at most twice in a component's lifetime (once when the prop
-  // transitions from absent to present), regardless of caller stability.
-  const onNodeContextMenuRef = useRef(onNodeContextMenu);
-  useEffect(() => {
-    onNodeContextMenuRef.current = onNodeContextMenu;
-  }, [onNodeContextMenu]);
-  const hasContextMenu = onNodeContextMenu != null;
-  const nodeTypes = useMemo(() => {
-    if (!hasContextMenu) return defaultNodeTypes;
-    const LineageNodeWithContextMenu = (
-      props: React.ComponentProps<typeof LineageNode>,
-    ) => (
-      <LineageNode
-        {...props}
-        onContextMenu={(event, nodeId) =>
-          onNodeContextMenuRef.current?.(event, nodeId)
-        }
-      />
-    );
-    LineageNodeWithContextMenu.displayName = "LineageNodeWithContextMenu";
-    return {
-      ...defaultNodeTypes,
-      lineageNode: LineageNodeWithContextMenu,
-    };
-  }, [hasContextMenu, defaultNodeTypes]);
 
   // Copy the node card's accent color from the shared source of truth so the
   // minimap can't drift from the canvas. Impact lives on `node.data` in this
@@ -156,28 +145,30 @@ export function LineageCanvas({
 
   return (
     <Box sx={{ width: "100%", height }}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={interactive ? onNodesChange : undefined}
-        onEdgesChange={interactive ? onEdgesChange : undefined}
-        onNodeClick={handleNodeClick}
-        onNodeDoubleClick={handleNodeDoubleClick}
-        onPaneClick={handlePaneClick}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        fitView
-        fitViewOptions={fitViewOptions}
-        minZoom={minZoom}
-        maxZoom={maxZoom}
-        nodesDraggable={interactive}
-        nodesConnectable={false}
-        elementsSelectable={interactive}
-      >
-        {showBackground && <Background />}
-        {showControls && <Controls />}
-        {showMiniMap && <MiniMap nodeColor={getMiniMapNodeColor} />}
-      </ReactFlow>
+      <NodeContextMenuContext.Provider value={onNodeContextMenu}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={interactive ? onNodesChange : undefined}
+          onEdgesChange={interactive ? onEdgesChange : undefined}
+          onNodeClick={handleNodeClick}
+          onNodeDoubleClick={handleNodeDoubleClick}
+          onPaneClick={handlePaneClick}
+          nodeTypes={NODE_TYPES}
+          edgeTypes={EDGE_TYPES}
+          fitView
+          fitViewOptions={fitViewOptions}
+          minZoom={minZoom}
+          maxZoom={maxZoom}
+          nodesDraggable={interactive}
+          nodesConnectable={false}
+          elementsSelectable={interactive}
+        >
+          {showBackground && <Background />}
+          {showControls && <Controls />}
+          {showMiniMap && <MiniMap nodeColor={getMiniMapNodeColor} />}
+        </ReactFlow>
+      </NodeContextMenuContext.Provider>
     </Box>
   );
 }

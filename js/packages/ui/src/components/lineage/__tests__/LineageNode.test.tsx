@@ -190,7 +190,7 @@ describe("LineageNode", () => {
       expect(style.borderTopColor).toBe("#737373");
       expect(style.borderRightColor).toBe("#737373");
       expect(style.borderBottomColor).toBe("#737373");
-      expect(style.borderLeftColor).toBe("#16A34A");
+      expect(style.borderLeftColor).toBe("#15803D");
       expect(style.borderLeftWidth).toBe("3px");
 
       fireEvent.mouseEnter(container.firstChild as Element);
@@ -567,6 +567,35 @@ describe("LineageNode", () => {
       // Component still renders, but content has visibility:hidden
       expect(container.firstChild).toBeInTheDocument();
     });
+
+    it.each([
+      ["added", "+", "Added change"],
+      ["removed", "−", "Removed change"],
+      ["modified", "Δ", "Modified change"],
+    ] as const)(
+      "keeps a compact visible %s symbol when content is hidden",
+      (changeStatus, symbol, accessibleName) => {
+        render(
+          <LineageNode
+            {...createMockNodeProps(
+              { showContent: false },
+              { label: "test", changeStatus },
+            )}
+          />,
+        );
+
+        const compactIndicator = screen.getByTestId(
+          "compact-structural-change-indicator",
+        );
+        expect(compactIndicator).toBeVisible();
+        expect(compactIndicator).toHaveTextContent(symbol);
+        expect(
+          screen
+            .getAllByLabelText(accessibleName)
+            .find((element) => compactIndicator.contains(element)),
+        ).toBeDefined();
+      },
+    );
   });
 
   // ==========================================================================

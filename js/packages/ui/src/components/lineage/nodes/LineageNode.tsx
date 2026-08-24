@@ -523,6 +523,7 @@ function LineageNodeComponent({
           borderBottomRightRadius: showColumns ? 0 : 8,
           backgroundColor: nodeBackgroundColor,
           height: 60,
+          position: "relative",
         }}
       >
         {/* Left panel with checkbox */}
@@ -555,6 +556,25 @@ function LineageNodeComponent({
             />
           )}
         </Box>
+
+        {!showContent && hasStructuralChange && (
+          <Box
+            data-testid="compact-structural-change-indicator"
+            sx={{
+              alignItems: "center",
+              display: "flex",
+              inset: 0,
+              justifyContent: "center",
+              position: "absolute",
+            }}
+          >
+            <StructuralChangeIndicator
+              status={changeStatus}
+              emphasis="secondary"
+              size="sm"
+            />
+          </Box>
+        )}
 
         {/* Content area */}
         <Box

@@ -65,14 +65,23 @@ describe.each([false, true])("semantic colors, dark=%s", (isDark) => {
   );
 
   test.each(["added", "removed", "modified", "unchanged"] as const)(
-    "%s secondary accent has non-text contrast",
+    "%s secondary accent has non-text contrast across compound surfaces",
     (status) => {
-      expect(
-        getContrastRatio(
-          semantic.structural.secondaryAccent[status],
-          semantic.structural.neutral.background,
-        ),
-      ).toBeGreaterThanOrEqual(3);
+      const backgrounds = [
+        semantic.structural.neutral.background,
+        semantic.comparison.base.background,
+        semantic.comparison.current.background,
+        ...(isDark ? [] : ["#F5F5F5", "#E5E5E5"]),
+      ];
+
+      for (const background of backgrounds) {
+        expect(
+          getContrastRatio(
+            semantic.structural.secondaryAccent[status],
+            background,
+          ),
+        ).toBeGreaterThanOrEqual(3);
+      }
     },
   );
 });
