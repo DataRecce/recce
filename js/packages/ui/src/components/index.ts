@@ -198,6 +198,7 @@ export {
   DiffDisplayModeSwitch,
   DiffText,
   HSplit,
+  normalizeTypeName,
   SquareIcon,
   ToggleSwitch,
   VSplit,

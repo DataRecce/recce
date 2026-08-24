@@ -17,6 +17,7 @@ import {
   UnknownIcon,
 } from "./icons";
 
+export { normalizeTypeName } from "./normalizeTypeName";
 export type { ColumnTooltipInput } from "./tooltipText";
 export { buildColumnTooltip } from "./tooltipText";
 export type { TypeCategory };
