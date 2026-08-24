@@ -1,20 +1,18 @@
 import { getContrastRatio } from "@mui/material/styles";
 import {
+  compositeRgbChannels,
   getSemanticColorTheme,
   STRUCTURAL_CHANGE_PRESENTATION,
 } from "../semanticColors";
 
+/**
+ * The shipped composite math, formatted for MUI. `compositeRgbChannels` is the
+ * function the histogram crosshatch uses, so drift in it fails these tests.
+ * Only the separator differs: `decomposeColor` splits `rgb()` on commas, so the
+ * space-separated form the canvas takes would parse as NaN here.
+ */
 function compositeHex(foreground: string, background: string): string {
-  const parse = (value: string) =>
-    [1, 3, 5].map((i) => Number.parseInt(value.slice(i, i + 2), 16));
-  const foregroundRgb = parse(foreground);
-  const backgroundRgb = parse(background);
-  const alpha = Number.parseInt(foreground.slice(7, 9), 16) / 255;
-  return `rgb(${foregroundRgb
-    .map((channel, i) =>
-      Math.round(channel * alpha + backgroundRgb[i] * (1 - alpha)),
-    )
-    .join(", ")})`;
+  return `rgb(${compositeRgbChannels(foreground, background).join(", ")})`;
 }
 
 describe.each([false, true])("semantic colors, dark=%s", (isDark) => {
@@ -47,6 +45,19 @@ describe.each([false, true])("semantic colors, dark=%s", (isDark) => {
     expect(semantic.direction.foreground).not.toBe(
       semantic.comparison.current.foreground,
     );
+  });
+
+  test("categorical overlap has a contrast-safe crosshatch", () => {
+    const overlap = semantic.categorical.overlap;
+    const compositedFill = compositeHex(
+      overlap.chartFill,
+      semantic.structural.neutral.background,
+    );
+
+    expect(overlap.pattern).toBe("crosshatch");
+    expect(
+      getContrastRatio(overlap.foreground, compositedFill),
+    ).toBeGreaterThanOrEqual(3);
   });
 
   test.each(["base", "current"] as const)(

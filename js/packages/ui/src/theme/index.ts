@@ -45,6 +45,8 @@ export {
 } from "./colors";
 export {
   type ComparisonRole,
+  compositeHex,
+  compositeRgbChannels,
   getSemanticColorTheme,
   type QuantitativeDirection,
   type SemanticColorChannel,

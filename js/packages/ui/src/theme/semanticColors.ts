@@ -148,3 +148,40 @@ const dark: SemanticColorTheme = {
 export function getSemanticColorTheme(isDark: boolean): SemanticColorTheme {
   return isDark ? dark : light;
 }
+
+/**
+ * Composite a hex color that may carry an alpha channel over an opaque hex
+ * background and return the resulting `[r, g, b]` channel values.
+ *
+ * This is the one place the alpha-flattening math lives. The histogram
+ * crosshatch needs the color a translucent `chartFill` actually resolves to on
+ * screen, and the contrast tests need the same value to check it, so neither
+ * keeps a private copy.
+ */
+export function compositeRgbChannels(
+  foreground: string,
+  background: string,
+): [number, number, number] {
+  const parseRgb = (value: string) =>
+    [1, 3, 5].map((index) =>
+      Number.parseInt(value.slice(index, index + 2), 16),
+    );
+  const foregroundRgb = parseRgb(foreground);
+  const backgroundRgb = parseRgb(background);
+  const alpha =
+    foreground.length >= 9
+      ? Number.parseInt(foreground.slice(7, 9), 16) / 255
+      : 1;
+  const [red, green, blue] = foregroundRgb.map((channel, index) =>
+    Math.round(channel * alpha + backgroundRgb[index] * (1 - alpha)),
+  );
+  return [red, green, blue];
+}
+
+/**
+ * {@link compositeRgbChannels} formatted as the space-separated `rgb()` string
+ * used for colors across the codebase.
+ */
+export function compositeHex(foreground: string, background: string): string {
+  return `rgb(${compositeRgbChannels(foreground, background).join(" ")})`;
+}
