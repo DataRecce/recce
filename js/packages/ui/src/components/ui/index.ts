@@ -12,6 +12,7 @@ export {
   classifyType,
   DataTypeIcon,
   type DataTypeIconProps,
+  normalizeTypeName,
   type TypeCategory,
 } from "./DataTypeIcon";
 export {

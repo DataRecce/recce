@@ -75,6 +75,7 @@ export {
   // Lineage
   LineageCanvas,
   LineageView,
+  normalizeTypeName,
   SquareIcon,
   StructuralChangeIndicator,
   VSplit,

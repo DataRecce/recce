@@ -58,7 +58,11 @@ import {
 } from "../../../utils/dataGrid";
 import { hasOwn } from "../../../utils/hasOwn";
 import { getCaseInsensitive } from "../../../utils/transforms";
-import { buildColumnTooltip, DataTypeIcon } from "../DataTypeIcon";
+import {
+  buildColumnTooltip,
+  DataTypeIcon,
+  normalizeTypeName,
+} from "../DataTypeIcon";
 import { toValueDataGrid } from "./generators/toValueDataGrid";
 
 // ============================================================================
@@ -202,7 +206,10 @@ export function profileColumnNameRenderer(
   const name = String(getCaseInsensitive(row, fieldName) ?? params.value ?? "");
   const dataType =
     String(getCaseInsensitive(row, "data_type") ?? "") || undefined;
-  const tooltipText = buildColumnTooltip({ name, currentType: dataType });
+  const tooltipText = buildColumnTooltip({
+    name,
+    currentType: dataType ? normalizeTypeName(dataType) : undefined,
+  });
 
   return (
     <Tooltip title={tooltipText} placement="top">
@@ -253,7 +260,11 @@ export function profileDiffColumnNameRenderer(
   const isTypeChanged =
     baseType != null && currentType != null && baseType !== currentType;
   const displayType = currentType ?? baseType;
-  const tooltipText = buildColumnTooltip({ name, baseType, currentType });
+  const tooltipText = buildColumnTooltip({
+    name,
+    baseType: baseType ? normalizeTypeName(baseType) : undefined,
+    currentType: currentType ? normalizeTypeName(currentType) : undefined,
+  });
 
   return (
     <Tooltip title={tooltipText} placement="top">

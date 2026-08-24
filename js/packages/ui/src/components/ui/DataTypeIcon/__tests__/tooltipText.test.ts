@@ -33,6 +33,17 @@ describe("buildColumnTooltip", () => {
     ).toBe("col, was VARCHAR(50) now VARCHAR(10)");
   });
 
+  it("does not describe a transition when normalized type names are equal", () => {
+    expect(
+      buildColumnTooltip({
+        name: "col",
+        status: "type_changed",
+        baseType: "VARCHAR",
+        currentType: "VARCHAR",
+      }),
+    ).toBe("col VARCHAR");
+  });
+
   it("returns changed definition for definition_changed", () => {
     expect(
       buildColumnTooltip({

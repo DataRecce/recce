@@ -14,16 +14,16 @@ import { theme } from "../../../theme";
 import { ColumnNameCell } from "../ColumnNameCell";
 import type { SchemaDiffRow } from "../types";
 
-// Mock DataTypeIcon and buildColumnTooltip
-vi.mock("../../ui/DataTypeIcon", () => ({
-  DataTypeIcon: ({ type, size }: { type: string; size?: number }) => (
-    <span data-testid="data-type-icon" data-type={type} data-size={size} />
-  ),
-  buildColumnTooltip: vi.fn(
-    ({ name, currentType }: { name: string; currentType?: string }) =>
-      `${name} ${currentType ?? ""}`,
-  ),
-}));
+// Keep tooltip behavior real; replace only the SVG-heavy icon rendering.
+vi.mock("../../ui/DataTypeIcon", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../ui/DataTypeIcon")>();
+  return {
+    ...actual,
+    DataTypeIcon: ({ type, size }: { type: string; size?: number }) => (
+      <span data-testid="data-type-icon" data-type={type} data-size={size} />
+    ),
+  };
+});
 
 // Mock dependencies with dynamic isActionAvailable and lineageViewContext
 const { mockIsActionAvailable, mockLineageViewContext } = vi.hoisted(() => ({
@@ -154,6 +154,25 @@ describe("ColumnNameCell", () => {
   });
 
   describe("column name display", () => {
+    test("normalizes the Schema type in the column tooltip", async () => {
+      const user = userEvent.setup();
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={createMockRow({
+            baseType: "character varying",
+            currentType: "character varying",
+          })}
+          showMenu={false}
+        />,
+      );
+
+      await user.hover(screen.getByText("user_id"));
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "user_id VARCHAR",
+      );
+    });
+
     test("renders column name", () => {
       renderWithMui(
         <ColumnNameCell
