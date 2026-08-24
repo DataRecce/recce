@@ -36,29 +36,54 @@ interface CachedPattern {
 
 export interface HistogramOverlapPalette {
   base: Pick<SemanticColorChannel, "border" | "chartFill">;
+  canvasBackground: string;
   current: Pick<SemanticColorChannel, "border" | "chartFill">;
+  legendText: string;
   overlap: Pick<SemanticColorChannel, "border" | "chartFill" | "foreground">;
 }
 
 const patternCache = new WeakMap<CanvasRenderingContext2D, CachedPattern>();
 
+function compositeHex(foreground: string, background: string): string {
+  const parseRgb = (value: string) =>
+    [1, 3, 5].map((index) =>
+      Number.parseInt(value.slice(index, index + 2), 16),
+    );
+  const foregroundRgb = parseRgb(foreground);
+  const backgroundRgb = parseRgb(background);
+  const alpha =
+    foreground.length >= 9
+      ? Number.parseInt(foreground.slice(7, 9), 16) / 255
+      : 1;
+  const composited = foregroundRgb.map((channel, index) =>
+    Math.round(channel * alpha + backgroundRgb[index] * (1 - alpha)),
+  );
+  return `rgb(${composited.join(" ")})`;
+}
+
 function createOverlapPattern(
   context: CanvasRenderingContext2D,
-  palette: HistogramOverlapPalette["overlap"],
+  palette: HistogramOverlapPalette,
 ): Color {
-  const key = `${palette.chartFill}:${palette.foreground}`;
+  const { overlap } = palette;
+  const key = `${overlap.chartFill}:${overlap.foreground}:${palette.canvasBackground}`;
   const cached = patternCache.get(context);
   if (cached?.key === key) return cached.pattern;
+
+  const opaqueOverlapFill = compositeHex(
+    overlap.chartFill,
+    palette.canvasBackground,
+  );
 
   const tile = context.canvas.ownerDocument.createElement("canvas");
   tile.width = PATTERN_SIZE;
   tile.height = PATTERN_SIZE;
   const tileContext = tile.getContext("2d");
-  if (!tileContext) return palette.chartFill;
+  if (!tileContext) return opaqueOverlapFill;
 
-  tileContext.fillStyle = palette.chartFill;
+  tileContext.fillStyle = opaqueOverlapFill;
   tileContext.fillRect(0, 0, PATTERN_SIZE, PATTERN_SIZE);
-  tileContext.strokeStyle = palette.foreground;
+  tileContext.strokeStyle = overlap.foreground;
   tileContext.lineWidth = 1;
   tileContext.beginPath();
   tileContext.moveTo(-2, 0);
@@ -72,7 +97,7 @@ function createOverlapPattern(
   tileContext.stroke();
 
   const pattern = context.createPattern(tile, "repeat");
-  if (!pattern) return palette.chartFill;
+  if (!pattern) return opaqueOverlapFill;
 
   patternCache.set(context, { key, pattern });
   return pattern;
@@ -123,6 +148,7 @@ export function createHistogramLegendLabels<TType extends ChartType>(
       text: labels.base,
       datasetIndex: BASE_DATASET_INDEX,
       fillStyle: palette.base.chartFill,
+      fontColor: palette.legendText,
       strokeStyle: palette.base.border,
       lineWidth: 2,
       hidden: !baseVisible,
@@ -131,13 +157,15 @@ export function createHistogramLegendLabels<TType extends ChartType>(
       text: labels.current,
       datasetIndex: CURRENT_DATASET_INDEX,
       fillStyle: palette.current.chartFill,
+      fontColor: palette.legendText,
       strokeStyle: palette.current.border,
       lineWidth: 2,
       hidden: !currentVisible,
     },
     {
       text: "Overlap",
-      fillStyle: createOverlapPattern(chart.ctx, palette.overlap),
+      fillStyle: createOverlapPattern(chart.ctx, palette),
+      fontColor: palette.legendText,
       strokeStyle: palette.overlap.border,
       lineWidth: 2,
       hidden: !baseVisible || !currentVisible,
@@ -182,10 +210,9 @@ export function createHistogramOverlapPlugin(
       if (length === 0) return;
 
       const { ctx } = chart;
-      const pattern = createOverlapPattern(ctx, palette.overlap);
+      const pattern = createOverlapPattern(ctx, palette);
       ctx.save();
       ctx.fillStyle = pattern;
-      ctx.globalCompositeOperation = "copy";
 
       for (let index = 0; index < length; index += 1) {
         const current = readBarGeometry(currentBars[index]);

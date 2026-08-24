@@ -277,12 +277,16 @@ describe("HistogramChart", () => {
 
         const labels = generateLabels?.(chart) ?? [];
         const semantic = getSemanticColorTheme(theme === "dark");
+        const chartTheme = getChartThemeColors(theme === "dark");
         expect(labels.map(({ text }) => text)).toEqual([
           "Base",
           "Current",
           "Overlap",
         ]);
         expect(labels).toHaveLength(3);
+        expect(
+          labels.every(({ fontColor }) => fontColor === chartTheme.textColor),
+        ).toBe(true);
         expect(labels[0]).toMatchObject({
           fillStyle: semantic.comparison.base.chartFill,
           strokeStyle: semantic.comparison.base.border,

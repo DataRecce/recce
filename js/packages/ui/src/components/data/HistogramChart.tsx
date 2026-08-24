@@ -153,10 +153,17 @@ function HistogramChartComponent({
   const overlapPalette = useMemo(
     () => ({
       base: comparisonColors.base,
+      canvasBackground: semanticColors.structural.neutral.background,
       current: comparisonColors.current,
+      legendText: themeColors.textColor,
       overlap: semanticColors.categorical.overlap,
     }),
-    [comparisonColors, semanticColors.categorical.overlap],
+    [
+      comparisonColors,
+      semanticColors.categorical.overlap,
+      semanticColors.structural.neutral.background,
+      themeColors.textColor,
+    ],
   );
   const overlapPlugin = useMemo(
     () => createHistogramOverlapPlugin(overlapPalette),

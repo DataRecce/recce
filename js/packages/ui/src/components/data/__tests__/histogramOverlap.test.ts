@@ -29,6 +29,7 @@ interface FakeContext {
   tileContext: {
     fillRect: ReturnType<typeof vi.fn>;
     stroke: ReturnType<typeof vi.fn>;
+    fillStyle: string;
   };
   compositeOperations: string[];
 }
@@ -36,7 +37,9 @@ interface FakeContext {
 const semantic = getSemanticColorTheme(false);
 const palette: HistogramOverlapPalette = {
   base: semantic.comparison.base,
+  canvasBackground: semantic.structural.neutral.background,
   current: semantic.comparison.current,
+  legendText: "#123456",
   overlap: semantic.categorical.overlap,
 };
 
@@ -144,6 +147,9 @@ describe("histogram overlap legend", () => {
       "Overlap",
     ]);
     expect(labels).toHaveLength(3);
+    expect(
+      labels.every(({ fontColor }) => fontColor === palette.legendText),
+    ).toBe(true);
     expect(labels[0]).toMatchObject({
       datasetIndex: 1,
       fillStyle: palette.base.chartFill,
@@ -212,7 +218,8 @@ describe("histogram overlap painter", () => {
     draw(createHistogramOverlapPlugin(palette), chart);
 
     expect(fakeContext.fillRect).toHaveBeenCalledWith(15, 40, 10, 60);
-    expect(fakeContext.compositeOperations).toContain("copy");
+    expect(fakeContext.compositeOperations).not.toContain("copy");
+    expect(fakeContext.tileContext.fillStyle).toBe("rgb(171 146 226)");
     expect(currentBar.getProps).toHaveBeenCalledWith(
       ["x", "y", "width", "base"],
       false,

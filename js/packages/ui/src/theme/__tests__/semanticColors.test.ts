@@ -49,6 +49,19 @@ describe.each([false, true])("semantic colors, dark=%s", (isDark) => {
     );
   });
 
+  test("categorical overlap has a contrast-safe crosshatch", () => {
+    const overlap = semantic.categorical.overlap;
+    const compositedFill = compositeHex(
+      overlap.chartFill,
+      semantic.structural.neutral.background,
+    );
+
+    expect(overlap.pattern).toBe("crosshatch");
+    expect(
+      getContrastRatio(overlap.foreground, compositedFill),
+    ).toBeGreaterThanOrEqual(3);
+  });
+
   test.each(["base", "current"] as const)(
     "%s chart outline contrasts with its composited fill",
     (role) => {
