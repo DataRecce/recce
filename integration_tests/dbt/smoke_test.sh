@@ -5,6 +5,31 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 pwd
 
+# Which server surface to smoke test: "server" (default) or "mcp-server".
+SMOKE_SERVER="${SMOKE_SERVER:-server}"
+# Only used when SMOKE_SERVER=mcp-server. Major.minor, e.g. "1.29" or "2.0":
+# the mcp SDK majors register tool handlers differently, so the version under
+# test has to be explicit. `~=` keeps it a floor, not a pin — `~=1.29` is
+# `>=1.29,<2.0`, so later patch *and* minor releases are picked up.
+SMOKE_MCP_VERSION="${SMOKE_MCP_VERSION:-2.0}"
+
+case "$SMOKE_SERVER" in
+    server) ;;
+    mcp-server)
+        # `mcp` is an optional extra, so CI's install does not carry it.
+        echo "Installing mcp~=$SMOKE_MCP_VERSION"
+        if command -v uv > /dev/null; then
+            uv pip install "mcp~=$SMOKE_MCP_VERSION"
+        else
+            python -m pip install "mcp~=$SMOKE_MCP_VERSION"
+        fi
+        ;;
+    *)
+        echo "Unknown SMOKE_SERVER '$SMOKE_SERVER' (expected 'server' or 'mcp-server')."
+        exit 1
+        ;;
+esac
+
 # Prepare env
 git restore models/customers.sql
 dbt --version
@@ -104,10 +129,111 @@ function check_server_status() {
     echo "Server stopped."
 }
 
-echo "Starting the server..."
-recce server &
-check_server_status false
+# Recce MCP Server
+# The MCP server talks HTTP/SSE: responses arrive on the GET /sse stream, and
+# requests are POSTed to the session endpoint that stream hands out in its first
+# event. Liveness alone is not enough — tool registration differs between mcp
+# 1.x and 2.0, so the handshake plus a non-empty tool list is the real check.
+MCP_PORT=8765
 
-echo "Starting the server (review mode)..."
-recce server --review recce_state.json &
-check_server_status true
+function check_mcp_server_status() {
+    local base="http://localhost:$MCP_PORT"
+    local stream stream_pid endpoint responses server_name tool_count
+    stream=$(mktemp)
+
+    echo "Waiting for the MCP server to respond..."
+    if ! timeout 60 bash -c "until curl -sf $base/health > /dev/null; do
+    echo \"MCP server not ready yet...\"
+    sleep 2
+    done"; then
+        echo "Failed to start the MCP server within the time limit."
+        exit 1
+    fi
+
+    # The response stream has to be open before any request is sent.
+    curl -sN "$base/sse" > "$stream" &
+    stream_pid=$!
+    if ! timeout 20 bash -c "until grep -q '^data: /' '$stream'; do sleep 0.5; done"; then
+        echo "The MCP server did not hand out a session endpoint."
+        exit 1
+    fi
+    # SSE lines are CRLF-terminated; a trailing CR makes the POST url malformed.
+    endpoint=$(awk '/^data: \//{sub(/^data: /,""); sub(/\r$/,""); print; exit}' "$stream")
+
+    # ids 3 and 4 are the error contract, which is where the two SDK majors actually
+    # diverge: 1.x turns a raised exception and a schema violation into isError, 2.0
+    # would turn the former into a transport error and skip the latter entirely.
+    # `tools/list` alone cannot see either, so call a tool both ways.
+    for request in \
+        '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}' \
+        '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+        '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
+        '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_server_info","arguments":{}}}' \
+        '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"lineage_diff","arguments":{"select":123}}}'; do
+        if ! curl -sf -o /dev/null -X POST "$base$endpoint" -H 'Content-Type: application/json' -d "$request"; then
+            echo "The MCP server rejected a request: $request"
+            exit 1
+        fi
+    done
+
+    # Requests are answered in order on one session, so id 4 arriving means all of them have.
+    if ! timeout 20 bash -c "until grep -q '\"id\":4' '$stream'; do sleep 0.5; done"; then
+        echo "The MCP server did not answer every request."
+        exit 1
+    fi
+
+    responses=$(awk '/^data: \{/{sub(/^data: /,""); print}' "$stream")
+    kill "$stream_pid" 2>/dev/null || true
+    server_name=$(jq -r 'select(.id == 1) | .result.serverInfo.name' <<< "$responses")
+    tool_count=$(jq -r 'select(.id == 2) | .result.tools | length' <<< "$responses")
+    assert_string_value "$server_name" "recce"
+    # A count alone is a weak gate — server mode advertises 20 tools, so `>= 1` still
+    # passes with 19 of them silently unregistered. Name one that must be there.
+    if ! jq -e 'select(.id == 2) | [.result.tools[].name] | index("lineage_diff")' > /dev/null <<< "$responses"; then
+        echo "The MCP server did not advertise lineage_diff."
+        exit 1
+    fi
+    if [ "${tool_count:-0}" -lt 1 ]; then
+        echo "The MCP server started but advertised no tools."
+        exit 1
+    fi
+    echo "MCP server is up and advertised $tool_count tools."
+
+    # `.result != null` first: on a JSON-RPC error response there is no `result` at all,
+    # and `null.isError != true` is true — which is exactly the escaped-exception
+    # regression this call is here to catch.
+    if ! jq -e 'select(.id == 3) | .result != null and .result.isError != true' > /dev/null <<< "$responses"; then
+        echo "The MCP server failed a get_server_info tool call."
+        exit 1
+    fi
+    # 123 violates lineage_diff's `select: string` schema. mcp 1.x rejects this in the
+    # SDK; on 2.0 the adapter has to, or the argument reaches the tool coerced.
+    if ! jq -e 'select(.id == 4) | .result.isError == true and (.result.content[0].text | test("Input validation error"))' > /dev/null <<< "$responses"; then
+        echo "The MCP server did not reject a schema-invalid tool argument."
+        exit 1
+    fi
+    echo "MCP server tool calls behave correctly on success and on invalid input."
+
+    echo "Stopping the MCP server..."
+    kill $(jobs -p) 2>/dev/null || true
+    wait || true
+    echo "MCP server stopped."
+}
+
+if [ "$SMOKE_SERVER" = "mcp-server" ]; then
+    echo "Starting the MCP server..."
+    # Every `exit 1` inside the check fires with the server already backgrounded, and
+    # after the SSE reader starts, with that too. Both inherit this step's stdout, so
+    # without a trap a failed smoke test keeps the CI step open with nothing left to say.
+    trap 'kill $(jobs -p) 2>/dev/null || true' EXIT
+    recce mcp-server --sse --port "$MCP_PORT" &
+    check_mcp_server_status
+else
+    echo "Starting the server..."
+    recce server &
+    check_server_status false
+
+    echo "Starting the server (review mode)..."
+    recce server --review recce_state.json &
+    check_server_status true
+fi

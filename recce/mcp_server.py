@@ -16,10 +16,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import quote
 
+import jsonschema
 import requests
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import TextContent, Tool
+from mcp.types import CallToolResult, ListToolsResult, TextContent, Tool
 
 # DRC-3634: submit_run is the run-persistence entry point shared with the
 # recce server's run_router.  Local-mode ad-hoc diff tools import it to
@@ -42,6 +43,25 @@ from recce.tasks.valuediff import ValueDiffDetailTask
 from recce.util.recce_cloud import RECCE_CLOUD_API_HOST, RecceCloudException
 
 logger = logging.getLogger(__name__)
+
+# mcp 2.0 dropped the `@server.list_tools()` / `@server.call_tool()` decorators in
+# favour of constructor handlers with a `(ctx, params) -> Result` signature. This
+# flag selects the registration path; the 1.x branch can go once the floor is mcp>=2.
+MCP_V2 = not hasattr(Server, "list_tools")
+
+
+def _tool_input_schema(tool: Tool) -> Dict[str, Any]:
+    """Read a tool's JSON schema regardless of SDK field naming.
+
+    `Tool.inputSchema` on mcp 1.x, `Tool.input_schema` on 2.0. Tested for `None`
+    rather than falsiness so an empty schema does not fall through to the attribute
+    the other major does not have.
+    """
+    schema = getattr(tool, "input_schema", None)
+    if schema is None:
+        schema = tool.inputSchema
+    return schema
+
 
 try:
     from sentry_sdk import metrics as sentry_metrics
@@ -661,9 +681,9 @@ class RecceMCPServer:
         self.api_token = api_token
         self._backend_lock = asyncio.Lock()
         self._local_cache_key: Optional[tuple] = None
-        self.server = Server("recce", instructions=self._build_instructions())
+        self._tool_schema_cache: Dict[str, Dict[str, Any]] = {}
         self.mcp_logger = MCPLogger(debug=debug, log_file=log_file)
-        self._setup_handlers()
+        self.server = self._build_server()
 
     def _build_instructions(self) -> Optional[str]:
         """Build MCP server instructions sent during initialize handshake."""
@@ -677,6 +697,77 @@ class RecceMCPServer:
             "To enable meaningful diffs, the user needs to run: "
             "dbt docs generate --target-path target-base"
         )
+
+    def _build_server(self) -> Server:
+        """Create the low-level MCP server with tool handlers registered.
+
+        The handlers themselves (`_list_tools` / `_call_tool`) keep the mcp 1.x
+        shapes — `List[Tool]` and `List[TextContent]`, errors raised — because
+        that is what the 1.x SDK consumes directly. On mcp 2.0 the two thin
+        `_handle_*` adapters wrap them into `ListToolsResult` / `CallToolResult`.
+        """
+        self._list_tools, self._call_tool = self._make_handlers()
+
+        if not MCP_V2:
+            server = Server("recce", instructions=self._build_instructions())
+            server.list_tools()(self._list_tools)
+            server.call_tool()(self._call_tool)
+            return server
+
+        return Server(
+            "recce",
+            instructions=self._build_instructions(),
+            on_list_tools=self._handle_list_tools,
+            on_call_tool=self._handle_call_tool,
+        )
+
+    async def _handle_list_tools(self, ctx, params) -> ListToolsResult:
+        """`tools/list` in the mcp 2.0 handler signature (also used by tests on 1.x)."""
+        return ListToolsResult(tools=await self._list_tools())
+
+    async def _get_tool_input_schema(self, name: str) -> Optional[Dict[str, Any]]:
+        """Look up a tool's JSON schema, building the cache on first use.
+
+        A miss must not mean "re-read the list": an unknown name misses every time, so
+        that would rebuild on every bad call and forge a `Returning N tools` line each
+        time — `_list_tools` logs its result and writes an MCPLogger entry. `set_backend`
+        is the only thing that moves the advertised surface after `__init__`, and it
+        clears this cache itself, so building once is enough.
+        """
+        if not self._tool_schema_cache:
+            self._tool_schema_cache = {tool.name: _tool_input_schema(tool) for tool in await self._list_tools()}
+        return self._tool_schema_cache.get(name)
+
+    async def _handle_call_tool(self, ctx, params) -> CallToolResult:
+        """`tools/call` in the mcp 2.0 handler signature (also used by tests on 1.x).
+
+        1.x turned a raised exception into `isError=True`; 2.0 turns it into a
+        JSON-RPC protocol error instead, which an agent reads as a transport
+        failure rather than a tool failure. Return the tool error explicitly to
+        keep the response identical across both versions.
+
+        Argument validation is here for the same reason. 1.x runs it inside
+        `Server.call_tool(validate_input=True)`; 2.0's low-level server dropped it, and
+        an unvalidated argument fails silently rather than loudly — `"false"` is a
+        truthy string, so a skip flag arrives flipped and the work it guards is quietly
+        not done. The message matches what 1.x emits so the contract reads the same.
+        """
+        arguments = params.arguments or {}
+        schema = await self._get_tool_input_schema(params.name)
+        if schema is not None:
+            try:
+                jsonschema.validate(instance=arguments, schema=schema)
+            except jsonschema.ValidationError as e:
+                return CallToolResult(
+                    content=[TextContent(type="text", text=f"Input validation error: {e.message}")],
+                    isError=True,
+                )
+
+        try:
+            content = await self._call_tool(params.name, arguments)
+        except Exception as e:
+            return CallToolResult(content=[TextContent(type="text", text=str(e))], isError=True)
+        return CallToolResult(content=content)
 
     @staticmethod
     def _classify_db_error(error_msg: str) -> Optional[str]:
@@ -769,10 +860,9 @@ class RecceMCPServer:
             result = {**result, "run_id": str(run.run_id)}
         return result
 
-    def _setup_handlers(self):
-        """Register all tool handlers"""
+    def _make_handlers(self):
+        """Build the (list_tools, call_tool) handler pair in their mcp 1.x shapes."""
 
-        @self.server.list_tools()
         async def list_tools() -> List[Tool]:
             """List all available tools based on server mode"""
             logger.info(f"[MCP] list_tools called (mode: {self.mode.value if self.mode else 'server'})")
@@ -1510,7 +1600,6 @@ class RecceMCPServer:
 
             return tools
 
-        @self.server.call_tool()
         async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
             """Handle tool calls"""
             start_time = time.perf_counter()
@@ -1647,8 +1736,11 @@ class RecceMCPServer:
                     logger.error(f"[MCP] Error executing tool {name} ({duration_ms:.2f}ms): {error_msg}")
                     logger.exception("[MCP] Full traceback:")
 
-                # Re-raise so MCP SDK sets isError=True in the protocol response
+                # Re-raise so the caller reports isError=True: on mcp 1.x the SDK does
+                # it, on 2.0 _handle_call_tool does (see its docstring).
                 raise
+
+        return list_tools, call_tool
 
     async def _tool_lineage_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Get lineage diff between base and current"""
@@ -2471,6 +2563,10 @@ class RecceMCPServer:
             raise ValueError(f"Invalid mode '{mode}'. Use 'local' or 'cloud'.")
 
         async with self._backend_lock:
+            # Both branches below change what _list_tools advertises (backend, context,
+            # single_env), so the schemas validation reads have to be re-derived.
+            self._tool_schema_cache = {}
+
             if mode == "cloud":
                 session_id = arguments.get("session_id")
                 if not session_id:

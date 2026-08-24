@@ -46,7 +46,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-mcp = ["mcp~=1.23"]
+mcp = ["mcp>=1.23,<3"]
 dev = [
     "pytest>=4.6",
     "pytest-asyncio>=0.23,<2.0",
@@ -57,7 +57,9 @@ dev = [
     "pre-commit>=4.2.0",
     "pytest-mypy",
     "pytest-cov",
-    "twine",
+    # twine<7 monkeypatches packaging to cap Metadata-Version at 2.4, which
+    # rejects the 2.5 metadata current hatchling emits.
+    "twine>=7",
     "tox",
     "tox-uv",
     "pandas",
