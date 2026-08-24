@@ -9,9 +9,9 @@ import { describe, expect, it, vi } from "vitest";
 import { getSemanticColorTheme } from "../../../theme";
 import {
   createHistogramLegendLabels,
-  createHistogramOverlapPlugin,
   type HistogramOverlapPalette,
   handleHistogramLegendClick,
+  histogramOverlapPlugin,
 } from "../histogramOverlap";
 
 interface BarGeometry {
@@ -100,19 +100,24 @@ function createBar(geometry: BarGeometry) {
   };
 }
 
+const PLOT_AREA = { left: 0, top: 0, right: 400, bottom: 200 };
+
 function createChart({
   baseBars = [createBar({ x: 20, y: 25, width: 14, base: 100 })],
   currentBars = [createBar({ x: 20, y: 40, width: 10, base: 100 })],
   visible = [true, true],
+  chartArea = PLOT_AREA,
 }: {
   baseBars?: ReturnType<typeof createBar>[];
   currentBars?: ReturnType<typeof createBar>[];
   visible?: [boolean, boolean];
+  chartArea?: typeof PLOT_AREA;
 } = {}) {
   const fakeContext = createFakeContext();
   const hide = vi.fn();
   const show = vi.fn();
   const chart = {
+    chartArea,
     ctx: fakeContext.context,
     getDatasetMeta: vi.fn((index: number) => ({
       data: index === 0 ? currentBars : baseBars,
@@ -125,10 +130,24 @@ function createChart({
   return { chart, fakeContext, hide, show };
 }
 
-function draw(plugin: Plugin<"bar">, chart: Chart<"bar">) {
+type OverlapPluginOptions = { palette: HistogramOverlapPalette } | undefined;
+
+function drawWithOptions(chart: Chart<"bar">, options: OverlapPluginOptions) {
+  const plugin: Plugin<"bar", { palette: HistogramOverlapPalette }> =
+    histogramOverlapPlugin;
   const afterDatasetsDraw = plugin.afterDatasetsDraw;
   expect(typeof afterDatasetsDraw).toBe("function");
-  (afterDatasetsDraw as (target: Chart<"bar">) => void)(chart);
+  (
+    afterDatasetsDraw as (
+      target: Chart<"bar">,
+      args: unknown,
+      pluginOptions: OverlapPluginOptions,
+    ) => void
+  )(chart, {}, options);
+}
+
+function draw(chart: Chart<"bar">) {
+  drawWithOptions(chart, { palette });
 }
 
 describe("histogram overlap legend", () => {
@@ -215,7 +234,7 @@ describe("histogram overlap painter", () => {
       currentBars: [currentBar],
     });
 
-    draw(createHistogramOverlapPlugin(palette), chart);
+    draw(chart);
 
     expect(fakeContext.fillRect).toHaveBeenCalledWith(15, 40, 10, 60);
     expect(fakeContext.compositeOperations).not.toContain("copy");
@@ -268,9 +287,45 @@ describe("histogram overlap painter", () => {
       visible,
     });
 
-    draw(createHistogramOverlapPlugin(palette), chart);
+    draw(chart);
 
     expect(fakeContext.fillRect).not.toHaveBeenCalled();
+  });
+
+  it("clamps the overlap rect to the plot area", () => {
+    // A bar taller and wider than the plot area must not bleed over the axes,
+    // title or legend: afterDatasetsDraw runs outside chart.js's dataset clip.
+    const { chart, fakeContext } = createChart({
+      baseBars: [createBar({ x: 200, y: -500, width: 1000, base: 900 })],
+      currentBars: [createBar({ x: 200, y: -400, width: 800, base: 800 })],
+    });
+
+    draw(chart);
+
+    expect(fakeContext.fillRect).toHaveBeenCalledWith(0, 0, 400, 200);
+  });
+
+  it("does not paint chart.js off-scale bar geometry over the plot area", () => {
+    // Floating-bar datasets (the dataType="datetime" path) report -32768 for
+    // values chart.js cannot place, which intersects to a ~33,000px rect.
+    const offScale = { x: -32768, y: -32768, width: 517.3, base: 170.8 };
+    const { chart, fakeContext } = createChart({
+      baseBars: [createBar(offScale)],
+      currentBars: [createBar(offScale)],
+    });
+
+    draw(chart);
+
+    expect(fakeContext.fillRect).not.toHaveBeenCalled();
+  });
+
+  it("does not paint when no palette is supplied", () => {
+    const { chart, fakeContext } = createChart();
+
+    drawWithOptions(chart, undefined);
+
+    expect(fakeContext.fillRect).not.toHaveBeenCalled();
+    expect(fakeContext.createPattern).not.toHaveBeenCalled();
   });
 
   it("bounds painting to the shorter metadata array", () => {
@@ -281,7 +336,7 @@ describe("histogram overlap painter", () => {
     const baseBars = [createBar({ x: 20, y: 25, width: 14, base: 100 })];
     const { chart, fakeContext } = createChart({ baseBars, currentBars });
 
-    draw(createHistogramOverlapPlugin(palette), chart);
+    draw(chart);
 
     expect(fakeContext.fillRect).toHaveBeenCalledTimes(1);
     expect(currentBars[1]?.getProps).not.toHaveBeenCalled();

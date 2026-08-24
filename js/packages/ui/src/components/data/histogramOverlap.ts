@@ -8,7 +8,12 @@ import type {
   LegendItem,
   Plugin,
 } from "chart.js";
-import type { SemanticColorChannel } from "../../theme";
+// Imported from the leaf module rather than the theme barrel: the barrel
+// re-exports from components/data, and this file is inside components/data.
+import {
+  compositeHex,
+  type SemanticColorChannel,
+} from "../../theme/semanticColors";
 
 const CURRENT_DATASET_INDEX = 0;
 const BASE_DATASET_INDEX = 1;
@@ -42,24 +47,17 @@ export interface HistogramOverlapPalette {
   overlap: Pick<SemanticColorChannel, "border" | "chartFill" | "foreground">;
 }
 
-const patternCache = new WeakMap<CanvasRenderingContext2D, CachedPattern>();
-
-function compositeHex(foreground: string, background: string): string {
-  const parseRgb = (value: string) =>
-    [1, 3, 5].map((index) =>
-      Number.parseInt(value.slice(index, index + 2), 16),
-    );
-  const foregroundRgb = parseRgb(foreground);
-  const backgroundRgb = parseRgb(background);
-  const alpha =
-    foreground.length >= 9
-      ? Number.parseInt(foreground.slice(7, 9), 16) / 255
-      : 1;
-  const composited = foregroundRgb.map((channel, index) =>
-    Math.round(channel * alpha + backgroundRgb[index] * (1 - alpha)),
-  );
-  return `rgb(${composited.join(" ")})`;
+export interface HistogramOverlapPluginOptions {
+  palette: HistogramOverlapPalette;
 }
+
+declare module "chart.js" {
+  interface PluginOptionsByType<TType extends ChartType> {
+    histogramOverlap?: HistogramOverlapPluginOptions;
+  }
+}
+
+const patternCache = new WeakMap<CanvasRenderingContext2D, CachedPattern>();
 
 function createOverlapPattern(
   context: CanvasRenderingContext2D,
@@ -86,14 +84,16 @@ function createOverlapPattern(
   tileContext.strokeStyle = overlap.foreground;
   tileContext.lineWidth = 1;
   tileContext.beginPath();
+  // Two diagonal families, each drawn twice one tile-period apart so the
+  // strokes line up across tile edges when the pattern repeats.
   tileContext.moveTo(-2, 0);
   tileContext.lineTo(PATTERN_SIZE, PATTERN_SIZE + 2);
-  tileContext.moveTo(PATTERN_SIZE - 2, -2);
-  tileContext.lineTo(PATTERN_SIZE + 2, 2);
+  tileContext.moveTo(PATTERN_SIZE - 4, -2);
+  tileContext.lineTo(PATTERN_SIZE + 2, 4);
   tileContext.moveTo(PATTERN_SIZE + 2, 0);
   tileContext.lineTo(0, PATTERN_SIZE + 2);
-  tileContext.moveTo(2, -2);
-  tileContext.lineTo(-2, 2);
+  tileContext.moveTo(4, -2);
+  tileContext.lineTo(-2, 4);
   tileContext.stroke();
 
   const pattern = context.createPattern(tile, "repeat");
@@ -191,40 +191,62 @@ export function handleHistogramLegendClick(
   }
 }
 
-export function createHistogramOverlapPlugin(
-  palette: HistogramOverlapPalette,
-): Plugin<"bar"> {
-  return {
-    id: "histogramOverlap",
-    afterDatasetsDraw(chart) {
-      if (
-        !chart.isDatasetVisible(CURRENT_DATASET_INDEX) ||
-        !chart.isDatasetVisible(BASE_DATASET_INDEX)
-      ) {
-        return;
-      }
+/**
+ * Paints the Base/Current overlap with the crosshatch pattern.
+ *
+ * The palette arrives through `options.plugins.histogramOverlap` instead of a
+ * closure on purpose: react-chartjs-2 reads its `plugins` prop only when it
+ * constructs the chart, so a plugin that captured the palette would keep the
+ * mount-time theme forever and the crosshatch would stay light after a switch
+ * to dark. `options` is re-sent on every render and `chart.update()`
+ * re-resolves plugin options, so this path follows the theme.
+ */
+export const histogramOverlapPlugin: Plugin<
+  "bar",
+  HistogramOverlapPluginOptions
+> = {
+  id: "histogramOverlap",
+  afterDatasetsDraw(chart, _args, options) {
+    const palette = options?.palette;
+    if (!palette) return;
 
-      const currentBars = chart.getDatasetMeta(CURRENT_DATASET_INDEX).data;
-      const baseBars = chart.getDatasetMeta(BASE_DATASET_INDEX).data;
-      const length = Math.min(currentBars.length, baseBars.length);
-      if (length === 0) return;
+    if (
+      !chart.isDatasetVisible(CURRENT_DATASET_INDEX) ||
+      !chart.isDatasetVisible(BASE_DATASET_INDEX)
+    ) {
+      return;
+    }
 
-      const { ctx } = chart;
-      const pattern = createOverlapPattern(ctx, palette);
-      ctx.save();
-      ctx.fillStyle = pattern;
+    const currentBars = chart.getDatasetMeta(CURRENT_DATASET_INDEX).data;
+    const baseBars = chart.getDatasetMeta(BASE_DATASET_INDEX).data;
+    const length = Math.min(currentBars.length, baseBars.length);
+    if (length === 0) return;
 
-      for (let index = 0; index < length; index += 1) {
-        const current = readBarGeometry(currentBars[index]);
-        const base = readBarGeometry(baseBars[index]);
-        if (!current || !base) continue;
+    const { ctx } = chart;
+    const pattern = createOverlapPattern(ctx, palette);
+    ctx.save();
+    ctx.fillStyle = pattern;
 
-        const overlap = intersectBars(current, base);
-        if (!overlap) continue;
-        ctx.fillRect(overlap.left, overlap.top, overlap.width, overlap.height);
-      }
+    // afterDatasetsDraw runs outside chart.js's dataset clip, and bar geometry
+    // can sit far off-scale (chart.js reports -32768 for unplottable values),
+    // so every rect is clamped to the plot area before it is painted.
+    const { left, top, right, bottom } = chart.chartArea;
 
-      ctx.restore();
-    },
-  };
-}
+    for (let index = 0; index < length; index += 1) {
+      const current = readBarGeometry(currentBars[index]);
+      const base = readBarGeometry(baseBars[index]);
+      if (!current || !base) continue;
+
+      const overlap = intersectBars(current, base);
+      if (!overlap) continue;
+      const x0 = Math.max(overlap.left, left);
+      const y0 = Math.max(overlap.top, top);
+      const x1 = Math.min(overlap.left + overlap.width, right);
+      const y1 = Math.min(overlap.top + overlap.height, bottom);
+      if (x1 <= x0 || y1 <= y0) continue;
+      ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    }
+
+    ctx.restore();
+  },
+};

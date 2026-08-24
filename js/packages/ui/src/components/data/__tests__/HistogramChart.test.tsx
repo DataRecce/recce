@@ -19,6 +19,7 @@ import {
   getSemanticColorTheme,
 } from "../../../theme";
 import { HistogramChart } from "../HistogramChart";
+import type { HistogramOverlapPalette } from "../histogramOverlap";
 
 interface MockChartProps {
   data: {
@@ -27,6 +28,7 @@ interface MockChartProps {
   fallbackContent?: React.ReactNode;
   options?: {
     plugins?: {
+      histogramOverlap?: { palette: HistogramOverlapPalette };
       legend?: {
         labels?: {
           generateLabels?: (chart: Chart<"bar">) => LegendItem[];
@@ -308,6 +310,60 @@ describe("HistogramChart", () => {
       expect(getLastChartProps().plugins?.map(({ id }) => id)).toEqual([
         "histogramOverlap",
       ]);
+    });
+
+    it("reuses one painter instance across theme switches", () => {
+      // react-chartjs-2 reads its `plugins` prop only when it builds the chart,
+      // so the painter has to be a stable, stateless instance. Anything the
+      // theme changes travels in `options`, which does get re-applied.
+      const { rerender } = render(
+        <HistogramChart {...defaultProps} theme="light" />,
+      );
+      const light = getLastChartProps().plugins?.[0];
+      rerender(<HistogramChart {...defaultProps} theme="dark" />);
+      const dark = getLastChartProps().plugins?.[0];
+
+      expect(light?.id).toBe("histogramOverlap");
+      expect(light).toBe(dark);
+    });
+
+    it.each(["light", "dark"] as const)(
+      "hands the %s palette to the painter through chart options",
+      (theme) => {
+        render(<HistogramChart {...defaultProps} theme={theme} />);
+        const semantic = getSemanticColorTheme(theme === "dark");
+
+        expect(
+          getLastChartProps().options?.plugins?.histogramOverlap?.palette,
+        ).toMatchObject({
+          base: semantic.comparison.base,
+          canvasBackground: semantic.structural.neutral.background,
+          current: semantic.comparison.current,
+          overlap: semantic.categorical.overlap,
+        });
+      },
+    );
+
+    it("pins the dataset order the painter and legend index into", () => {
+      render(<HistogramChart {...defaultProps} />);
+      const { chart } = createLegendChart();
+      const { data, options } = getLastChartProps();
+
+      expect(data.datasets.map((dataset) => dataset.label)).toEqual([
+        "Current",
+        "Base",
+      ]);
+
+      const labels =
+        options?.plugins?.legend?.labels?.generateLabels?.(chart) ?? [];
+      const indexed = labels.filter(
+        (label): label is typeof label & { datasetIndex: number } =>
+          label.datasetIndex !== undefined,
+      );
+      expect(indexed).toHaveLength(2);
+      for (const { text, datasetIndex } of indexed) {
+        expect(data.datasets[datasetIndex]?.label).toBe(text);
+      }
     });
 
     it("uses custom labels when provided", () => {

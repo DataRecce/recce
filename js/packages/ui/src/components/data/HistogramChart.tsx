@@ -21,8 +21,8 @@ import {
 } from "../../utils/formatters";
 import {
   createHistogramLegendLabels,
-  createHistogramOverlapPlugin,
   handleHistogramLegendClick,
+  histogramOverlapPlugin,
 } from "./histogramOverlap";
 
 // Register Chart.js modules once
@@ -165,10 +165,6 @@ function HistogramChartComponent({
       themeColors.textColor,
     ],
   );
-  const overlapPlugin = useMemo(
-    () => createHistogramOverlapPlugin(overlapPalette),
-    [overlapPalette],
-  );
 
   // Build chart data
   const chartData = useMemo<ChartData<"bar">>(() => {
@@ -231,6 +227,9 @@ function HistogramChartComponent({
       maintainAspectRatio: false,
       animation: animate ? undefined : false,
       plugins: {
+        // The overlap painter reads its palette from here, not from a closure,
+        // so a light/dark switch repaints the crosshatch along with the bars.
+        histogramOverlap: { palette: overlapPalette },
         legend: {
           onClick: handleHistogramLegendClick,
           labels: {
@@ -346,7 +345,7 @@ function HistogramChartComponent({
         role="img"
         aria-label={accessibleDescription}
         fallbackContent={accessibleDescription}
-        plugins={[overlapPlugin]}
+        plugins={[histogramOverlapPlugin]}
       />
     </div>
   );
