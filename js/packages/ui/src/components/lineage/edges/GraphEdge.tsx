@@ -110,9 +110,9 @@ function GraphEdgeComponent(props: GraphEdgeProps) {
   const accessibleName = `${STRUCTURAL_CHANGE_PRESENTATION[changeStatus].label} change`;
 
   const style: React.CSSProperties = {
-    ...styleOverride,
     stroke: semantic.structural.neutral.border,
     strokeDasharray: STRUCTURAL_EDGE_DASH[changeStatus],
+    ...styleOverride,
   };
 
   // Apply highlighting filter via dependency injection

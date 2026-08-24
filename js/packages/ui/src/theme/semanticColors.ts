@@ -69,7 +69,7 @@ const light: SemanticColorTheme = {
       chartFill: "#737373A5",
     },
     secondaryAccent: {
-      added: "#16A34A",
+      added: "#15803D",
       removed: "#DC2626",
       modified: "#B45309",
       unchanged: "#737373",
