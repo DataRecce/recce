@@ -263,6 +263,8 @@ export function PrivateSchemaDiffView(
                   id: node.id,
                   unique_id: node.id,
                   name: node.data.name,
+                  // /api/models/ does not return resource_type.
+                  resource_type: node.data.resourceType,
                   ...selectedModelDetail.model.base,
                 }
               : undefined
@@ -274,6 +276,7 @@ export function PrivateSchemaDiffView(
                   id: node.id,
                   unique_id: node.id,
                   name: node.data.name,
+                  resource_type: node.data.resourceType,
                   ...selectedModelDetail.model.current,
                 }
               : undefined

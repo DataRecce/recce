@@ -63,6 +63,8 @@ function SchemaDiffCard({ node, ...props }: SchemaDiffCardProps) {
                       id: node.id,
                       unique_id: node.id,
                       name: node.data.name,
+                      // /api/models/ does not return resource_type.
+                      resource_type: node.data.resourceType,
                       ...modelDetail.base,
                     }
                   : undefined
@@ -74,6 +76,7 @@ function SchemaDiffCard({ node, ...props }: SchemaDiffCardProps) {
                       id: node.id,
                       unique_id: node.id,
                       name: node.data.name,
+                      resource_type: node.data.resourceType,
                       ...modelDetail.current,
                     }
                   : undefined
