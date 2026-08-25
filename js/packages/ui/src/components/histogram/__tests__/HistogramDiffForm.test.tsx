@@ -146,4 +146,32 @@ describe("HistogramDiffForm one-step selection", () => {
       expect(onSubmitRequested).not.toHaveBeenCalled();
     },
   );
+
+  it("explains why the picker is dead when every numeric column is one-sided", () => {
+    mockUseModelColumns.mockReturnValue(
+      modelColumns({
+        columnAvailability: {
+          ...columnAvailability,
+          amount: { base: false, current: true },
+          quantity: { base: true, current: false },
+        },
+      }),
+    );
+
+    render(
+      <HistogramDiffForm
+        params={{ model: "orders", column_name: "", column_type: "" }}
+        onParamsChanged={vi.fn()}
+        setIsReadyToExecute={vi.fn()}
+        onSubmitRequested={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("combobox")).toBeDisabled();
+    expect(
+      screen.getByRole("option", {
+        name: "No numeric column is available in both environments",
+      }),
+    ).toBeInTheDocument();
+  });
 });
