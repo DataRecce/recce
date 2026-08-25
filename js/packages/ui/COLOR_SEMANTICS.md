@@ -3,7 +3,7 @@
 ## Axes
 
 - Comparison: `base` and `current`; owns orange/blue.
-- Structural: `added`, `removed`, `modified`, `unchanged`; owns symbols and labels. A secondary accent is transitional and never a fill.
+- Structural: `added`, `removed`, `modified`, `unchanged`; owns symbols and labels. A secondary accent is transitional. It fills the lineage node status block and the MiniMap node; on every other surface it stays on a border or a symbol.
 - Direction: `increase`, `decrease`, `equal`; owns arrows and signed text and is neutral.
 - Categorical overlap: purple crosshatch; it is not a structural status.
 - Execution, CLL transformation, CLL impact, and interaction states are separate namespaces.
@@ -27,7 +27,7 @@ Dark comparison chart fills deliberately use lower opacity than their light-them
 
 ## Transition
 
-Phase B permits `structural.secondaryAccent` on a rail or structural symbol only. Path A removes that use after every audited surface has a redundant non-color cue.
+Phase B permits `structural.secondaryAccent` on a border, a structural symbol, and the lineage node status block and MiniMap node fill. Path A removes that use after every audited surface has a redundant non-color cue.
 
 ## Compatibility
 

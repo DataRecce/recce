@@ -348,7 +348,7 @@ function LineageNodeComponent({
   // helper, while CLL impact remains in its separate amber namespace.
   const {
     backgroundColor: backgroundColorChangeStatus,
-    borderColor,
+    borderColor: neutralBorderColor,
     secondaryAccent,
   } = getNodeChangeStyle(
     { changeStatus, isImpacted, newCllExperience },
@@ -363,10 +363,14 @@ function LineageNodeComponent({
   const borderWidth = "2px";
   const hasStructuralChange = changeStatus !== "unchanged";
 
-  // Text and interaction colors remain neutral and independent of structural
-  // status. The status-specific secondary accent is limited to the rail and
-  // StructuralChangeIndicator below.
+  const borderColor = hasStructuralChange
+    ? secondaryAccent
+    : neutralBorderColor;
+
+  // Body text stays neutral. The status accent reaches the border and the
+  // status block, so the block needs the inverted foreground.
   const primaryText = isDark ? colors.white : colors.black;
+  const invertedText = isDark ? colors.black : colors.white;
 
   const isImpactPresentation =
     newCllExperience && isImpacted && !hasStructuralChange;
@@ -379,6 +383,10 @@ function LineageNodeComponent({
       : isHovered
         ? neutralHoverBg
         : backgroundColorChangeStatus;
+  const statusBlockColor = hasStructuralChange
+    ? secondaryAccent
+    : nodeBackgroundColor;
+  const statusBlockText = hasStructuralChange ? invertedText : primaryText;
 
   // Text color logic
   const titleColor = primaryText;
@@ -514,8 +522,6 @@ function LineageNodeComponent({
           display: "flex",
           borderColor,
           borderWidth,
-          borderLeftColor: hasStructuralChange ? secondaryAccent : borderColor,
-          borderLeftWidth: hasStructuralChange ? "3px" : borderWidth,
           borderStyle: "solid",
           borderTopLeftRadius: 8,
           borderTopRightRadius: 8,
@@ -528,9 +534,11 @@ function LineageNodeComponent({
       >
         {/* Left panel with checkbox */}
         <Box
+          data-testid="lineage-node-status-block"
           sx={{
             display: "flex",
-            bgcolor: nodeBackgroundColor,
+            bgcolor: statusBlockColor,
+            color: statusBlockText,
             padding: interactive ? "8px" : "2px",
             borderRightWidth: borderWidth,
             borderRightStyle: "solid",
@@ -671,10 +679,6 @@ function LineageNodeComponent({
             p: "10px 10px",
             borderColor,
             borderWidth,
-            borderLeftColor: hasStructuralChange
-              ? secondaryAccent
-              : borderColor,
-            borderLeftWidth: hasStructuralChange ? "3px" : borderWidth,
             borderStyle: "solid",
             borderTopWidth: 0,
             borderBottomLeftRadius: 8,
