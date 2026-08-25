@@ -23,7 +23,13 @@ describe("RunModal selection submission boundary", () => {
       columns: [
         { name: "amount", type: "DECIMAL(12, 2)" },
         { name: "quantity", type: "INTEGER" },
+        { name: "added_only", type: "BIGINT" },
       ],
+      columnAvailability: {
+        amount: { base: true, current: true },
+        quantity: { base: true, current: true },
+        added_only: { base: false, current: true },
+      },
       primaryKey: undefined,
       isLoading: false,
       error: null,
@@ -78,5 +84,27 @@ describe("RunModal selection submission boundary", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Execute" }));
     expect(onExecute).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not execute a one-sided catalog column", () => {
+    const onExecute = vi.fn();
+    render(
+      <RunModal<HistogramDiffParams>
+        isOpen
+        onClose={vi.fn()}
+        onExecute={onExecute}
+        title="Histogram Diff"
+        type="histogram_diff"
+        params={{ model: "orders", column_name: "", column_type: "" }}
+        RunForm={HistogramDiffForm}
+        submitOnSelection
+      />,
+    );
+
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "added_only" },
+    });
+
+    expect(onExecute).not.toHaveBeenCalled();
   });
 });
