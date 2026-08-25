@@ -19,6 +19,7 @@ import {
   formatAsAbbreviatedNumber,
   formatIntervalMinMax,
 } from "../../utils/formatters";
+import { histogramBinGeometryPlugin } from "./histogramBinGeometry";
 import {
   createHistogramLegendLabels,
   handleHistogramLegendClick,
@@ -244,6 +245,7 @@ function HistogramChartComponent({
       maintainAspectRatio: false,
       animation: animate ? undefined : false,
       plugins: {
+        histogramBinGeometry: isNumeric ? { binEdges } : undefined,
         // The overlap painter reads its palette from here, not from a closure,
         // so a light/dark switch repaints the crosshatch along with the bars.
         histogramOverlap: { palette: overlapPalette },
@@ -384,7 +386,7 @@ function HistogramChartComponent({
         role="img"
         aria-label={accessibleDescription}
         fallbackContent={accessibleDescription}
-        plugins={[histogramOverlapPlugin]}
+        plugins={[histogramOverlapPlugin, histogramBinGeometryPlugin]}
       />
     </div>
   );
