@@ -85,11 +85,16 @@ const LOWERCASE_COLUMNS = [
   { key: "data_type", name: "data_type", type: "text" },
   { key: "row_count", name: "row_count", type: "integer" },
   { key: "distinct_count", name: "distinct_count", type: "integer" },
+  {
+    key: "not_null_proportion",
+    name: "not_null_proportion",
+    type: "float",
+  },
 ] as const;
 
 const LOWERCASE_DATA: (string | number)[][] = [
-  ["customer_id", "integer", 500, 450],
-  ["name", "varchar", 500, 400],
+  ["customer_id", "integer", 500, 450, 0.9],
+  ["name", "varchar", 500, 400, 0.8],
 ];
 
 // ============================================================================
@@ -138,6 +143,26 @@ function findColumn(
   ) as ColDef<RowObjectType> | undefined;
 }
 
+function profileStatHeaderText(
+  column: ColDef<RowObjectType> | ColGroupDef<RowObjectType> | undefined,
+): string {
+  if (!column) {
+    throw new Error("Expected a profile stat column");
+  }
+
+  const Header =
+    (column as ColDef<RowObjectType>).headerComponent ??
+    (column as ColGroupDef<RowObjectType>).headerGroupComponent;
+  if (!Header) {
+    throw new Error("Expected a profile stat header component");
+  }
+
+  const { container, unmount } = render(<Header />);
+  const text = container.querySelector(".grid-header")?.textContent ?? "";
+  unmount();
+  return text;
+}
+
 // ============================================================================
 // 1. Profile (single env) with UPPERCASE keys
 // ============================================================================
@@ -177,6 +202,15 @@ describe("createDataGrid - profile (single env) with UPPERCASE keys", () => {
     // The row should have COLUMN_NAME accessible (original case or lowercase)
     const colNameValue = firstRow.COLUMN_NAME ?? firstRow.column_name;
     expect(colNameValue).toBe("CUSTOMER_ID");
+  });
+
+  test("humanizes profile statistic headers without changing raw fields", () => {
+    const result = createDataGrid(run, {})!;
+
+    expect(profileStatHeaderText(findColumn(result.columns, "row_count"))).toBe(
+      "Row Count",
+    );
+    expect(findColumn(result.columns, "row_count")?.field).toBe("ROW_COUNT");
   });
 });
 
@@ -246,6 +280,18 @@ describe("createDataGrid - profile_diff (inline) with UPPERCASE keys", () => {
     // Both base and current have the same 3 columns
     expect(result.rows.length).toBe(3);
   });
+
+  test("humanizes inline profile diff headers and retains the structural key", () => {
+    const result = createDataGrid(run, { displayMode: "inline" })!;
+    const primaryKeyColumn = findColumn(result.columns, "column_name");
+
+    expect(profileStatHeaderText(findColumn(result.columns, "row_count"))).toBe(
+      "Row Count",
+    );
+    expect(findColumn(result.columns, "row_count")?.field).toBe("ROW_COUNT");
+    expect(primaryKeyColumn?.field).toBe("COLUMN_NAME");
+    expect(primaryKeyColumn?.pinned).toBe("left");
+  });
 });
 
 // ============================================================================
@@ -314,6 +360,22 @@ describe("createDataGrid - profile_diff (side_by_side) with UPPERCASE keys", () 
       }
     }
   });
+
+  test("humanizes side-by-side profile diff group headers", () => {
+    const result = createDataGrid(run, { displayMode: "side_by_side" })!;
+    const rowCountGroup = result.columns.find(
+      (column) =>
+        "children" in column &&
+        column.headerName?.toLowerCase() === "row_count",
+    ) as ColGroupDef<RowObjectType> | undefined;
+
+    expect(profileStatHeaderText(rowCountGroup)).toBe("Row Count");
+    expect(
+      rowCountGroup?.children.map(
+        (child) => (child as ColDef<RowObjectType>).field,
+      ),
+    ).toEqual(["base__ROW_COUNT", "current__ROW_COUNT"]);
+  });
 });
 
 // ============================================================================
@@ -363,6 +425,18 @@ describe("createDataGrid - profile with lowercase keys (backwards compat)", () =
 
     render(<>{renderer(params)}</>);
     expect(screen.getByText("customer_id")).toBeInTheDocument();
+  });
+
+  test("humanizes lowercase profile statistic headers", () => {
+    const result = createDataGrid(run, {})!;
+
+    expect(profileStatHeaderText(findColumn(result.columns, "row_count"))).toBe(
+      "Row Count",
+    );
+    expect(findColumn(result.columns, "row_count")?.field).toBe("row_count");
+    expect(
+      profileStatHeaderText(findColumn(result.columns, "not_null_proportion")),
+    ).toBe("Not Null Proportion");
   });
 });
 

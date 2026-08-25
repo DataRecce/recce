@@ -29,6 +29,10 @@ import { columnPrecisionSelectOptions } from "../../../utils/dataGrid/columnPrec
 export interface DataFrameColumnGroupHeaderProps {
   /** Column name to display */
   name: string;
+  /** Optional presentation-only name for the column */
+  displayName?: string;
+  /** Hides the primary-key indicator without changing primary-key behavior */
+  hidePrimaryKeyIcon?: boolean;
   /** Column diff status: 'added', 'removed', 'modified', or empty string */
   columnStatus: string;
   /** Column data type for determining available options */
@@ -86,6 +90,8 @@ export interface DataFrameColumnGroupHeaderProps {
  */
 export function DataFrameColumnGroupHeader({
   name,
+  displayName,
+  hidePrimaryKeyIcon = false,
   columnStatus,
   columnType,
   primaryKeys = [],
@@ -161,7 +167,7 @@ export function DataFrameColumnGroupHeader({
       className="grid-header"
     >
       {/* Primary key icon */}
-      {isPK && <VscKey />}
+      {isPK && !hidePrimaryKeyIcon && <VscKey data-testid="primary-key-icon" />}
 
       {/* Column name */}
       <Box
@@ -172,7 +178,7 @@ export function DataFrameColumnGroupHeader({
           whiteSpace: "nowrap",
         }}
       >
-        {name}
+        {displayName ?? name}
       </Box>
 
       {/* Primary key toggle (only when onPrimaryKeyChange is provided) */}

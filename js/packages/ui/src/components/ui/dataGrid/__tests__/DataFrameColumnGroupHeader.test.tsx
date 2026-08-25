@@ -72,9 +72,26 @@ describe("DataFrameColumnGroupHeader - Primary Key", () => {
       />,
     );
 
-    // VscKey icon should be present
-    const keyIcons = document.querySelectorAll("svg");
-    expect(keyIcons.length).toBeGreaterThan(0);
+    expect(screen.getByTestId("primary-key-icon")).toBeInTheDocument();
+  });
+
+  test("hides only the primary key indicator when requested", () => {
+    const { container } = render(
+      <DataFrameColumnGroupHeader
+        name="column_name"
+        columnStatus=""
+        columnType="number"
+        primaryKeys={["column_name"]}
+        pinnedColumns={[]}
+        onPinnedColumnsChange={vi.fn()}
+        onColumnsRenderModeChanged={vi.fn()}
+        hidePrimaryKeyIcon
+      />,
+    );
+
+    expect(screen.queryByTestId("primary-key-icon")).not.toBeInTheDocument();
+    expect(container.querySelector(".pin-icon")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Options")).not.toBeInTheDocument();
   });
 
   test("shows close icon for PK column when onPrimaryKeyChange is provided", () => {
