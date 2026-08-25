@@ -498,6 +498,30 @@ describe("ProfileDiffResultView", () => {
         }),
       );
     });
+
+    it("preserves an explicit percentage-point render mode in view options", () => {
+      const run = createProfileDiffRun();
+
+      renderWithProviders(
+        <ProfileDiffResultView
+          run={run}
+          viewOptions={{
+            columnsRenderMode: {
+              not_null_proportion: "percent_delta",
+            },
+          }}
+        />,
+      );
+
+      expect(mockCreateDataGrid).toHaveBeenCalledWith(
+        run,
+        expect.objectContaining({
+          columnsRenderMode: expect.objectContaining({
+            not_null_proportion: "percent_delta",
+          }),
+        }),
+      );
+    });
   });
 
   // ==========================================================================

@@ -412,8 +412,24 @@ export function humanizeProfileStatLabel(name: string): string {
     .join(" ");
 }
 
+const profileDiffLegacyRenderModes: readonly ColumnRenderMode[] = [
+  "raw",
+  2,
+  "percent",
+  "delta",
+];
+
+function isNumericProfileColumn(column: DataFrame["columns"][number]): boolean {
+  return (
+    column.type === "number" ||
+    column.type === "float" ||
+    column.type === "integer"
+  );
+}
+
 function getProfileHeaderPresentation(
   result: ProfileDiffResult,
+  displayMode?: DiffGridOptions["displayMode"],
 ): Record<string, HeaderPresentation> {
   const columns = [
     ...(result.base?.columns ?? []),
@@ -426,9 +442,51 @@ function getProfileHeaderPresentation(
       {
         displayName: humanizeProfileStatLabel(column.key),
         hidePrimaryKeyIcon: column.key.toLowerCase() === "column_name",
+        allowedRenderModes:
+          displayMode === "inline" && isNumericProfileColumn(column)
+            ? [
+                ...profileDiffLegacyRenderModes,
+                ["distinct_proportion", "not_null_proportion"].includes(
+                  column.key.toLowerCase(),
+                )
+                  ? "percent_delta"
+                  : "percent_change",
+              ]
+            : undefined,
       },
     ]),
   );
+}
+
+function enableProfileDiffPercentModes(result: DataGridResult): DataGridResult {
+  const columns = result.columns.map((column) => {
+    if ("children" in column && column.children) {
+      return column;
+    }
+
+    const colDef = column as ColDef<RowObjectType>;
+    const columnType = (
+      colDef.context as { columnType?: ColumnType } | undefined
+    )?.columnType;
+    const isNumeric =
+      columnType === "number" ||
+      columnType === "float" ||
+      columnType === "integer";
+
+    if (!isNumeric) {
+      return column;
+    }
+
+    return {
+      ...colDef,
+      context: {
+        ...colDef.context,
+        enableProfileDiffPercentModes: true,
+      },
+    };
+  });
+
+  return { ...result, columns };
 }
 
 // ============================================================================
@@ -540,10 +598,15 @@ export function createDataGrid(
           displayMode: options.displayMode,
           columnsRenderMode: options.columnsRenderMode,
           onColumnsRenderModeChanged: options.onColumnsRenderModeChanged,
-          headerPresentation: getProfileHeaderPresentation(dataKind.result),
+          headerPresentation: getProfileHeaderPresentation(
+            dataKind.result,
+            options.displayMode ?? "inline",
+          ),
         },
       );
-      return injectProfileColumnNameRenderer(profileDiffResult);
+      return enableProfileDiffPercentModes(
+        injectProfileColumnNameRenderer(profileDiffResult),
+      );
     }
 
     case "row_count":

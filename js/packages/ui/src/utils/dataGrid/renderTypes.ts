@@ -38,6 +38,8 @@ export interface DataFrameColumnGroupHeaderProps {
   onPinnedColumnsChange?: (pinnedColumns: string[]) => void;
   /** Callback when column render mode changes */
   onColumnsRenderModeChanged?: (col: Record<string, ColumnRenderMode>) => void;
+  /** Optional list limiting which render modes appear in the precision menu */
+  allowedRenderModes?: readonly ColumnRenderMode[];
 }
 
 /**
@@ -56,12 +58,14 @@ export interface DataFrameColumnHeaderProps {
   onPinnedColumnsChange?: (pinnedColumns: string[]) => void;
   /** Callback when column render mode changes */
   onColumnsRenderModeChanged?: (col: Record<string, ColumnRenderMode>) => void;
+  /** Optional list limiting which render modes appear in the precision menu */
+  allowedRenderModes?: readonly ColumnRenderMode[];
 }
 
 /** Presentation-only metadata applied to an individual column header. */
 export type HeaderPresentation = Pick<
   DataFrameColumnGroupHeaderProps,
-  "displayName" | "hidePrimaryKeyIcon"
+  "displayName" | "hidePrimaryKeyIcon" | "allowedRenderModes"
 >;
 
 // ============================================================================

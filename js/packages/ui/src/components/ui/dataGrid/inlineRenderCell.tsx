@@ -34,6 +34,7 @@ interface RecceColumnContext {
   columnType?: ColumnType;
   columnRenderMode?: ColumnRenderMode;
   showStructuralIndicator?: boolean;
+  enableProfileDiffPercentModes?: boolean;
 }
 
 /**
@@ -61,6 +62,48 @@ export interface InlineRenderCellConfig {
    * (e.g., toast notifications on copy).
    */
   DiffTextComponent?: ComponentType<InlineDiffTextProps>;
+}
+
+/** Parses only finite numbers and complete numeric strings for explicit modes. */
+export function parseFiniteNumeric(value: RowDataTypes): number | undefined {
+  if (typeof value === "number")
+    return Number.isFinite(value) ? value : undefined;
+  if (typeof value !== "string" || value.trim() === "") return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function formatPercent(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "percent",
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatSignedChange(value: number, suffix: string): string {
+  return `${value >= 0 ? "+" : ""}${formatSmartDecimal(value)}${suffix}`;
+}
+
+function renderUndefinedRelativeChange(base: number, current: number) {
+  const tooltipText = `Base: ${base}\nCurrent: ${current}\nChange: N/A`;
+
+  return (
+    <Tooltip
+      title={tooltipText}
+      slotProps={{
+        tooltip: { sx: { whiteSpace: "pre-line" } },
+      }}
+      enterDelay={300}
+      placement="top"
+    >
+      <Typography
+        data-direction="equal"
+        sx={{ color: "text.secondary", fontSize: "0.75rem" }}
+      >
+        N/A
+      </Typography>
+    </Tooltip>
+  );
 }
 
 /**
@@ -91,6 +134,8 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
     const colDef = params.colDef as ColDefWithMetadata;
     const columnType = colDef?.context?.columnType;
     const columnRenderMode = colDef?.context?.columnRenderMode;
+    const enableProfileDiffPercentModes =
+      colDef?.context?.enableProfileDiffPercentModes === true;
     const columnKey = colDef?.field ?? "";
 
     if (!params.data) {
@@ -123,6 +168,13 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
       columnRenderMode,
     );
 
+    const isExplicitPercentMode =
+      enableProfileDiffPercentModes &&
+      (columnRenderMode === "percent_delta" ||
+        columnRenderMode === "percent_change");
+    const baseNumericValue = parseFiniteNumeric(row[baseKey]);
+    const currentNumericValue = parseFiniteNumeric(row[currentKey]);
+
     // No change - render single value.
     // Must use the same type-dispatched comparison the row status and the
     // side-by-side cell classes use: a raw `===` here would render a
@@ -132,12 +184,27 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
     // query-diff views, so that mismatch was the whole reported symptom of
     // DRC-3025.
     if (!isCellChanged(row[baseKey], row[currentKey], columnType)) {
+      if (
+        isExplicitPercentMode &&
+        columnRenderMode === "percent_change" &&
+        baseNumericValue !== undefined &&
+        currentNumericValue !== undefined &&
+        baseNumericValue < 0
+      ) {
+        return renderUndefinedRelativeChange(
+          baseNumericValue,
+          currentNumericValue,
+        );
+      }
+
       return (
         <Typography
           component="span"
           style={{ color: currentGrayOut ? "gray" : "inherit" }}
         >
-          {currentValue}
+          {isExplicitPercentMode && currentNumericValue !== undefined
+            ? formatPercent(currentNumericValue)
+            : currentValue}
         </Typography>
       );
     }
@@ -210,6 +277,73 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
                 }}
               >
                 <span aria-hidden="true">{symbol}</span> {deltaText}
+              </Typography>
+            </Box>
+          </Tooltip>
+        );
+      }
+    }
+
+    if (
+      isExplicitPercentMode &&
+      (columnType === "number" ||
+        columnType === "float" ||
+        columnType === "integer") &&
+      hasBase &&
+      hasCurrent &&
+      row.__status === undefined
+    ) {
+      const baseNum = parseFiniteNumeric(row[baseKey]);
+      const currentNum = parseFiniteNumeric(row[currentKey]);
+
+      if (baseNum !== undefined && currentNum !== undefined) {
+        const isRelativeChange = columnRenderMode === "percent_change";
+        const relativeChangeIsUndefined = isRelativeChange && baseNum <= 0;
+
+        if (relativeChangeIsUndefined) {
+          return renderUndefinedRelativeChange(baseNum, currentNum);
+        }
+
+        const change = isRelativeChange
+          ? ((currentNum - baseNum) / baseNum) * 100
+          : currentNum * 100 - baseNum * 100;
+        const direction =
+          change > 0 ? "increase" : change < 0 ? "decrease" : "equal";
+        const suffix = isRelativeChange ? "%" : "pp";
+        const changeText = `(${formatSignedChange(change, suffix)})`;
+        const tooltipText = `Base: ${baseNum}\nCurrent: ${currentNum}\nChange: ${formatSignedChange(
+          change,
+          suffix,
+        )}`;
+
+        return (
+          <Tooltip
+            title={tooltipText}
+            slotProps={{
+              tooltip: { sx: { whiteSpace: "pre-line" } },
+            }}
+            enterDelay={300}
+            placement="top"
+          >
+            <Box
+              sx={{
+                gap: "5px",
+                display: "flex",
+                alignItems: "center",
+                lineHeight: "normal",
+                height: "100%",
+              }}
+            >
+              <DiffTextComp
+                value={formatPercent(currentNum)}
+                comparisonRole="current"
+                grayOut={currentGrayOut}
+              />
+              <Typography
+                data-direction={direction}
+                sx={{ color: "text.secondary", fontSize: "0.75rem" }}
+              >
+                {changeText}
               </Typography>
             </Box>
           </Tooltip>

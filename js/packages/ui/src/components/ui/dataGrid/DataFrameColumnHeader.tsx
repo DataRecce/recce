@@ -33,6 +33,8 @@ export interface DataFrameColumnHeaderProps {
   onPinnedColumnsChange?: (pinnedColumns: string[]) => void;
   /** Callback when column render mode changes */
   onColumnsRenderModeChanged?: (col: Record<string, ColumnRenderMode>) => void;
+  /** Optional list limiting which render modes appear in the precision menu */
+  allowedRenderModes?: readonly ColumnRenderMode[];
 }
 
 /**
@@ -62,6 +64,7 @@ export function DataFrameColumnHeader({
   },
   columnType,
   onColumnsRenderModeChanged,
+  allowedRenderModes,
 }: DataFrameColumnHeaderProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
@@ -79,6 +82,7 @@ export function DataFrameColumnHeader({
     selectOptions = columnPrecisionSelectOptions(
       name,
       onColumnsRenderModeChanged,
+      allowedRenderModes,
     );
   }
 
@@ -110,7 +114,9 @@ export function DataFrameColumnHeader({
         }}
         onClick={isPinned ? handleUnpin : handlePin}
       />
-      {(columnType === "number" || columnType === "float") && (
+      {(columnType === "number" ||
+        columnType === "float" ||
+        (allowedRenderModes !== undefined && selectOptions.length > 0)) && (
         <>
           <IconButton
             aria-label="Options"

@@ -8,7 +8,7 @@
  * but buildDiffRows lowercases PK keys in diff rows.
  */
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type {
   ColDef,
   ColGroupDef,
@@ -375,6 +375,139 @@ describe("createDataGrid - profile_diff (side_by_side) with UPPERCASE keys", () 
         (child) => (child as ColDef<RowObjectType>).field,
       ),
     ).toEqual(["base__ROW_COUNT", "current__ROW_COUNT"]);
+  });
+});
+
+// ============================================================================
+// DRC-2866: explicit percentage modes are limited to inline Profile Diff
+// ============================================================================
+
+describe("createDataGrid - profile_diff explicit percentage mode eligibility", () => {
+  const columns = [
+    { key: "column_name", name: "column_name", type: "text" },
+    { key: "data_type", name: "data_type", type: "text" },
+    { key: "row_count", name: "row_count", type: "integer" },
+    {
+      key: "not_null_proportion",
+      name: "not_null_proportion",
+      type: "float",
+    },
+  ] as const;
+  const run = makeProfileDiffRun({
+    base: makeDataFrame([...columns], [["id", "integer", 10, 0.98]]),
+    current: makeDataFrame([...columns], [["id", "integer", 12, 0.94]]),
+  });
+
+  function renderHeaderFor(
+    result: ReturnType<typeof createDataGrid>,
+    field: string,
+  ) {
+    const column = findColumn(result!.columns, field);
+    const Header = column?.headerComponent;
+    if (!Header) {
+      throw new Error(`Expected ${field} to have a header component`);
+    }
+    render(<Header />);
+    fireEvent.click(screen.getByRole("button", { name: "Options" }));
+  }
+
+  test("offers percentage-point delta only for inline proportion fields", () => {
+    const callback = vi.fn();
+    const result = createDataGrid(run, {
+      displayMode: "inline",
+      onColumnsRenderModeChanged: callback,
+    });
+
+    renderHeaderFor(result, "not_null_proportion");
+
+    expect(screen.getByText("Show percentage-point delta")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Show relative percentage change"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Show percentage-point delta"));
+    expect(callback).toHaveBeenCalledWith({
+      not_null_proportion: "percent_delta",
+    });
+  });
+
+  test("offers relative percentage change for other inline numeric fields", () => {
+    const callback = vi.fn();
+    const result = createDataGrid(run, {
+      displayMode: "inline",
+      onColumnsRenderModeChanged: callback,
+    });
+
+    renderHeaderFor(result, "row_count");
+
+    expect(
+      screen.getByText("Show relative percentage change"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Show percentage-point delta"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Show relative percentage change"));
+    expect(callback).toHaveBeenCalledWith({ row_count: "percent_change" });
+  });
+
+  test("keeps the new modes out of side-by-side Profile Diff headers", () => {
+    const result = createDataGrid(run, {
+      displayMode: "side_by_side",
+      onColumnsRenderModeChanged: vi.fn(),
+    })!;
+    const proportionGroup = result.columns.find(
+      (column) =>
+        "children" in column &&
+        column.headerName?.toLowerCase() === "not_null_proportion",
+    ) as ColGroupDef<RowObjectType>;
+
+    const Header = proportionGroup.headerGroupComponent;
+    if (!Header) {
+      throw new Error("Expected a side-by-side Profile Diff group header");
+    }
+    render(<Header />);
+    fireEvent.click(screen.getByRole("button", { name: "Options" }));
+
+    expect(
+      screen.queryByText("Show percentage-point delta"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Show relative percentage change"),
+    ).not.toBeInTheDocument();
+  });
+
+  test("keeps the new modes out of single Profile headers", () => {
+    const singleProfileRun = makeProfileRun({
+      current: makeDataFrame([...columns], [["id", "integer", 12, 0.94]]),
+    });
+    const result = createDataGrid(singleProfileRun, {
+      onColumnsRenderModeChanged: vi.fn(),
+    });
+    const column = findColumn(result!.columns, "not_null_proportion");
+    const Header = column?.headerComponent;
+    if (!Header) {
+      throw new Error("Expected a single Profile header component");
+    }
+
+    render(<Header />);
+    fireEvent.click(screen.getByRole("button", { name: "Options" }));
+
+    expect(
+      screen.queryByText("Show percentage-point delta"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Show relative percentage change"),
+    ).not.toBeInTheDocument();
+  });
+
+  test("passes profile presentation metadata through the factory to hide the key icon", () => {
+    const result = createDataGrid(run, { displayMode: "inline" })!;
+    const primaryKeyColumn = findColumn(result.columns, "column_name");
+
+    render(<>{primaryKeyColumn?.headerComponent?.()}</>);
+
+    expect(screen.queryByTestId("primary-key-icon")).not.toBeInTheDocument();
   });
 });
 
