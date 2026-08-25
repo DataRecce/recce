@@ -34,7 +34,7 @@ interface RecceColumnContext {
   columnType?: ColumnType;
   columnRenderMode?: ColumnRenderMode;
   showStructuralIndicator?: boolean;
-  enableProfileDiffPercentModes?: boolean;
+  profileDiffPercentMode?: "percent_delta" | "percent_change";
 }
 
 /**
@@ -84,6 +84,10 @@ function formatSignedChange(value: number, suffix: string): string {
   return `${value >= 0 ? "+" : ""}${formatSmartDecimal(value)}${suffix}`;
 }
 
+function formatUnroundedChange(value: number, suffix: string): string {
+  return `${value >= 0 ? "+" : ""}${value}${suffix}`;
+}
+
 function renderUndefinedRelativeChange(base: number, current: number) {
   const tooltipText = `Base: ${base}\nCurrent: ${current}\nChange: N/A`;
 
@@ -103,6 +107,43 @@ function renderUndefinedRelativeChange(base: number, current: number) {
         N/A
       </Typography>
     </Tooltip>
+  );
+}
+
+function renderInlineValues(
+  DiffTextComp: ComponentType<InlineDiffTextProps>,
+  hasBase: boolean,
+  hasCurrent: boolean,
+  baseValue: string,
+  currentValue: string,
+  baseGrayOut: boolean,
+  currentGrayOut: boolean,
+) {
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        gap: "5px",
+        alignItems: "center",
+        lineHeight: "normal",
+        height: "100%",
+      }}
+    >
+      {hasBase && (
+        <DiffTextComp
+          value={baseValue}
+          comparisonRole="base"
+          grayOut={baseGrayOut}
+        />
+      )}
+      {hasCurrent && (
+        <DiffTextComp
+          value={currentValue}
+          comparisonRole="current"
+          grayOut={currentGrayOut}
+        />
+      )}
+    </Box>
   );
 }
 
@@ -134,8 +175,7 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
     const colDef = params.colDef as ColDefWithMetadata;
     const columnType = colDef?.context?.columnType;
     const columnRenderMode = colDef?.context?.columnRenderMode;
-    const enableProfileDiffPercentModes =
-      colDef?.context?.enableProfileDiffPercentModes === true;
+    const profileDiffPercentMode = colDef?.context?.profileDiffPercentMode;
     const columnKey = colDef?.field ?? "";
 
     if (!params.data) {
@@ -169,9 +209,9 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
     );
 
     const isExplicitPercentMode =
-      enableProfileDiffPercentModes &&
       (columnRenderMode === "percent_delta" ||
-        columnRenderMode === "percent_change");
+        columnRenderMode === "percent_change") &&
+      columnRenderMode === profileDiffPercentMode;
     const baseNumericValue = parseFiniteNumeric(row[baseKey]);
     const currentNumericValue = parseFiniteNumeric(row[currentKey]);
 
@@ -187,6 +227,8 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
       if (
         isExplicitPercentMode &&
         columnRenderMode === "percent_change" &&
+        row.__status !== "added" &&
+        row.__status !== "removed" &&
         baseNumericValue !== undefined &&
         currentNumericValue !== undefined &&
         baseNumericValue < 0
@@ -203,7 +245,9 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
           style={{ color: currentGrayOut ? "gray" : "inherit" }}
         >
           {isExplicitPercentMode && currentNumericValue !== undefined
-            ? formatPercent(currentNumericValue)
+            ? columnRenderMode === "percent_delta"
+              ? formatPercent(currentNumericValue)
+              : currentValue
             : currentValue}
         </Typography>
       );
@@ -291,7 +335,8 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
         columnType === "integer") &&
       hasBase &&
       hasCurrent &&
-      row.__status === undefined
+      row.__status !== "added" &&
+      row.__status !== "removed"
     ) {
       const baseNum = parseFiniteNumeric(row[baseKey]);
       const currentNum = parseFiniteNumeric(row[currentKey]);
@@ -307,11 +352,24 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
         const change = isRelativeChange
           ? ((currentNum - baseNum) / baseNum) * 100
           : currentNum * 100 - baseNum * 100;
+
+        if (!Number.isFinite(change)) {
+          return renderInlineValues(
+            DiffTextComp,
+            hasBase,
+            hasCurrent,
+            baseValue,
+            currentValue,
+            baseGrayOut,
+            currentGrayOut,
+          );
+        }
+
         const direction =
           change > 0 ? "increase" : change < 0 ? "decrease" : "equal";
         const suffix = isRelativeChange ? "%" : "pp";
         const changeText = `(${formatSignedChange(change, suffix)})`;
-        const tooltipText = `Base: ${baseNum}\nCurrent: ${currentNum}\nChange: ${formatSignedChange(
+        const tooltipText = `Base: ${baseNum}\nCurrent: ${currentNum}\nChange: ${formatUnroundedChange(
           change,
           suffix,
         )}`;
@@ -335,7 +393,11 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
               }}
             >
               <DiffTextComp
-                value={formatPercent(currentNum)}
+                value={
+                  columnRenderMode === "percent_delta"
+                    ? formatPercent(currentNum)
+                    : currentValue
+                }
                 comparisonRole="current"
                 grayOut={currentGrayOut}
               />
@@ -352,31 +414,14 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
     }
 
     // Values differ - render inline diff with base (red) and current (green)
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          gap: "5px",
-          alignItems: "center",
-          lineHeight: "normal",
-          height: "100%",
-        }}
-      >
-        {hasBase && (
-          <DiffTextComp
-            value={baseValue}
-            comparisonRole="base"
-            grayOut={baseGrayOut}
-          />
-        )}
-        {hasCurrent && (
-          <DiffTextComp
-            value={currentValue}
-            comparisonRole="current"
-            grayOut={currentGrayOut}
-          />
-        )}
-      </Box>
+    return renderInlineValues(
+      DiffTextComp,
+      hasBase,
+      hasCurrent,
+      baseValue,
+      currentValue,
+      baseGrayOut,
+      currentGrayOut,
     );
   };
 }

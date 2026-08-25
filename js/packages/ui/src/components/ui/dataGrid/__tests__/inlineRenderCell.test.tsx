@@ -29,7 +29,7 @@ import {
 interface RecceColumnContext {
   columnType?: string;
   columnRenderMode?: string | number;
-  enableProfileDiffPercentModes?: boolean;
+  profileDiffPercentMode?: "percent_delta" | "percent_change";
 }
 
 type ColDefWithMetadata = ColDef<RowObjectType> & {
@@ -264,13 +264,15 @@ describe("inlineRenderCell - DRC-2866 explicit percentage modes", () => {
   function renderExplicitMode(
     mode: "percent_delta" | "percent_change",
     data: Partial<RowObjectType>,
+    field = mode === "percent_delta" ? "proportion" : "row_count",
+    columnType = mode === "percent_delta" ? "float" : "integer",
   ) {
     const colDef: ColDefWithMetadata = {
-      field: "proportion",
+      field,
       context: {
-        columnType: "float",
+        columnType,
         columnRenderMode: mode,
-        enableProfileDiffPercentModes: true,
+        profileDiffPercentMode: mode,
       },
     };
 
@@ -296,14 +298,14 @@ describe("inlineRenderCell - DRC-2866 explicit percentage modes", () => {
   });
 
   test.each([
-    [0.5, 0.6, "60%", "(+20%)", "increase"],
-    [0.5, 0.4, "40%", "(-20%)", "decrease"],
+    [0.5, 0.6, "0.6", "(+20%)", "increase"],
+    [0.5, 0.4, "0.4", "(-20%)", "decrease"],
   ] as const)(
     "renders a %s to %s relative change as %s %s",
     (base, current, currentText, changeText, direction) => {
       renderExplicitMode("percent_change", {
-        base__proportion: base,
-        current__proportion: current,
+        base__row_count: base,
+        current__row_count: current,
       });
 
       expect(screen.getByText(currentText)).toBeInTheDocument();
@@ -316,11 +318,11 @@ describe("inlineRenderCell - DRC-2866 explicit percentage modes", () => {
 
   test("renders an unchanged zero relative value as a percentage", () => {
     renderExplicitMode("percent_change", {
-      base__proportion: 0,
-      current__proportion: 0,
+      base__row_count: 0,
+      current__row_count: 0,
     });
 
-    expect(screen.getByText("0%")).toBeInTheDocument();
+    expect(screen.getByText("0")).toBeInTheDocument();
     expect(screen.queryByText("N/A")).not.toBeInTheDocument();
   });
 
@@ -357,8 +359,8 @@ describe("inlineRenderCell - DRC-2866 explicit percentage modes", () => {
     [-0.1, -0.1],
   ])("renders %s to %s relative change as N/A", (base, current) => {
     renderExplicitMode("percent_change", {
-      base__proportion: base,
-      current__proportion: current,
+      base__row_count: base,
+      current__row_count: current,
     });
 
     expect(screen.getByText("N/A")).toHaveAttribute("data-direction", "equal");
@@ -375,8 +377,8 @@ describe("inlineRenderCell - DRC-2866 explicit percentage modes", () => {
     "keeps invalid %p to %p values in the existing inline presentation",
     (base, current) => {
       renderExplicitMode("percent_change", {
-        base__proportion: base,
-        current__proportion: current,
+        base__row_count: base,
+        current__row_count: current,
       });
 
       expect(screen.queryByText("N/A")).not.toBeInTheDocument();
@@ -389,12 +391,47 @@ describe("inlineRenderCell - DRC-2866 explicit percentage modes", () => {
     (status) => {
       renderExplicitMode("percent_change", {
         __status: status,
-        base__proportion: 0,
-        current__proportion: 0.94,
+        base__row_count: 0,
+        current__row_count: 0.94,
       });
 
       expect(screen.queryByText("N/A")).not.toBeInTheDocument();
       expect(document.querySelector("[data-comparison-role]")).not.toBeNull();
+    },
+  );
+
+  test("keeps the full computed percentage-point change in the tooltip", async () => {
+    renderExplicitMode("percent_delta", {
+      base__proportion: 0.9,
+      current__proportion: 0.941234,
+    });
+
+    expect(screen.getByText("(+4.12pp)")).toBeInTheDocument();
+    fireEvent.mouseOver(screen.getByText("94.12%"));
+    expect(
+      await screen.findByText(/Change: \+4\.123400000000004pp/),
+    ).toBeInTheDocument();
+  });
+
+  test.each([
+    ["percent_delta", "proportion", "float"],
+    ["percent_change", "row_count", "integer"],
+  ] as const)(
+    "falls back when %s arithmetic overflows",
+    (mode, field, columnType) => {
+      renderExplicitMode(
+        mode,
+        {
+          [`base__${field}`]: Number.MIN_VALUE,
+          [`current__${field}`]: Number.MAX_VALUE,
+        },
+        field,
+        columnType,
+      );
+
+      expect(document.querySelectorAll("[data-comparison-role]")).toHaveLength(
+        2,
+      );
     },
   );
 });
