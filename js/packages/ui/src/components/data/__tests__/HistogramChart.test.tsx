@@ -48,6 +48,9 @@ interface MockChartProps {
     };
     scales?: {
       x?: {
+        display?: boolean;
+        max?: number;
+        min?: number;
         type?: string;
         ticks?: {
           callback?: (
@@ -237,15 +240,28 @@ describe("HistogramChart", () => {
       expect(data.datasets).toHaveLength(2);
     });
 
-    it("labels numeric bins with single edges while keeping full tooltip ranges", () => {
+    it("positions numeric bars at bin midpoints while keeping full tooltip ranges", () => {
       render(<HistogramChart {...defaultProps} />);
 
       const { data, options } = getLastChartProps();
       const tickCallback = options?.scales?.x?.ticks?.callback;
       const tooltipCallbacks = options?.plugins?.tooltip?.callbacks;
 
-      expect(data.labels).toEqual(mockBinEdges);
+      expect(data.labels).toEqual([]);
+      expect(options?.scales?.x).toMatchObject({
+        max: 100,
+        min: 0,
+        type: "linear",
+      });
       expect(data.datasets[0].data).toHaveLength(mockCurrentData.counts.length);
+      expect(data.datasets[1].data).toHaveLength(mockBaseData.counts.length);
+      expect(data.datasets[0].data).toEqual([
+        { x: 10, y: 15 },
+        { x: 30, y: 25 },
+        { x: 50, y: 35 },
+        { x: 70, y: 45 },
+        { x: 90, y: 55 },
+      ]);
       expect(tickCallback?.(0, 0, [])).toBe("0");
       expect(tickCallback?.(100, 5, [])).toBe("100");
       expect(tooltipCallbacks?.title?.([{ dataIndex: 4 }])).toBe(
@@ -279,6 +295,59 @@ describe("HistogramChart", () => {
         .filter((label): label is string => label !== undefined);
 
       expect(labels).toEqual(["0", "20", "40", "60", "80", "100", "120"]);
+    });
+
+    it("keeps string labels and values on the pre-existing category path", () => {
+      render(<HistogramChart {...defaultProps} dataType="string" />);
+
+      const { data, options } = getLastChartProps();
+      expect(data.labels).toEqual([
+        "0 - 20",
+        "20 - 40",
+        "40 - 60",
+        "60 - 80",
+        "80 - 100",
+      ]);
+      expect(data.datasets[0].data).toEqual(mockCurrentData.counts);
+      expect(data.datasets[1].data).toEqual(mockBaseData.counts);
+      expect(options?.scales?.x?.type).toBe("category");
+    });
+
+    it("keeps datetime labels, tuples, scale, and hidden axis unchanged", () => {
+      render(
+        <HistogramChart
+          {...defaultProps}
+          dataType="datetime"
+          hideAxis={true}
+        />,
+      );
+
+      const { data, options } = getLastChartProps();
+      expect(data.labels).toEqual([
+        "0 - 20",
+        "20 - 40",
+        "40 - 60",
+        "60 - 80",
+        "80 - 100",
+      ]);
+      expect(data.datasets[0].data).toEqual([
+        [0, 15],
+        [20, 25],
+        [40, 35],
+        [60, 45],
+        [80, 55],
+      ]);
+      expect(data.datasets[1].data).toEqual([
+        [0, 10],
+        [20, 20],
+        [40, 30],
+        [60, 40],
+        [80, 50],
+      ]);
+      expect(options?.scales?.x).toMatchObject({
+        display: false,
+        type: "timeseries",
+      });
     });
 
     it("creates datasets with correct labels", () => {
@@ -315,7 +384,11 @@ describe("HistogramChart", () => {
           data.datasets.every((dataset) => dataset.grouped === false),
         ).toBe(true);
         expect(options?.scales?.x?.type).toBe(
-          dataType === "datetime" ? "timeseries" : "category",
+          dataType === "datetime"
+            ? "timeseries"
+            : dataType === "numeric"
+              ? "linear"
+              : "category",
         );
       },
     );
@@ -572,7 +645,7 @@ describe("HistogramChart", () => {
       expect(currentData[0]).toHaveLength(2);
     });
 
-    it("uses plain count values for numeric type", () => {
+    it("uses midpoint coordinate objects for numeric type", () => {
       const { getByTestId } = render(
         <HistogramChart {...defaultProps} dataType="numeric" />,
       );
@@ -580,9 +653,9 @@ describe("HistogramChart", () => {
       const chart = getByTestId("mock-chart");
       const data = JSON.parse(chart.getAttribute("data-data") || "{}");
 
-      // For numeric, data should be plain numbers
+      // Numeric bars use explicit x coordinates on the linear edge scale.
       const currentData = data.datasets[0].data;
-      expect(typeof currentData[0]).toBe("number");
+      expect(currentData[0]).toEqual({ x: 10, y: 15 });
     });
   });
 

@@ -151,6 +151,7 @@ function HistogramChartComponent({
   const semanticColors = getSemanticColorTheme(isDark);
   const comparisonColors = semanticColors.comparison;
   const isDatetime = dataType === "datetime";
+  const isNumeric = dataType === "numeric";
   const accessibleDescription = `${title}. Histogram comparing Base and Current series. Overlap marks their shared distribution.`;
   const overlapPalette = useMemo(
     () => ({
@@ -170,6 +171,10 @@ function HistogramChartComponent({
 
   // Build chart data
   const chartData = useMemo<ChartData<"bar">>(() => {
+    const labels = binEdges
+      .slice(0, -1)
+      .map((_, i) => formatBinRange(binEdges, i));
+
     const buildDataset = (
       data: HistogramDataset,
       label: string,
@@ -178,7 +183,12 @@ function HistogramChartComponent({
       const counts = data.counts ?? [];
       const chartValues = isDatetime
         ? counts.map((v, i) => [binEdges[i], v] as [number, number])
-        : counts;
+        : isNumeric
+          ? counts.map((v, i) => ({
+              x: (binEdges[i] + binEdges[i + 1]) / 2,
+              y: v,
+            }))
+          : counts;
 
       return {
         label,
@@ -195,8 +205,7 @@ function HistogramChartComponent({
     };
 
     return {
-      // Labels represent bin edges; data remains one value per bin.
-      labels: binEdges,
+      labels: isNumeric ? [] : labels,
       datasets: [
         buildDataset(
           currentData,
@@ -206,7 +215,14 @@ function HistogramChartComponent({
         buildDataset(baseData, baseData.label ?? "Base", comparisonColors.base),
       ],
     };
-  }, [binEdges, baseData, comparisonColors, currentData, isDatetime]);
+  }, [
+    binEdges,
+    baseData,
+    comparisonColors,
+    currentData,
+    isDatetime,
+    isNumeric,
+  ]);
 
   // Build chart options
   const chartOptions = useMemo<ChartOptions<"bar">>(() => {
@@ -215,6 +231,8 @@ function HistogramChartComponent({
       1,
       Math.ceil((binEdges.length - 1) / (MAX_EDGE_TICK_LABELS - 1)),
     );
+    const firstEdge = binEdges[0] ?? 0;
+    const terminalEdge = binEdges[binEdges.length - 1] ?? firstEdge;
     const dataTypeLabel = isDatetime
       ? "Date Range"
       : dataType === "string"
@@ -291,24 +309,38 @@ function HistogramChartComponent({
                 color: themeColors.textColor,
               },
             }
-          : {
-              display: !hideAxis,
-              type: "category",
-              grid: { display: false },
-              ticks: {
-                autoSkip: false,
-                callback(_value, index) {
-                  if (
-                    index % edgeTickInterval !== 0 &&
-                    index !== binEdges.length - 1
-                  ) {
-                    return undefined;
-                  }
-                  return formatAsAbbreviatedNumber(binEdges[index]);
+          : isNumeric
+            ? {
+                display: !hideAxis,
+                type: "linear",
+                min: firstEdge,
+                max: terminalEdge,
+                grid: { display: false },
+                afterBuildTicks(axis) {
+                  axis.ticks = binEdges.map((value) => ({ value }));
                 },
-                color: themeColors.textColor,
+                ticks: {
+                  autoSkip: false,
+                  callback(value, index) {
+                    if (
+                      index % edgeTickInterval !== 0 &&
+                      index !== binEdges.length - 1
+                    ) {
+                      return undefined;
+                    }
+                    return formatAsAbbreviatedNumber(value as number);
+                  },
+                  color: themeColors.textColor,
+                },
+              }
+            : {
+                display: !hideAxis,
+                type: "category",
+                grid: { display: false },
+                ticks: {
+                  color: themeColors.textColor,
+                },
               },
-            },
         y: {
           display: !hideAxis,
           type: "linear",
@@ -330,6 +362,7 @@ function HistogramChartComponent({
     title,
     dataType,
     isDatetime,
+    isNumeric,
     samples,
     min,
     max,
