@@ -114,8 +114,8 @@ export function DataFrameColumnHeader({
         }}
         onClick={isPinned ? handleUnpin : handlePin}
       />
-      {(columnType === "number" ||
-        columnType === "float" ||
+      {((allowedRenderModes === undefined &&
+        (columnType === "number" || columnType === "float")) ||
         (allowedRenderModes !== undefined && selectOptions.length > 0)) && (
         <>
           <IconButton

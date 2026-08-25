@@ -110,6 +110,26 @@ function renderUndefinedRelativeChange(base: number, current: number) {
   );
 }
 
+function renderZeroRelativeChange() {
+  return (
+    <Tooltip
+      title="Base: 0\nCurrent: 0\nChange: 0"
+      slotProps={{
+        tooltip: { sx: { whiteSpace: "pre-line" } },
+      }}
+      enterDelay={300}
+      placement="top"
+    >
+      <Typography
+        data-direction="equal"
+        sx={{ color: "text.secondary", fontSize: "0.75rem" }}
+      >
+        0%
+      </Typography>
+    </Tooltip>
+  );
+}
+
 function renderInlineValues(
   DiffTextComp: ComponentType<InlineDiffTextProps>,
   hasBase: boolean,
@@ -224,6 +244,17 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
     // query-diff views, so that mismatch was the whole reported symptom of
     // DRC-3025.
     if (!isCellChanged(row[baseKey], row[currentKey], columnType)) {
+      if (
+        isExplicitPercentMode &&
+        columnRenderMode === "percent_change" &&
+        row.__status !== "added" &&
+        row.__status !== "removed" &&
+        baseNumericValue === 0 &&
+        currentNumericValue === 0
+      ) {
+        return renderZeroRelativeChange();
+      }
+
       if (
         isExplicitPercentMode &&
         columnRenderMode === "percent_change" &&

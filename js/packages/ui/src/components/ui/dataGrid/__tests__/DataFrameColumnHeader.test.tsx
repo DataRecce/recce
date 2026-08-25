@@ -155,6 +155,19 @@ describe("DataFrameColumnHeader - Precision Menu", () => {
     expect(screen.queryByLabelText("Options")).not.toBeInTheDocument();
   });
 
+  test("does not show an empty menu for an explicit empty allow-list", () => {
+    render(
+      <DataFrameColumnHeader
+        name="price"
+        columnType="number"
+        allowedRenderModes={[]}
+        onColumnsRenderModeChanged={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByLabelText("Options")).not.toBeInTheDocument();
+  });
+
   test("opens menu on button click", () => {
     render(
       <DataFrameColumnHeader

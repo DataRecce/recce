@@ -495,6 +495,25 @@ describe("createDataGrid - profile_diff explicit percentage mode eligibility", (
     expect(screen.queryByText("1,200%")).not.toBeInTheDocument();
   });
 
+  test("renders zero-to-zero percent_change through the actual factory cell", async () => {
+    const zeroRun = makeProfileDiffRun({
+      base: makeDataFrame([...columns], [["id", "integer", 0, 0.98]]),
+      current: makeDataFrame([...columns], [["id", "integer", 0, 0.94]]),
+    });
+    const result = createDataGrid(zeroRun, {
+      displayMode: "inline",
+      columnsRenderMode: { row_count: "percent_change" },
+    });
+
+    renderActualCellFor(result, "row_count");
+
+    expect(screen.getByText("0%")).toBeInTheDocument();
+    fireEvent.mouseOver(screen.getByText("0%"));
+    expect(await screen.findByText(/Base: 0/)).toBeInTheDocument();
+    expect(screen.getByText(/Current: 0/)).toBeInTheDocument();
+    expect(screen.getByText(/Change: 0/)).toBeInTheDocument();
+  });
+
   test.each([
     ["row_count", "percent_delta", "10", "12"],
     ["not_null_proportion", "percent_change", "0.98", "0.94"],
