@@ -92,7 +92,12 @@ function createNode(): LineageGraphNode {
       parents: {},
       children: {},
       change: {
-        category: "non_breaking",
+        // `LineageGraphNode.change.category` is still typed as the legacy
+        // vocabulary only, so the v2 values (model_wide / column / additive)
+        // that scripts/check_wire_enum_literals.sh points to are not
+        // assignable here. The value is inert for this test either way — the
+        // view reads `change.columns` and never the category.
+        category: "non_breaking", // wire-enum-ok
         columns: { order_id: "modified" },
       },
     },
