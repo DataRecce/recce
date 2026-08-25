@@ -129,6 +129,7 @@ export function HistogramDiffForm({
 }: HistogramDiffEditProps) {
   const {
     columns: allColumns,
+    columnAvailability,
     isLoading,
     error,
   } = useModelColumns(params.model);
@@ -137,6 +138,13 @@ export function HistogramDiffForm({
       !isStringDataType(c.type) &&
       !isBooleanDataType(c.type) &&
       !isDateTimeType(c.type),
+  );
+  const isAvailableInBothEnvironments = (columnName: string) => {
+    const availability = columnAvailability[columnName];
+    return availability?.base === true && availability.current === true;
+  };
+  const eligibleColumns = columns.filter((column) =>
+    isAvailableInBothEnvironments(column.name),
   );
 
   if (isLoading) {
@@ -154,7 +162,7 @@ export function HistogramDiffForm({
 
   return (
     <Box sx={{ m: "16px" }}>
-      <FormControl fullWidth disabled={columns.length === 0}>
+      <FormControl fullWidth disabled={eligibleColumns.length === 0}>
         <FormLabel sx={{ mb: 1 }}>
           Pick a column to show Histogram Diff
         </FormLabel>
@@ -162,16 +170,19 @@ export function HistogramDiffForm({
           value={params.column_name}
           onChange={(e) => {
             const columnName = e.target.value;
-            setIsReadyToExecute(!!columnName);
-            const columnType =
-              columns.find((c) => c.name === columnName)?.type ?? "";
+            const selectedColumn = columns.find((c) => c.name === columnName);
+            const isEligible =
+              selectedColumn !== undefined &&
+              isAvailableInBothEnvironments(columnName);
+            setIsReadyToExecute(isEligible);
+            const columnType = selectedColumn?.type ?? "";
             const nextParams = {
               ...params,
               column_name: columnName,
               column_type: columnType,
             };
             onParamsChanged(nextParams);
-            if (columnName && columnType) {
+            if (isEligible && columnType) {
               onSubmitRequested?.(nextParams as HistogramDiffParams);
             }
           }}
@@ -182,7 +193,12 @@ export function HistogramDiffForm({
               : "No numeric column is available"}
           </option>
           {columns.map((c) => (
-            <option key={c.name} value={c.name} className="no-track-pii-safe">
+            <option
+              key={c.name}
+              value={c.name}
+              className="no-track-pii-safe"
+              disabled={!isAvailableInBothEnvironments(c.name)}
+            >
               {c.name} : {c.type}
             </option>
           ))}

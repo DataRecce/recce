@@ -44,6 +44,7 @@ export { useFeedbackCollectionToast } from "./useFeedbackCollectionToast";
 export { useGuideToast } from "./useGuideToast";
 export { useIsDark } from "./useIsDark";
 export {
+  type ModelColumnAvailability,
   type UseModelColumnsReturn,
   unionColumns,
   useModelColumns,

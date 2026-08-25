@@ -40,9 +40,16 @@ export function unionColumns(
  */
 export interface UseModelColumnsReturn {
   columns: NodeColumnData[];
+  columnAvailability: Record<string, ModelColumnAvailability>;
   primaryKey: string | undefined;
   isLoading: boolean;
   error: Error | null;
+}
+
+/** Per-environment presence used by diff launchers to reject one-sided columns. */
+export interface ModelColumnAvailability {
+  base: boolean;
+  current: boolean;
 }
 
 /**
@@ -108,7 +115,7 @@ export function useModelColumns(
     staleTime: 5 * 60 * 1000,
   });
 
-  const { columns, primaryKey } = useMemo(() => {
+  const { columns, columnAvailability, primaryKey } = useMemo(() => {
     // added nodes have no base, removed nodes have no current
     const modelInfo = data?.model;
     const baseColumns = modelInfo?.base?.columns
@@ -117,8 +124,22 @@ export function useModelColumns(
     const currentColumns = modelInfo?.current?.columns
       ? Object.values(modelInfo.current.columns)
       : [];
+    const columns = unionColumns(baseColumns, currentColumns);
+    const baseColumnNames = new Set(baseColumns.map((column) => column.name));
+    const currentColumnNames = new Set(
+      currentColumns.map((column) => column.name),
+    );
     return {
-      columns: unionColumns(baseColumns, currentColumns),
+      columns,
+      columnAvailability: Object.fromEntries(
+        columns.map((column) => [
+          column.name,
+          {
+            base: baseColumnNames.has(column.name),
+            current: currentColumnNames.has(column.name),
+          },
+        ]),
+      ),
       primaryKey:
         modelInfo?.current?.primary_key ?? modelInfo?.base?.primary_key,
     };
@@ -135,7 +156,7 @@ export function useModelColumns(
       : new Error(String(queryError))
     : null;
 
-  return { columns, primaryKey, isLoading, error };
+  return { columns, columnAvailability, primaryKey, isLoading, error };
 }
 
 export default useModelColumns;

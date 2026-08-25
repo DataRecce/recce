@@ -16,17 +16,28 @@ vi.mock("../../../hooks", async (importOriginal) => {
   };
 });
 
-const eligibleColumns: NodeColumnData[] = [
+const catalogColumns: NodeColumnData[] = [
   { name: "amount", type: "DECIMAL(12, 2)" },
   { name: "quantity", type: "INTEGER" },
+  { name: "added_only", type: "BIGINT" },
+  { name: "removed_only", type: "DOUBLE" },
   { name: "description", type: "VARCHAR" },
 ];
+
+const columnAvailability = {
+  amount: { base: true, current: true },
+  quantity: { base: true, current: true },
+  added_only: { base: false, current: true },
+  removed_only: { base: true, current: false },
+  description: { base: true, current: true },
+};
 
 function modelColumns(
   overrides: Partial<UseModelColumnsReturn> = {},
 ): UseModelColumnsReturn {
   return {
-    columns: eligibleColumns,
+    columns: catalogColumns,
+    columnAvailability,
     primaryKey: undefined,
     isLoading: false,
     error: null,
@@ -107,4 +118,32 @@ describe("HistogramDiffForm one-step selection", () => {
       column_type: "INTEGER",
     });
   });
+
+  it.each(["added_only", "removed_only"])(
+    "keeps %s visible but ineligible for submission",
+    (columnName) => {
+      const onSubmitRequested = vi.fn();
+      const setIsReadyToExecute = vi.fn();
+
+      render(
+        <HistogramDiffForm
+          params={{ model: "orders", column_name: "", column_type: "" }}
+          onParamsChanged={vi.fn()}
+          setIsReadyToExecute={setIsReadyToExecute}
+          onSubmitRequested={onSubmitRequested}
+        />,
+      );
+
+      expect(
+        screen.getByRole("option", { name: new RegExp(columnName) }),
+      ).toBeDisabled();
+
+      fireEvent.change(screen.getByRole("combobox"), {
+        target: { value: columnName },
+      });
+
+      expect(setIsReadyToExecute).toHaveBeenLastCalledWith(false);
+      expect(onSubmitRequested).not.toHaveBeenCalled();
+    },
+  );
 });
