@@ -244,6 +244,17 @@ function HistogramChartComponent({
       responsive: true,
       maintainAspectRatio: false,
       animation: animate ? undefined : false,
+      // Numeric bar widths come from their literal bin edges. Let Chart.js keep
+      // animating vertical properties, but do not create x/width animations
+      // that would later overwrite the edge geometry plugin's authoritative
+      // pixel values.
+      animations: isNumeric
+        ? {
+            numbers: {
+              properties: ["y", "base", "height"],
+            },
+          }
+        : undefined,
       plugins: {
         histogramBinGeometry: isNumeric ? { binEdges } : undefined,
         // The overlap painter reads its palette from here, not from a closure,

@@ -1,6 +1,7 @@
 import { render } from "@testing-library/react";
 import {
   BarController,
+  BasePlatform,
   BasicPlatform,
   type ChartData,
   Chart as ChartJS,
@@ -17,6 +18,13 @@ interface CapturedChartProps {
 }
 
 interface RenderedBar {
+  $animations?: {
+    base?: { active(): boolean };
+    height?: { active(): boolean };
+    width?: { active(): boolean };
+    x?: { active(): boolean };
+    y?: { active(): boolean };
+  };
   hidden: boolean;
   width: number;
   x: number;
@@ -24,6 +32,15 @@ interface RenderedBar {
 }
 
 const { chartSpy } = vi.hoisted(() => ({ chartSpy: vi.fn() }));
+
+class AnimationPlatform extends BasePlatform {
+  acquireContext(
+    canvas: HTMLCanvasElement,
+    _options?: CanvasRenderingContext2DSettings,
+  ): CanvasRenderingContext2D | null {
+    return canvas.getContext("2d");
+  }
+}
 
 vi.mock("react-chartjs-2", () => ({
   Chart: (props: CapturedChartProps) => {
@@ -178,6 +195,127 @@ describe("HistogramChart numeric geometry", () => {
       expect(baseBars[0]).toMatchObject({ hidden: true, width: 0 });
       expect(currentBars[1].hidden).toBe(false);
       expect(baseBars[1].hidden).toBe(false);
+    } finally {
+      chart.destroy();
+    }
+  });
+
+  it("preserves non-uniform edges after the supported animation completes", async () => {
+    const binEdges = [0, 1, 10];
+    const counts = [3, 7];
+    render(
+      <HistogramChart
+        title="Animated histogram"
+        animate={true}
+        binEdges={binEdges}
+        baseData={{ counts }}
+        currentData={{ counts }}
+      />,
+    );
+
+    const { data, options, plugins } = getLastChartProps();
+    expect(options.animation).toBeUndefined();
+    expect(options.animations).toEqual({
+      numbers: { properties: ["y", "base", "height"] },
+    });
+
+    let completeAnimation = () => undefined;
+    const animationComplete = new Promise<void>((resolve) => {
+      completeAnimation = resolve;
+    });
+    const chart = new ChartJS(createCanvas() as never, {
+      type: "bar",
+      data,
+      options: {
+        ...options,
+        animation: { duration: 20, onComplete: completeAnimation },
+        plugins: {
+          ...options.plugins,
+          legend: { display: false },
+          title: { ...options.plugins?.title, display: false },
+        },
+        responsive: false,
+      },
+      plugins: plugins?.filter(({ id }) => id === "histogramBinGeometry"),
+      platform: AnimationPlatform,
+    });
+
+    try {
+      const initialBars = chart.getDatasetMeta(0)
+        .data as unknown as RenderedBar[];
+      expect(initialBars.some((bar) => bar.$animations?.y?.active())).toBe(
+        true,
+      );
+      for (const bar of initialBars) {
+        expect(bar.$animations?.x).toBeUndefined();
+        expect(bar.$animations?.width).toBeUndefined();
+      }
+
+      await animationComplete;
+      const xScale = chart.scales.x;
+
+      for (const datasetIndex of [0, 1]) {
+        const bars = chart.getDatasetMeta(datasetIndex)
+          .data as unknown as RenderedBar[];
+        for (const [index, bar] of bars.entries()) {
+          expect(bar.x - bar.width / 2).toBeCloseTo(
+            xScale.getPixelForValue(binEdges[index]),
+            6,
+          );
+          expect(bar.x + bar.width / 2).toBeCloseTo(
+            xScale.getPixelForValue(binEdges[index + 1]),
+            6,
+          );
+        }
+      }
+    } finally {
+      chart.destroy();
+    }
+  });
+
+  it("keeps degenerate intervals hidden after animations complete", async () => {
+    const binEdges = [0, 0, 10];
+    const counts = [3, 7];
+    render(
+      <HistogramChart
+        title="Animated degenerate histogram"
+        animate={true}
+        binEdges={binEdges}
+        baseData={{ counts }}
+        currentData={{ counts }}
+      />,
+    );
+
+    const { data, options, plugins } = getLastChartProps();
+    let completeAnimation = () => undefined;
+    const animationComplete = new Promise<void>((resolve) => {
+      completeAnimation = resolve;
+    });
+    const chart = new ChartJS(createCanvas() as never, {
+      type: "bar",
+      data,
+      options: {
+        ...options,
+        animation: { duration: 20, onComplete: completeAnimation },
+        plugins: {
+          ...options.plugins,
+          legend: { display: false },
+          title: { ...options.plugins?.title, display: false },
+        },
+        responsive: false,
+      },
+      plugins: plugins?.filter(({ id }) => id === "histogramBinGeometry"),
+      platform: AnimationPlatform,
+    });
+
+    try {
+      await animationComplete;
+      for (const datasetIndex of [0, 1]) {
+        const bars = chart.getDatasetMeta(datasetIndex)
+          .data as unknown as RenderedBar[];
+        expect(bars[0]).toMatchObject({ hidden: true, width: 0 });
+        expect(bars[1].hidden).toBe(false);
+      }
     } finally {
       chart.destroy();
     }
