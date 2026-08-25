@@ -20,6 +20,7 @@ import {
   formatIntervalMinMax,
 } from "../../utils/formatters";
 import { histogramBinGeometryPlugin } from "./histogramBinGeometry";
+import { createHistogramEdgeFormatter } from "./histogramEdgeFormatter";
 import {
   createHistogramLegendLabels,
   handleHistogramLegendClick,
@@ -87,10 +88,15 @@ export interface HistogramChartProps {
 /**
  * Format bin range display
  */
-function formatBinRange(binEdges: number[], index: number): string {
+function formatBinRange(
+  binEdges: number[],
+  index: number,
+  formatEdge: (value: number) => string = (value) =>
+    String(formatAsAbbreviatedNumber(value)),
+): string {
   const start = binEdges[index];
   const end = binEdges[index + 1];
-  return `${formatAsAbbreviatedNumber(start)} - ${formatAsAbbreviatedNumber(end)}`;
+  return `${formatEdge(start)} - ${formatEdge(end)}`;
 }
 
 const MAX_EDGE_TICK_LABELS = 8;
@@ -153,6 +159,10 @@ function HistogramChartComponent({
   const comparisonColors = semanticColors.comparison;
   const isDatetime = dataType === "datetime";
   const isNumeric = dataType === "numeric";
+  const formatNumericEdge = useMemo(
+    () => createHistogramEdgeFormatter(binEdges),
+    [binEdges],
+  );
   const accessibleDescription = `${title}. Histogram comparing Base and Current series. Overlap marks their shared distribution.`;
   const overlapPalette = useMemo(
     () => ({
@@ -174,7 +184,9 @@ function HistogramChartComponent({
   const chartData = useMemo<ChartData<"bar">>(() => {
     const labels = binEdges
       .slice(0, -1)
-      .map((_, i) => formatBinRange(binEdges, i));
+      .map((_, i) =>
+        formatBinRange(binEdges, i, isNumeric ? formatNumericEdge : undefined),
+      );
 
     const buildDataset = (
       data: HistogramDataset,
@@ -221,6 +233,7 @@ function HistogramChartComponent({
     baseData,
     comparisonColors,
     currentData,
+    formatNumericEdge,
     isDatetime,
     isNumeric,
   ]);
@@ -282,7 +295,7 @@ function HistogramChartComponent({
           color: themeColors.textColor,
         },
         tooltip: {
-          mode: "index",
+          mode: isNumeric ? "x" : "index",
           intersect: false,
           backgroundColor: themeColors.tooltipBackgroundColor,
           titleColor: themeColors.tooltipTextColor,
@@ -291,7 +304,11 @@ function HistogramChartComponent({
           borderWidth: 1,
           callbacks: {
             title([{ dataIndex }]) {
-              const range = formatBinRange(binEdges, dataIndex);
+              const range = formatBinRange(
+                binEdges,
+                dataIndex,
+                isNumeric ? formatNumericEdge : undefined,
+              );
               return `${dataTypeLabel}\n${range}`;
             },
             label({ datasetIndex, dataIndex, dataset }) {
@@ -341,7 +358,7 @@ function HistogramChartComponent({
                     ) {
                       return undefined;
                     }
-                    return formatAsAbbreviatedNumber(value as number);
+                    return formatNumericEdge(value as number);
                   },
                   color: themeColors.textColor,
                 },
@@ -386,6 +403,7 @@ function HistogramChartComponent({
     animate,
     themeColors,
     overlapPalette,
+    formatNumericEdge,
   ]);
 
   return (

@@ -297,6 +297,70 @@ describe("HistogramChart", () => {
       expect(labels).toEqual(["0", "20", "40", "60", "80", "100", "120"]);
     });
 
+    it.each([
+      {
+        name: "positive",
+        binEdges: Array.from(
+          { length: 51 },
+          (_, index) => 1_000_000 + index * 0.01,
+        ),
+      },
+      {
+        name: "negative",
+        binEdges: Array.from(
+          { length: 51 },
+          (_, index) => -1_000_000.5 + index * 0.01,
+        ),
+      },
+    ])(
+      "keeps selected ticks and tooltip endpoints distinct in a narrow $name high-offset domain",
+      ({ binEdges }) => {
+        const counts = Array.from({ length: binEdges.length - 1 }, () => 1);
+        render(
+          <HistogramChart
+            title="High-offset bins"
+            binEdges={binEdges}
+            baseData={{ counts }}
+            currentData={{ counts }}
+          />,
+        );
+
+        const { options } = getLastChartProps();
+        const tickCallback = options?.scales?.x?.ticks?.callback;
+        const selectedLabels = binEdges
+          .map((edge, index) => tickCallback?.(edge, index, []))
+          .filter((label): label is string => label !== undefined);
+        expect(new Set(selectedLabels).size).toBe(selectedLabels.length);
+
+        const title = options?.plugins?.tooltip?.callbacks?.title?.([
+          { dataIndex: 0 },
+        ]);
+        const [start, end] = title?.split("\n")[1]?.split(" - ") ?? [];
+        expect(start).toBeTruthy();
+        expect(end).toBeTruthy();
+        expect(start).not.toBe(end);
+      },
+    );
+
+    it("retains compact abbreviated labels when they are already distinct", () => {
+      const binEdges = [1_000_000, 1_200_000, 1_400_000];
+      const counts = [1, 1];
+      render(
+        <HistogramChart
+          title="Readable million bins"
+          binEdges={binEdges}
+          baseData={{ counts }}
+          currentData={{ counts }}
+        />,
+      );
+
+      const tickCallback =
+        getLastChartProps().options?.scales?.x?.ticks?.callback;
+      expect(
+        binEdges.map((edge, index) => tickCallback?.(edge, index, [])),
+      ).toEqual(["1M", "1.2M", "1.4M"]);
+    });
+
     it("keeps string labels and values on the pre-existing category path", () => {
       render(<HistogramChart {...defaultProps} dataType="string" />);
 
