@@ -21,6 +21,48 @@ export interface ColumnPrecisionOption {
   onClick: () => void;
 }
 
+const defaultColumnRenderModes: readonly ColumnRenderMode[] = [
+  "raw",
+  2,
+  "percent",
+  "delta",
+];
+
+const columnPrecisionOptions: readonly (ColumnPrecisionOption & {
+  mode: ColumnRenderMode;
+})[] = [
+  {
+    mode: "raw",
+    value: "Show raw value",
+    onClick: () => undefined,
+  },
+  {
+    mode: 2,
+    value: "Show 2 decimal points",
+    onClick: () => undefined,
+  },
+  {
+    mode: "percent",
+    value: "Show as percentage",
+    onClick: () => undefined,
+  },
+  {
+    mode: "delta",
+    value: "Show with net change",
+    onClick: () => undefined,
+  },
+  {
+    mode: "percent_delta",
+    value: "Show percentage-point delta",
+    onClick: () => undefined,
+  },
+  {
+    mode: "percent_change",
+    value: "Show relative percentage change",
+    onClick: () => undefined,
+  },
+];
+
 /**
  * Generates precision select options for a numeric column
  *
@@ -30,6 +72,7 @@ export interface ColumnPrecisionOption {
  *
  * @param colName - The column name to apply the render mode to
  * @param onColumnsRenderModeChanged - Callback to update column render modes
+ * @param allowedModes - Optional list limiting which modes appear in this menu
  * @returns Array of menu options with value and onClick handler
  *
  * @example
@@ -50,31 +93,14 @@ export interface ColumnPrecisionOption {
 export function columnPrecisionSelectOptions(
   colName: string,
   onColumnsRenderModeChanged: (col: Record<string, ColumnRenderMode>) => void,
+  allowedModes: readonly ColumnRenderMode[] = defaultColumnRenderModes,
 ): ColumnPrecisionOption[] {
-  return [
-    {
-      value: "Show raw value",
+  return columnPrecisionOptions
+    .filter(({ mode }) => allowedModes.includes(mode))
+    .map(({ mode, value }) => ({
+      value,
       onClick: () => {
-        onColumnsRenderModeChanged({ [colName]: "raw" });
+        onColumnsRenderModeChanged({ [colName]: mode });
       },
-    },
-    {
-      value: "Show 2 decimal points",
-      onClick: () => {
-        onColumnsRenderModeChanged({ [colName]: 2 });
-      },
-    },
-    {
-      value: "Show as percentage",
-      onClick: () => {
-        onColumnsRenderModeChanged({ [colName]: "percent" });
-      },
-    },
-    {
-      value: "Show with net change",
-      onClick: () => {
-        onColumnsRenderModeChanged({ [colName]: "delta" });
-      },
-    },
-  ];
+    }));
 }

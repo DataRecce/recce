@@ -96,4 +96,34 @@ describe("columnPrecisionSelectOptions", () => {
     expect(callback).toHaveBeenNthCalledWith(3, { price: "percent" });
     expect(callback).toHaveBeenNthCalledWith(4, { price: "delta" });
   });
+
+  test("limits a Profile field to its explicitly allowed render modes", () => {
+    const callback = vi.fn();
+    const options = columnPrecisionSelectOptions(
+      "not_null_proportion",
+      callback,
+      ["raw", "percent", "percent_delta"],
+    );
+
+    expect(options.map((option) => option.value)).toEqual([
+      "Show raw value",
+      "Show as percentage",
+      "Show percentage-point delta",
+    ]);
+  });
+
+  test.each([
+    ["percent_delta", "Show percentage-point delta"],
+    ["percent_change", "Show relative percentage change"],
+  ])("persists %s from the scoped option", (mode, label) => {
+    const callback = vi.fn();
+    const options = columnPrecisionSelectOptions("row_count", callback, [
+      "raw",
+      mode as "percent_delta" | "percent_change",
+    ]);
+
+    options.find((option) => option.value === label)?.onClick();
+
+    expect(callback).toHaveBeenCalledWith({ row_count: mode });
+  });
 });

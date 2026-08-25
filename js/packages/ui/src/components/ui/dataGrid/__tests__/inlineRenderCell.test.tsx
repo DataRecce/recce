@@ -10,7 +10,7 @@
  * - asNumber utility function
  */
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ColDef, ICellRendererParams } from "ag-grid-community";
 import React from "react";
 import { vi } from "vitest";
@@ -19,6 +19,7 @@ import {
   asNumber,
   createInlineRenderCell,
   inlineRenderCell,
+  parseFiniteNumeric,
 } from "../inlineRenderCell";
 
 // ============================================================================
@@ -28,6 +29,7 @@ import {
 interface RecceColumnContext {
   columnType?: string;
   columnRenderMode?: string | number;
+  enableProfileDiffPercentModes?: boolean;
 }
 
 type ColDefWithMetadata = ColDef<RowObjectType> & {
@@ -92,6 +94,29 @@ describe("asNumber", () => {
   test("handles NaN input", () => {
     expect(asNumber(NaN)).toBe(NaN);
     expect(Number.isNaN(asNumber(NaN))).toBe(true);
+  });
+});
+
+// ============================================================================
+// DRC-2866: strict numeric parsing for explicit percentage modes
+// ============================================================================
+
+describe("parseFiniteNumeric", () => {
+  test.each([
+    [12.5, 12.5],
+    ["12.5", 12.5],
+    [" 12.5 ", 12.5],
+    ["12px", undefined],
+    ["", undefined],
+    ["   ", undefined],
+    [true, undefined],
+    [null, undefined],
+    [undefined, undefined],
+    [Number.NaN, undefined],
+    [Number.POSITIVE_INFINITY, undefined],
+    ["Infinity", undefined],
+  ])("parses %p as %p without partial coercion", (value, expected) => {
+    expect(parseFiniteNumeric(value)).toBe(expected);
   });
 });
 
@@ -229,6 +254,149 @@ describe("inlineRenderCell - Delta Mode", () => {
     expect(screen.getByText("100")).toBeInTheDocument();
     expect(screen.getByText("(+100)")).toBeInTheDocument();
   });
+});
+
+// ============================================================================
+// DRC-2866: explicit percentage-point and relative-percent modes
+// ============================================================================
+
+describe("inlineRenderCell - DRC-2866 explicit percentage modes", () => {
+  function renderExplicitMode(
+    mode: "percent_delta" | "percent_change",
+    data: Partial<RowObjectType>,
+  ) {
+    const colDef: ColDefWithMetadata = {
+      field: "proportion",
+      context: {
+        columnType: "float",
+        columnRenderMode: mode,
+        enableProfileDiffPercentModes: true,
+      },
+    };
+
+    render(<>{inlineRenderCell(createParams(data, colDef))}</>);
+  }
+
+  test("renders a percentage-point decrease with unrounded tooltip values", async () => {
+    renderExplicitMode("percent_delta", {
+      base__proportion: 0.98,
+      current__proportion: 0.94,
+    });
+
+    expect(screen.getByText("94%")).toBeInTheDocument();
+    expect(screen.getByText("(-4pp)")).toHaveAttribute(
+      "data-direction",
+      "decrease",
+    );
+
+    fireEvent.mouseOver(screen.getByText("94%"));
+    expect(await screen.findByText(/Base: 0\.98/)).toBeInTheDocument();
+    expect(screen.getByText(/Current: 0\.94/)).toBeInTheDocument();
+    expect(screen.getByText(/Change: -4pp/)).toBeInTheDocument();
+  });
+
+  test.each([
+    [0.5, 0.6, "60%", "(+20%)", "increase"],
+    [0.5, 0.4, "40%", "(-20%)", "decrease"],
+  ] as const)(
+    "renders a %s to %s relative change as %s %s",
+    (base, current, currentText, changeText, direction) => {
+      renderExplicitMode("percent_change", {
+        base__proportion: base,
+        current__proportion: current,
+      });
+
+      expect(screen.getByText(currentText)).toBeInTheDocument();
+      expect(screen.getByText(changeText)).toHaveAttribute(
+        "data-direction",
+        direction,
+      );
+    },
+  );
+
+  test("renders an unchanged zero relative value as a percentage", () => {
+    renderExplicitMode("percent_change", {
+      base__proportion: 0,
+      current__proportion: 0,
+    });
+
+    expect(screen.getByText("0%")).toBeInTheDocument();
+    expect(screen.queryByText("N/A")).not.toBeInTheDocument();
+  });
+
+  test.each([
+    ["raw", "0.98", "0.94"],
+    ["percent", "98%", "94%"],
+    [2, "0.98", "0.94"],
+  ] as const)(
+    "keeps the legacy %p mode rendering unchanged",
+    (mode, baseText, currentText) => {
+      const colDef: ColDefWithMetadata = {
+        field: "proportion",
+        context: { columnType: "float", columnRenderMode: mode },
+      };
+      render(
+        <>
+          {inlineRenderCell(
+            createParams(
+              { base__proportion: 0.98, current__proportion: 0.94 },
+              colDef,
+            ),
+          )}
+        </>,
+      );
+
+      expect(screen.getByText(baseText)).toBeInTheDocument();
+      expect(screen.getByText(currentText)).toBeInTheDocument();
+    },
+  );
+
+  test.each([
+    [0, 0.2],
+    [-0.1, 0.2],
+    [-0.1, -0.1],
+  ])("renders %s to %s relative change as N/A", (base, current) => {
+    renderExplicitMode("percent_change", {
+      base__proportion: base,
+      current__proportion: current,
+    });
+
+    expect(screen.getByText("N/A")).toHaveAttribute("data-direction", "equal");
+  });
+
+  test.each([
+    [null, 0.94],
+    [true, 0.94],
+    ["", 0.94],
+    ["12px", 0.94],
+    [Number.NaN, 0.94],
+    [Number.POSITIVE_INFINITY, 0.94],
+  ])(
+    "keeps invalid %p to %p values in the existing inline presentation",
+    (base, current) => {
+      renderExplicitMode("percent_change", {
+        base__proportion: base,
+        current__proportion: current,
+      });
+
+      expect(screen.queryByText("N/A")).not.toBeInTheDocument();
+      expect(document.querySelector("[data-comparison-role]")).not.toBeNull();
+    },
+  );
+
+  test.each(["added", "removed"] as const)(
+    "keeps %s rows in the existing inline structural presentation",
+    (status) => {
+      renderExplicitMode("percent_change", {
+        __status: status,
+        base__proportion: 0,
+        current__proportion: 0.94,
+      });
+
+      expect(screen.queryByText("N/A")).not.toBeInTheDocument();
+      expect(document.querySelector("[data-comparison-role]")).not.toBeNull();
+    },
+  );
 });
 
 // ============================================================================

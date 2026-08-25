@@ -47,6 +47,8 @@ export interface DataFrameColumnGroupHeaderProps {
   onPinnedColumnsChange?: (pinnedColumns: string[]) => void;
   /** Callback when column render mode changes */
   onColumnsRenderModeChanged?: (col: Record<string, ColumnRenderMode>) => void;
+  /** Optional list limiting which render modes appear in the precision menu */
+  allowedRenderModes?: readonly ColumnRenderMode[];
 }
 
 /**
@@ -99,6 +101,7 @@ export function DataFrameColumnGroupHeader({
   pinnedColumns = [],
   onPinnedColumnsChange,
   onColumnsRenderModeChanged,
+  allowedRenderModes,
 }: DataFrameColumnGroupHeaderProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
@@ -129,6 +132,7 @@ export function DataFrameColumnGroupHeader({
     selectOptions = columnPrecisionSelectOptions(
       name,
       onColumnsRenderModeChanged,
+      allowedRenderModes,
     );
   }
 
@@ -209,7 +213,11 @@ export function DataFrameColumnGroupHeader({
 
       {/* Precision menu for number columns (only for non-PK columns) */}
       {!isPK &&
-        (columnType === "number" || columnType === "float") &&
+        // Profile Diff can explicitly opt integer fields into its scoped menu.
+        // All other grids retain their historical number/float eligibility.
+        (columnType === "number" ||
+          columnType === "float" ||
+          allowedRenderModes !== undefined) &&
         selectOptions.length > 0 && (
           <>
             <IconButton
