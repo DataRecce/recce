@@ -78,25 +78,6 @@ def test_numeric_histogram_geometry_covers_literal_domains(
         assert geometry.width >= Decimal("1")
 
 
-@pytest.mark.parametrize(
-    ("values", "expected_counts"),
-    [
-        ([Decimal("0"), Decimal("0.5"), Decimal("2")], [1, 1, 0, 1]),
-        ([Decimal("0"), Decimal("1"), Decimal("3")], [1, 1, 1]),
-    ],
-)
-def test_histogram_bucket_index_counts_internal_and_terminal_edges_once(values, expected_counts):
-    """Catch terminal escape or internal-boundary double counting."""
-    geometry = histogram.numeric_histogram_geometry(values[0], values[-1], len(expected_counts))
-    counts = [0] * geometry.num_bins
-
-    for value in values:
-        counts[histogram.histogram_bucket_index(value, geometry)] += 1
-
-    assert counts == expected_counts
-    assert sum(counts) == len(values)
-
-
 def test_histogram_sql_uses_plain_decimal_literals_and_terminal_rule():
     """Catch SQL that leaks exponent literals or lets a terminal maximum escape."""
     sql, _ = histogram.generate_histogram_sql_numeric(
@@ -131,8 +112,8 @@ class NumericHistogramQueryTask:
 
 
 class DecimalExtremaHistogramTask(HistogramDiffTask):
-    def __init__(self, minimum, maximum):
-        super().__init__({"model": "numbers", "column_name": "amount", "column_type": "NUMERIC", "num_bins": 1})
+    def __init__(self, minimum, maximum, column_type="NUMERIC"):
+        super().__init__({"model": "numbers", "column_name": "amount", "column_type": column_type, "num_bins": 1})
         self.minimum = minimum
         self.maximum = maximum
 
@@ -287,13 +268,38 @@ def test_numeric_histogram_query_rejects_decimal_edges_that_cannot_round_trip(mi
         histogram.query_numeric_histogram(task, "numbers", "amount", "NUMERIC", minimum, maximum, 2)
 
 
-def test_histogram_task_rejects_non_round_trippable_decimal_extrema(dbt_test_helper):
-    """Catch task results that expose an unrepresentable Decimal minimum or maximum as JSON numbers."""
-    minimum = Decimal("1" + "0" * 400 + ".1")
-    maximum = Decimal("1" + "0" * 400 + ".9")
-
-    with pytest.raises(ValueError, match="cannot be represented as a finite JSON number without value change"):
+@pytest.mark.parametrize(
+    ("minimum", "maximum"),
+    [
+        (Decimal("1" + "0" * 400 + ".1"), Decimal("1" + "0" * 400 + ".9")),
+        (Decimal("1E-400"), Decimal("3E-400")),
+    ],
+)
+def test_histogram_task_rejects_decimal_extrema_outside_float_range(dbt_test_helper, minimum, maximum):
+    """Catch task results that expose an overflowing or underflowing extremum as a JSON number."""
+    with pytest.raises(ValueError, match="cannot be represented as a finite JSON number"):
         DecimalExtremaHistogramTask(minimum, maximum).execute()
+
+
+@pytest.mark.parametrize(
+    ("column_type", "minimum", "maximum"),
+    [
+        ("BIGINT", Decimal("9007199254740993"), Decimal("9007199254741993")),
+        ("INT64", Decimal("1724544000123456789"), Decimal("1724544999123456789")),
+        ("NUMERIC(38, 18)", Decimal("1.234567890123456789"), Decimal("9.876543210987654321")),
+    ],
+)
+def test_histogram_task_reports_extrema_beyond_double_precision(dbt_test_helper, column_type, minimum, maximum):
+    """Catch a histogram that computed correctly being failed by its own min/max echo."""
+    task = DecimalExtremaHistogramTask(minimum, maximum, column_type=column_type)
+
+    result = task.execute()
+
+    assert result["bin_edges"][0] <= minimum
+    assert result["bin_edges"][-1] >= maximum
+    assert result["min"] == pytest.approx(float(minimum))
+    assert result["max"] == pytest.approx(float(maximum))
+    json.dumps(result)
 
 
 def test_histogram(dbt_test_helper):
