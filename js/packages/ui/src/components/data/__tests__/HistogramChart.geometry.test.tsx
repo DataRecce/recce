@@ -200,6 +200,93 @@ describe("HistogramChart numeric geometry", () => {
     }
   });
 
+  it.each([
+    {
+      binEdges: [0, 1, 10],
+      pointerValues: [1.1],
+    },
+    {
+      binEdges: [0, 0, 10],
+      pointerValues: [0, 0.1],
+    },
+  ])(
+    "resolves numeric pointer hits by the literal intervals in $binEdges",
+    ({ binEdges, pointerValues }) => {
+      const counts = [3, 7];
+      render(
+        <HistogramChart
+          title="Pointer histogram"
+          binEdges={binEdges}
+          baseData={{ counts }}
+          currentData={{ counts }}
+        />,
+      );
+
+      const { data, options, plugins } = getLastChartProps();
+      const chart = new ChartJS(createCanvas() as never, {
+        type: "bar",
+        data,
+        options: {
+          ...options,
+          animation: false,
+          plugins: {
+            ...options.plugins,
+            legend: { display: false },
+            title: { ...options.plugins?.title, display: false },
+          },
+          responsive: false,
+        },
+        plugins: plugins?.filter(({ id }) => id === "histogramBinGeometry"),
+        platform: BasicPlatform,
+      });
+
+      try {
+        const tooltipOptions = chart.tooltip?.options;
+        expect(tooltipOptions).toBeDefined();
+
+        for (const pointerValue of pointerValues) {
+          const eventPosition = {
+            x: chart.scales.x.getPixelForValue(pointerValue),
+            y: (chart.chartArea.top + chart.chartArea.bottom) / 2,
+          };
+          const active = chart.getElementsAtEventForMode(
+            {
+              native: {} as Event,
+              ...eventPosition,
+            } as unknown as Event,
+            tooltipOptions?.mode ?? "index",
+            tooltipOptions ?? {},
+            false,
+          );
+
+          expect(
+            active.map(({ datasetIndex, index }) => ({ datasetIndex, index })),
+          ).toEqual([
+            { datasetIndex: 0, index: 1 },
+            { datasetIndex: 1, index: 1 },
+          ]);
+
+          chart.tooltip?.setActiveElements(active, eventPosition);
+          expect(
+            chart.tooltip?.dataPoints.map(({ datasetIndex, dataIndex }) => ({
+              datasetIndex,
+              dataIndex,
+            })),
+          ).toEqual([
+            { datasetIndex: 0, dataIndex: 1 },
+            { datasetIndex: 1, dataIndex: 1 },
+          ]);
+          expect(chart.tooltip?.title).toEqual([
+            "Value Range",
+            `${binEdges[1]} - ${binEdges[2]}`,
+          ]);
+        }
+      } finally {
+        chart.destroy();
+      }
+    },
+  );
+
   it("preserves non-uniform edges after the supported animation completes", async () => {
     const binEdges = [0, 1, 10];
     const counts = [3, 7];

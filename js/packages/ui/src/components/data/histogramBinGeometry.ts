@@ -12,19 +12,31 @@ declare module "chart.js" {
 
 interface BarGeometry {
   hidden: boolean;
+  inXRange(mouseX: number): boolean;
+  skip: boolean;
   width: number;
   x: number;
 }
 
-function setBarGeometry(bar: Element, left: number, right: number): void {
+function setBarGeometry(
+  bar: Element,
+  left: number,
+  right: number,
+  includeRightEdge: boolean,
+): void {
   const geometry = bar as unknown as BarGeometry;
   if (!Number.isFinite(left) || !Number.isFinite(right) || right <= left) {
     geometry.hidden = true;
+    geometry.inXRange = () => false;
+    geometry.skip = true;
     geometry.width = 0;
     return;
   }
 
   geometry.hidden = false;
+  geometry.inXRange = (mouseX) =>
+    mouseX >= left && (includeRightEdge ? mouseX <= right : mouseX < right);
+  geometry.skip = false;
   geometry.x = (left + right) / 2;
   geometry.width = right - left;
 }
@@ -51,6 +63,7 @@ export const histogramBinGeometryPlugin: Plugin<
         bar,
         xScale.getPixelForValue(lower),
         xScale.getPixelForValue(upper),
+        index === meta.data.length - 1,
       );
     }
   },
