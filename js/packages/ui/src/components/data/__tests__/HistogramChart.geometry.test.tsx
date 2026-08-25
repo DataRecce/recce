@@ -219,7 +219,7 @@ describe("HistogramChart numeric geometry", () => {
       numbers: { properties: ["y", "base", "height"] },
     });
 
-    let completeAnimation = () => undefined;
+    let completeAnimation: () => void = () => undefined;
     const animationComplete = new Promise<void>((resolve) => {
       completeAnimation = resolve;
     });
@@ -287,7 +287,7 @@ describe("HistogramChart numeric geometry", () => {
     );
 
     const { data, options, plugins } = getLastChartProps();
-    let completeAnimation = () => undefined;
+    let completeAnimation: () => void = () => undefined;
     const animationComplete = new Promise<void>((resolve) => {
       completeAnimation = resolve;
     });
