@@ -1,6 +1,8 @@
 import math
 import re
+from dataclasses import dataclass
 from datetime import date, datetime
+from decimal import ROUND_CEILING, ROUND_FLOOR, Decimal, localcontext
 from typing import Optional
 
 from dateutil.relativedelta import relativedelta
@@ -91,26 +93,120 @@ def _is_histogram_supported(column_type):
     return True
 
 
-def generate_histogram_sql_integer(node, column, min_value, max_value, num_bins=50):
-    bin_size = math.ceil((max_value - min_value) / num_bins) or 1
+@dataclass(frozen=True)
+class NumericHistogramGeometry:
+    width: Decimal
+    bin_edges: list[Decimal]
+
+    @property
+    def num_bins(self):
+        return len(self.bin_edges) - 1
+
+
+def _decimal_value(value):
+    return Decimal(str(value))
+
+
+def _decimal_sql_literal(value):
+    decimal_value = _decimal_value(value)
+    if decimal_value == 0:
+        return "0"
+    literal = format(decimal_value, "f")
+    return literal.rstrip("0").rstrip(".") if "." in literal else literal
+
+
+def _decimal_result_value(value):
+    decimal_value = _decimal_value(value)
+    if decimal_value == decimal_value.to_integral_value():
+        return int(decimal_value)
+    return float(decimal_value)
+
+
+def nice_histogram_width(raw_width):
+    """Round a positive Decimal width up to the approved nice-width series."""
+    raw_width = _decimal_value(raw_width)
+    if raw_width <= 0:
+        return Decimal("1")
+
+    with localcontext() as context:
+        context.prec = max(context.prec, len(raw_width.as_tuple().digits) + 5)
+        scale = Decimal("1").scaleb(raw_width.adjusted())
+        mantissa = raw_width / scale
+        for candidate in (Decimal("1"), Decimal("2"), Decimal("2.5"), Decimal("5"), Decimal("10")):
+            if mantissa <= candidate:
+                return candidate * scale
+    raise AssertionError("nice histogram width candidates must include an upper bound")
+
+
+def numeric_histogram_geometry(min_value, max_value, num_bins=50, *, is_integer=False):
+    """Build Decimal bin geometry that covers the complete numeric domain."""
+    minimum = _decimal_value(min_value)
+    maximum = _decimal_value(max_value)
+    requested_bins = max(int(num_bins), 1)
+    precision = (
+        max(
+            len(minimum.as_tuple().digits),
+            len(maximum.as_tuple().digits),
+            len(str(requested_bins)),
+        )
+        + 8
+    )
+    with localcontext() as context:
+        context.prec = max(context.prec, precision)
+        raw_width = (maximum - minimum) / requested_bins
+        width = nice_histogram_width(raw_width)
+        if is_integer and width < 1:
+            width = Decimal("1")
+
+        lower_bin = (minimum / width).to_integral_value(rounding=ROUND_FLOOR)
+        lower_edge = lower_bin * width
+        if minimum >= 0 and (minimum / width).to_integral_value(rounding=ROUND_CEILING) <= 1:
+            lower_edge = Decimal("0")
+
+        edge_count = (maximum - lower_edge) / width
+        num_edges = max(1, int(edge_count.to_integral_value(rounding=ROUND_CEILING)))
+        bin_edges = [lower_edge + width * i for i in range(num_edges + 1)]
+    return NumericHistogramGeometry(width=width, bin_edges=bin_edges)
+
+
+def histogram_bucket_index(value, geometry):
+    """Return the single bin that owns a value, including the terminal edge."""
+    decimal_value = _decimal_value(value)
+    first_edge = geometry.bin_edges[0]
+    last_edge = geometry.bin_edges[-1]
+    if decimal_value == last_edge:
+        return geometry.num_bins - 1
+    index = int(((decimal_value - first_edge) / geometry.width).to_integral_value(rounding=ROUND_FLOOR))
+    if index < 0 or index >= geometry.num_bins:
+        raise ValueError(f"Histogram value {decimal_value} is outside the computed edge domain")
+    return index
+
+
+def _generate_histogram_sql(node, column, min_value, max_value, num_bins, bin_size):
+    min_literal = _decimal_sql_literal(min_value)
+    max_literal = _decimal_sql_literal(max_value)
+    bin_size_literal = _decimal_sql_literal(bin_size)
 
     sql = f"""
     WITH value_ranges AS (
         SELECT
-            {min_value} as min_value,
-            {max_value} as max_value
+            {min_literal} as min_value,
+            {max_literal} as max_value
     ),
     bin_parameters AS (
         SELECT
             min_value,
             max_value,
-            {bin_size} AS bin_size
+            {bin_size_literal} AS bin_size
         FROM value_ranges
     ),
     binned_values AS (
         SELECT
             {column} as column_value,
-            FLOOR(({column} - (SELECT min_value FROM bin_parameters)) / (SELECT bin_size FROM bin_parameters)) AS bin
+            CASE
+                WHEN {column} = (SELECT max_value FROM bin_parameters) THEN {num_bins - 1}
+                ELSE FLOOR(({column} - (SELECT min_value FROM bin_parameters)) / (SELECT bin_size FROM bin_parameters))
+            END AS bin
         FROM {{{{ ref("{node}") }}}},
         bin_parameters
     ),
@@ -128,40 +224,16 @@ def generate_histogram_sql_integer(node, column, min_value, max_value, num_bins=
     return sql, bin_size
 
 
-def generate_histogram_sql_numeric(node, column, min_value, max_value, num_bins=50):
-    bin_size = (max_value - min_value) / num_bins
-    sql = f"""
-        WITH value_ranges AS (
-            SELECT
-                {min_value} as min_value,
-                {max_value} as max_value
-        ),
-        bin_parameters AS (
-            SELECT
-                min_value,
-                max_value,
-                {bin_size} AS bin_size
-            FROM value_ranges
-        ),
-        binned_values AS (
-            SELECT
-                {column} as column_value,
-                FLOOR(({column} - (SELECT min_value FROM bin_parameters)) / (SELECT bin_size FROM bin_parameters)) AS bin
-            FROM {{{{ ref("{node}") }}}},
-            bin_parameters
-        ),
-        bin_edges AS (
-            SELECT
-                bin,
-                COUNT(*) AS count
-            FROM binned_values, bin_parameters
-            GROUP BY bin
-            ORDER BY bin
-        )
+def generate_histogram_sql_integer(node, column, min_value, max_value, num_bins=50, bin_size=None):
+    if bin_size is None:
+        bin_size = Decimal(max(math.ceil((max_value - min_value) / num_bins), 1))
+    return _generate_histogram_sql(node, column, min_value, max_value, num_bins, bin_size)
 
-        SELECT bin, count FROM bin_edges
-        """
-    return sql, bin_size
+
+def generate_histogram_sql_numeric(node, column, min_value, max_value, num_bins=50, bin_size=None):
+    if bin_size is None:
+        bin_size = (_decimal_value(max_value) - _decimal_value(min_value)) / max(int(num_bins), 1)
+    return _generate_histogram_sql(node, column, min_value, max_value, num_bins, bin_size)
 
 
 class HistogramDiffParams(BaseModel):
@@ -172,12 +244,15 @@ class HistogramDiffParams(BaseModel):
 
 
 def query_numeric_histogram(task, node, column, column_type, min_value, max_value, num_bins=50):
-    if column_type.upper() in sql_integer_types:
-        if max_value - min_value < num_bins:
-            num_bins = int(max_value - min_value + 1)
-        histogram_sql, bin_size = generate_histogram_sql_integer(node, column, min_value, max_value, num_bins)
+    is_integer = column_type.upper() in sql_integer_types
+    geometry = numeric_histogram_geometry(min_value, max_value, num_bins, is_integer=is_integer)
+    min_edge = geometry.bin_edges[0]
+    max_edge = geometry.bin_edges[-1]
+    num_bins = geometry.num_bins
+    if is_integer:
+        histogram_sql, _ = generate_histogram_sql_integer(node, column, min_edge, max_edge, num_bins, geometry.width)
     else:
-        histogram_sql, bin_size = generate_histogram_sql_numeric(node, column, min_value, max_value, num_bins)
+        histogram_sql, _ = generate_histogram_sql_numeric(node, column, min_edge, max_edge, num_bins, geometry.width)
 
     base = None
     try:
@@ -195,15 +270,10 @@ def query_numeric_histogram(task, node, column, column_type, min_value, max_valu
     finally:
         task.check_cancel()
 
-    bin_edges = [None] * (num_bins + 1)
-    labels = [""] * (num_bins + 1)
-
     base_result = {}
     curr_result = {}
-    for i in range(num_bins + 1):
-        val = int(min_value) + i * bin_size
-        bin_edges[i] = val
-        labels[i] = f"{val}-{val + bin_size}"
+    bin_edges = [_decimal_result_value(edge) for edge in geometry.bin_edges]
+    labels = [f"{_decimal_sql_literal(edge)}-{_decimal_sql_literal(edge + geometry.width)}" for edge in bin_edges]
 
     if base is not None:
         counts = [0] * num_bins
@@ -212,10 +282,9 @@ def query_numeric_histogram(task, node, column, column_type, min_value, max_valu
             count = row[1]
             if bin is not None:
                 i = int(bin)
-                if i < num_bins:
-                    counts[i] = count
-                else:
-                    counts[num_bins - 1] += count
+                if i < 0 or i >= num_bins:
+                    raise ValueError(f"Histogram bucket {i} is outside the computed edge domain")
+                counts[i] = count
         base_result = {
             "counts": counts,
         }
@@ -226,10 +295,9 @@ def query_numeric_histogram(task, node, column, column_type, min_value, max_valu
             count = row[1]
             if bin is not None:
                 i = int(bin)
-                if i < num_bins:
-                    counts[i] = count
-                else:
-                    counts[num_bins - 1] += count
+                if i < 0 or i >= num_bins:
+                    raise ValueError(f"Histogram bucket {i} is outside the computed edge domain")
+                counts[i] = count
         curr_result = {
             "counts": counts,
         }
