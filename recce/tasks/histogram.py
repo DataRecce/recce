@@ -44,8 +44,6 @@ sql_integer_types = [
     "INT4",
     "INT8",  # PostgreSQL specific aliases
     "UNSIGNED BIG INT",  # SQLite specific
-    "NUMBER",  # Oracle, can be used as an integer with precision and scale
-    "NUMERIC",  # Generally available in many SQL databases, used with precision and scale
     "SMALLSERIAL",
     "SERIAL",
     "BIGSERIAL",  # PostgreSQL auto-increment types
@@ -53,6 +51,7 @@ sql_integer_types = [
     "SMALLIDENTITY",
     "BIGIDENTITY",  # SQL Server specific auto-increment types
     "BYTEINT",  # Specific to Snowflake, for storing very small integers
+    "INT64",  # BigQuery
 ]
 
 sql_not_supported_types = [
@@ -93,6 +92,16 @@ def _is_histogram_supported(column_type):
     return True
 
 
+def is_integral_histogram_type(column_type):
+    """Return whether an adapter-reported type can only contain integral values."""
+    normalized_type = column_type.strip().upper()
+    if normalized_type in sql_integer_types:
+        return True
+
+    numeric_match = re.fullmatch(r"(?:DECIMAL|NUMERIC|NUMBER)\(\s*\d+\s*(?:,\s*(\d+)\s*)?\)", normalized_type)
+    return numeric_match is not None and (numeric_match.group(1) is None or numeric_match.group(1) == "0")
+
+
 @dataclass(frozen=True)
 class NumericHistogramGeometry:
     width: Decimal
@@ -117,9 +126,17 @@ def _decimal_sql_literal(value):
 
 def _decimal_result_value(value):
     decimal_value = _decimal_value(value)
-    if decimal_value == decimal_value.to_integral_value():
-        return int(decimal_value)
-    return float(decimal_value)
+    try:
+        result = float(decimal_value)
+    except (OverflowError, ValueError) as error:
+        raise ValueError(
+            f"Histogram Decimal {decimal_value} cannot be represented as a finite JSON number without value change"
+        ) from error
+    if not math.isfinite(result) or _decimal_value(result) != decimal_value:
+        raise ValueError(
+            f"Histogram Decimal {decimal_value} cannot be represented as a finite JSON number without value change"
+        )
+    return int(decimal_value) if decimal_value == decimal_value.to_integral_value() else result
 
 
 def nice_histogram_width(raw_width):
@@ -186,6 +203,12 @@ def _generate_histogram_sql(node, column, min_value, max_value, num_bins, bin_si
     min_literal = _decimal_sql_literal(min_value)
     max_literal = _decimal_sql_literal(max_value)
     bin_size_literal = _decimal_sql_literal(bin_size)
+    decimal_min = _decimal_value(min_value)
+    decimal_bin_size = _decimal_value(bin_size)
+    internal_boundary_cases = "\n".join(
+        f"                WHEN {column} < {_decimal_sql_literal(decimal_min + decimal_bin_size * index)} THEN {index - 1}"
+        for index in range(1, num_bins)
+    )
 
     sql = f"""
     WITH value_ranges AS (
@@ -204,8 +227,13 @@ def _generate_histogram_sql(node, column, min_value, max_value, num_bins, bin_si
         SELECT
             {column} as column_value,
             CASE
+                WHEN {column} IS NULL THEN NULL
+                WHEN {column} < (SELECT min_value FROM bin_parameters)
+                    OR {column} > (SELECT max_value FROM bin_parameters)
+                    THEN FLOOR(({column} - (SELECT min_value FROM bin_parameters)) / (SELECT bin_size FROM bin_parameters))
                 WHEN {column} = (SELECT max_value FROM bin_parameters) THEN {num_bins - 1}
-                ELSE FLOOR(({column} - (SELECT min_value FROM bin_parameters)) / (SELECT bin_size FROM bin_parameters))
+{internal_boundary_cases}
+                ELSE {num_bins - 1}
             END AS bin
         FROM {{{{ ref("{node}") }}}},
         bin_parameters
@@ -244,7 +272,7 @@ class HistogramDiffParams(BaseModel):
 
 
 def query_numeric_histogram(task, node, column, column_type, min_value, max_value, num_bins=50):
-    is_integer = column_type.upper() in sql_integer_types
+    is_integer = is_integral_histogram_type(column_type)
     geometry = numeric_histogram_geometry(min_value, max_value, num_bins, is_integer=is_integer)
     min_edge = geometry.bin_edges[0]
     max_edge = geometry.bin_edges[-1]
@@ -272,8 +300,10 @@ def query_numeric_histogram(task, node, column, column_type, min_value, max_valu
 
     base_result = {}
     curr_result = {}
+    labels = [
+        f"{_decimal_sql_literal(edge)}-{_decimal_sql_literal(edge + geometry.width)}" for edge in geometry.bin_edges
+    ]
     bin_edges = [_decimal_result_value(edge) for edge in geometry.bin_edges]
-    labels = [f"{_decimal_sql_literal(edge)}-{_decimal_sql_literal(edge + geometry.width)}" for edge in bin_edges]
 
     if base is not None:
         counts = [0] * num_bins
@@ -475,8 +505,12 @@ class HistogramDiffTask(Task, QueryMixin):
                 current_result["total"] = curr_total
             result["base"] = base_result
             result["current"] = current_result
-            result["min"] = min_value
-            result["max"] = max_value
+            if column_type.upper() in sql_datetime_types or min_value is None:
+                result["min"] = min_value
+                result["max"] = max_value
+            else:
+                result["min"] = _decimal_result_value(min_value)
+                result["max"] = _decimal_result_value(max_value)
             result["bin_edges"] = bin_edges
             result["labels"] = labels
         return result

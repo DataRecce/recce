@@ -113,6 +113,189 @@ def test_histogram_sql_uses_plain_decimal_literals_and_terminal_rule():
     assert "WHEN amount = (SELECT max_value FROM bin_parameters) THEN 1" in sql
 
 
+class HistogramRows:
+    def __init__(self, rows):
+        self.rows = rows
+
+
+class NumericHistogramQueryTask:
+    def __init__(self, base_rows, current_rows):
+        self.base_rows = HistogramRows(base_rows)
+        self.current_rows = HistogramRows(current_rows)
+
+    def execute_sql(self, _sql, *, base):
+        return self.base_rows if base else self.current_rows
+
+    def check_cancel(self):
+        return None
+
+
+class DecimalExtremaHistogramTask(HistogramDiffTask):
+    def __init__(self, minimum, maximum):
+        super().__init__({"model": "numbers", "column_name": "amount", "column_type": "NUMERIC", "num_bins": 1})
+        self.minimum = minimum
+        self.maximum = maximum
+
+    def execute_sql(self, sql, *, base):
+        if "MIN(" in sql:
+            return [(self.minimum, self.maximum, 1)]
+        return HistogramRows([(0, 1)])
+
+
+@pytest.mark.parametrize(
+    ("column_type", "expected"),
+    [
+        ("INTEGER", True),
+        ("INT64", True),
+        ("NUMERIC", False),
+        ("NUMBER", False),
+        ("NUMERIC(20, 4)", False),
+        ("NUMBER(20, 4)", False),
+        ("NUMERIC(20, 0)", True),
+        ("NUMBER(20)", True),
+        ("DECIMAL(20, 0)", True),
+    ],
+)
+def test_histogram_integral_type_detection_respects_precision_and_scale(column_type, expected):
+    """Catch fractional adapter types being routed through the integer width safeguard."""
+    assert histogram.is_integral_histogram_type(column_type) is expected
+
+
+def test_fractional_histogram_uses_decimal_edges_for_labels_and_real_sql_boundaries(dbt_test_helper):
+    """Catch fractional label failures and floating internal/terminal misbucketing."""
+    base_csv = """
+        id,amount
+        1,0.0
+        2,0.2
+        3,0.4
+        4,0.6
+        5,0.8
+    """
+    current_csv = """
+        id,amount
+        1,0.0
+        2,0.2
+        3,0.4
+        4,0.6
+        5,0.8
+        6,1.0
+    """
+    dbt_test_helper.create_model("fractional_boundaries", base_csv, current_csv)
+
+    result = HistogramDiffTask(
+        {
+            "model": "fractional_boundaries",
+            "column_name": "amount",
+            "column_type": "NUMERIC",
+            "num_bins": 5,
+        }
+    ).execute()
+
+    assert result["min"] == 0.0
+    assert result["max"] == 1.0
+    assert result["bin_edges"] == [0, 0.2, 0.4, 0.6, 0.8, 1]
+    assert result["labels"] == ["0-0.2", "0.2-0.4", "0.4-0.6", "0.6-0.8", "0.8-1", "1-1.2"]
+    assert result["base"] == {"counts": [1, 1, 1, 1, 1], "total": 5}
+    assert result["current"] == {"counts": [1, 1, 1, 1, 2], "total": 6}
+    assert len(result["base"]["counts"]) == len(result["bin_edges"]) - 1
+    assert len(result["current"]["counts"]) == len(result["bin_edges"]) - 1
+    json.dumps(result)
+
+
+@pytest.mark.parametrize(
+    "model_name,base_csv,current_csv,first_edge,last_edge,base_nonzero,current_nonzero",
+    [
+        (
+            "sparse_histogram",
+            """id,amount\n1,0\n2,100""",
+            """id,amount\n1,5\n2,95""",
+            0,
+            100,
+            {0: 1, 49: 1},
+            {2: 1, 47: 1},
+        ),
+        (
+            "constant_histogram",
+            """id,amount\n1,4""",
+            """id,amount\n1,4""",
+            4,
+            5,
+            {0: 1},
+            {0: 1},
+        ),
+        (
+            "negative_histogram",
+            """id,amount\n1,-23\n2,-3""",
+            """id,amount\n1,-20\n2,-10""",
+            -23,
+            -3,
+            {0: 1, 19: 1},
+            {3: 1, 13: 1},
+        ),
+        (
+            "mixed_histogram",
+            """id,amount\n1,-2\n2,12""",
+            """id,amount\n1,-1\n2,10""",
+            -2,
+            12,
+            {0: 1, 13: 1},
+            {1: 1, 12: 1},
+        ),
+        (
+            "disjoint_histogram",
+            """id,amount\n1,-2\n2,-1""",
+            """id,amount\n1,10\n2,12""",
+            -2,
+            12,
+            {0: 1, 1: 1},
+            {12: 1, 13: 1},
+        ),
+    ],
+)
+def test_integer_histogram_result_preserves_union_domain_and_each_side(
+    dbt_test_helper, model_name, base_csv, current_csv, first_edge, last_edge, base_nonzero, current_nonzero
+):
+    """Catch result paths that omit a side, union endpoint, or expected bucket count."""
+    dbt_test_helper.create_model(model_name, base_csv, current_csv)
+
+    result = HistogramDiffTask({"model": model_name, "column_name": "amount", "column_type": "INTEGER"}).execute()
+
+    assert result["bin_edges"][0] == first_edge
+    assert result["bin_edges"][-1] == last_edge
+    assert result["labels"]
+    for side, expected_nonzero in (("base", base_nonzero), ("current", current_nonzero)):
+        counts = result[side]["counts"]
+        assert len(counts) == len(result["bin_edges"]) - 1
+        assert sum(counts) == result[side]["total"] == sum(expected_nonzero.values())
+        assert {index: count for index, count in enumerate(counts) if count} == expected_nonzero
+    json.dumps(result)
+
+
+@pytest.mark.parametrize(
+    ("minimum", "maximum"),
+    [
+        (Decimal("1E-400"), Decimal("3E-400")),
+        (Decimal("1E400"), Decimal("3E400")),
+        (Decimal("1" + "0" * 400 + ".1"), Decimal("1" + "0" * 400 + ".9")),
+    ],
+)
+def test_numeric_histogram_query_rejects_decimal_edges_that_cannot_round_trip(minimum, maximum):
+    """Catch JSON edge conversion that underflows, overflows, or changes the Decimal domain."""
+    task = NumericHistogramQueryTask([(0, 1)], [(0, 1)])
+
+    with pytest.raises(ValueError, match="cannot be represented as a finite JSON number without value change"):
+        histogram.query_numeric_histogram(task, "numbers", "amount", "NUMERIC", minimum, maximum, 2)
+
+
+def test_histogram_task_rejects_non_round_trippable_decimal_extrema(dbt_test_helper):
+    """Catch task results that expose an unrepresentable Decimal minimum or maximum as JSON numbers."""
+    minimum = Decimal("1" + "0" * 400 + ".1")
+    maximum = Decimal("1" + "0" * 400 + ".9")
+
+    with pytest.raises(ValueError, match="cannot be represented as a finite JSON number without value change"):
+        DecimalExtremaHistogramTask(minimum, maximum).execute()
+
+
 def test_histogram(dbt_test_helper):
     csv_data = """
         customer_id,name,age
@@ -176,6 +359,8 @@ def test_histogram_emtpy(dbt_test_helper):
     assert run_result["min"] is None
     assert run_result["max"] is None
     assert len(run_result["bin_edges"]) == 0
+    assert run_result["labels"] == []
+    json.dumps(run_result)
 
     params = {"model": "customers2", "column_name": "age", "column_type": "int"}
 
@@ -191,6 +376,10 @@ def test_histogram_emtpy(dbt_test_helper):
     assert run_result["max"] == 50
     assert run_result["bin_edges"][0] == 25
     assert run_result["bin_edges"][-1] == 50
+    assert len(run_result["base"]["counts"]) == len(run_result["bin_edges"]) - 1
+    assert len(run_result["current"]["counts"]) == len(run_result["bin_edges"]) - 1
+    assert run_result["labels"]
+    json.dumps(run_result)
 
     params = {"model": "customers3", "column_name": "age", "column_type": "int"}
 
@@ -206,6 +395,10 @@ def test_histogram_emtpy(dbt_test_helper):
     assert run_result["max"] == 50
     assert run_result["bin_edges"][0] == 25
     assert run_result["bin_edges"][-1] == 50
+    assert len(run_result["base"]["counts"]) == len(run_result["bin_edges"]) - 1
+    assert len(run_result["current"]["counts"]) == len(run_result["bin_edges"]) - 1
+    assert run_result["labels"]
+    json.dumps(run_result)
 
 
 def test_validator():
