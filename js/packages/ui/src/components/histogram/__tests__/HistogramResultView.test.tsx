@@ -10,6 +10,9 @@ interface MockChartProps {
   options?: {
     scales?: {
       x?: {
+        max?: number;
+        min?: number;
+        type?: string;
         ticks?: {
           callback?: (
             value: number | string,
@@ -92,8 +95,14 @@ describe("HistogramDiffResultView", () => {
 
     const { data, options } = getLastChartProps();
     const tickCallback = options?.scales?.x?.ticks?.callback;
-    expect(data.labels).toEqual(run.result?.bin_edges);
+    expect(data.labels).toEqual([]);
     expect(data.datasets[0].data).toHaveLength(5);
+    expect(data.datasets[1].data).toHaveLength(5);
+    expect(options?.scales?.x).toMatchObject({
+      max: 100,
+      min: 0,
+      type: "linear",
+    });
     expect(tickCallback?.(100, 5, [])).toBe("100");
   });
 });
