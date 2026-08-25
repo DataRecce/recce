@@ -139,6 +139,24 @@ def _decimal_result_value(value):
     return int(decimal_value) if decimal_value == decimal_value.to_integral_value() else result
 
 
+def _decimal_display_value(value):
+    """Convert a display-only extremum, keeping magnitude instead of failing the run.
+
+    Bin edges must survive JSON unchanged because they define bucket boundaries, so they
+    go through _decimal_result_value. The reported minimum and maximum are labels: a
+    BIGINT id past 2**53 or a DECIMAL(38, 18) amount cannot round-trip through a double,
+    and refusing them would fail a histogram that computed correctly.
+    """
+    decimal_value = _decimal_value(value)
+    try:
+        result = float(decimal_value)
+    except (OverflowError, ValueError) as error:
+        raise ValueError(f"Histogram Decimal {decimal_value} cannot be represented as a finite JSON number") from error
+    if not math.isfinite(result) or (result == 0 and decimal_value != 0):
+        raise ValueError(f"Histogram Decimal {decimal_value} cannot be represented as a finite JSON number")
+    return int(decimal_value) if decimal_value == decimal_value.to_integral_value() else result
+
+
 def nice_histogram_width(raw_width):
     """Round a positive Decimal width up to the approved nice-width series."""
     raw_width = _decimal_value(raw_width)
@@ -184,19 +202,6 @@ def numeric_histogram_geometry(min_value, max_value, num_bins=50, *, is_integer=
         num_edges = max(1, int(edge_count.to_integral_value(rounding=ROUND_CEILING)))
         bin_edges = [lower_edge + width * i for i in range(num_edges + 1)]
     return NumericHistogramGeometry(width=width, bin_edges=bin_edges)
-
-
-def histogram_bucket_index(value, geometry):
-    """Return the single bin that owns a value, including the terminal edge."""
-    decimal_value = _decimal_value(value)
-    first_edge = geometry.bin_edges[0]
-    last_edge = geometry.bin_edges[-1]
-    if decimal_value == last_edge:
-        return geometry.num_bins - 1
-    index = int(((decimal_value - first_edge) / geometry.width).to_integral_value(rounding=ROUND_FLOOR))
-    if index < 0 or index >= geometry.num_bins:
-        raise ValueError(f"Histogram value {decimal_value} is outside the computed edge domain")
-    return index
 
 
 def _generate_histogram_sql(node, column, min_value, max_value, num_bins, bin_size):
@@ -509,8 +514,8 @@ class HistogramDiffTask(Task, QueryMixin):
                 result["min"] = min_value
                 result["max"] = max_value
             else:
-                result["min"] = _decimal_result_value(min_value)
-                result["max"] = _decimal_result_value(max_value)
+                result["min"] = _decimal_display_value(min_value)
+                result["max"] = _decimal_display_value(max_value)
             result["bin_edges"] = bin_edges
             result["labels"] = labels
         return result
