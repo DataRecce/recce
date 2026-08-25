@@ -23,6 +23,7 @@ import type { HistogramOverlapPalette } from "../histogramOverlap";
 
 interface MockChartProps {
   data: {
+    labels?: number[];
     datasets: Record<string, unknown>[];
   };
   fallbackContent?: React.ReactNode;
@@ -34,10 +35,27 @@ interface MockChartProps {
           generateLabels?: (chart: Chart<"bar">) => LegendItem[];
         };
       };
+      tooltip?: {
+        callbacks?: {
+          title?: (items: { dataIndex: number }[]) => string;
+          label?: (item: {
+            dataIndex: number;
+            datasetIndex: number;
+            dataset: { label?: string };
+          }) => string;
+        };
+      };
     };
     scales?: {
       x?: {
         type?: string;
+        ticks?: {
+          callback?: (
+            value: number | string,
+            index: number,
+            ticks: unknown[],
+          ) => string | undefined;
+        };
       };
     };
   };
@@ -219,14 +237,48 @@ describe("HistogramChart", () => {
       expect(data.datasets).toHaveLength(2);
     });
 
-    it("generates correct bin labels", () => {
-      const { getByTestId } = render(<HistogramChart {...defaultProps} />);
+    it("labels numeric bins with single edges while keeping full tooltip ranges", () => {
+      render(<HistogramChart {...defaultProps} />);
 
-      const chart = getByTestId("mock-chart");
-      const data = JSON.parse(chart.getAttribute("data-data") || "{}");
+      const { data, options } = getLastChartProps();
+      const tickCallback = options?.scales?.x?.ticks?.callback;
+      const tooltipCallbacks = options?.plugins?.tooltip?.callbacks;
 
-      // Should have binEdges.length - 1 labels
-      expect(data.labels).toHaveLength(5);
+      expect(data.labels).toEqual(mockBinEdges);
+      expect(data.datasets[0].data).toHaveLength(mockCurrentData.counts.length);
+      expect(tickCallback?.(0, 0, [])).toBe("0");
+      expect(tickCallback?.(100, 5, [])).toBe("100");
+      expect(tooltipCallbacks?.title?.([{ dataIndex: 4 }])).toBe(
+        "Value Range\n80 - 100",
+      );
+      expect(
+        tooltipCallbacks?.label?.({
+          dataIndex: 4,
+          datasetIndex: 0,
+          dataset: { label: "Current" },
+        }),
+      ).toBe("Current: 55");
+    });
+
+    it("thins numeric edge ticks while retaining the first and terminal edges", () => {
+      const binEdges = Array.from({ length: 13 }, (_, index) => index * 10);
+      const counts = Array.from({ length: 12 }, () => 1);
+      render(
+        <HistogramChart
+          title="Many bins"
+          binEdges={binEdges}
+          baseData={{ counts }}
+          currentData={{ counts }}
+        />,
+      );
+
+      const tickCallback =
+        getLastChartProps().options?.scales?.x?.ticks?.callback;
+      const labels = binEdges
+        .map((edge, index) => tickCallback?.(edge, index, []))
+        .filter((label): label is string => label !== undefined);
+
+      expect(labels).toEqual(["0", "20", "40", "60", "80", "100", "120"]);
     });
 
     it("creates datasets with correct labels", () => {

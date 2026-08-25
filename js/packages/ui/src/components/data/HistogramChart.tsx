@@ -92,6 +92,8 @@ function formatBinRange(binEdges: number[], index: number): string {
   return `${formatAsAbbreviatedNumber(start)} - ${formatAsAbbreviatedNumber(end)}`;
 }
 
+const MAX_EDGE_TICK_LABELS = 8;
+
 /**
  * HistogramChart Component
  *
@@ -168,10 +170,6 @@ function HistogramChartComponent({
 
   // Build chart data
   const chartData = useMemo<ChartData<"bar">>(() => {
-    const labels = binEdges
-      .slice(0, -1)
-      .map((_, i) => formatBinRange(binEdges, i));
-
     const buildDataset = (
       data: HistogramDataset,
       label: string,
@@ -197,7 +195,8 @@ function HistogramChartComponent({
     };
 
     return {
-      labels,
+      // Labels represent bin edges; data remains one value per bin.
+      labels: binEdges,
       datasets: [
         buildDataset(
           currentData,
@@ -212,10 +211,10 @@ function HistogramChartComponent({
   // Build chart options
   const chartOptions = useMemo<ChartOptions<"bar">>(() => {
     const maxCount = Math.max(...currentData.counts, ...baseData.counts);
-
-    const labels = binEdges
-      .slice(0, -1)
-      .map((_, i) => formatBinRange(binEdges, i));
+    const edgeTickInterval = Math.max(
+      1,
+      Math.ceil((binEdges.length - 1) / (MAX_EDGE_TICK_LABELS - 1)),
+    );
     const dataTypeLabel = isDatetime
       ? "Date Range"
       : dataType === "string"
@@ -297,8 +296,15 @@ function HistogramChartComponent({
               type: "category",
               grid: { display: false },
               ticks: {
-                callback(_val, index) {
-                  return labels[index];
+                autoSkip: false,
+                callback(_value, index) {
+                  if (
+                    index % edgeTickInterval !== 0 &&
+                    index !== binEdges.length - 1
+                  ) {
+                    return undefined;
+                  }
+                  return formatAsAbbreviatedNumber(binEdges[index]);
                 },
                 color: themeColors.textColor,
               },
