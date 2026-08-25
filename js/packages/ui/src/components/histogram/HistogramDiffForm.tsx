@@ -188,9 +188,9 @@ export function HistogramDiffForm({
           }}
         >
           <option value="">
-            {columns.length !== 0
+            {eligibleColumns.length !== 0
               ? "Select column"
-              : "No numeric column is available"}
+              : "No numeric column is available in both environments"}
           </option>
           {columns.map((c) => (
             <option
