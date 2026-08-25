@@ -429,11 +429,12 @@ describe("HistogramChart", () => {
       },
     );
 
-    it("registers one explicit histogram overlap painter", () => {
+    it("registers overlap and bin-geometry painters", () => {
       render(<HistogramChart {...defaultProps} />);
 
       expect(getLastChartProps().plugins?.map(({ id }) => id)).toEqual([
         "histogramOverlap",
+        "histogramBinGeometry",
       ]);
     });
 
