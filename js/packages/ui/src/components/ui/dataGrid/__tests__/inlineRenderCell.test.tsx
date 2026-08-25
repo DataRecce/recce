@@ -260,6 +260,19 @@ describe("inlineRenderCell - Delta Mode", () => {
 // DRC-2866: explicit percentage-point and relative-percent modes
 // ============================================================================
 
+/**
+ * Opens the tooltip anchored to `anchor` and returns its exact text content.
+ *
+ * Exact `textContent` rather than a substring regex: only an exact match tells
+ * a real three-line tooltip apart from a single line that contains the two
+ * literal characters `\n`.
+ */
+async function openTooltipText(anchor: HTMLElement): Promise<string> {
+  fireEvent.mouseOver(anchor);
+  const tooltip = await screen.findByRole("tooltip");
+  return tooltip.textContent ?? "";
+}
+
 describe("inlineRenderCell - DRC-2866 explicit percentage modes", () => {
   function renderExplicitMode(
     mode: "percent_delta" | "percent_change",
@@ -316,19 +329,19 @@ describe("inlineRenderCell - DRC-2866 explicit percentage modes", () => {
     },
   );
 
-  test("renders an unchanged zero relative value as an explicit percentage with a tooltip", async () => {
+  test("renders an unchanged zero relative value beside its own value with a tooltip", async () => {
     renderExplicitMode("percent_change", {
       base__row_count: 0,
       current__row_count: 0,
     });
 
+    expect(screen.getByText("0")).toBeInTheDocument();
     expect(screen.getByText("0%")).toBeInTheDocument();
     expect(screen.queryByText("N/A")).not.toBeInTheDocument();
 
-    fireEvent.mouseOver(screen.getByText("0%"));
-    expect(await screen.findByText(/Base: 0/)).toBeInTheDocument();
-    expect(screen.getByText(/Current: 0/)).toBeInTheDocument();
-    expect(screen.getByText(/Change: 0/)).toBeInTheDocument();
+    expect(await openTooltipText(screen.getByText("0%"))).toBe(
+      "Base: 0\nCurrent: 0\nChange: 0",
+    );
   });
 
   test.each([
@@ -359,17 +372,78 @@ describe("inlineRenderCell - DRC-2866 explicit percentage modes", () => {
   );
 
   test.each([
-    [0, 0.2],
-    [-0.1, 0.2],
-    [-0.1, -0.1],
-  ])("renders %s to %s relative change as N/A", (base, current) => {
+    [0, 0.2, ["0", "0.2"]],
+    [-0.1, 0.2, ["-0.1", "0.2"]],
+    [-0.1, -0.1, ["-0.1"]],
+  ] as const)(
+    "renders %s to %s relative change as N/A beside the cell values",
+    (base, current, visibleValues) => {
+      renderExplicitMode("percent_change", {
+        base__row_count: base,
+        current__row_count: current,
+      });
+
+      expect(screen.getByText("N/A")).toHaveAttribute(
+        "data-direction",
+        "equal",
+      );
+      for (const value of visibleValues) {
+        expect(screen.getByText(value)).toBeInTheDocument();
+      }
+    },
+  );
+
+  test("keeps the full-precision values in the undefined-change tooltip", async () => {
     renderExplicitMode("percent_change", {
-      base__row_count: base,
-      current__row_count: current,
+      base__row_count: 0,
+      current__row_count: 0.2,
     });
 
-    expect(screen.getByText("N/A")).toHaveAttribute("data-direction", "equal");
+    expect(await openTooltipText(screen.getByText("N/A"))).toBe(
+      "Base: 0\nCurrent: 0.2\nChange: N/A",
+    );
   });
+
+  test.each(["added", "removed"] as const)(
+    "renders a %s percent_delta row in the column's percentage unit",
+    (status) => {
+      renderExplicitMode("percent_delta", {
+        __status: status,
+        current__proportion: 0.94,
+      });
+
+      expect(screen.getByText("94%")).toBeInTheDocument();
+      expect(screen.queryByText("0.94")).not.toBeInTheDocument();
+    },
+  );
+
+  test.each(["added", "removed"] as const)(
+    "renders a %s percent_delta row with a placeholder base in the column's percentage unit",
+    (status) => {
+      renderExplicitMode("percent_delta", {
+        __status: status,
+        base__proportion: null,
+        current__proportion: 0.94,
+      });
+
+      expect(screen.getByText("-")).toBeInTheDocument();
+      expect(screen.getByText("94%")).toBeInTheDocument();
+      expect(screen.queryByText("0.94")).not.toBeInTheDocument();
+    },
+  );
+
+  test.each(["added", "removed"] as const)(
+    "renders a %s percent_change row without converting its value to a percentage",
+    (status) => {
+      renderExplicitMode("percent_change", {
+        __status: status,
+        current__row_count: 12,
+      });
+
+      expect(screen.getByText("12")).toBeInTheDocument();
+      expect(screen.queryByText("1,200%")).not.toBeInTheDocument();
+    },
+  );
 
   test.each([
     [null, 0.94],
