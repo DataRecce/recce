@@ -56,6 +56,7 @@ import {
   toRowCountDiffDataGrid,
   toValueDiffGridConfigured as toValueDiffGrid,
 } from "../../../utils/dataGrid";
+import type { HeaderPresentation } from "../../../utils/dataGrid/renderTypes";
 import { hasOwn } from "../../../utils/hasOwn";
 import { getCaseInsensitive } from "../../../utils/transforms";
 import {
@@ -400,6 +401,36 @@ function getProfilePrimaryKey(result: ProfileDiffResult): string {
   return field?.name ?? "column_name";
 }
 
+export function humanizeProfileStatLabel(name: string): string {
+  return name
+    .trim()
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map(
+      (part) => `${part.charAt(0).toUpperCase()}${part.slice(1).toLowerCase()}`,
+    )
+    .join(" ");
+}
+
+function getProfileHeaderPresentation(
+  result: ProfileDiffResult,
+): Record<string, HeaderPresentation> {
+  const columns = [
+    ...(result.base?.columns ?? []),
+    ...(result.current?.columns ?? []),
+  ];
+
+  return Object.fromEntries(
+    columns.map((column) => [
+      column.key,
+      {
+        displayName: humanizeProfileStatLabel(column.key),
+        hidePrimaryKeyIcon: column.key.toLowerCase() === "column_name",
+      },
+    ]),
+  );
+}
+
 // ============================================================================
 // Factory Function
 // ============================================================================
@@ -492,6 +523,7 @@ export function createDataGrid(
         onPinnedColumnsChange: options.onPinnedColumnsChange,
         columnsRenderMode: options.columnsRenderMode,
         onColumnsRenderModeChanged: options.onColumnsRenderModeChanged,
+        headerPresentation: getProfileHeaderPresentation(dataKind.result),
       });
       return injectProfileColumnNameRenderer(profileResult);
     }
@@ -508,6 +540,7 @@ export function createDataGrid(
           displayMode: options.displayMode,
           columnsRenderMode: options.columnsRenderMode,
           onColumnsRenderModeChanged: options.onColumnsRenderModeChanged,
+          headerPresentation: getProfileHeaderPresentation(dataKind.result),
         },
       );
       return injectProfileColumnNameRenderer(profileDiffResult);

@@ -15,6 +15,7 @@ import { getCellClass, getHeaderCellClass } from "./gridUtils";
 import type {
   DataFrameColumnGroupHeaderProps,
   DiffColumnRenderComponents,
+  HeaderPresentation,
 } from "./renderTypes";
 
 // ============================================================================
@@ -50,7 +51,9 @@ export interface DiffColumnConfig {
   /** Title for current column in side_by_side mode */
   currentTitle?: string;
   /** Props to pass to DataFrameColumnGroupHeader */
-  headerProps?: Partial<DataFrameColumnGroupHeaderProps>;
+  headerProps?: Partial<DataFrameColumnGroupHeaderProps> & {
+    headerPresentation?: Record<string, HeaderPresentation>;
+  };
   /** Render components for building the column */
   renderComponents: DiffColumnRenderComponents;
 }
@@ -186,6 +189,7 @@ export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
 
   const { DataFrameColumnGroupHeader, defaultRenderCell, inlineRenderCell } =
     renderComponents;
+  const { headerPresentation, ...headerComponentProps } = headerProps;
 
   const headerCellClass = getHeaderCellClass(columnStatus);
 
@@ -204,7 +208,8 @@ export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
         name={name}
         columnStatus={columnStatus}
         columnType={columnType}
-        {...headerProps}
+        {...headerComponentProps}
+        {...headerPresentation?.[name]}
       />
     </Box>
   );

@@ -16,6 +16,7 @@ import { getHeaderCellClass } from "./gridUtils";
 import type {
   DataFrameColumnGroupHeaderProps,
   DiffColumnRenderComponents,
+  HeaderPresentation,
 } from "./renderTypes";
 import type { RecceColumnContext } from "./toDiffColumn";
 import { toDiffColumn } from "./toDiffColumn";
@@ -52,7 +53,9 @@ export interface BuildDiffColumnDefinitionsConfig {
   /**
    * Props to pass to DataFrameColumnGroupHeader for all columns
    */
-  headerProps: Partial<DataFrameColumnGroupHeaderProps>;
+  headerProps: Partial<DataFrameColumnGroupHeaderProps> & {
+    headerPresentation?: Record<string, HeaderPresentation>;
+  };
 
   /**
    * Title for base column in side_by_side mode
@@ -143,12 +146,13 @@ function createIndexColumn(
  */
 function createPrimaryKeyColumn(
   config: ColumnConfig,
-  headerProps: Partial<DataFrameColumnGroupHeaderProps>,
+  headerProps: BuildDiffColumnDefinitionsConfig["headerProps"],
   renderComponents: DiffColumnRenderComponents,
   showStructuralIndicator: boolean,
 ): DiffColumnDefinition {
   const { key, name, columnType, columnStatus, columnRenderMode } = config;
   const { DataFrameColumnGroupHeader, defaultRenderCell } = renderComponents;
+  const { headerPresentation, ...headerComponentProps } = headerProps;
 
   return {
     field: key,
@@ -168,7 +172,8 @@ function createPrimaryKeyColumn(
           name={name}
           columnStatus={columnStatus ?? ""}
           columnType={columnType}
-          {...headerProps}
+          {...headerComponentProps}
+          {...headerPresentation?.[key]}
         />
       </Box>
     ),

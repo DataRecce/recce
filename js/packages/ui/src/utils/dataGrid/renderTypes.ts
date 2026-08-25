@@ -20,6 +20,10 @@ import type { ColumnRenderMode, ColumnType } from "../../api";
 export interface DataFrameColumnGroupHeaderProps {
   /** Column name to display */
   name: string;
+  /** Optional presentation-only name for the column */
+  displayName?: string;
+  /** Hides the primary-key indicator without changing primary-key behavior */
+  hidePrimaryKeyIcon?: boolean;
   /** Column diff status: 'added', 'removed', 'modified', or empty string */
   columnStatus: string;
   /** Column data type for determining available options */
@@ -42,6 +46,8 @@ export interface DataFrameColumnGroupHeaderProps {
 export interface DataFrameColumnHeaderProps {
   /** Column name to display */
   name: string;
+  /** Optional presentation-only name for the column */
+  displayName?: string;
   /** Column data type for determining available options */
   columnType: ColumnType;
   /** List of currently pinned column names */
@@ -51,6 +57,12 @@ export interface DataFrameColumnHeaderProps {
   /** Callback when column render mode changes */
   onColumnsRenderModeChanged?: (col: Record<string, ColumnRenderMode>) => void;
 }
+
+/** Presentation-only metadata applied to an individual column header. */
+export type HeaderPresentation = Pick<
+  DataFrameColumnGroupHeaderProps,
+  "displayName" | "hidePrimaryKeyIcon"
+>;
 
 // ============================================================================
 // Cell Renderer Types

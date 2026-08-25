@@ -18,7 +18,10 @@ import {
   getPrimaryKeyValue,
   validatePrimaryKeys,
 } from "../gridUtils";
-import type { DiffColumnRenderComponents } from "../renderTypes";
+import type {
+  DiffColumnRenderComponents,
+  HeaderPresentation,
+} from "../renderTypes";
 import { buildDiffRows, type RowStats } from "../rowBuilders";
 import { validateToDataDiffGridInputs } from "../validation";
 
@@ -40,6 +43,7 @@ export interface QueryDataDiffGridOptions {
   baseTitle?: string;
   currentTitle?: string;
   displayMode?: "side_by_side" | "inline";
+  headerPresentation?: Record<string, HeaderPresentation>;
 }
 
 /**
@@ -177,6 +181,7 @@ export function toDataDiffGrid(
       onPrimaryKeyChange: options?.onPrimaryKeyChange,
       onPinnedColumnsChange: options?.onPinnedColumnsChange,
       onColumnsRenderModeChanged: options?.onColumnsRenderModeChanged,
+      headerPresentation: options?.headerPresentation,
     },
     renderComponents: config?.renderComponents ?? {
       // Default render components (for testing or when not specified)
