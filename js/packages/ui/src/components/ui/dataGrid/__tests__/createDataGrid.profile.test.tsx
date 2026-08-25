@@ -414,13 +414,14 @@ describe("createDataGrid - profile_diff explicit percentage mode eligibility", (
   function renderActualCellFor(
     result: ReturnType<typeof createDataGrid>,
     field: string,
+    row: RowObjectType = result!.rows[0],
   ) {
     const column = findColumn(result!.columns, field)!;
     const renderer = column.cellRenderer as (
       params: ICellRendererParams<RowObjectType>,
     ) => React.ReactNode;
 
-    render(<>{renderer(createRendererParams(result!.rows[0], column))}</>);
+    render(<>{renderer(createRendererParams(row, column))}</>);
   }
 
   test("offers percentage-point delta only for inline proportion fields", () => {
@@ -479,6 +480,38 @@ describe("createDataGrid - profile_diff explicit percentage mode eligibility", (
     );
   });
 
+  test.each(["added", "removed"] as const)(
+    "renders an %s percent_delta row in the column's percentage unit",
+    (status) => {
+      const withExtraRow = makeDataFrame(
+        [...columns],
+        [
+          ["id", "integer", 10, 0.98],
+          ["email", "varchar", 12, 0.94],
+        ],
+      );
+      const withoutExtraRow = makeDataFrame(
+        [...columns],
+        [["id", "integer", 10, 0.98]],
+      );
+      const structuralRun = makeProfileDiffRun({
+        base: status === "added" ? withoutExtraRow : withExtraRow,
+        current: status === "added" ? withExtraRow : withoutExtraRow,
+      });
+      const result = createDataGrid(structuralRun, {
+        displayMode: "inline",
+        columnsRenderMode: { not_null_proportion: "percent_delta" },
+      });
+
+      const structuralRow = result!.rows.find((row) => row.__status === status);
+      expect(structuralRow).toBeDefined();
+      renderActualCellFor(result, "not_null_proportion", structuralRow);
+
+      expect(screen.getByText("94%")).toBeInTheDocument();
+      expect(screen.queryByText("0.94")).not.toBeInTheDocument();
+    },
+  );
+
   test("renders percent_change with an ordinary current value through the factory", () => {
     const result = createDataGrid(run, {
       displayMode: "inline",
@@ -507,11 +540,14 @@ describe("createDataGrid - profile_diff explicit percentage mode eligibility", (
 
     renderActualCellFor(result, "row_count");
 
+    expect(screen.getByText("0")).toBeInTheDocument();
     expect(screen.getByText("0%")).toBeInTheDocument();
+
+    // Exact text content, not a substring regex: a tooltip whose newlines are
+    // the two literal characters `\n` matches every substring regex too.
     fireEvent.mouseOver(screen.getByText("0%"));
-    expect(await screen.findByText(/Base: 0/)).toBeInTheDocument();
-    expect(screen.getByText(/Current: 0/)).toBeInTheDocument();
-    expect(screen.getByText(/Change: 0/)).toBeInTheDocument();
+    const tooltip = await screen.findByRole("tooltip");
+    expect(tooltip.textContent).toBe("Base: 0\nCurrent: 0\nChange: 0");
   });
 
   test.each([
