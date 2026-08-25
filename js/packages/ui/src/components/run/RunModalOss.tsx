@@ -51,6 +51,9 @@ export interface RunModalProps {
 
   /** The form component to render for configuring run parameters */
   RunForm?: ComponentType<RunFormProps<RunFormParamTypes>>;
+
+  /** Submit complete form params from an explicit selection event. */
+  submitOnSelection?: boolean;
 }
 
 // ============================================================================
@@ -105,6 +108,7 @@ export function RunModalOss({
   params,
   initialRun,
   RunForm,
+  submitOnSelection,
 }: RunModalProps) {
   // Track form cancellation for explore actions
   const handleCancel = () => {
@@ -136,6 +140,7 @@ export function RunModalOss({
       params={params}
       initialRun={initialRun}
       RunForm={RunForm as UIRunModalProps<RunFormParamTypes>["RunForm"]}
+      submitOnSelection={submitOnSelection}
       onCancel={handleCancel}
       onExecuteClick={handleExecuteClick}
       documentationUrl={getDocumentationUrl(type)}

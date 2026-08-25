@@ -41,6 +41,7 @@ import { useApiConfig } from "./useApiConfig";
  */
 export interface RecceActionOptions {
   showForm: boolean;
+  submitOnSelection?: boolean;
   showLast?: boolean;
   trackProps?: SubmitRunTrackProps;
 }
@@ -289,6 +290,7 @@ export function RecceActionAdapter({ children }: RecceActionAdapterProps) {
               ? action.RunForm
               : undefined
           }
+          submitOnSelection={action.options?.submitOnSelection}
         />
       )}
     </RecceActionProvider>

@@ -47,6 +47,12 @@ export interface RunFormProps<PT = unknown> {
   onParamsChanged: (params: Partial<PT>) => void;
   /** Callback to set whether the form is valid and ready to execute */
   setIsReadyToExecute: (isReadyToExecute: boolean) => void;
+  /**
+   * Optional explicit-event submission request supplied by launchers that opt
+   * into one-step form behavior. Forms must call this from a user event with
+   * complete parameters, never from an effect reacting to controlled values.
+   */
+  onSubmitRequested?: (params: PT) => void;
 }
 
 // ============================================================================

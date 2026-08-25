@@ -13,7 +13,10 @@ import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 
 import type { LineageGraphNode } from "../../../../contexts/lineage/types";
-import { ModelNodeContextMenu } from "../LineageViewContextMenu";
+import {
+  ColumnNodeContextMenu,
+  ModelNodeContextMenu,
+} from "../LineageViewContextMenu";
 
 const NODE_ID = "model.test.orders";
 
@@ -57,5 +60,56 @@ describe("ModelNodeContextMenu — Show Impact Radius", () => {
       change_analysis: true,
       no_upstream: true,
     });
+  });
+});
+
+describe("ColumnNodeContextMenu — Histogram launcher", () => {
+  it("keeps lineage-column Histogram as a direct launch with its source", async () => {
+    const runAction = vi.fn();
+    const Icon = () => <span />;
+    render(
+      <ColumnNodeContextMenu
+        x={0}
+        y={0}
+        isOpen
+        onClose={vi.fn()}
+        node={
+          {
+            id: "model.test.orders.column.amount",
+            data: {
+              node: { name: "orders" },
+              column: "amount",
+              type: "DECIMAL(12, 2)",
+              changeStatus: "modified",
+            },
+          } as never
+        }
+        deps={{
+          runAction,
+          findByRunType: (type) => ({
+            title: type === "histogram_diff" ? "Histogram Diff" : type,
+            icon: Icon,
+          }),
+          supportsHistogramDiff: () => true,
+        }}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "Histogram Diff" }),
+    );
+
+    expect(runAction).toHaveBeenCalledWith(
+      "histogram_diff",
+      {
+        model: "orders",
+        column_name: "amount",
+        column_type: "DECIMAL(12, 2)",
+      },
+      {
+        showForm: false,
+        trackProps: { source: "lineage_column_node" },
+      },
+    );
   });
 });
