@@ -427,6 +427,16 @@ function isNumericProfileColumn(column: DataFrame["columns"][number]): boolean {
   );
 }
 
+function profileDiffPercentMode(
+  field: string,
+): "percent_delta" | "percent_change" {
+  return ["distinct_proportion", "not_null_proportion"].includes(
+    field.toLowerCase(),
+  )
+    ? "percent_delta"
+    : "percent_change";
+}
+
 function getProfileHeaderPresentation(
   result: ProfileDiffResult,
   displayMode?: DiffGridOptions["displayMode"],
@@ -446,11 +456,7 @@ function getProfileHeaderPresentation(
           displayMode === "inline" && isNumericProfileColumn(column)
             ? [
                 ...profileDiffLegacyRenderModes,
-                ["distinct_proportion", "not_null_proportion"].includes(
-                  column.key.toLowerCase(),
-                )
-                  ? "percent_delta"
-                  : "percent_change",
+                profileDiffPercentMode(column.key),
               ]
             : undefined,
       },
@@ -481,7 +487,7 @@ function enableProfileDiffPercentModes(result: DataGridResult): DataGridResult {
       ...colDef,
       context: {
         ...colDef.context,
-        enableProfileDiffPercentModes: true,
+        profileDiffPercentMode: profileDiffPercentMode(colDef.field ?? ""),
       },
     };
   });

@@ -411,6 +411,18 @@ describe("createDataGrid - profile_diff explicit percentage mode eligibility", (
     fireEvent.click(screen.getByRole("button", { name: "Options" }));
   }
 
+  function renderActualCellFor(
+    result: ReturnType<typeof createDataGrid>,
+    field: string,
+  ) {
+    const column = findColumn(result!.columns, field)!;
+    const renderer = column.cellRenderer as (
+      params: ICellRendererParams<RowObjectType>,
+    ) => React.ReactNode;
+
+    render(<>{renderer(createRendererParams(result!.rows[0], column))}</>);
+  }
+
   test("offers percentage-point delta only for inline proportion fields", () => {
     const callback = vi.fn();
     const result = createDataGrid(run, {
@@ -450,6 +462,57 @@ describe("createDataGrid - profile_diff explicit percentage mode eligibility", (
     fireEvent.click(screen.getByText("Show relative percentage change"));
     expect(callback).toHaveBeenCalledWith({ row_count: "percent_change" });
   });
+
+  test("renders percent_delta through the actual modified Profile Diff row", () => {
+    const result = createDataGrid(run, {
+      displayMode: "inline",
+      columnsRenderMode: { not_null_proportion: "percent_delta" },
+    });
+
+    expect(result!.rows[0].__status).toBe("modified");
+    renderActualCellFor(result, "not_null_proportion");
+
+    expect(screen.getByText("94%")).toBeInTheDocument();
+    expect(screen.getByText("(-4pp)")).toHaveAttribute(
+      "data-direction",
+      "decrease",
+    );
+  });
+
+  test("renders percent_change with an ordinary current value through the factory", () => {
+    const result = createDataGrid(run, {
+      displayMode: "inline",
+      columnsRenderMode: { row_count: "percent_change" },
+    });
+
+    renderActualCellFor(result, "row_count");
+
+    expect(screen.getByText("12")).toBeInTheDocument();
+    expect(screen.getByText("(+20%)")).toHaveAttribute(
+      "data-direction",
+      "increase",
+    );
+    expect(screen.queryByText("1,200%")).not.toBeInTheDocument();
+  });
+
+  test.each([
+    ["row_count", "percent_delta", "10", "12"],
+    ["not_null_proportion", "percent_change", "0.98", "0.94"],
+  ] as const)(
+    "falls back for persisted %s on %s",
+    (field, mode, baseText, currentText) => {
+      const result = createDataGrid(run, {
+        displayMode: "inline",
+        columnsRenderMode: { [field]: mode },
+      });
+
+      renderActualCellFor(result, field);
+
+      expect(screen.getByText(baseText)).toBeInTheDocument();
+      expect(screen.getByText(currentText)).toBeInTheDocument();
+      expect(screen.queryByText(/pp\)|%\)/)).not.toBeInTheDocument();
+    },
+  );
 
   test("keeps the new modes out of side-by-side Profile Diff headers", () => {
     const result = createDataGrid(run, {
@@ -508,6 +571,79 @@ describe("createDataGrid - profile_diff explicit percentage mode eligibility", (
     render(<>{primaryKeyColumn?.headerComponent?.()}</>);
 
     expect(screen.queryByTestId("primary-key-icon")).not.toBeInTheDocument();
+  });
+});
+
+// ============================================================================
+// DRC-2866: generic grid factories never expose Profile Diff-only modes
+// ============================================================================
+
+describe("createDataGrid - generic percentage mode exclusion", () => {
+  const dataframe = makeDataFrame(
+    [
+      { key: "id", name: "id", type: "integer" },
+      { key: "value", name: "value", type: "number" },
+    ],
+    [[1, 10]],
+  );
+  const queryRun = {
+    type: "query",
+    run_id: "query-run",
+    run_at: "2026-01-01T00:00:00Z",
+    status: "Finished",
+    params: { sql_template: "select 1" },
+    result: dataframe,
+  } as Extract<Run, { type: "query" }>;
+  const queryDiffRun = {
+    type: "query_diff",
+    run_id: "query-diff-run",
+    run_at: "2026-01-01T00:00:00Z",
+    status: "Finished",
+    params: { sql_template: "select 1", primary_keys: ["id"] },
+    result: { base: dataframe, current: dataframe },
+  } as Extract<Run, { type: "query_diff" }>;
+  const valueDiffDetailDataframe = makeDataFrame(
+    [
+      { key: "id", name: "id", type: "integer" },
+      { key: "value", name: "value", type: "number" },
+      { key: "in_a", name: "in_a", type: "boolean" },
+      { key: "in_b", name: "in_b", type: "boolean" },
+    ],
+    [[1, 10, true, true]],
+  );
+  const valueDiffDetailRun = {
+    type: "value_diff_detail",
+    run_id: "value-diff-detail-run",
+    run_at: "2026-01-01T00:00:00Z",
+    status: "Finished",
+    params: { model: "model", primary_key: "id" },
+    result: valueDiffDetailDataframe,
+  } as Extract<Run, { type: "value_diff_detail" }>;
+
+  test.each([
+    ["Query", queryRun],
+    ["Query Diff", queryDiffRun],
+    ["Value Diff Detail", valueDiffDetailRun],
+  ] as const)("keeps Profile Diff-only modes out of %s", (_name, run) => {
+    const result = createDataGrid(run, {
+      displayMode: "inline",
+      onColumnsRenderModeChanged: vi.fn(),
+    })!;
+    const column = findColumn(result.columns, "value")!;
+    const Header = column.headerComponent;
+    if (!Header) {
+      throw new Error("Expected a numeric grid header");
+    }
+
+    render(<Header />);
+    fireEvent.click(screen.getByRole("button", { name: "Options" }));
+
+    expect(
+      screen.queryByText("Show percentage-point delta"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Show relative percentage change"),
+    ).not.toBeInTheDocument();
   });
 });
 
