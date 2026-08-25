@@ -125,6 +125,7 @@ export function HistogramDiffForm({
   params,
   onParamsChanged,
   setIsReadyToExecute,
+  onSubmitRequested,
 }: HistogramDiffEditProps) {
   const {
     columns: allColumns,
@@ -164,11 +165,15 @@ export function HistogramDiffForm({
             setIsReadyToExecute(!!columnName);
             const columnType =
               columns.find((c) => c.name === columnName)?.type ?? "";
-            onParamsChanged({
+            const nextParams = {
               ...params,
               column_name: columnName,
               column_type: columnType,
-            });
+            };
+            onParamsChanged(nextParams);
+            if (columnName && columnType) {
+              onSubmitRequested?.(nextParams as HistogramDiffParams);
+            }
           }}
         >
           <option value="">

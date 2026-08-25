@@ -299,7 +299,11 @@ export function NodeViewOss({
         runAction(
           "histogram_diff",
           { model: node.data.name, column_name: "", column_type: "" },
-          { showForm: true },
+          {
+            showForm: true,
+            submitOnSelection: true,
+            trackProps: { source: "lineage_model_node" },
+          },
         );
       },
 

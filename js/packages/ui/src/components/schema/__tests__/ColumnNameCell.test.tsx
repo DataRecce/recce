@@ -26,12 +26,14 @@ vi.mock("../../ui/DataTypeIcon", async (importOriginal) => {
 });
 
 // Mock dependencies with dynamic isActionAvailable and lineageViewContext
-const { mockIsActionAvailable, mockLineageViewContext } = vi.hoisted(() => ({
-  mockIsActionAvailable: vi.fn(() => true),
-  mockLineageViewContext: { current: undefined as unknown },
-}));
+const { mockIsActionAvailable, mockLineageViewContext, mockRunAction } =
+  vi.hoisted(() => ({
+    mockIsActionAvailable: vi.fn(() => true),
+    mockLineageViewContext: { current: undefined as unknown },
+    mockRunAction: vi.fn(),
+  }));
 vi.mock("../../../contexts", () => ({
-  useRecceActionContext: () => ({ runAction: vi.fn() }),
+  useRecceActionContext: () => ({ runAction: mockRunAction }),
   useRecceInstanceContext: () => ({
     featureToggles: { disableDatabaseQuery: false },
   }),
@@ -87,6 +89,10 @@ function renderWithMui(ui: React.ReactElement) {
 // ============================================================================
 
 describe("ColumnNameCell", () => {
+  beforeEach(() => {
+    mockRunAction.mockClear();
+  });
+
   describe("showMenu prop", () => {
     test("renders menu button when showMenu is true (default)", () => {
       renderWithMui(
@@ -151,6 +157,33 @@ describe("ColumnNameCell", () => {
       const menuButton = screen.queryByRole("button");
       expect(menuButton).not.toBeInTheDocument();
     });
+  });
+
+  test("keeps schema-column Histogram as a direct launch with its source", async () => {
+    const user = userEvent.setup();
+    renderWithMui(
+      <ColumnNameCell model={createMockModel()} row={createMockRow()} />,
+    );
+
+    await user.click(screen.getByRole("button"));
+    await user.click(await screen.findByText("Histogram Diff"));
+
+    expect(mockRunAction).toHaveBeenCalledWith(
+      "histogram_diff",
+      {
+        model: "users",
+        column_name: "user_id",
+        column_type: "INT",
+      },
+      {
+        showForm: false,
+        trackProps: {
+          action: "histogram_diff",
+          source: "schema_column_menu",
+          node_count: 1,
+        },
+      },
+    );
   });
 
   describe("column name display", () => {

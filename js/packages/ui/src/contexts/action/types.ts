@@ -62,6 +62,8 @@ export interface SubmitRunTrackProps {
 export interface RecceActionOptions {
   /** Whether to show a form before executing */
   showForm: boolean;
+  /** Submit a complete form value from an explicit selection event. */
+  submitOnSelection?: boolean;
   /** Whether to show the last run with matching params */
   showLast?: boolean;
   /** Tracking properties for analytics */
