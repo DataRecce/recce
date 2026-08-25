@@ -316,14 +316,19 @@ describe("inlineRenderCell - DRC-2866 explicit percentage modes", () => {
     },
   );
 
-  test("renders an unchanged zero relative value as a percentage", () => {
+  test("renders an unchanged zero relative value as an explicit percentage with a tooltip", async () => {
     renderExplicitMode("percent_change", {
       base__row_count: 0,
       current__row_count: 0,
     });
 
-    expect(screen.getByText("0")).toBeInTheDocument();
+    expect(screen.getByText("0%")).toBeInTheDocument();
     expect(screen.queryByText("N/A")).not.toBeInTheDocument();
+
+    fireEvent.mouseOver(screen.getByText("0%"));
+    expect(await screen.findByText(/Base: 0/)).toBeInTheDocument();
+    expect(screen.getByText(/Current: 0/)).toBeInTheDocument();
+    expect(screen.getByText(/Change: 0/)).toBeInTheDocument();
   });
 
   test.each([
