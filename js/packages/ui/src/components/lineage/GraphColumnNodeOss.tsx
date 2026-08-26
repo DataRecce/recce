@@ -38,7 +38,15 @@ export type GraphColumnNodeProps = NodeProps<LineageGraphColumnNode>;
 function GraphColumnNodeComponent(nodeProps: GraphColumnNodeProps) {
   const { id: columnNodeId, data } = nodeProps;
   const { id: nodeId } = data.node;
-  const { column, type, transformationType, changeStatus, isImpacted } = data;
+  const {
+    column,
+    type,
+    transformationType,
+    changeStatus,
+    isImpacted,
+    hiddenUpstreamColumnCount,
+    hiddenDownstreamColumnCount,
+  } = data;
 
   // Get zoom level for content visibility
   const showContent = useStore((s) => s.transform[2] > 0.3);
@@ -73,6 +81,8 @@ function GraphColumnNodeComponent(nodeProps: GraphColumnNodeProps) {
     isHighlighted,
     isFocused,
     isImpacted,
+    hiddenUpstreamColumnCount,
+    hiddenDownstreamColumnCount,
   };
 
   // Callbacks

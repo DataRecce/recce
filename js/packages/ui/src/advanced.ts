@@ -127,13 +127,15 @@ export {
   RowCountTag,
 } from "./components/lineage/NodeTag";
 /**
- * Node detail panel with Columns and Code tabs.
+ * Node detail panel with Columns, Code, Analysis, and optional Lineage tabs.
  */
 export {
+  type AnalysisRunType,
   NodeView,
   type NodeViewActionCallbacks,
   type NodeViewNodeData,
   type NodeViewProps,
+  type RecentAnalysisRun,
   type RunTypeIconMap,
   type SchemaViewProps,
 } from "./components/lineage/NodeView";

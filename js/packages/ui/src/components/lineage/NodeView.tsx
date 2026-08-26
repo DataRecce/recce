@@ -19,6 +19,7 @@ import { IoClose } from "react-icons/io5";
 import type { NodeData } from "../../api/info";
 import { DisableTooltipMessages } from "../../constants";
 import { useThemeColors } from "../../hooks";
+import { formatTimeToNow } from "../../utils";
 import { getChangeCategoryLabel } from "./changeCategory";
 import type { ChangeCategory } from "./nodes";
 import { TreatmentChip } from "./TreatmentChip";
@@ -132,6 +133,19 @@ export interface NodeViewActionCallbacks {
   onAddSchemaDiffClick?: () => void;
 }
 
+export type AnalysisRunType =
+  | "profile_diff"
+  | "value_diff"
+  | "top_k_diff"
+  | "histogram_diff";
+
+export interface RecentAnalysisRun {
+  id: string;
+  type: AnalysisRunType;
+  runAt: string;
+  columnName?: string;
+}
+
 /**
  * Props for NodeView component.
  *
@@ -192,6 +206,10 @@ export interface NodeViewProps<
    * no row-count data is available yet.
    */
   rowCountDisplay?: ReactNode;
+  /** Prior analysis runs for this focused model, newest first. */
+  recentAnalysisRuns?: RecentAnalysisRun[];
+  /** Reopen a prior analysis result in the consumer's result pane. */
+  onViewAnalysisRun?: (runId: string) => void;
 
   // =========================================================================
   // DEPENDENCY INJECTION: Icons
@@ -223,10 +241,12 @@ export interface NodeViewProps<
 // INTERNAL COMPONENTS
 // =============================================================================
 
+type NodeViewTab = "columns" | "code" | "analysis" | "lineage";
+
 interface TabPanelProps {
   children?: ReactNode;
-  index: number;
-  value: number;
+  index: NodeViewTab;
+  value: NodeViewTab;
 }
 
 function TabPanel({ children, value, index }: TabPanelProps) {
@@ -381,7 +401,6 @@ interface DiffActionButtonsProps {
     display: boolean;
     children: ReactNode;
   }>;
-  rowCountDisplay?: ReactNode;
 }
 
 function DiffActionButtons({
@@ -391,14 +410,11 @@ function DiffActionButtons({
   featureToggles,
   isActionAvailable,
   ConnectionPopoverWrapper,
-  rowCountDisplay,
 }: DiffActionButtonsProps) {
   const metadataOnly = featureToggles?.mode === "metadata only";
   const isAddedOrRemoved =
     node.data.changeStatus === "added" || node.data.changeStatus === "removed";
 
-  const QueryDiffIcon = runTypeIcons?.query_diff ?? DefaultIcon;
-  const RowCountDiffIcon = runTypeIcons?.row_count_diff ?? DefaultIcon;
   const ProfileDiffIcon = runTypeIcons?.profile_diff ?? DefaultIcon;
   const ValueDiffIcon = runTypeIcons?.value_diff ?? DefaultIcon;
   const TopKDiffIcon = runTypeIcons?.top_k_diff ?? DefaultIcon;
@@ -434,113 +450,170 @@ function DiffActionButtons({
   return (
     <Stack
       direction="row"
-      sx={{
-        alignItems: "center",
-        flexWrap: "wrap",
-        gap: 2,
-      }}
+      sx={{ alignItems: "center", flexWrap: "wrap", gap: 1 }}
     >
+      {wrapButton(
+        <Button
+          size="xsmall"
+          variant="outlined"
+          color="neutral"
+          startIcon={<ProfileDiffIcon fontSize="small" />}
+          onClick={actionCallbacks?.onProfileDiffClick}
+          disabled={isAddedOrRemoved || featureToggles?.disableDatabaseQuery}
+          sx={{ textTransform: "none" }}
+        >
+          Profile
+        </Button>,
+        "profile_diff",
+      )}
+      {wrapButton(
+        <Button
+          size="xsmall"
+          variant="outlined"
+          color="neutral"
+          startIcon={<ValueDiffIcon fontSize="small" />}
+          onClick={actionCallbacks?.onValueDiffClick}
+          disabled={isAddedOrRemoved || featureToggles?.disableDatabaseQuery}
+          sx={{ textTransform: "none" }}
+        >
+          Value
+        </Button>,
+        "value_diff",
+      )}
+      {wrapButton(
+        <Button
+          size="xsmall"
+          variant="outlined"
+          color="neutral"
+          startIcon={<TopKDiffIcon fontSize="small" />}
+          onClick={actionCallbacks?.onTopKDiffClick}
+          disabled={isAddedOrRemoved || featureToggles?.disableDatabaseQuery}
+          sx={{ textTransform: "none" }}
+        >
+          Top-K
+        </Button>,
+        "top_k_diff",
+      )}
+      {wrapButton(
+        <Button
+          size="xsmall"
+          variant="outlined"
+          color="neutral"
+          startIcon={<HistogramDiffIcon fontSize="small" />}
+          onClick={actionCallbacks?.onHistogramDiffClick}
+          disabled={isAddedOrRemoved || featureToggles?.disableDatabaseQuery}
+          sx={{ textTransform: "none" }}
+        >
+          Histogram
+        </Button>,
+        "histogram_diff",
+      )}
+    </Stack>
+  );
+}
+
+interface DiffUtilityButtonProps {
+  label: "Row Count" | "Query";
+  onClick?: () => void;
+  Icon: ComponentType<{ fontSize?: string }>;
+  featureToggles?: NodeViewProps["featureToggles"];
+  ConnectionPopoverWrapper: ComponentType<ConnectionPopoverWrapperProps>;
+  rowCountDisplay?: ReactNode;
+}
+
+function DiffUtilityButton({
+  label,
+  onClick,
+  Icon,
+  featureToggles,
+  ConnectionPopoverWrapper,
+  rowCountDisplay,
+}: DiffUtilityButtonProps) {
+  return (
+    <ConnectionPopoverWrapper
+      display={featureToggles?.mode === "metadata only"}
+    >
+      <Button
+        size="xsmall"
+        variant="outlined"
+        color="neutral"
+        startIcon={<Icon fontSize="small" />}
+        onClick={onClick}
+        disabled={featureToggles?.disableDatabaseQuery}
+        sx={{ textTransform: "none", flexShrink: 0 }}
+      >
+        {label}
+        {label === "Row Count" && rowCountDisplay != null && (
+          <>:&nbsp;{rowCountDisplay}</>
+        )}
+      </Button>
+    </ConnectionPopoverWrapper>
+  );
+}
+
+const analysisRunLabels: Record<AnalysisRunType, string> = {
+  profile_diff: "Profile",
+  value_diff: "Value",
+  top_k_diff: "Top-K",
+  histogram_diff: "Histogram",
+};
+
+function RecentAnalysisList({
+  runs,
+  onViewRun,
+}: {
+  runs: RecentAnalysisRun[];
+  onViewRun?: (runId: string) => void;
+}) {
+  return (
+    <Stack sx={{ gap: 0.5 }}>
       <Typography
-        variant="caption"
-        sx={{
-          fontWeight: "bold",
-        }}
+        variant="overline"
+        sx={{ color: "text.secondary", fontWeight: 700, mt: 2 }}
       >
-        Diff
+        Recent
       </Typography>
-      <Stack
-        direction="row"
-        sx={{
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: 1,
-          width: "93%",
-        }}
-      >
-        <ConnectionPopoverWrapper display={metadataOnly}>
-          <Button
-            size="xsmall"
-            variant="outlined"
-            color="neutral"
-            startIcon={<RowCountDiffIcon fontSize="small" />}
-            onClick={actionCallbacks?.onRowCountDiffClick}
-            disabled={featureToggles?.disableDatabaseQuery}
-            sx={{ textTransform: "none" }}
+      {runs.length === 0 ? (
+        <Typography variant="body2" sx={{ color: "text.secondary" }}>
+          No recent analysis runs
+        </Typography>
+      ) : (
+        runs.map((run) => (
+          <Stack
+            key={run.id}
+            direction="row"
+            sx={{
+              alignItems: "center",
+              gap: 1,
+              py: 0.75,
+              borderBottom: 1,
+              borderColor: "divider",
+            }}
           >
-            Row Count
-            {rowCountDisplay != null && <>:&nbsp;{rowCountDisplay}</>}
-          </Button>
-        </ConnectionPopoverWrapper>
-        {wrapButton(
-          <Button
-            size="xsmall"
-            variant="outlined"
-            color="neutral"
-            startIcon={<ProfileDiffIcon fontSize="small" />}
-            onClick={actionCallbacks?.onProfileDiffClick}
-            disabled={isAddedOrRemoved || featureToggles?.disableDatabaseQuery}
-            sx={{ textTransform: "none" }}
-          >
-            Profile
-          </Button>,
-          "profile_diff",
-        )}
-        {wrapButton(
-          <Button
-            size="xsmall"
-            variant="outlined"
-            color="neutral"
-            startIcon={<ValueDiffIcon fontSize="small" />}
-            onClick={actionCallbacks?.onValueDiffClick}
-            disabled={isAddedOrRemoved || featureToggles?.disableDatabaseQuery}
-            sx={{ textTransform: "none" }}
-          >
-            Value
-          </Button>,
-          "value_diff",
-        )}
-        {wrapButton(
-          <Button
-            size="xsmall"
-            variant="outlined"
-            color="neutral"
-            startIcon={<TopKDiffIcon fontSize="small" />}
-            onClick={actionCallbacks?.onTopKDiffClick}
-            disabled={isAddedOrRemoved || featureToggles?.disableDatabaseQuery}
-            sx={{ textTransform: "none" }}
-          >
-            Top-K
-          </Button>,
-          "top_k_diff",
-        )}
-        {wrapButton(
-          <Button
-            size="xsmall"
-            variant="outlined"
-            color="neutral"
-            startIcon={<HistogramDiffIcon fontSize="small" />}
-            onClick={actionCallbacks?.onHistogramDiffClick}
-            disabled={isAddedOrRemoved || featureToggles?.disableDatabaseQuery}
-            sx={{ textTransform: "none" }}
-          >
-            Histogram
-          </Button>,
-          "histogram_diff",
-        )}
-        <ConnectionPopoverWrapper display={metadataOnly}>
-          <Button
-            size="xsmall"
-            variant="outlined"
-            color="neutral"
-            startIcon={<QueryDiffIcon fontSize="small" />}
-            onClick={actionCallbacks?.onQueryDiffClick}
-            disabled={featureToggles?.disableDatabaseQuery}
-            sx={{ textTransform: "none" }}
-          >
-            Query
-          </Button>
-        </ConnectionPopoverWrapper>
-      </Stack>
+            <Typography variant="body2" sx={{ minWidth: 0 }}>
+              {analysisRunLabels[run.type]}
+              {run.columnName ? ` · ${run.columnName}` : ""}
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{ color: "text.secondary", mr: "auto" }}
+            >
+              {formatTimeToNow(run.runAt)}
+            </Typography>
+            <Button
+              aria-label={`View ${analysisRunLabels[run.type]} result${
+                run.columnName ? ` for ${run.columnName}` : ""
+              }`}
+              size="small"
+              variant="text"
+              onClick={() => onViewRun?.(run.id)}
+              sx={{ minWidth: 0, textTransform: "none" }}
+            >
+              view ↗
+            </Button>
+          </Stack>
+        ))
+      )}
     </Stack>
   );
 }
@@ -554,8 +627,9 @@ function DiffActionButtons({
  *
  * Displays detailed information about a lineage node including:
  * - Node name and metadata
- * - Action buttons for various operations (Query, Profile, Diff, etc.)
- * - Tabs for Columns and Code views
+ * - A compact Row Count action in the header
+ * - Tabs for Columns, Code, Analysis, and optional Lineage views
+ * - Model-scoped recent analysis history
  *
  * Uses dependency injection for:
  * - Schema view components (different for OSS vs Cloud)
@@ -604,6 +678,8 @@ export function NodeView<TNode extends NodeViewNodeData>({
   newCllExperience = false,
   isImpacted = false,
   rowCountDisplay,
+  recentAnalysisRuns = [],
+  onViewAnalysisRun,
 }: NodeViewProps<TNode>) {
   const withColumns =
     node.data.resourceType === "model" ||
@@ -612,7 +688,14 @@ export function NodeView<TNode extends NodeViewNodeData>({
     node.data.resourceType === "snapshot";
 
   const [isNotificationOpen, setIsNotificationOpen] = useState(true);
-  const [tabValue, setTabValue] = useState(0);
+  const [tabState, setTabState] = useState<{
+    nodeId: string;
+    value: NodeViewTab;
+  }>({ nodeId: node.id, value: "columns" });
+  const tabValue = tabState.nodeId === node.id ? tabState.value : "columns";
+  const setTabValue = (value: NodeViewTab) => {
+    setTabState({ nodeId: node.id, value });
+  };
 
   const { base, current } = modelDetail ?? {};
   const hasSchemaChanges =
@@ -630,6 +713,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
     node.data.resourceType === "model" ||
     node.data.resourceType === "seed" ||
     node.data.resourceType === "snapshot";
+  const showAnalysisTab = !isSingleEnv && isModelSeedOrSnapshot;
 
   const showAddSchemaDiff =
     !isSingleEnv &&
@@ -675,7 +759,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
         borderLeft: `3px solid ${titleChip ? titleChip.tokens.stripeAccent : "transparent"}`,
       }}
     >
-      {/* Header row: name, type tag, close button */}
+      {/* Header row: name, type tag, row count, close button */}
       <Stack
         direction="row"
         sx={{
@@ -745,35 +829,38 @@ export function NodeView<TNode extends NodeViewNodeData>({
             sx={{ flexShrink: 0 }}
           />
         )}
-        <IconButton size="small" onClick={onCloseNode} sx={{ flexShrink: 0 }}>
+        {showAnalysisTab && (
+          <DiffUtilityButton
+            label="Row Count"
+            Icon={runTypeIcons?.row_count_diff ?? DefaultIcon}
+            onClick={actionCallbacks?.onRowCountDiffClick}
+            featureToggles={featureToggles}
+            ConnectionPopoverWrapper={ConnectionPopoverWrapper}
+            rowCountDisplay={rowCountDisplay}
+          />
+        )}
+        <IconButton
+          aria-label="Close node details"
+          size="small"
+          onClick={onCloseNode}
+          sx={{ flexShrink: 0 }}
+        >
           <IoClose />
         </IconButton>
       </Stack>
-      {/* Action buttons row */}
-      {isModelSeedOrSnapshot && (
+      {/* Single-env redesign is explicitly outside DRC-3463. */}
+      {isModelSeedOrSnapshot && isSingleEnv && (
         <Box sx={{ pl: 2, py: 1 }}>
-          {isSingleEnv ? (
-            <SingleEnvActionButtons
-              node={node}
-              actionCallbacks={actionCallbacks}
-              runTypeIcons={runTypeIcons}
-              isActionAvailable={isActionAvailable}
-              rowCountDisplay={rowCountDisplay}
-            />
-          ) : (
-            <DiffActionButtons
-              node={node}
-              actionCallbacks={actionCallbacks}
-              runTypeIcons={runTypeIcons}
-              featureToggles={featureToggles}
-              isActionAvailable={isActionAvailable}
-              ConnectionPopoverWrapper={ConnectionPopoverWrapper}
-              rowCountDisplay={rowCountDisplay}
-            />
-          )}
+          <SingleEnvActionButtons
+            node={node}
+            actionCallbacks={actionCallbacks}
+            runTypeIcons={runTypeIcons}
+            isActionAvailable={isActionAvailable}
+            rowCountDisplay={rowCountDisplay}
+          />
         </Box>
       )}
-      {/* Content area: tabs for columns and code */}
+      {/* Content area: Columns stays the default landing tab. */}
       {withColumns && (
         <Box
           sx={{
@@ -798,13 +885,14 @@ export function NodeView<TNode extends NodeViewNodeData>({
             </Box>
           )}
 
-          {/* Tabs — "Columns" is always index 0 (default landing tab) */}
+          {/* Stable order: Columns, Code, Analysis (diff), Lineage (optional). */}
           <Tabs
             value={tabValue}
             onChange={(_, newValue) => setTabValue(newValue)}
             sx={{ borderBottom: 1, borderColor: "divider" }}
           >
             <Tab
+              value="columns"
               label={
                 <Box
                   component="span"
@@ -831,6 +919,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
               }
             />
             <Tab
+              value="code"
               label={
                 <Box
                   component="span"
@@ -856,12 +945,13 @@ export function NodeView<TNode extends NodeViewNodeData>({
                 </Box>
               }
             />
-            {lineageTabContent && <Tab label="Lineage" />}
+            {showAnalysisTab && <Tab label="Analysis" value="analysis" />}
+            {lineageTabContent && <Tab label="Lineage" value="lineage" />}
           </Tabs>
 
-          {/* Tab panels — Columns=0, Code=1, Lineage=2 (when present) */}
+          {/* Tab panels mirror the conditional tab inventory above. */}
           <Box sx={{ overflow: "auto", height: "calc(100% - 48px)" }}>
-            <TabPanel value={tabValue} index={0}>
+            <TabPanel value={tabValue} index="columns">
               <Box sx={{ overflowY: "auto", height: "100%" }}>
                 {isSingleEnv
                   ? SingleEnvSchemaView && (
@@ -872,7 +962,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
                         base={base}
                         current={current}
                         columnChanges={node.data.change?.columns}
-                        onViewCode={() => setTabValue(1)}
+                        onViewCode={() => setTabValue("code")}
                         headerAction={
                           showAddSchemaDiff ? (
                             <AddSchemaDiffButton
@@ -885,13 +975,48 @@ export function NodeView<TNode extends NodeViewNodeData>({
                     )}
               </Box>
             </TabPanel>
-            <TabPanel value={tabValue} index={1}>
-              <Box sx={{ height: "100%" }}>
+            <TabPanel value={tabValue} index="code">
+              <Box
+                sx={{
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                {showAnalysisTab && (
+                  <Box sx={{ px: 2, pt: 1.5 }}>
+                    <DiffUtilityButton
+                      label="Query"
+                      Icon={runTypeIcons?.query_diff ?? DefaultIcon}
+                      onClick={actionCallbacks?.onQueryDiffClick}
+                      featureToggles={featureToggles}
+                      ConnectionPopoverWrapper={ConnectionPopoverWrapper}
+                    />
+                  </Box>
+                )}
                 {NodeSqlView && <NodeSqlView node={node} />}
               </Box>
             </TabPanel>
+            {showAnalysisTab && (
+              <TabPanel value={tabValue} index="analysis">
+                <Box sx={{ p: 2 }}>
+                  <DiffActionButtons
+                    node={node}
+                    actionCallbacks={actionCallbacks}
+                    runTypeIcons={runTypeIcons}
+                    featureToggles={featureToggles}
+                    isActionAvailable={isActionAvailable}
+                    ConnectionPopoverWrapper={ConnectionPopoverWrapper}
+                  />
+                  <RecentAnalysisList
+                    runs={recentAnalysisRuns}
+                    onViewRun={onViewAnalysisRun}
+                  />
+                </Box>
+              </TabPanel>
+            )}
             {lineageTabContent && (
-              <TabPanel value={tabValue} index={2}>
+              <TabPanel value={tabValue} index="lineage">
                 <Box sx={{ height: "100%" }}>{lineageTabContent}</Box>
               </TabPanel>
             )}

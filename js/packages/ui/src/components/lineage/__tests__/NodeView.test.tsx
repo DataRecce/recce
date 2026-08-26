@@ -7,9 +7,9 @@
  * row is conditionally absent.
  */
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { vi } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
 import type { NodeColumnData } from "../../../api";
 import type { NodeViewNodeData } from "../NodeView";
 import { NodeView } from "../NodeView";
@@ -122,6 +122,182 @@ function renderNodeView(
 // ============================================================================
 
 describe("NodeView", () => {
+  describe("diff-mode information architecture", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-08-26T12:00:00Z"));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    test("keeps only Row Count in the header and hides analysis launchers until the Analysis tab opens", async () => {
+      renderNodeView(createNode("model", testColumns), testColumns, {
+        rowCountDisplay: <span>999 rows · No Change</span>,
+      });
+
+      expect(
+        screen.getByRole("button", { name: /row count.*999 rows/i }),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /^profile$/i })).toBeNull();
+      expect(screen.queryByRole("button", { name: /^value$/i })).toBeNull();
+      expect(screen.queryByRole("button", { name: /^top-k$/i })).toBeNull();
+      expect(screen.queryByRole("button", { name: /^histogram$/i })).toBeNull();
+      expect(screen.queryByRole("button", { name: /^query$/i })).toBeNull();
+
+      fireEvent.click(screen.getByRole("tab", { name: "Analysis" }));
+
+      expect(screen.getByRole("button", { name: /^profile$/i })).toBeVisible();
+      expect(screen.getByRole("button", { name: /^value$/i })).toBeVisible();
+      expect(screen.getByRole("button", { name: /^top-k$/i })).toBeVisible();
+      expect(
+        screen.getByRole("button", { name: /^histogram$/i }),
+      ).toBeVisible();
+      expect(screen.queryByRole("button", { name: /^query$/i })).toBeNull();
+    });
+
+    test("launches all four analysis actions from always-visible buttons", async () => {
+      const callbacks = {
+        onProfileDiffClick: vi.fn(),
+        onValueDiffClick: vi.fn(),
+        onTopKDiffClick: vi.fn(),
+        onHistogramDiffClick: vi.fn(),
+      };
+      renderNodeView(createNode("model", testColumns), testColumns, {
+        actionCallbacks: callbacks,
+      });
+
+      fireEvent.click(screen.getByRole("tab", { name: "Analysis" }));
+      fireEvent.click(screen.getByRole("button", { name: /^profile$/i }));
+      fireEvent.click(screen.getByRole("button", { name: /^value$/i }));
+      fireEvent.click(screen.getByRole("button", { name: /^top-k$/i }));
+      fireEvent.click(screen.getByRole("button", { name: /^histogram$/i }));
+
+      expect(callbacks.onProfileDiffClick).toHaveBeenCalledOnce();
+      expect(callbacks.onValueDiffClick).toHaveBeenCalledOnce();
+      expect(callbacks.onTopKDiffClick).toHaveBeenCalledOnce();
+      expect(callbacks.onHistogramDiffClick).toHaveBeenCalledOnce();
+    });
+
+    test("renders a flat Recent list with column context and reopens a selected result", async () => {
+      const onViewAnalysisRun = vi.fn();
+      renderNodeView(createNode("model", testColumns), testColumns, {
+        recentAnalysisRuns: [
+          {
+            id: "profile-1",
+            type: "profile_diff",
+            runAt: "2026-08-23T12:00:00Z",
+          },
+          {
+            id: "histogram-1",
+            type: "histogram_diff",
+            columnName: "STATUS",
+            runAt: "2026-08-26T11:00:00Z",
+          },
+        ],
+        onViewAnalysisRun,
+      });
+
+      fireEvent.click(screen.getByRole("tab", { name: "Analysis" }));
+
+      expect(screen.getByText("Recent")).toBeInTheDocument();
+      expect(screen.getAllByText("Profile")).toHaveLength(2);
+      expect(screen.getByText(/Histogram.*STATUS/)).toBeInTheDocument();
+      expect(screen.getByText("3 days ago")).toBeInTheDocument();
+      expect(screen.getByText("about 1 hour ago")).toBeInTheDocument();
+
+      const viewButtons = screen.getAllByRole("button", { name: /view/i });
+      expect(viewButtons).toHaveLength(2);
+      expect(viewButtons[0]).toHaveAccessibleName("View Profile result");
+      expect(viewButtons[1]).toHaveAccessibleName(
+        "View Histogram result for STATUS",
+      );
+      fireEvent.click(viewButtons[1]);
+      expect(onViewAnalysisRun).toHaveBeenCalledWith("histogram-1");
+    });
+
+    test("shows an explicit empty state when the focused model has no recent analysis", async () => {
+      renderNodeView(createNode("model", testColumns), testColumns, {
+        recentAnalysisRuns: [],
+      });
+
+      fireEvent.click(screen.getByRole("tab", { name: "Analysis" }));
+
+      expect(screen.getByText("No recent analysis runs")).toBeInTheDocument();
+    });
+
+    test("moves Query into the Code tab without changing its callback", async () => {
+      const onQueryDiffClick = vi.fn();
+      renderNodeView(createNode("model", testColumns), testColumns, {
+        actionCallbacks: { onQueryDiffClick },
+        NodeSqlView: () => <div>SQL diff</div>,
+      });
+
+      expect(screen.queryByRole("button", { name: /^query$/i })).toBeNull();
+      fireEvent.click(screen.getByRole("tab", { name: "Code" }));
+      fireEvent.click(screen.getByRole("button", { name: /^query$/i }));
+
+      expect(onQueryDiffClick).toHaveBeenCalledOnce();
+      expect(screen.getByText("SQL diff")).toBeInTheDocument();
+    });
+
+    test("keeps Columns first and appends Analysis before optional Lineage", () => {
+      renderNodeView(createNode("model", testColumns), testColumns, {
+        lineageTabContent: <div>lineage</div>,
+      });
+
+      expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+        "Columns",
+        "Code",
+        "Analysis",
+        "Lineage",
+      ]);
+      expect(screen.getByRole("tab", { name: "Columns" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+    });
+
+    test.each(["Analysis", "Lineage"])(
+      "resets to Columns when focus moves from the %s tab to a source node",
+      (selectedTab) => {
+        const sharedProps = {
+          onCloseNode: vi.fn(),
+          isSingleEnv: false,
+          SchemaView: MockSchemaView,
+          lineageTabContent: <div data-testid="lineage-content">lineage</div>,
+        };
+        const { rerender } = render(
+          <NodeView
+            {...sharedProps}
+            node={createNode("model", testColumns)}
+            modelDetail={createModelDetail(testColumns)}
+          />,
+        );
+        fireEvent.click(screen.getByRole("tab", { name: selectedTab }));
+
+        rerender(
+          <NodeView
+            {...sharedProps}
+            node={{
+              ...createNode("source", testColumns),
+              id: "source.test.next_node",
+            }}
+            modelDetail={createModelDetail(testColumns)}
+          />,
+        );
+
+        expect(screen.getByRole("tab", { name: "Columns" })).toHaveAttribute(
+          "aria-selected",
+          "true",
+        );
+        expect(screen.getByTestId("schema-view")).toBeInTheDocument();
+        expect(screen.queryByTestId("lineage-content")).toBeNull();
+      },
+    );
+  });
+
   describe("change category", () => {
     test.each([
       ["breaking", "Model-Wide Change"], // wire-enum-ok
@@ -399,6 +575,7 @@ describe("NodeView", () => {
         node.data.changeStatus = changeStatus;
 
         renderNodeView(node, testColumns);
+        await userEvent.click(screen.getByRole("tab", { name: "Analysis" }));
 
         const { button } = await hoverDisabledReason(/^profile$/i);
 
@@ -431,6 +608,8 @@ describe("NodeView", () => {
         isActionAvailable: (runType) => runType !== "value_diff",
       });
 
+      await userEvent.click(screen.getByRole("tab", { name: "Analysis" }));
+
       await hoverDisabledReason(/^value$/i);
 
       expect(await screen.findByRole("tooltip")).toHaveTextContent(
@@ -445,6 +624,8 @@ describe("NodeView", () => {
         actionCallbacks: { onHistogramDiffClick },
       });
 
+      await userEvent.click(screen.getByRole("tab", { name: "Analysis" }));
+
       const histogram = screen.getByRole("button", { name: /histogram/i });
       expect(histogram).toBeDisabled();
       expect(onHistogramDiffClick).not.toHaveBeenCalled();
@@ -455,6 +636,8 @@ describe("NodeView", () => {
       node.data.changeStatus = "modified";
 
       renderNodeView(node, testColumns);
+
+      await userEvent.click(screen.getByRole("tab", { name: "Analysis" }));
 
       const { button } = await hoverDisabledReason(/^profile$/i);
 

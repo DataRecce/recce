@@ -35,7 +35,12 @@ vi.mock("../nodes", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../nodes")>();
   return {
     ...actual,
-    LineageNode: (props: { runsAggregatedTag?: ReactNode }) => {
+    LineageNode: (props: {
+      interactive?: boolean;
+      onSelect?: (nodeId: string) => void;
+      runsAggregatedTag?: ReactNode;
+      selectMode?: string;
+    }) => {
       mockLineageNode(props);
       return <div data-testid="lineage-node">{props.runsAggregatedTag}</div>;
     },
@@ -166,6 +171,31 @@ describe("GraphNode", () => {
         showChangeAnalysis: false,
       }),
     );
+  });
+
+  it("keeps first-node selection wired in normal mode", () => {
+    const selectNode = vi.fn();
+    mockViewContext.current = createViewContext({
+      selectNode,
+    });
+
+    render(<GraphNode {...createNodeProps()} />);
+
+    const lineageNodeProps = mockLineageNode.mock.lastCall?.[0] as {
+      interactive?: boolean;
+      onSelect?: (nodeId: string) => void;
+      selectMode?: string;
+    };
+    expect(lineageNodeProps).toEqual(
+      expect.objectContaining({
+        interactive: true,
+        selectMode: "normal",
+      }),
+    );
+
+    lineageNodeProps.onSelect?.("model.test.orders");
+
+    expect(selectNode).toHaveBeenCalledWith("model.test.orders");
   });
 
   it.each([

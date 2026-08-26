@@ -310,15 +310,51 @@ describe("LineageNode", () => {
   // ==========================================================================
 
   describe("interactive mode", () => {
-    it("renders checkbox when interactive is true", () => {
+    it("hides checkbox until hover in normal interactive mode", () => {
+      const props = createMockNodeProps(
+        { interactive: true },
+        { label: "test" },
+      );
+
+      const { container } = render(<LineageNode {...props} />);
+      const checkbox = screen.getByRole("checkbox", {
+        name: "Select test",
+      });
+      const checkboxRoot = checkbox.parentElement;
+
+      expect(checkboxRoot).toHaveStyle({ opacity: "0" });
+
+      fireEvent.mouseEnter(container.firstChild as HTMLElement);
+
+      expect(checkboxRoot).toHaveStyle({ opacity: "1" });
+    });
+
+    it("reveals the normal-mode checkbox when it receives keyboard focus", () => {
       const props = createMockNodeProps(
         { interactive: true },
         { label: "test" },
       );
 
       render(<LineageNode {...props} />);
+      const checkbox = screen.getByRole("checkbox");
 
-      expect(screen.getByRole("checkbox")).toBeInTheDocument();
+      fireEvent.focus(checkbox);
+
+      expect(checkbox.parentElement).toHaveStyle({ opacity: "1" });
+    });
+
+    it("selects the first node from the hover checkbox in normal mode", () => {
+      const onSelect = vi.fn();
+      const props = createMockNodeProps(
+        { interactive: true, onSelect },
+        { label: "test" },
+      );
+
+      const { container } = render(<LineageNode {...props} />);
+      fireEvent.mouseEnter(container.firstChild as HTMLElement);
+      fireEvent.click(screen.getByRole("checkbox"));
+
+      expect(onSelect).toHaveBeenCalledWith("test-node-1");
     });
 
     it("does not render checkbox when interactive is false", () => {
@@ -927,6 +963,7 @@ describe("LineageNode", () => {
         {
           selected: true,
           interactive: true,
+          selectMode: "selecting",
           hasParents: true,
           hasChildren: true,
         },

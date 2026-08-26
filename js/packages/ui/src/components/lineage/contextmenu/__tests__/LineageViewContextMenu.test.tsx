@@ -63,6 +63,35 @@ describe("ModelNodeContextMenu — Show Impact Radius", () => {
   });
 });
 
+describe("ModelNodeContextMenu — lineage selection", () => {
+  it.each([
+    ["Select All Upstream Nodes", "parent"],
+    ["Select All Downstream Nodes", "child"],
+  ] as const)(
+    "keeps %s reachable without a node checkbox",
+    async (label, direction) => {
+      const selectParentNodes = vi.fn();
+      const selectChildNodes = vi.fn();
+      render(
+        <ModelNodeContextMenu
+          x={0}
+          y={0}
+          isOpen
+          onClose={vi.fn()}
+          node={modifiedNode()}
+          viewOptions={{ selectParentNodes, selectChildNodes }}
+        />,
+      );
+
+      await userEvent.click(screen.getByRole("menuitem", { name: label }));
+
+      const selectedDirection =
+        direction === "parent" ? selectParentNodes : selectChildNodes;
+      expect(selectedDirection).toHaveBeenCalledWith(NODE_ID);
+    },
+  );
+});
+
 describe("ColumnNodeContextMenu — Histogram launcher", () => {
   it("keeps lineage-column Histogram as a direct launch with its source", async () => {
     const runAction = vi.fn();

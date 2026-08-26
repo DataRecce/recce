@@ -36,7 +36,10 @@ const mockWaitRun = vi.fn();
 const mockCancelRun = vi.fn();
 
 vi.mock("../../api", () => ({
-  cacheKeys: { run: (id: string) => ["run", id] },
+  cacheKeys: {
+    run: (id: string) => ["runs", id],
+    runs: () => ["runs"],
+  },
   waitRun: (...args: unknown[]) => mockWaitRun(...args),
   cancelRun: (...args: unknown[]) => mockCancelRun(...args),
   runTypeHasRef: (type: string) =>
@@ -95,14 +98,16 @@ const createMockRun = (overrides: MockRunOverrides = {}): Run =>
 // Test Setup
 // ============================================================================
 
-const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
+const createWrapper = (providedQueryClient?: QueryClient) => {
+  const queryClient =
+    providedQueryClient ??
+    new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
       },
-    },
-  });
+    });
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
@@ -159,6 +164,33 @@ describe("useRun", () => {
   // ==========================================================================
 
   describe("polling lifecycle", () => {
+    it("invalidates run history once when a run completes", async () => {
+      const completedRun = createMockRun({
+        run_id: "analysis-run",
+        type: "histogram_diff",
+        result: { values: [] },
+        status: "Finished",
+      });
+      mockWaitRun.mockResolvedValue(completedRun);
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
+
+      const { result } = renderHook(() => useRun("analysis-run"), {
+        wrapper: createWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isRunning).toBe(false);
+      });
+      expect(invalidateQueries).toHaveBeenCalledTimes(1);
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: ["runs"],
+        exact: true,
+      });
+    });
+
     it("stops polling when run.result is received", async () => {
       const completedRun = createMockRun({
         result: { total: 100 },

@@ -14,12 +14,15 @@
 import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { getModelInfo, type LineageGraphNode } from "../..";
 import {
+  cacheKeys,
   createSchemaDiffCheck,
+  listRuns,
   type RowCount,
   type RowCountDiff,
+  type Run,
 } from "../../api";
 import {
   useLineageGraphContext,
@@ -48,8 +51,10 @@ import { LineageTabContent } from "./LineageTabContent";
 import { NodeSqlViewOss } from "./NodeSqlViewOss";
 import { RowCountSummary } from "./NodeTag";
 import {
+  type AnalysisRunType,
   NodeView as BaseNodeView,
   type NodeViewActionCallbacks,
+  type RecentAnalysisRun,
   type RunTypeIconMap,
 } from "./NodeView";
 import { NodeTag } from "./tags";
@@ -82,6 +87,19 @@ const ResourceTypeTag = ({ node }: { node: LineageGraphNode }) => {
     />
   );
 };
+
+const ANALYSIS_RUN_TYPES = new Set<AnalysisRunType>([
+  "profile_diff",
+  "value_diff",
+  "top_k_diff",
+  "histogram_diff",
+]);
+
+function isAnalysisRun(
+  run: Run,
+): run is Extract<Run, { type: AnalysisRunType }> {
+  return ANALYSIS_RUN_TYPES.has(run.type as AnalysisRunType);
+}
 
 // =============================================================================
 // OSS-SPECIFIC WRAPPER COMPONENTS
@@ -126,7 +144,7 @@ export function NodeViewOss({
   onJumpToHistory,
 }: NodeViewProps) {
   const router = useRouter();
-  const { runAction } = useRecceActionContext();
+  const { runAction, showRunId } = useRecceActionContext();
   const { isActionAvailable, envInfo, lineageGraph } = useLineageGraphContext();
   // Optional: undefined in tests/Storybook that mount NodeView without LineageView.
   const lineageViewCtx = useLineageViewContext();
@@ -142,6 +160,11 @@ export function NodeViewOss({
   const { basePath } = useRouteConfig();
   const { runsAggregated } = useLineageGraphContext();
   const isSingleEnv = isSingleEnvOnboarding ?? false;
+  const supportsDiffAnalysis =
+    !isSingleEnv &&
+    (node.data.resourceType === "model" ||
+      node.data.resourceType === "seed" ||
+      node.data.resourceType === "snapshot");
 
   const rowCountDisplay = useMemo(() => {
     const aggregated = runsAggregated?.[node.id];
@@ -159,6 +182,44 @@ export function NodeViewOss({
     staleTime: 5 * 60 * 1000,
   });
   const modelDetail = modelDetailData?.model;
+
+  const { data: runs } = useQuery({
+    queryKey: cacheKeys.runs(),
+    queryFn: () => listRuns(apiClient),
+    enabled: supportsDiffAnalysis && !!apiClient,
+    retry: false,
+  });
+
+  const recentAnalysisRuns = useMemo<RecentAnalysisRun[]>(() => {
+    return (runs ?? [])
+      .filter(isAnalysisRun)
+      .filter(
+        (run) =>
+          run.status !== "Running" && run.params?.model === node.data.name,
+      )
+      .sort(
+        (a, b) => new Date(b.run_at).getTime() - new Date(a.run_at).getTime(),
+      )
+      .map((run) => {
+        const params = run.params;
+        return {
+          id: run.run_id,
+          type: run.type,
+          runAt: run.run_at,
+          columnName:
+            params != null &&
+            "column_name" in params &&
+            typeof params.column_name === "string"
+              ? params.column_name
+              : undefined,
+        };
+      });
+  }, [runs, node.data.name]);
+
+  const handleViewAnalysisRun = useCallback(
+    (runId: string) => showRunId(runId, false),
+    [showRunId],
+  );
 
   // Build run type icons map from OSS registry
   const runTypeIcons: RunTypeIconMap = useMemo(
@@ -382,6 +443,8 @@ export function NodeViewOss({
       ResourceTypeTag={ResourceTypeTag}
       // Row count text rendered inline on the Row Count button
       rowCountDisplay={rowCountDisplay}
+      recentAnalysisRuns={recentAnalysisRuns}
+      onViewAnalysisRun={handleViewAnalysisRun}
       // Notification for single env
       NotificationComponent={OssNotificationComponent}
       // Connection popover wrapper

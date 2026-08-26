@@ -13,6 +13,7 @@ import type {
   NodeViewActionCallbacks,
   NodeViewNodeData,
   NodeViewProps,
+  RecentAnalysisRun,
   RunTypeIconMap,
 } from "@datarecce/ui/advanced";
 import { NodeView, RowCountSummary } from "@datarecce/ui/advanced";
@@ -28,7 +29,7 @@ import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { expect, fn, waitFor, within } from "storybook/test";
+import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import {
   mockRunResult,
   mockServerFlags,
@@ -207,7 +208,7 @@ const meta: Meta<typeof NodeView> = {
     docs: {
       description: {
         component:
-          "Node detail sidebar — header row (name, type tag, close), action buttons for diffs/queries, and tabbed Columns/Code content. Renders the real NodeView and real SchemaView. Story is wrapped in QueryClientProvider + MockLineageProvider so SchemaView's server-flag query and lineage lookups resolve against MSW fixtures.",
+          "Node detail sidebar — compact header (name, type tag, Row Count, close) and tabbed Columns/Code/Analysis content. Analysis keeps its four launchers visible above a flat model-scoped Recent list; Query lives with Code. Renders the real NodeView and real SchemaView. Story is wrapped in QueryClientProvider + MockLineageProvider so SchemaView's server-flag query and lineage lookups resolve against MSW fixtures.",
       },
     },
   },
@@ -272,6 +273,54 @@ export const Default: Story = {
         status: { name: "status", type: "varchar" },
       },
     }),
+  },
+};
+
+const recentAnalysisRuns: RecentAnalysisRun[] = [
+  {
+    id: "profile-finance-revenue",
+    type: "profile_diff",
+    runAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "histogram-status",
+    type: "histogram_diff",
+    columnName: "status",
+    runAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "top-k-order-date",
+    type: "top_k_diff",
+    columnName: "order_date",
+    runAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+  },
+];
+
+/** Settled DRC-3463 direction: launchers first, flat Recent history second. */
+export const AnalysisTab: Story = {
+  args: {
+    ...createStoryArgs({
+      name: "finance_revenue",
+      materialized: "table",
+      rowCountDiff: { base: 279991, curr: 280844 },
+    }),
+    recentAnalysisRuns,
+    onViewAnalysisRun: fn(),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("tab", { name: "Analysis" }));
+
+    await expect(canvas.getByRole("button", { name: "Profile" })).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Value" })).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Top-K" })).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: "Histogram" }),
+    ).toBeVisible();
+    await expect(canvas.getByText("Histogram · status")).toBeVisible();
+    await expect(canvas.getAllByRole("button", { name: /view/i })).toHaveLength(
+      3,
+    );
   },
 };
 

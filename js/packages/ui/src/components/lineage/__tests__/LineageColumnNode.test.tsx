@@ -105,6 +105,26 @@ describe("LineageColumnNode", () => {
 
       expect(screen.queryByText("INTEGER")).not.toBeInTheDocument();
     });
+
+    it("renders accessible indicators for hidden lineage columns", () => {
+      const props = createMockColumnNodeProps({}, {
+        hiddenUpstreamColumnCount: 2,
+        hiddenDownstreamColumnCount: 3,
+      } as Partial<LineageColumnNodeData>);
+
+      render(<LineageColumnNode {...props} />);
+
+      expect(
+        screen.getByRole("img", {
+          name: "2 upstream lineage columns hidden by the current view",
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("img", {
+          name: "3 downstream lineage columns hidden by the current view",
+        }),
+      ).toBeInTheDocument();
+    });
   });
 
   // ==========================================================================
