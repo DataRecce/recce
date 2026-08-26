@@ -180,24 +180,71 @@ describe("LineageNode", () => {
       },
     );
 
-    it("uses a neutral card with a narrow secondary accent rail", () => {
+    it("outlines a changed card in the secondary accent", () => {
       const { container } = render(
         <LineageNode {...createMockNodeProps({}, { changeStatus: "added" })} />,
       );
 
       const style = getComputedStyle(screen.getByTestId("lineage-node-card"));
       expect(style.backgroundColor).toBe("#FAFAFA");
-      expect(style.borderTopColor).toBe("#737373");
-      expect(style.borderRightColor).toBe("#737373");
-      expect(style.borderBottomColor).toBe("#737373");
+      expect(style.borderTopColor).toBe("#15803D");
+      expect(style.borderRightColor).toBe("#15803D");
+      expect(style.borderBottomColor).toBe("#15803D");
       expect(style.borderLeftColor).toBe("#15803D");
-      expect(style.borderLeftWidth).toBe("3px");
 
       fireEvent.mouseEnter(container.firstChild as Element);
       expect(
         getComputedStyle(screen.getByTestId("lineage-node-card"))
           .backgroundColor,
       ).toBe("#F5F5F5");
+    });
+
+    it("fills the status block with the secondary accent", () => {
+      render(
+        <LineageNode {...createMockNodeProps({}, { changeStatus: "added" })} />,
+      );
+
+      const block = getComputedStyle(
+        screen.getByTestId("lineage-node-status-block"),
+      );
+      expect(block.backgroundColor).toBe("#15803D");
+      expect(block.color).toBe("#FFFFFF");
+    });
+
+    it("inverts the status block foreground in dark mode", () => {
+      render(
+        <LineageNode
+          {...createMockNodeProps(
+            { isDark: true },
+            { changeStatus: "modified" },
+          )}
+        />,
+      );
+
+      const block = getComputedStyle(
+        screen.getByTestId("lineage-node-status-block"),
+      );
+      expect(block.backgroundColor).toBe("#FCD34D");
+      expect(block.color).toBe("#000000");
+
+      const card = getComputedStyle(screen.getByTestId("lineage-node-card"));
+      expect(card.borderTopColor).toBe("#FCD34D");
+    });
+
+    it("keeps an unchanged card fully neutral", () => {
+      render(
+        <LineageNode
+          {...createMockNodeProps({}, { changeStatus: "unchanged" })}
+        />,
+      );
+
+      const style = getComputedStyle(screen.getByTestId("lineage-node-card"));
+      expect(style.borderTopColor).toBe("#737373");
+      expect(style.borderLeftColor).toBe("#737373");
+      expect(
+        getComputedStyle(screen.getByTestId("lineage-node-status-block"))
+          .backgroundColor,
+      ).toBe("#FAFAFA");
     });
 
     it("defaults to unchanged status when not provided", () => {

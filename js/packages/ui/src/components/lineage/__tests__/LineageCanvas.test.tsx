@@ -399,7 +399,7 @@ describe("LineageCanvas", () => {
 
       const lightNodeColor = registeredMiniMapNodeColor;
       expect(lightNodeColor?.(modifiedNode)).toBe(
-        getSemanticColorTheme(false).structural.neutral.border,
+        getSemanticColorTheme(false).structural.secondaryAccent.modified,
       );
 
       vi.mocked(useIsDark).mockReturnValue(true);
@@ -407,7 +407,7 @@ describe("LineageCanvas", () => {
 
       const darkNodeColor = registeredMiniMapNodeColor;
       expect(darkNodeColor?.(modifiedNode)).toBe(
-        getSemanticColorTheme(true).structural.neutral.border,
+        getSemanticColorTheme(true).structural.secondaryAccent.modified,
       );
       expect(darkNodeColor).not.toBe(lightNodeColor);
 

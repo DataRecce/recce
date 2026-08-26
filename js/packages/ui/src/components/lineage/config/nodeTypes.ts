@@ -44,7 +44,7 @@ export interface NodeColorOptions {
 }
 
 /**
- * Build a MiniMap node-color function that copies the canvas node card's color.
+ * Build a MiniMap node-color function that copies the canvas node card's status block.
  *
  * The color decision (impacted-amber vs change-status, muted "cll" palette in
  * the new experience) lives in one place — `getNodeChangeStyle`, which
@@ -67,5 +67,5 @@ export const makeGetNodeColor =
         newCllExperience,
       },
       isDark,
-    ).color;
+    ).secondaryAccent;
   };

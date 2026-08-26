@@ -4,8 +4,8 @@
  *
  * The MiniMap must show the same color the node card renders. Rather than
  * re-deriving the palette/impacted logic, `makeGetNodeColor` copies the node's
- * color via the shared `getNodeChangeStyle` — so these tests assert it equals
- * `getNodeChangeStyle(...).color` for the equivalent state (the single source
+ * status accent via the shared `getNodeChangeStyle` — so these tests assert it
+ * equals `getNodeChangeStyle(...).secondaryAccent` for the equivalent state (the single source
  * of truth `LineageNode` also renders from). The one thing the minimap can't
  * read off `node.data` is impact, so we also check the impacted set is honored.
  * The unchanged-node case is additionally pinned against a literal palette
@@ -36,13 +36,13 @@ describe("makeGetNodeColor", () => {
 
     it("paints an impacted, otherwise-unchanged node amber (matches the card)", () => {
       expect(getColor(makeNode("impacted_model"))).toBe(
-        getStyleForImpacted().color,
+        getStyleForImpacted().secondaryAccent,
       );
     });
 
     it("does not paint a non-impacted unchanged node amber", () => {
       expect(getColor(makeNode("plain_model"))).toBe(
-        getNodeChangeStyle({ newCllExperience: true }).color,
+        getNodeChangeStyle({ newCllExperience: true }).secondaryAccent,
       );
     });
 
@@ -54,14 +54,14 @@ describe("makeGetNodeColor", () => {
           changeStatus: "modified",
           isImpacted: true,
           newCllExperience: true,
-        }).color,
+        }).secondaryAccent,
       );
     });
 
     it("uses the muted cll palette for changed nodes", () => {
       expect(getColor(makeNode("added_model", "added"))).toBe(
         getNodeChangeStyle({ changeStatus: "added", newCllExperience: true })
-          .color,
+          .secondaryAccent,
       );
     });
   });
@@ -74,13 +74,13 @@ describe("makeGetNodeColor", () => {
 
     it("ignores the impacted set entirely", () => {
       expect(getColor(makeNode("impacted_model"))).toBe(
-        getNodeChangeStyle({}).color,
+        getNodeChangeStyle({}).secondaryAccent,
       );
     });
 
     it("uses the default palette for changed nodes", () => {
       expect(getColor(makeNode("modified_model", "modified"))).toBe(
-        getNodeChangeStyle({ changeStatus: "modified" }).color,
+        getNodeChangeStyle({ changeStatus: "modified" }).secondaryAccent,
       );
     });
   });
@@ -92,7 +92,7 @@ describe("makeGetNodeColor", () => {
         const getColor = makeGetNodeColor({ isDark });
 
         expect(getColor(makeNode("added_model", "added"))).toBe(
-          getSemanticColorTheme(isDark).structural.neutral.border,
+          getSemanticColorTheme(isDark).structural.secondaryAccent.added,
         );
       },
     );
