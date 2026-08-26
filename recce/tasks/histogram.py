@@ -18,14 +18,12 @@ sql_datetime_types = [
     "DATE",
     "DATETIME",
     "TIMESTAMP",
-    "TIME",
     "YEAR",  # Specific to MySQL/MariaDB
     "DATETIME2",
     "SMALLDATETIME",
     "DATETIMEOFFSET",  # Specific to SQL Server
     "INTERVAL",  # Common in PostgreSQL and Oracle
     "TIMESTAMPTZ",
-    "TIMETZ",  # Specific to PostgreSQL
     "TIMESTAMP WITH TIME ZONE",
     "TIMESTAMP WITH LOCAL TIME ZONE",  # Oracle
     "TIMESTAMP_LTZ",
@@ -75,6 +73,8 @@ sql_not_supported_types = [
     "BIT",  # SQL Server and others use BIT to represent boolean values, where 1 is true and 0 is false
     "NUMBER(1)",  # Oracle uses NUMBER(1) where 1 is true and 0 is false, as it does not have a native BOOLEAN type
     "BOOL",  # Snowflake and PostgreSQL also support BOOL as an alias for BOOLEAN
+    "TIME",
+    "TIMETZ",
 ]
 
 sql_not_supported_types_pattern = [
@@ -535,6 +535,9 @@ class HistogramDiffCheckValidator(CheckValidator):
 
     def validate_check(self, check: Check):
         try:
-            HistogramDiffParams(**check.params)
+            params = HistogramDiffParams(**check.params)
         except Exception as e:
             raise ValueError(f"Invalid check: {str(e)}")
+
+        if _is_histogram_supported(params.column_type) is False:
+            raise ValueError(f"Column type {params.column_type} is not supported for histogram analysis")

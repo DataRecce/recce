@@ -429,6 +429,24 @@ def test_validator():
     with pytest.raises(ValueError):
         validate({})
 
+    with pytest.raises(ValueError, match="not supported"):
+        validate(
+            {
+                "model": "customers",
+                "column_name": "time_col",
+                "column_type": "TIME",
+            }
+        )
+
+    with pytest.raises(ValueError, match="not supported"):
+        validate(
+            {
+                "model": "customers",
+                "column_name": "timetz_col",
+                "column_type": "TIMETZ",
+            }
+        )
+
 
 def test_is_column_type_supported_by_histogram():
     assert _is_histogram_supported("varchar") is False
@@ -436,3 +454,23 @@ def test_is_column_type_supported_by_histogram():
     assert _is_histogram_supported("varchar(256)") is False
     assert _is_histogram_supported("bool") is False
     assert _is_histogram_supported("int") is True
+    assert _is_histogram_supported("TIME") is False
+    assert _is_histogram_supported("time") is False
+    assert _is_histogram_supported("TIMETZ") is False
+    assert _is_histogram_supported("timetz") is False
+    assert _is_histogram_supported("DATE") is True
+    assert _is_histogram_supported("DATETIME") is True
+    assert _is_histogram_supported("TIMESTAMP") is True
+    assert _is_histogram_supported("TIMESTAMPTZ") is True
+
+
+def test_histogram_rejects_time_columns_before_sql(dbt_test_helper):
+    params_time = {"model": "customers", "column_name": "log_time", "column_type": "TIME"}
+    task = HistogramDiffTask(params_time)
+    with pytest.raises(ValueError, match="Column type TIME is not supported for histogram analysis"):
+        task.execute()
+
+    params_timetz = {"model": "customers", "column_name": "log_time_tz", "column_type": "TIMETZ"}
+    task_tz = HistogramDiffTask(params_timetz)
+    with pytest.raises(ValueError, match="Column type TIMETZ is not supported for histogram analysis"):
+        task_tz.execute()
