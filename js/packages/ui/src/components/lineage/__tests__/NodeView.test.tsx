@@ -7,7 +7,7 @@
  * row is conditionally absent.
  */
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, vi } from "vitest";
 import type { NodeColumnData } from "../../../api";
@@ -133,7 +133,6 @@ describe("NodeView", () => {
     });
 
     test("keeps only Row Count in the header and hides analysis launchers until the Analysis tab opens", async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       renderNodeView(createNode("model", testColumns), testColumns, {
         rowCountDisplay: <span>999 rows · No Change</span>,
       });
@@ -147,7 +146,7 @@ describe("NodeView", () => {
       expect(screen.queryByRole("button", { name: /^histogram$/i })).toBeNull();
       expect(screen.queryByRole("button", { name: /^query$/i })).toBeNull();
 
-      await user.click(screen.getByRole("tab", { name: "Analysis" }));
+      fireEvent.click(screen.getByRole("tab", { name: "Analysis" }));
 
       expect(screen.getByRole("button", { name: /^profile$/i })).toBeVisible();
       expect(screen.getByRole("button", { name: /^value$/i })).toBeVisible();
@@ -159,7 +158,6 @@ describe("NodeView", () => {
     });
 
     test("launches all four analysis actions from always-visible buttons", async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       const callbacks = {
         onProfileDiffClick: vi.fn(),
         onValueDiffClick: vi.fn(),
@@ -170,11 +168,11 @@ describe("NodeView", () => {
         actionCallbacks: callbacks,
       });
 
-      await user.click(screen.getByRole("tab", { name: "Analysis" }));
-      await user.click(screen.getByRole("button", { name: /^profile$/i }));
-      await user.click(screen.getByRole("button", { name: /^value$/i }));
-      await user.click(screen.getByRole("button", { name: /^top-k$/i }));
-      await user.click(screen.getByRole("button", { name: /^histogram$/i }));
+      fireEvent.click(screen.getByRole("tab", { name: "Analysis" }));
+      fireEvent.click(screen.getByRole("button", { name: /^profile$/i }));
+      fireEvent.click(screen.getByRole("button", { name: /^value$/i }));
+      fireEvent.click(screen.getByRole("button", { name: /^top-k$/i }));
+      fireEvent.click(screen.getByRole("button", { name: /^histogram$/i }));
 
       expect(callbacks.onProfileDiffClick).toHaveBeenCalledOnce();
       expect(callbacks.onValueDiffClick).toHaveBeenCalledOnce();
@@ -183,7 +181,6 @@ describe("NodeView", () => {
     });
 
     test("renders a flat Recent list with column context and reopens a selected result", async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       const onViewAnalysisRun = vi.fn();
       renderNodeView(createNode("model", testColumns), testColumns, {
         recentAnalysisRuns: [
@@ -202,33 +199,31 @@ describe("NodeView", () => {
         onViewAnalysisRun,
       });
 
-      await user.click(screen.getByRole("tab", { name: "Analysis" }));
+      fireEvent.click(screen.getByRole("tab", { name: "Analysis" }));
 
       expect(screen.getByText("Recent")).toBeInTheDocument();
-      expect(screen.getByText("Profile")).toBeInTheDocument();
+      expect(screen.getAllByText("Profile")).toHaveLength(2);
       expect(screen.getByText(/Histogram.*STATUS/)).toBeInTheDocument();
       expect(screen.getByText("3 days ago")).toBeInTheDocument();
       expect(screen.getByText("about 1 hour ago")).toBeInTheDocument();
 
       const viewButtons = screen.getAllByRole("button", { name: /view/i });
       expect(viewButtons).toHaveLength(2);
-      await user.click(viewButtons[1]);
+      fireEvent.click(viewButtons[1]);
       expect(onViewAnalysisRun).toHaveBeenCalledWith("histogram-1");
     });
 
     test("shows an explicit empty state when the focused model has no recent analysis", async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       renderNodeView(createNode("model", testColumns), testColumns, {
         recentAnalysisRuns: [],
       });
 
-      await user.click(screen.getByRole("tab", { name: "Analysis" }));
+      fireEvent.click(screen.getByRole("tab", { name: "Analysis" }));
 
       expect(screen.getByText("No recent analysis runs")).toBeInTheDocument();
     });
 
     test("moves Query into the Code tab without changing its callback", async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       const onQueryDiffClick = vi.fn();
       renderNodeView(createNode("model", testColumns), testColumns, {
         actionCallbacks: { onQueryDiffClick },
@@ -236,8 +231,8 @@ describe("NodeView", () => {
       });
 
       expect(screen.queryByRole("button", { name: /^query$/i })).toBeNull();
-      await user.click(screen.getByRole("tab", { name: "Code" }));
-      await user.click(screen.getByRole("button", { name: /^query$/i }));
+      fireEvent.click(screen.getByRole("tab", { name: "Code" }));
+      fireEvent.click(screen.getByRole("button", { name: /^query$/i }));
 
       expect(onQueryDiffClick).toHaveBeenCalledOnce();
       expect(screen.getByText("SQL diff")).toBeInTheDocument();

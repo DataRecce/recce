@@ -56,10 +56,12 @@ export { NodeSqlViewOss } from "./NodeSqlViewOss";
 export * from "./NodeTag";
 // Node detail view component with dependency-injected components
 export {
+  type AnalysisRunType,
   NodeView,
   type NodeViewActionCallbacks,
   type NodeViewNodeData,
   type NodeViewProps,
+  type RecentAnalysisRun,
   type RunTypeIconMap,
 } from "./NodeView";
 export * from "./nodes";
