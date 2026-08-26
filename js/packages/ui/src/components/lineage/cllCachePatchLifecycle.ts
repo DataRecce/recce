@@ -47,7 +47,7 @@ export interface CllLifecycleRequest {
   queryClient: QueryClient;
 }
 
-interface CllLifecycleResolution {
+export interface CllLifecycleResolution {
   cll: ColumnLineageData | undefined;
   isCurrent: () => boolean;
 }
