@@ -125,6 +125,28 @@ describe("useCllState", () => {
     expect(result.current.history.peek()).toBeUndefined();
   });
 
+  it("does not pop a newer entry pushed while restoration is in flight", async () => {
+    const { result } = renderHook(() =>
+      useCllState({ apiClient, queryClient }),
+    );
+    const applyResult = deferred<boolean>();
+    result.current.history.push({ node_id: "model.orders" });
+
+    const restoration = result.current.history.restore(
+      async () => await applyResult.promise,
+    );
+    result.current.history.push({ node_id: "model.customers" });
+    applyResult.resolve(true);
+
+    expect(await restoration).toBe(false);
+    expect(result.current.history.pop()).toEqual({
+      input: { node_id: "model.customers" },
+    });
+    expect(result.current.history.pop()).toEqual({
+      input: { node_id: "model.orders" },
+    });
+  });
+
   it("resets current CLL, history, and impact snapshots", () => {
     const { result } = renderHook(() =>
       useCllState({ apiClient, queryClient }),
