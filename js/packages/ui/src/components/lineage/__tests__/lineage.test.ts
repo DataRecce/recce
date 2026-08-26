@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { ColumnLineageData } from "../../../api";
 import type { LineageGraph } from "../../../contexts/lineage/types";
 import { toReactFlow } from "../lineage";
 
@@ -203,5 +204,60 @@ describe("toReactFlow", () => {
     // Column nodes have relative positions within parent
     expect(columnNode?.position).toEqual({ x: 10, y: 70 });
     expect(columnNode?.parentId).toBe("node1");
+  });
+
+  it("signals the exact hidden-column count at both visible chain boundaries", () => {
+    const modelA = "model.test.a";
+    const modelB = "model.test.b";
+    const modelC = "model.test.c";
+    const lineageGraph = createMockLineageGraph([modelA, modelB, modelC]);
+    const cll: ColumnLineageData = {
+      current: {
+        nodes: {},
+        columns: {
+          [`${modelA}_id`]: { name: "id" },
+          [`${modelB}_id`]: { name: "id" },
+          [`${modelB}_account_id`]: { name: "account_id" },
+          [`${modelC}_id`]: { name: "id" },
+        },
+        parent_map: {
+          [`${modelA}_id`]: [],
+          [`${modelB}_id`]: [`${modelA}_id`],
+          [`${modelB}_account_id`]: [`${modelA}_id`],
+          [`${modelC}_id`]: [`${modelB}_id`, `${modelB}_account_id`],
+        },
+        child_map: {
+          [`${modelA}_id`]: [`${modelB}_id`, `${modelB}_account_id`],
+          [`${modelB}_id`]: [`${modelC}_id`],
+          [`${modelB}_account_id`]: [`${modelC}_id`],
+          [`${modelC}_id`]: [],
+        },
+      },
+    };
+    const columnAncestry = new Map([
+      [modelA, [{ column: "id", isImpacted: true }]],
+      [
+        modelB,
+        [
+          { column: "id", isImpacted: true },
+          { column: "account_id", isImpacted: true },
+        ],
+      ],
+      [modelC, [{ column: "id", isImpacted: true }]],
+    ]);
+
+    const [nodes] = toReactFlow(lineageGraph, {
+      selectedNodes: [modelA, modelC],
+      cll,
+      newCllExperience: true,
+      columnAncestry,
+    });
+
+    expect(
+      nodes.find((node) => node.id === `${modelA}_id`)?.data,
+    ).toMatchObject({ hiddenDownstreamColumnCount: 2 });
+    expect(
+      nodes.find((node) => node.id === `${modelC}_id`)?.data,
+    ).toMatchObject({ hiddenUpstreamColumnCount: 2 });
   });
 });
