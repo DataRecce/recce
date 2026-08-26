@@ -219,6 +219,7 @@ function HiddenLineageIndicator({
   return (
     <Box
       component="span"
+      role="img"
       aria-label={label}
       title={label}
       sx={{

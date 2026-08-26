@@ -115,14 +115,14 @@ describe("LineageColumnNode", () => {
       render(<LineageColumnNode {...props} />);
 
       expect(
-        screen.getByLabelText(
-          "2 upstream lineage columns hidden by the current view",
-        ),
+        screen.getByRole("img", {
+          name: "2 upstream lineage columns hidden by the current view",
+        }),
       ).toBeInTheDocument();
       expect(
-        screen.getByLabelText(
-          "3 downstream lineage columns hidden by the current view",
-        ),
+        screen.getByRole("img", {
+          name: "3 downstream lineage columns hidden by the current view",
+        }),
       ).toBeInTheDocument();
     });
   });
