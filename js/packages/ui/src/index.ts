@@ -164,6 +164,7 @@ export {
 } from "./contexts";
 // Hooks - utility hooks for theming and data
 export type {
+  ModelColumnAvailability,
   MultiNodesActionCallbacks,
   MultiNodesActionTracking,
   MultiNodesActionTrackProps,

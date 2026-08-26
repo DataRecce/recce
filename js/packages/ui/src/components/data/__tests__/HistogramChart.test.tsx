@@ -23,6 +23,7 @@ import type { HistogramOverlapPalette } from "../histogramOverlap";
 
 interface MockChartProps {
   data: {
+    labels?: number[];
     datasets: Record<string, unknown>[];
   };
   fallbackContent?: React.ReactNode;
@@ -34,10 +35,30 @@ interface MockChartProps {
           generateLabels?: (chart: Chart<"bar">) => LegendItem[];
         };
       };
+      tooltip?: {
+        callbacks?: {
+          title?: (items: { dataIndex: number }[]) => string;
+          label?: (item: {
+            dataIndex: number;
+            datasetIndex: number;
+            dataset: { label?: string };
+          }) => string;
+        };
+      };
     };
     scales?: {
       x?: {
+        display?: boolean;
+        max?: number;
+        min?: number;
         type?: string;
+        ticks?: {
+          callback?: (
+            value: number | string,
+            index: number,
+            ticks: unknown[],
+          ) => string | undefined;
+        };
       };
     };
   };
@@ -219,14 +240,178 @@ describe("HistogramChart", () => {
       expect(data.datasets).toHaveLength(2);
     });
 
-    it("generates correct bin labels", () => {
-      const { getByTestId } = render(<HistogramChart {...defaultProps} />);
+    it("positions numeric bars at bin midpoints while keeping full tooltip ranges", () => {
+      render(<HistogramChart {...defaultProps} />);
 
-      const chart = getByTestId("mock-chart");
-      const data = JSON.parse(chart.getAttribute("data-data") || "{}");
+      const { data, options } = getLastChartProps();
+      const tickCallback = options?.scales?.x?.ticks?.callback;
+      const tooltipCallbacks = options?.plugins?.tooltip?.callbacks;
 
-      // Should have binEdges.length - 1 labels
-      expect(data.labels).toHaveLength(5);
+      expect(data.labels).toEqual([]);
+      expect(options?.scales?.x).toMatchObject({
+        max: 100,
+        min: 0,
+        type: "linear",
+      });
+      expect(data.datasets[0].data).toHaveLength(mockCurrentData.counts.length);
+      expect(data.datasets[1].data).toHaveLength(mockBaseData.counts.length);
+      expect(data.datasets[0].data).toEqual([
+        { x: 10, y: 15 },
+        { x: 30, y: 25 },
+        { x: 50, y: 35 },
+        { x: 70, y: 45 },
+        { x: 90, y: 55 },
+      ]);
+      expect(tickCallback?.(0, 0, [])).toBe("0");
+      expect(tickCallback?.(100, 5, [])).toBe("100");
+      expect(tooltipCallbacks?.title?.([{ dataIndex: 4 }])).toBe(
+        "Value Range\n80 - 100",
+      );
+      expect(
+        tooltipCallbacks?.label?.({
+          dataIndex: 4,
+          datasetIndex: 0,
+          dataset: { label: "Current" },
+        }),
+      ).toBe("Current: 55");
+    });
+
+    it("thins numeric edge ticks while retaining the first and terminal edges", () => {
+      const binEdges = Array.from({ length: 13 }, (_, index) => index * 10);
+      const counts = Array.from({ length: 12 }, () => 1);
+      render(
+        <HistogramChart
+          title="Many bins"
+          binEdges={binEdges}
+          baseData={{ counts }}
+          currentData={{ counts }}
+        />,
+      );
+
+      const tickCallback =
+        getLastChartProps().options?.scales?.x?.ticks?.callback;
+      const labels = binEdges
+        .map((edge, index) => tickCallback?.(edge, index, []))
+        .filter((label): label is string => label !== undefined);
+
+      expect(labels).toEqual(["0", "20", "40", "60", "80", "100", "120"]);
+    });
+
+    it.each([
+      {
+        name: "positive",
+        binEdges: Array.from(
+          { length: 51 },
+          (_, index) => 1_000_000 + index * 0.01,
+        ),
+      },
+      {
+        name: "negative",
+        binEdges: Array.from(
+          { length: 51 },
+          (_, index) => -1_000_000.5 + index * 0.01,
+        ),
+      },
+    ])(
+      "keeps selected ticks and tooltip endpoints distinct in a narrow $name high-offset domain",
+      ({ binEdges }) => {
+        const counts = Array.from({ length: binEdges.length - 1 }, () => 1);
+        render(
+          <HistogramChart
+            title="High-offset bins"
+            binEdges={binEdges}
+            baseData={{ counts }}
+            currentData={{ counts }}
+          />,
+        );
+
+        const { options } = getLastChartProps();
+        const tickCallback = options?.scales?.x?.ticks?.callback;
+        const selectedLabels = binEdges
+          .map((edge, index) => tickCallback?.(edge, index, []))
+          .filter((label): label is string => label !== undefined);
+        expect(new Set(selectedLabels).size).toBe(selectedLabels.length);
+
+        const title = options?.plugins?.tooltip?.callbacks?.title?.([
+          { dataIndex: 0 },
+        ]);
+        const [start, end] = title?.split("\n")[1]?.split(" - ") ?? [];
+        expect(start).toBeTruthy();
+        expect(end).toBeTruthy();
+        expect(start).not.toBe(end);
+      },
+    );
+
+    it("retains compact abbreviated labels when they are already distinct", () => {
+      const binEdges = [1_000_000, 1_200_000, 1_400_000];
+      const counts = [1, 1];
+      render(
+        <HistogramChart
+          title="Readable million bins"
+          binEdges={binEdges}
+          baseData={{ counts }}
+          currentData={{ counts }}
+        />,
+      );
+
+      const tickCallback =
+        getLastChartProps().options?.scales?.x?.ticks?.callback;
+      expect(
+        binEdges.map((edge, index) => tickCallback?.(edge, index, [])),
+      ).toEqual(["1M", "1.2M", "1.4M"]);
+    });
+
+    it("keeps string labels and values on the pre-existing category path", () => {
+      render(<HistogramChart {...defaultProps} dataType="string" />);
+
+      const { data, options } = getLastChartProps();
+      expect(data.labels).toEqual([
+        "0 - 20",
+        "20 - 40",
+        "40 - 60",
+        "60 - 80",
+        "80 - 100",
+      ]);
+      expect(data.datasets[0].data).toEqual(mockCurrentData.counts);
+      expect(data.datasets[1].data).toEqual(mockBaseData.counts);
+      expect(options?.scales?.x?.type).toBe("category");
+    });
+
+    it("keeps datetime labels, tuples, scale, and hidden axis unchanged", () => {
+      render(
+        <HistogramChart
+          {...defaultProps}
+          dataType="datetime"
+          hideAxis={true}
+        />,
+      );
+
+      const { data, options } = getLastChartProps();
+      expect(data.labels).toEqual([
+        "0 - 20",
+        "20 - 40",
+        "40 - 60",
+        "60 - 80",
+        "80 - 100",
+      ]);
+      expect(data.datasets[0].data).toEqual([
+        [0, 15],
+        [20, 25],
+        [40, 35],
+        [60, 45],
+        [80, 55],
+      ]);
+      expect(data.datasets[1].data).toEqual([
+        [0, 10],
+        [20, 20],
+        [40, 30],
+        [60, 40],
+        [80, 50],
+      ]);
+      expect(options?.scales?.x).toMatchObject({
+        display: false,
+        type: "timeseries",
+      });
     });
 
     it("creates datasets with correct labels", () => {
@@ -263,7 +448,11 @@ describe("HistogramChart", () => {
           data.datasets.every((dataset) => dataset.grouped === false),
         ).toBe(true);
         expect(options?.scales?.x?.type).toBe(
-          dataType === "datetime" ? "timeseries" : "category",
+          dataType === "datetime"
+            ? "timeseries"
+            : dataType === "numeric"
+              ? "linear"
+              : "category",
         );
       },
     );
@@ -304,11 +493,12 @@ describe("HistogramChart", () => {
       },
     );
 
-    it("registers one explicit histogram overlap painter", () => {
+    it("registers overlap and bin-geometry painters", () => {
       render(<HistogramChart {...defaultProps} />);
 
       expect(getLastChartProps().plugins?.map(({ id }) => id)).toEqual([
         "histogramOverlap",
+        "histogramBinGeometry",
       ]);
     });
 
@@ -520,7 +710,7 @@ describe("HistogramChart", () => {
       expect(currentData[0]).toHaveLength(2);
     });
 
-    it("uses plain count values for numeric type", () => {
+    it("uses midpoint coordinate objects for numeric type", () => {
       const { getByTestId } = render(
         <HistogramChart {...defaultProps} dataType="numeric" />,
       );
@@ -528,9 +718,9 @@ describe("HistogramChart", () => {
       const chart = getByTestId("mock-chart");
       const data = JSON.parse(chart.getAttribute("data-data") || "{}");
 
-      // For numeric, data should be plain numbers
+      // Numeric bars use explicit x coordinates on the linear edge scale.
       const currentData = data.datasets[0].data;
-      expect(typeof currentData[0]).toBe("number");
+      expect(currentData[0]).toEqual({ x: 10, y: 15 });
     });
   });
 

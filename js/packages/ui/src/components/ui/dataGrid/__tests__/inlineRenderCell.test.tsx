@@ -10,7 +10,7 @@
  * - asNumber utility function
  */
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ColDef, ICellRendererParams } from "ag-grid-community";
 import React from "react";
 import { vi } from "vitest";
@@ -19,6 +19,7 @@ import {
   asNumber,
   createInlineRenderCell,
   inlineRenderCell,
+  parseFiniteNumeric,
 } from "../inlineRenderCell";
 
 // ============================================================================
@@ -28,6 +29,7 @@ import {
 interface RecceColumnContext {
   columnType?: string;
   columnRenderMode?: string | number;
+  profileDiffPercentMode?: "percent_delta" | "percent_change";
 }
 
 type ColDefWithMetadata = ColDef<RowObjectType> & {
@@ -92,6 +94,29 @@ describe("asNumber", () => {
   test("handles NaN input", () => {
     expect(asNumber(NaN)).toBe(NaN);
     expect(Number.isNaN(asNumber(NaN))).toBe(true);
+  });
+});
+
+// ============================================================================
+// DRC-2866: strict numeric parsing for explicit percentage modes
+// ============================================================================
+
+describe("parseFiniteNumeric", () => {
+  test.each([
+    [12.5, 12.5],
+    ["12.5", 12.5],
+    [" 12.5 ", 12.5],
+    ["12px", undefined],
+    ["", undefined],
+    ["   ", undefined],
+    [true, undefined],
+    [null, undefined],
+    [undefined, undefined],
+    [Number.NaN, undefined],
+    [Number.POSITIVE_INFINITY, undefined],
+    ["Infinity", undefined],
+  ])("parses %p as %p without partial coercion", (value, expected) => {
+    expect(parseFiniteNumeric(value)).toBe(expected);
   });
 });
 
@@ -229,6 +254,265 @@ describe("inlineRenderCell - Delta Mode", () => {
     expect(screen.getByText("100")).toBeInTheDocument();
     expect(screen.getByText("(+100)")).toBeInTheDocument();
   });
+});
+
+// ============================================================================
+// DRC-2866: explicit percentage-point and relative-percent modes
+// ============================================================================
+
+/**
+ * Opens the tooltip anchored to `anchor` and returns its exact text content.
+ *
+ * Exact `textContent` rather than a substring regex: only an exact match tells
+ * a real three-line tooltip apart from a single line that contains the two
+ * literal characters `\n`.
+ */
+async function openTooltipText(anchor: HTMLElement): Promise<string> {
+  fireEvent.mouseOver(anchor);
+  const tooltip = await screen.findByRole("tooltip");
+  return tooltip.textContent ?? "";
+}
+
+describe("inlineRenderCell - DRC-2866 explicit percentage modes", () => {
+  function renderExplicitMode(
+    mode: "percent_delta" | "percent_change",
+    data: Partial<RowObjectType>,
+    field = mode === "percent_delta" ? "proportion" : "row_count",
+    columnType = mode === "percent_delta" ? "float" : "integer",
+  ) {
+    const colDef: ColDefWithMetadata = {
+      field,
+      context: {
+        columnType,
+        columnRenderMode: mode,
+        profileDiffPercentMode: mode,
+      },
+    };
+
+    render(<>{inlineRenderCell(createParams(data, colDef))}</>);
+  }
+
+  test("renders a percentage-point decrease with unrounded tooltip values", async () => {
+    renderExplicitMode("percent_delta", {
+      base__proportion: 0.98,
+      current__proportion: 0.94,
+    });
+
+    expect(screen.getByText("94%")).toBeInTheDocument();
+    expect(screen.getByText("(-4pp)")).toHaveAttribute(
+      "data-direction",
+      "decrease",
+    );
+
+    fireEvent.mouseOver(screen.getByText("94%"));
+    expect(await screen.findByText(/Base: 0\.98/)).toBeInTheDocument();
+    expect(screen.getByText(/Current: 0\.94/)).toBeInTheDocument();
+    expect(screen.getByText(/Change: -4pp/)).toBeInTheDocument();
+  });
+
+  test.each([
+    [0.5, 0.6, "0.6", "(+20%)", "increase"],
+    [0.5, 0.4, "0.4", "(-20%)", "decrease"],
+  ] as const)(
+    "renders a %s to %s relative change as %s %s",
+    (base, current, currentText, changeText, direction) => {
+      renderExplicitMode("percent_change", {
+        base__row_count: base,
+        current__row_count: current,
+      });
+
+      expect(screen.getByText(currentText)).toBeInTheDocument();
+      expect(screen.getByText(changeText)).toHaveAttribute(
+        "data-direction",
+        direction,
+      );
+    },
+  );
+
+  test("renders an unchanged zero relative value beside its own value with a tooltip", async () => {
+    renderExplicitMode("percent_change", {
+      base__row_count: 0,
+      current__row_count: 0,
+    });
+
+    expect(screen.getByText("0")).toBeInTheDocument();
+    expect(screen.getByText("0%")).toBeInTheDocument();
+    expect(screen.queryByText("N/A")).not.toBeInTheDocument();
+
+    expect(await openTooltipText(screen.getByText("0%"))).toBe(
+      "Base: 0\nCurrent: 0\nChange: 0",
+    );
+  });
+
+  test.each([
+    ["raw", "0.98", "0.94"],
+    ["percent", "98%", "94%"],
+    [2, "0.98", "0.94"],
+  ] as const)(
+    "keeps the legacy %p mode rendering unchanged",
+    (mode, baseText, currentText) => {
+      const colDef: ColDefWithMetadata = {
+        field: "proportion",
+        context: { columnType: "float", columnRenderMode: mode },
+      };
+      render(
+        <>
+          {inlineRenderCell(
+            createParams(
+              { base__proportion: 0.98, current__proportion: 0.94 },
+              colDef,
+            ),
+          )}
+        </>,
+      );
+
+      expect(screen.getByText(baseText)).toBeInTheDocument();
+      expect(screen.getByText(currentText)).toBeInTheDocument();
+    },
+  );
+
+  test.each([
+    [0, 0.2, ["0", "0.2"]],
+    [-0.1, 0.2, ["-0.1", "0.2"]],
+    [-0.1, -0.1, ["-0.1"]],
+  ] as const)(
+    "renders %s to %s relative change as N/A beside the cell values",
+    (base, current, visibleValues) => {
+      renderExplicitMode("percent_change", {
+        base__row_count: base,
+        current__row_count: current,
+      });
+
+      expect(screen.getByText("N/A")).toHaveAttribute(
+        "data-direction",
+        "equal",
+      );
+      for (const value of visibleValues) {
+        expect(screen.getByText(value)).toBeInTheDocument();
+      }
+    },
+  );
+
+  test("keeps the full-precision values in the undefined-change tooltip", async () => {
+    renderExplicitMode("percent_change", {
+      base__row_count: 0,
+      current__row_count: 0.2,
+    });
+
+    expect(await openTooltipText(screen.getByText("N/A"))).toBe(
+      "Base: 0\nCurrent: 0.2\nChange: N/A",
+    );
+  });
+
+  test.each(["added", "removed"] as const)(
+    "renders a %s percent_delta row in the column's percentage unit",
+    (status) => {
+      renderExplicitMode("percent_delta", {
+        __status: status,
+        current__proportion: 0.94,
+      });
+
+      expect(screen.getByText("94%")).toBeInTheDocument();
+      expect(screen.queryByText("0.94")).not.toBeInTheDocument();
+    },
+  );
+
+  test.each(["added", "removed"] as const)(
+    "renders a %s percent_delta row with a placeholder base in the column's percentage unit",
+    (status) => {
+      renderExplicitMode("percent_delta", {
+        __status: status,
+        base__proportion: null,
+        current__proportion: 0.94,
+      });
+
+      expect(screen.getByText("-")).toBeInTheDocument();
+      expect(screen.getByText("94%")).toBeInTheDocument();
+      expect(screen.queryByText("0.94")).not.toBeInTheDocument();
+    },
+  );
+
+  test.each(["added", "removed"] as const)(
+    "renders a %s percent_change row without converting its value to a percentage",
+    (status) => {
+      renderExplicitMode("percent_change", {
+        __status: status,
+        current__row_count: 12,
+      });
+
+      expect(screen.getByText("12")).toBeInTheDocument();
+      expect(screen.queryByText("1,200%")).not.toBeInTheDocument();
+    },
+  );
+
+  test.each([
+    [null, 0.94],
+    [true, 0.94],
+    ["", 0.94],
+    ["12px", 0.94],
+    [Number.NaN, 0.94],
+    [Number.POSITIVE_INFINITY, 0.94],
+  ])(
+    "keeps invalid %p to %p values in the existing inline presentation",
+    (base, current) => {
+      renderExplicitMode("percent_change", {
+        base__row_count: base,
+        current__row_count: current,
+      });
+
+      expect(screen.queryByText("N/A")).not.toBeInTheDocument();
+      expect(document.querySelector("[data-comparison-role]")).not.toBeNull();
+    },
+  );
+
+  test.each(["added", "removed"] as const)(
+    "keeps %s rows in the existing inline structural presentation",
+    (status) => {
+      renderExplicitMode("percent_change", {
+        __status: status,
+        base__row_count: 0,
+        current__row_count: 0.94,
+      });
+
+      expect(screen.queryByText("N/A")).not.toBeInTheDocument();
+      expect(document.querySelector("[data-comparison-role]")).not.toBeNull();
+    },
+  );
+
+  test("keeps the full computed percentage-point change in the tooltip", async () => {
+    renderExplicitMode("percent_delta", {
+      base__proportion: 0.9,
+      current__proportion: 0.941234,
+    });
+
+    expect(screen.getByText("(+4.12pp)")).toBeInTheDocument();
+    fireEvent.mouseOver(screen.getByText("94.12%"));
+    expect(
+      await screen.findByText(/Change: \+4\.123400000000004pp/),
+    ).toBeInTheDocument();
+  });
+
+  test.each([
+    ["percent_delta", "proportion", "float"],
+    ["percent_change", "row_count", "integer"],
+  ] as const)(
+    "falls back when %s arithmetic overflows",
+    (mode, field, columnType) => {
+      renderExplicitMode(
+        mode,
+        {
+          [`base__${field}`]: Number.MIN_VALUE,
+          [`current__${field}`]: Number.MAX_VALUE,
+        },
+        field,
+        columnType,
+      );
+
+      expect(document.querySelectorAll("[data-comparison-role]")).toHaveLength(
+        2,
+      );
+    },
+  );
 });
 
 // ============================================================================

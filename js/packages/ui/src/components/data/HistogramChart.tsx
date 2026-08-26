@@ -19,6 +19,8 @@ import {
   formatAsAbbreviatedNumber,
   formatIntervalMinMax,
 } from "../../utils/formatters";
+import { histogramBinGeometryPlugin } from "./histogramBinGeometry";
+import { createHistogramEdgeFormatter } from "./histogramEdgeFormatter";
 import {
   createHistogramLegendLabels,
   handleHistogramLegendClick,
@@ -86,11 +88,18 @@ export interface HistogramChartProps {
 /**
  * Format bin range display
  */
-function formatBinRange(binEdges: number[], index: number): string {
+function formatBinRange(
+  binEdges: number[],
+  index: number,
+  formatEdge: (value: number) => string = (value) =>
+    String(formatAsAbbreviatedNumber(value)),
+): string {
   const start = binEdges[index];
   const end = binEdges[index + 1];
-  return `${formatAsAbbreviatedNumber(start)} - ${formatAsAbbreviatedNumber(end)}`;
+  return `${formatEdge(start)} - ${formatEdge(end)}`;
 }
+
+const MAX_EDGE_TICK_LABELS = 8;
 
 /**
  * HistogramChart Component
@@ -149,6 +158,11 @@ function HistogramChartComponent({
   const semanticColors = getSemanticColorTheme(isDark);
   const comparisonColors = semanticColors.comparison;
   const isDatetime = dataType === "datetime";
+  const isNumeric = dataType === "numeric";
+  const formatNumericEdge = useMemo(
+    () => createHistogramEdgeFormatter(binEdges),
+    [binEdges],
+  );
   const accessibleDescription = `${title}. Histogram comparing Base and Current series. Overlap marks their shared distribution.`;
   const overlapPalette = useMemo(
     () => ({
@@ -170,7 +184,9 @@ function HistogramChartComponent({
   const chartData = useMemo<ChartData<"bar">>(() => {
     const labels = binEdges
       .slice(0, -1)
-      .map((_, i) => formatBinRange(binEdges, i));
+      .map((_, i) =>
+        formatBinRange(binEdges, i, isNumeric ? formatNumericEdge : undefined),
+      );
 
     const buildDataset = (
       data: HistogramDataset,
@@ -180,7 +196,12 @@ function HistogramChartComponent({
       const counts = data.counts ?? [];
       const chartValues = isDatetime
         ? counts.map((v, i) => [binEdges[i], v] as [number, number])
-        : counts;
+        : isNumeric
+          ? counts.map((v, i) => ({
+              x: (binEdges[i] + binEdges[i + 1]) / 2,
+              y: v,
+            }))
+          : counts;
 
       return {
         label,
@@ -197,7 +218,7 @@ function HistogramChartComponent({
     };
 
     return {
-      labels,
+      labels: isNumeric ? [] : labels,
       datasets: [
         buildDataset(
           currentData,
@@ -207,15 +228,25 @@ function HistogramChartComponent({
         buildDataset(baseData, baseData.label ?? "Base", comparisonColors.base),
       ],
     };
-  }, [binEdges, baseData, comparisonColors, currentData, isDatetime]);
+  }, [
+    binEdges,
+    baseData,
+    comparisonColors,
+    currentData,
+    formatNumericEdge,
+    isDatetime,
+    isNumeric,
+  ]);
 
   // Build chart options
   const chartOptions = useMemo<ChartOptions<"bar">>(() => {
     const maxCount = Math.max(...currentData.counts, ...baseData.counts);
-
-    const labels = binEdges
-      .slice(0, -1)
-      .map((_, i) => formatBinRange(binEdges, i));
+    const edgeTickInterval = Math.max(
+      1,
+      Math.ceil((binEdges.length - 1) / (MAX_EDGE_TICK_LABELS - 1)),
+    );
+    const firstEdge = binEdges[0] ?? 0;
+    const terminalEdge = binEdges[binEdges.length - 1] ?? firstEdge;
     const dataTypeLabel = isDatetime
       ? "Date Range"
       : dataType === "string"
@@ -226,7 +257,19 @@ function HistogramChartComponent({
       responsive: true,
       maintainAspectRatio: false,
       animation: animate ? undefined : false,
+      // Numeric bar widths come from their literal bin edges. Let Chart.js keep
+      // animating vertical properties, but do not create x/width animations
+      // that would later overwrite the edge geometry plugin's authoritative
+      // pixel values.
+      animations: isNumeric
+        ? {
+            numbers: {
+              properties: ["y", "base", "height"],
+            },
+          }
+        : undefined,
       plugins: {
+        histogramBinGeometry: isNumeric ? { binEdges } : undefined,
         // The overlap painter reads its palette from here, not from a closure,
         // so a light/dark switch repaints the crosshatch along with the bars.
         histogramOverlap: { palette: overlapPalette },
@@ -252,7 +295,7 @@ function HistogramChartComponent({
           color: themeColors.textColor,
         },
         tooltip: {
-          mode: "index",
+          mode: isNumeric ? "x" : "index",
           intersect: false,
           backgroundColor: themeColors.tooltipBackgroundColor,
           titleColor: themeColors.tooltipTextColor,
@@ -261,7 +304,11 @@ function HistogramChartComponent({
           borderWidth: 1,
           callbacks: {
             title([{ dataIndex }]) {
-              const range = formatBinRange(binEdges, dataIndex);
+              const range = formatBinRange(
+                binEdges,
+                dataIndex,
+                isNumeric ? formatNumericEdge : undefined,
+              );
               return `${dataTypeLabel}\n${range}`;
             },
             label({ datasetIndex, dataIndex, dataset }) {
@@ -292,17 +339,38 @@ function HistogramChartComponent({
                 color: themeColors.textColor,
               },
             }
-          : {
-              display: !hideAxis,
-              type: "category",
-              grid: { display: false },
-              ticks: {
-                callback(_val, index) {
-                  return labels[index];
+          : isNumeric
+            ? {
+                display: !hideAxis,
+                type: "linear",
+                min: firstEdge,
+                max: terminalEdge,
+                grid: { display: false },
+                afterBuildTicks(axis) {
+                  axis.ticks = binEdges.map((value) => ({ value }));
                 },
-                color: themeColors.textColor,
+                ticks: {
+                  autoSkip: false,
+                  callback(value, index) {
+                    if (
+                      index % edgeTickInterval !== 0 &&
+                      index !== binEdges.length - 1
+                    ) {
+                      return undefined;
+                    }
+                    return formatNumericEdge(value as number);
+                  },
+                  color: themeColors.textColor,
+                },
+              }
+            : {
+                display: !hideAxis,
+                type: "category",
+                grid: { display: false },
+                ticks: {
+                  color: themeColors.textColor,
+                },
               },
-            },
         y: {
           display: !hideAxis,
           type: "linear",
@@ -324,6 +392,7 @@ function HistogramChartComponent({
     title,
     dataType,
     isDatetime,
+    isNumeric,
     samples,
     min,
     max,
@@ -334,6 +403,7 @@ function HistogramChartComponent({
     animate,
     themeColors,
     overlapPalette,
+    formatNumericEdge,
   ]);
 
   return (
@@ -345,7 +415,7 @@ function HistogramChartComponent({
         role="img"
         aria-label={accessibleDescription}
         fallbackContent={accessibleDescription}
-        plugins={[histogramOverlapPlugin]}
+        plugins={[histogramOverlapPlugin, histogramBinGeometryPlugin]}
       />
     </div>
   );

@@ -498,6 +498,59 @@ describe("ProfileDiffResultView", () => {
         }),
       );
     });
+
+    it("preserves an explicit percentage-point render mode in view options", () => {
+      const run = createProfileDiffRun();
+
+      renderWithProviders(
+        <ProfileDiffResultView
+          run={run}
+          viewOptions={{
+            columnsRenderMode: {
+              not_null_proportion: "percent_delta",
+            },
+          }}
+        />,
+      );
+
+      expect(mockCreateDataGrid).toHaveBeenCalledWith(
+        run,
+        expect.objectContaining({
+          columnsRenderMode: expect.objectContaining({
+            not_null_proportion: "percent_delta",
+          }),
+        }),
+      );
+    });
+
+    it("persists a Profile Diff percentage-point selection through the callback", () => {
+      const run = createProfileDiffRun();
+      const onViewOptionsChanged = vi.fn();
+
+      renderWithProviders(
+        <ProfileDiffResultView
+          run={run}
+          onViewOptionsChanged={onViewOptionsChanged}
+        />,
+      );
+
+      const gridOptions = mockCreateDataGrid.mock.calls[0]?.[1] as {
+        onColumnsRenderModeChanged: (columns: {
+          not_null_proportion: "percent_delta";
+        }) => void;
+      };
+      gridOptions.onColumnsRenderModeChanged({
+        not_null_proportion: "percent_delta",
+      });
+
+      expect(onViewOptionsChanged).toHaveBeenCalledWith(
+        expect.objectContaining({
+          columnsRenderMode: expect.objectContaining({
+            not_null_proportion: "percent_delta",
+          }),
+        }),
+      );
+    });
   });
 
   // ==========================================================================

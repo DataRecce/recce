@@ -10,7 +10,7 @@ import Box from "@mui/material/Box";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import type { ColDef, ICellRendererParams } from "ag-grid-community";
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import type {
   ColumnRenderMode,
   ColumnType,
@@ -34,6 +34,7 @@ interface RecceColumnContext {
   columnType?: ColumnType;
   columnRenderMode?: ColumnRenderMode;
   showStructuralIndicator?: boolean;
+  profileDiffPercentMode?: "percent_delta" | "percent_change";
 }
 
 /**
@@ -61,6 +62,125 @@ export interface InlineRenderCellConfig {
    * (e.g., toast notifications on copy).
    */
   DiffTextComponent?: ComponentType<InlineDiffTextProps>;
+}
+
+/** Parses only finite numbers and complete numeric strings for explicit modes. */
+export function parseFiniteNumeric(value: RowDataTypes): number | undefined {
+  if (typeof value === "number")
+    return Number.isFinite(value) ? value : undefined;
+  if (typeof value !== "string" || value.trim() === "") return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function formatPercent(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "percent",
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatSignedChange(value: number, suffix: string): string {
+  return `${value >= 0 ? "+" : ""}${formatSmartDecimal(value)}${suffix}`;
+}
+
+function formatUnroundedChange(value: number, suffix: string): string {
+  return `${value >= 0 ? "+" : ""}${value}${suffix}`;
+}
+
+/**
+ * Renders a change indicator beside the cell's own values.
+ *
+ * The indicator never replaces the values: a row whose relative change cannot
+ * be expressed (`N/A`) or is exactly zero (`0%`) is still a row whose base and
+ * current numbers are the point of the cell.
+ */
+function renderChangeIndicator(
+  tooltipText: string,
+  changeText: string,
+  values: ReactNode,
+) {
+  return (
+    <Tooltip
+      title={tooltipText}
+      slotProps={{
+        tooltip: { sx: { whiteSpace: "pre-line" } },
+      }}
+      enterDelay={300}
+      placement="top"
+    >
+      <Box
+        sx={{
+          gap: "5px",
+          display: "flex",
+          alignItems: "center",
+          lineHeight: "normal",
+          height: "100%",
+        }}
+      >
+        {values}
+        <Typography
+          data-direction="equal"
+          sx={{ color: "text.secondary", fontSize: "0.75rem" }}
+        >
+          {changeText}
+        </Typography>
+      </Box>
+    </Tooltip>
+  );
+}
+
+function renderUndefinedRelativeChange(
+  base: number,
+  current: number,
+  values: ReactNode,
+) {
+  return renderChangeIndicator(
+    `Base: ${base}\nCurrent: ${current}\nChange: N/A`,
+    "N/A",
+    values,
+  );
+}
+
+function renderZeroRelativeChange(values: ReactNode) {
+  return renderChangeIndicator("Base: 0\nCurrent: 0\nChange: 0", "0%", values);
+}
+
+function renderInlineValues(
+  DiffTextComp: ComponentType<InlineDiffTextProps>,
+  hasBase: boolean,
+  hasCurrent: boolean,
+  baseValue: string,
+  currentValue: string,
+  baseGrayOut: boolean,
+  currentGrayOut: boolean,
+) {
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        gap: "5px",
+        alignItems: "center",
+        lineHeight: "normal",
+        height: "100%",
+      }}
+    >
+      {hasBase && (
+        <DiffTextComp
+          value={baseValue}
+          comparisonRole="base"
+          grayOut={baseGrayOut}
+        />
+      )}
+      {hasCurrent && (
+        <DiffTextComp
+          value={currentValue}
+          comparisonRole="current"
+          grayOut={currentGrayOut}
+        />
+      )}
+    </Box>
+  );
 }
 
 /**
@@ -91,6 +211,7 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
     const colDef = params.colDef as ColDefWithMetadata;
     const columnType = colDef?.context?.columnType;
     const columnRenderMode = colDef?.context?.columnRenderMode;
+    const profileDiffPercentMode = colDef?.context?.profileDiffPercentMode;
     const columnKey = colDef?.field ?? "";
 
     if (!params.data) {
@@ -123,6 +244,27 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
       columnRenderMode,
     );
 
+    const isExplicitPercentMode =
+      (columnRenderMode === "percent_delta" ||
+        columnRenderMode === "percent_change") &&
+      columnRenderMode === profileDiffPercentMode;
+    const baseNumericValue = parseFiniteNumeric(row[baseKey]);
+    const currentNumericValue = parseFiniteNumeric(row[currentKey]);
+
+    // A percent_delta column holds proportions, so the unit has to be the same
+    // for every row status. Without this, an added or removed row skips the
+    // percentage block below and renders 0.94 in a column of 94% values.
+    const isExplicitPercentDeltaMode =
+      isExplicitPercentMode && columnRenderMode === "percent_delta";
+    const displayBaseValue =
+      isExplicitPercentDeltaMode && baseNumericValue !== undefined
+        ? formatPercent(baseNumericValue)
+        : baseValue;
+    const displayCurrentValue =
+      isExplicitPercentDeltaMode && currentNumericValue !== undefined
+        ? formatPercent(currentNumericValue)
+        : currentValue;
+
     // No change - render single value.
     // Must use the same type-dispatched comparison the row status and the
     // side-by-side cell classes use: a raw `===` here would render a
@@ -132,14 +274,43 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
     // query-diff views, so that mismatch was the whole reported symptom of
     // DRC-3025.
     if (!isCellChanged(row[baseKey], row[currentKey], columnType)) {
-      return (
+      const unchangedValue = (
         <Typography
           component="span"
           style={{ color: currentGrayOut ? "gray" : "inherit" }}
         >
-          {currentValue}
+          {displayCurrentValue}
         </Typography>
       );
+
+      if (
+        isExplicitPercentMode &&
+        columnRenderMode === "percent_change" &&
+        row.__status !== "added" &&
+        row.__status !== "removed" &&
+        baseNumericValue === 0 &&
+        currentNumericValue === 0
+      ) {
+        return renderZeroRelativeChange(unchangedValue);
+      }
+
+      if (
+        isExplicitPercentMode &&
+        columnRenderMode === "percent_change" &&
+        row.__status !== "added" &&
+        row.__status !== "removed" &&
+        baseNumericValue !== undefined &&
+        currentNumericValue !== undefined &&
+        baseNumericValue < 0
+      ) {
+        return renderUndefinedRelativeChange(
+          baseNumericValue,
+          currentNumericValue,
+          unchangedValue,
+        );
+      }
+
+      return unchangedValue;
     }
 
     // Check if we're using delta display mode
@@ -217,32 +388,108 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
       }
     }
 
+    if (
+      isExplicitPercentMode &&
+      (columnType === "number" ||
+        columnType === "float" ||
+        columnType === "integer") &&
+      hasBase &&
+      hasCurrent &&
+      row.__status !== "added" &&
+      row.__status !== "removed"
+    ) {
+      const baseNum = parseFiniteNumeric(row[baseKey]);
+      const currentNum = parseFiniteNumeric(row[currentKey]);
+
+      if (baseNum !== undefined && currentNum !== undefined) {
+        const isRelativeChange = columnRenderMode === "percent_change";
+        const relativeChangeIsUndefined = isRelativeChange && baseNum <= 0;
+
+        if (relativeChangeIsUndefined) {
+          return renderUndefinedRelativeChange(
+            baseNum,
+            currentNum,
+            renderInlineValues(
+              DiffTextComp,
+              hasBase,
+              hasCurrent,
+              displayBaseValue,
+              displayCurrentValue,
+              baseGrayOut,
+              currentGrayOut,
+            ),
+          );
+        }
+
+        const change = isRelativeChange
+          ? ((currentNum - baseNum) / baseNum) * 100
+          : currentNum * 100 - baseNum * 100;
+
+        if (!Number.isFinite(change)) {
+          return renderInlineValues(
+            DiffTextComp,
+            hasBase,
+            hasCurrent,
+            displayBaseValue,
+            displayCurrentValue,
+            baseGrayOut,
+            currentGrayOut,
+          );
+        }
+
+        const direction =
+          change > 0 ? "increase" : change < 0 ? "decrease" : "equal";
+        const suffix = isRelativeChange ? "%" : "pp";
+        const changeText = `(${formatSignedChange(change, suffix)})`;
+        const tooltipText = `Base: ${baseNum}\nCurrent: ${currentNum}\nChange: ${formatUnroundedChange(
+          change,
+          suffix,
+        )}`;
+
+        return (
+          <Tooltip
+            title={tooltipText}
+            slotProps={{
+              tooltip: { sx: { whiteSpace: "pre-line" } },
+            }}
+            enterDelay={300}
+            placement="top"
+          >
+            <Box
+              sx={{
+                gap: "5px",
+                display: "flex",
+                alignItems: "center",
+                lineHeight: "normal",
+                height: "100%",
+              }}
+            >
+              <DiffTextComp
+                value={displayCurrentValue}
+                comparisonRole="current"
+                grayOut={currentGrayOut}
+              />
+              <Typography
+                data-direction={direction}
+                sx={{ color: "text.secondary", fontSize: "0.75rem" }}
+              >
+                {changeText}
+              </Typography>
+            </Box>
+          </Tooltip>
+        );
+      }
+    }
+
     // Values differ - render inline diff with base (red) and current (green)
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          gap: "5px",
-          alignItems: "center",
-          lineHeight: "normal",
-          height: "100%",
-        }}
-      >
-        {hasBase && (
-          <DiffTextComp
-            value={baseValue}
-            comparisonRole="base"
-            grayOut={baseGrayOut}
-          />
-        )}
-        {hasCurrent && (
-          <DiffTextComp
-            value={currentValue}
-            comparisonRole="current"
-            grayOut={currentGrayOut}
-          />
-        )}
-      </Box>
+    return renderInlineValues(
+      DiffTextComp,
+      hasBase,
+      hasCurrent,
+      displayBaseValue,
+      displayCurrentValue,
+      baseGrayOut,
+      currentGrayOut,
     );
   };
 }

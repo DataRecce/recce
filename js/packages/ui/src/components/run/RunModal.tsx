@@ -59,6 +59,9 @@ export interface RunModalProps<PT = unknown> {
   /** The form component to render for configuring run parameters */
   RunForm?: ComponentType<RunFormProps<PT>>;
 
+  /** Submit complete form params from an explicit selection event. */
+  submitOnSelection?: boolean;
+
   /**
    * Optional callback when the modal is cancelled (X button clicked without executing).
    * Use this for analytics/tracking of form cancellations.
@@ -150,6 +153,7 @@ export function RunModal<PT = unknown>({
   title,
   params: defaultParams,
   RunForm,
+  submitOnSelection = false,
   onCancel,
   onExecuteClick,
   documentationUrl,
@@ -171,12 +175,14 @@ export function RunModal<PT = unknown>({
     onClose();
   };
 
-  const handleExecuteClick = () => {
+  const executeWithParams = (executeParams: PT) => {
     executeClicked.current = true;
     // Track execute click if callback provided
     onExecuteClick?.();
-    onExecute(type, params as PT);
+    onExecute(type, executeParams);
   };
+
+  const handleExecuteClick = () => executeWithParams(params as PT);
 
   return (
     <MuiDialog
@@ -268,6 +274,9 @@ export function RunModal<PT = unknown>({
               params={params}
               onParamsChanged={setParams}
               setIsReadyToExecute={setIsReadyToExecute}
+              onSubmitRequested={
+                submitOnSelection ? executeWithParams : undefined
+              }
             />
           )}
         </Box>

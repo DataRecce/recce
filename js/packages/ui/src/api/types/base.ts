@@ -68,9 +68,17 @@ export type ColumnType =
  * - raw: display value as-is
  * - percent: display as percentage
  * - delta: display as delta/change value
+ * - percent_delta: display percentage-point change for Profile Diff proportions
+ * - percent_change: display relative-percent change for Profile Diff numerics
  * - 2: display with 2 decimal places
  */
-export type ColumnRenderMode = "raw" | "percent" | "delta" | 2;
+export type ColumnRenderMode =
+  | "raw"
+  | "percent"
+  | "delta"
+  | "percent_delta"
+  | "percent_change"
+  | 2;
 
 // ============================================================================
 // DataFrame Types
