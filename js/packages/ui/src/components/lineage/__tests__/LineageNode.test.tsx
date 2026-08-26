@@ -317,7 +317,9 @@ describe("LineageNode", () => {
       );
 
       const { container } = render(<LineageNode {...props} />);
-      const checkbox = screen.getByRole("checkbox");
+      const checkbox = screen.getByRole("checkbox", {
+        name: "Select test",
+      });
       const checkboxRoot = checkbox.parentElement;
 
       expect(checkboxRoot).toHaveStyle({ opacity: "0" });
