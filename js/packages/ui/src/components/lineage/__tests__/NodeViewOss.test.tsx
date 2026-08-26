@@ -12,7 +12,9 @@ const {
   mockPush: vi.fn(),
   mockRunAction: vi.fn(),
   mockShowRunId: vi.fn(),
-  mockUseQuery: vi.fn(() => ({ data: undefined })),
+  mockUseQuery: vi.fn((_options?: { queryKey?: string[] }) => ({
+    data: undefined as unknown,
+  })),
   capturedNodeViewProps: {
     current: undefined as Record<string, unknown> | undefined,
   },
@@ -121,8 +123,8 @@ describe("NodeViewOss Histogram launcher", () => {
   });
 
   it("passes only prior analysis runs for the focused model, newest first", async () => {
-    mockUseQuery.mockImplementation(({ queryKey }: { queryKey: string[] }) => {
-      if (queryKey[0] !== "runs") return { data: undefined };
+    mockUseQuery.mockImplementation((options?: { queryKey?: string[] }) => {
+      if (options?.queryKey?.[0] !== "runs") return { data: undefined };
       return {
         data: [
           {
