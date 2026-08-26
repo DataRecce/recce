@@ -1,9 +1,12 @@
-import type { QueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type QueryClient,
+  type UseMutationResult,
+  useMutation,
+} from "@tanstack/react-query";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { type CllInput, type ColumnLineageData, getCll } from "../../api/cll";
 import type { ApiClient } from "../../lib/fetchClient";
 import {
-  type CllFetcher,
   type CllLifecycleRequest,
   type CllLifecycleResolution,
   createCllCachePatchLifecycle,
@@ -36,6 +39,7 @@ export interface UseCllStateOptions {
 
 export interface UseCllStateResult {
   cll: ColumnLineageData | undefined;
+  action: UseMutationResult<ColumnLineageData, Error, CllInput>;
   commit(cll: ColumnLineageData | undefined): void;
   resolveForLayout(request: CllStateRequest): Promise<CllLifecycleResolution>;
   refresh(request: CllStateRequest): Promise<CllLifecycleResolution>;
@@ -59,7 +63,7 @@ function createCllHistory(): CllHistory {
       entries.push({ input });
     },
     peek() {
-      return entries.at(-1);
+      return entries[entries.length - 1];
     },
     pop() {
       return entries.pop();
@@ -87,11 +91,11 @@ export function useCllState({
     reset: resetImpactSets,
   } = usePublishedImpactSets();
 
-  const actionGetCll = useMemo<CllFetcher>(
-    () => ({
-      mutateAsync: (input) => getCll(input, apiClient),
-    }),
-    [apiClient],
+  const actionGetCll = useMutation<ColumnLineageData, Error, CllInput>(
+    {
+      mutationFn: (input) => getCll(input, apiClient),
+    },
+    queryClient,
   );
 
   const bindRequest = useCallback(
@@ -151,6 +155,7 @@ export function useCllState({
 
   return {
     cll,
+    action: actionGetCll,
     commit,
     resolveForLayout,
     refresh,
