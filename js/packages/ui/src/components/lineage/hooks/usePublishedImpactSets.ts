@@ -13,6 +13,7 @@ export interface UsePublishedImpactSetsResult {
   wholeModelImpactedNodeIds: Set<string>;
   wholeModelChangedNodeIds: Set<string>;
   publish: (sets: ImpactSets) => void;
+  reset: () => void;
 }
 
 // Stable empty-set reference for the whole-model initial state (before the
@@ -44,11 +45,19 @@ export function usePublishedImpactSets(): UsePublishedImpactSetsResult {
     setWholeModelChangedNodeIds(sets.wholeModelChangedNodeIds);
   }, []);
 
+  const reset = useCallback(() => {
+    setImpactedNodeIds(new Set());
+    setImpactedColumnIds(new Set());
+    setWholeModelImpactedNodeIds(EMPTY_SET as Set<string>);
+    setWholeModelChangedNodeIds(EMPTY_SET as Set<string>);
+  }, []);
+
   return {
     impactedNodeIds,
     impactedColumnIds,
     wholeModelImpactedNodeIds,
     wholeModelChangedNodeIds,
     publish,
+    reset,
   };
 }
