@@ -55,7 +55,8 @@ export interface ChangeStatusStyle {
   hexBackgroundColor: string;
   /** Neutral border color for structural presentation */
   borderColor: string;
-  /** Transitional accent for a narrow rail or status symbol only */
+  /** Transitional accent: the lineage node border and status block, the
+   * MiniMap node, or a status symbol on any other surface */
   secondaryAccent: string;
   /** Icon component for the status, undefined if no change */
   icon: IconComponent | undefined;

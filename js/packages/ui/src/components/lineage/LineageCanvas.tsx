@@ -138,7 +138,7 @@ export function LineageCanvas({
           newCllExperience: data.newCllExperience,
         },
         isDark,
-      ).color;
+      ).secondaryAccent;
     },
     [isDark],
   );
