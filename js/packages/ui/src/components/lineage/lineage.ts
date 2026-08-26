@@ -255,6 +255,11 @@ function addColumnAncestryNodes(
   cll: ColumnLineageData,
   filterSet: Set<string> | undefined,
 ) {
+  const truncationByModel = computeColumnAncestryTruncation(
+    columnAncestry,
+    cll,
+    filterSet,
+  );
   // Build columnId -> annotation lookup and set of ancestry column IDs
   const ancestryColumnIds = new Set<string>();
   const columnIdToAnnotation = new Map<
@@ -265,6 +270,7 @@ function addColumnAncestryNodes(
     // Skip columns whose model isn't in the current graph view
     if (filterSet && !filterSet.has(modelId)) continue;
 
+    const truncation = truncationByModel.get(modelId);
     for (let i = 0; i < annotations.length; i++) {
       const annotation = annotations[i];
       const columnKey = `${modelId}_${annotation.column}`;
@@ -290,6 +296,12 @@ function addColumnAncestryNodes(
           isHighlighted: true,
           isFocused: false,
           isImpacted: annotation.isImpacted,
+          hiddenUpstreamColumnCount:
+            i === 0 ? truncation?.upstreamColumnCount : undefined,
+          hiddenDownstreamColumnCount:
+            i === annotations.length - 1
+              ? truncation?.downstreamColumnCount
+              : undefined,
         },
         style: {
           zIndex: 9999,
@@ -334,6 +346,84 @@ function addColumnAncestryNodes(
       }
     }
   }
+}
+
+interface ColumnAncestryTruncation {
+  upstreamColumnCount?: number;
+  downstreamColumnCount?: number;
+}
+
+function computeColumnAncestryTruncation(
+  columnAncestry: Map<string, ColumnAnnotation[]>,
+  cll: ColumnLineageData,
+  filterSet: Set<string> | undefined,
+): Map<string, ColumnAncestryTruncation> {
+  if (!filterSet) {
+    return new Map();
+  }
+  const visibleModelIds = filterSet;
+
+  const columnToModel = new Map<string, string>();
+  for (const [modelId, annotations] of columnAncestry) {
+    for (const annotation of annotations) {
+      columnToModel.set(`${modelId}_${annotation.column}`, modelId);
+    }
+  }
+
+  function collectHiddenColumns(
+    startColumnIds: string[],
+    adjacency: Record<string, string[]>,
+    hiddenColumnIds: Set<string>,
+  ) {
+    const pending = [...startColumnIds];
+    while (pending.length > 0) {
+      const columnId = pending.pop();
+      if (!columnId || hiddenColumnIds.has(columnId)) {
+        continue;
+      }
+      const modelId = columnToModel.get(columnId);
+      if (!modelId || visibleModelIds.has(modelId)) {
+        continue;
+      }
+      hiddenColumnIds.add(columnId);
+      pending.push(...(adjacency[columnId] ?? []));
+    }
+  }
+
+  const result = new Map<string, ColumnAncestryTruncation>();
+  for (const [modelId, annotations] of columnAncestry) {
+    if (!visibleModelIds.has(modelId)) {
+      continue;
+    }
+
+    const hiddenUpstreamColumnIds = new Set<string>();
+    const hiddenDownstreamColumnIds = new Set<string>();
+    for (const annotation of annotations) {
+      const columnId = `${modelId}_${annotation.column}`;
+      collectHiddenColumns(
+        cll.current.parent_map[columnId] ?? [],
+        cll.current.parent_map,
+        hiddenUpstreamColumnIds,
+      );
+      collectHiddenColumns(
+        cll.current.child_map[columnId] ?? [],
+        cll.current.child_map,
+        hiddenDownstreamColumnIds,
+      );
+    }
+
+    if (
+      hiddenUpstreamColumnIds.size > 0 ||
+      hiddenDownstreamColumnIds.size > 0
+    ) {
+      result.set(modelId, {
+        upstreamColumnCount: hiddenUpstreamColumnIds.size || undefined,
+        downstreamColumnCount: hiddenDownstreamColumnIds.size || undefined,
+      });
+    }
+  }
+
+  return result;
 }
 
 /**
