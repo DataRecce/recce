@@ -241,10 +241,12 @@ export interface NodeViewProps<
 // INTERNAL COMPONENTS
 // =============================================================================
 
+type NodeViewTab = "columns" | "code" | "analysis" | "lineage";
+
 interface TabPanelProps {
   children?: ReactNode;
-  index: number;
-  value: number;
+  index: NodeViewTab;
+  value: NodeViewTab;
 }
 
 function TabPanel({ children, value, index }: TabPanelProps) {
@@ -599,6 +601,9 @@ function RecentAnalysisList({
               {formatTimeToNow(run.runAt)}
             </Typography>
             <Button
+              aria-label={`View ${analysisRunLabels[run.type]} result${
+                run.columnName ? ` for ${run.columnName}` : ""
+              }`}
               size="small"
               variant="text"
               onClick={() => onViewRun?.(run.id)}
@@ -683,7 +688,14 @@ export function NodeView<TNode extends NodeViewNodeData>({
     node.data.resourceType === "snapshot";
 
   const [isNotificationOpen, setIsNotificationOpen] = useState(true);
-  const [tabValue, setTabValue] = useState(0);
+  const [tabState, setTabState] = useState<{
+    nodeId: string;
+    value: NodeViewTab;
+  }>({ nodeId: node.id, value: "columns" });
+  const tabValue = tabState.nodeId === node.id ? tabState.value : "columns";
+  const setTabValue = (value: NodeViewTab) => {
+    setTabState({ nodeId: node.id, value });
+  };
 
   const { base, current } = modelDetail ?? {};
   const hasSchemaChanges =
@@ -702,7 +714,6 @@ export function NodeView<TNode extends NodeViewNodeData>({
     node.data.resourceType === "seed" ||
     node.data.resourceType === "snapshot";
   const showAnalysisTab = !isSingleEnv && isModelSeedOrSnapshot;
-  const lineageTabIndex = showAnalysisTab ? 3 : 2;
 
   const showAddSchemaDiff =
     !isSingleEnv &&
@@ -881,6 +892,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
             sx={{ borderBottom: 1, borderColor: "divider" }}
           >
             <Tab
+              value="columns"
               label={
                 <Box
                   component="span"
@@ -907,6 +919,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
               }
             />
             <Tab
+              value="code"
               label={
                 <Box
                   component="span"
@@ -932,13 +945,13 @@ export function NodeView<TNode extends NodeViewNodeData>({
                 </Box>
               }
             />
-            {showAnalysisTab && <Tab label="Analysis" />}
-            {lineageTabContent && <Tab label="Lineage" />}
+            {showAnalysisTab && <Tab label="Analysis" value="analysis" />}
+            {lineageTabContent && <Tab label="Lineage" value="lineage" />}
           </Tabs>
 
           {/* Tab panels mirror the conditional tab inventory above. */}
           <Box sx={{ overflow: "auto", height: "calc(100% - 48px)" }}>
-            <TabPanel value={tabValue} index={0}>
+            <TabPanel value={tabValue} index="columns">
               <Box sx={{ overflowY: "auto", height: "100%" }}>
                 {isSingleEnv
                   ? SingleEnvSchemaView && (
@@ -949,7 +962,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
                         base={base}
                         current={current}
                         columnChanges={node.data.change?.columns}
-                        onViewCode={() => setTabValue(1)}
+                        onViewCode={() => setTabValue("code")}
                         headerAction={
                           showAddSchemaDiff ? (
                             <AddSchemaDiffButton
@@ -962,7 +975,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
                     )}
               </Box>
             </TabPanel>
-            <TabPanel value={tabValue} index={1}>
+            <TabPanel value={tabValue} index="code">
               <Box
                 sx={{
                   height: "100%",
@@ -985,7 +998,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
               </Box>
             </TabPanel>
             {showAnalysisTab && (
-              <TabPanel value={tabValue} index={2}>
+              <TabPanel value={tabValue} index="analysis">
                 <Box sx={{ p: 2 }}>
                   <DiffActionButtons
                     node={node}
@@ -1003,7 +1016,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
               </TabPanel>
             )}
             {lineageTabContent && (
-              <TabPanel value={tabValue} index={lineageTabIndex}>
+              <TabPanel value={tabValue} index="lineage">
                 <Box sx={{ height: "100%" }}>{lineageTabContent}</Box>
               </TabPanel>
             )}
