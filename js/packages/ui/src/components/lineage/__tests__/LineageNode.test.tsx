@@ -310,7 +310,7 @@ describe("LineageNode", () => {
   // ==========================================================================
 
   describe("interactive mode", () => {
-    it("renders checkbox when interactive is true", () => {
+    it("does not render checkbox in normal mode even when interactive", () => {
       const props = createMockNodeProps(
         { interactive: true },
         { label: "test" },
@@ -318,7 +318,7 @@ describe("LineageNode", () => {
 
       render(<LineageNode {...props} />);
 
-      expect(screen.getByRole("checkbox")).toBeInTheDocument();
+      expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     });
 
     it("does not render checkbox when interactive is false", () => {
