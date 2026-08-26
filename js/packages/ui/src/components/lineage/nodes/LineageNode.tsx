@@ -563,6 +563,9 @@ function LineageNodeComponent({
               onFocus={() => setIsSelectionFocused(true)}
               disabled={selectMode === "action_result"}
               size="small"
+              slotProps={{
+                input: { "aria-label": `Select ${label}` },
+              }}
               sx={{
                 ...(selectMode === "normal" && {
                   backgroundColor: statusBlockColor,
