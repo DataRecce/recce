@@ -9,9 +9,6 @@ import {
   cllChangedAccent,
   cllChangedBadgeBg,
   cllChangedBadgeFg,
-  cllChangeStatusBackgroundsDark,
-  cllChangeStatusBackgroundsLight,
-  cllChangeStatusColors,
   cllImpactedAccent,
   cllImpactedBadgeBg,
   cllImpactedBadgeFg,
@@ -26,7 +23,9 @@ import {
  * Both files carry "keep in sync by hand — no build-time check" comments.
  *
  * This test IS that build-time check: it parses `schema/style.css` and asserts
- * every TS const matches its CSS counterpart, so drift on either side fails CI.
+ * every true CLL impact/category const matches its CSS counterpart, so drift
+ * on either side fails CI. Structural statuses are owned by semanticColors.ts
+ * and intentionally excluded from this guard.
  * The TS consts are treated as canonical; the CSS values are verified against
  * them. (A fuller consolidation — deriving the CSS vars from TS at runtime — is
  * deferred; see DRC-3525.)
@@ -74,56 +73,6 @@ describe("CLL palette TS ↔ CSS sync (styles.tsx ↔ schema/style.css)", () => 
     expect(Object.keys(darkVars).length).toBeGreaterThan(0);
     expect(Object.keys(cllVars).length).toBeGreaterThan(0);
     expect(Object.keys(cllDarkVars).length).toBeGreaterThan(0);
-  });
-
-  it("accent colors match the *-accent vars", () => {
-    expect(cllChangeStatusColors.modified).toBe(
-      lightCll("--schema-color-changed-accent"),
-    );
-    expect(cllChangeStatusColors.modified).toBe(
-      darkCll("--schema-color-changed-accent"),
-    );
-    expect(cllChangeStatusColors.impacted).toBe(
-      lightCll("--schema-color-impacted-accent"),
-    );
-    expect(cllChangeStatusColors.impacted).toBe(
-      darkCll("--schema-color-impacted-accent"),
-    );
-    expect(cllChangeStatusColors.added).toBe(
-      lightCll("--schema-color-added-accent"),
-    );
-    expect(cllChangeStatusColors.removed).toBe(
-      lightCll("--schema-color-removed-accent"),
-    );
-  });
-
-  it("row backgrounds match the --schema-color-{changed,impacted,added,removed} vars", () => {
-    // light
-    expect(cllChangeStatusBackgroundsLight.modified).toBe(
-      lightCll("--schema-color-changed"),
-    );
-    expect(cllChangeStatusBackgroundsLight.impacted).toBe(
-      lightCll("--schema-color-impacted"),
-    );
-    expect(cllChangeStatusBackgroundsLight.added).toBe(
-      lightCll("--schema-color-added"),
-    );
-    expect(cllChangeStatusBackgroundsLight.removed).toBe(
-      lightCll("--schema-color-removed"),
-    );
-    // dark
-    expect(cllChangeStatusBackgroundsDark.modified).toBe(
-      darkCll("--schema-color-changed"),
-    );
-    expect(cllChangeStatusBackgroundsDark.impacted).toBe(
-      darkCll("--schema-color-impacted"),
-    );
-    expect(cllChangeStatusBackgroundsDark.added).toBe(
-      darkCll("--schema-color-added"),
-    );
-    expect(cllChangeStatusBackgroundsDark.removed).toBe(
-      darkCll("--schema-color-removed"),
-    );
   });
 
   it("impacted badge/accent tokens match the --schema-*impacted* vars", () => {

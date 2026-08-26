@@ -198,10 +198,13 @@ export {
   DiffDisplayModeSwitch,
   DiffText,
   HSplit,
+  normalizeTypeName,
   SquareIcon,
   ToggleSwitch,
   VSplit,
 } from "./ui";
+export type { StructuralChangeIndicatorProps } from "./ui/StructuralChangeIndicator";
+export { StructuralChangeIndicator } from "./ui/StructuralChangeIndicator";
 // Value diff result views and forms
 export type {
   ValueDiffDetailResultViewProps,

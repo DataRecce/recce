@@ -43,4 +43,16 @@ export {
   semanticVariantMap,
   token,
 } from "./colors";
+export {
+  type ComparisonRole,
+  compositeHex,
+  compositeRgbChannels,
+  getSemanticColorTheme,
+  type QuantitativeDirection,
+  type SemanticColorChannel,
+  type SemanticColorTheme,
+  STRUCTURAL_CHANGE_PRESENTATION,
+  STRUCTURAL_EDGE_DASH,
+  type StructuralChangeStatus,
+} from "./semanticColors";
 export { type RecceTheme, theme } from "./theme";

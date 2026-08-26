@@ -37,7 +37,11 @@ import {
   useRecceInstanceContext,
 } from "../../contexts";
 import { supportsHistogramDiff } from "../histogram";
-import { buildColumnTooltip, DataTypeIcon } from "../ui/DataTypeIcon";
+import {
+  buildColumnTooltip,
+  DataTypeIcon,
+  normalizeTypeName,
+} from "../ui/DataTypeIcon";
 import { getColumnChangeStatus } from "./getColumnChangeStatus";
 import type { SchemaDiffRow } from "./types";
 
@@ -219,8 +223,8 @@ export function ColumnNameCell({
   const tooltipTitle = buildColumnTooltip({
     name,
     status: tooltipStatus,
-    baseType,
-    currentType,
+    baseType: baseType ? normalizeTypeName(baseType) : undefined,
+    currentType: currentType ? normalizeTypeName(currentType) : undefined,
     cllAvailable: !isCllDisabled,
     impacted: showImpactedTag,
   });

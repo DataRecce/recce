@@ -29,6 +29,10 @@ import { columnPrecisionSelectOptions } from "../../../utils/dataGrid/columnPrec
 export interface DataFrameColumnGroupHeaderProps {
   /** Column name to display */
   name: string;
+  /** Optional presentation-only name for the column */
+  displayName?: string;
+  /** Hides the primary-key indicator without changing primary-key behavior */
+  hidePrimaryKeyIcon?: boolean;
   /** Column diff status: 'added', 'removed', 'modified', or empty string */
   columnStatus: string;
   /** Column data type for determining available options */
@@ -43,6 +47,8 @@ export interface DataFrameColumnGroupHeaderProps {
   onPinnedColumnsChange?: (pinnedColumns: string[]) => void;
   /** Callback when column render mode changes */
   onColumnsRenderModeChanged?: (col: Record<string, ColumnRenderMode>) => void;
+  /** Optional list limiting which render modes appear in the precision menu */
+  allowedRenderModes?: readonly ColumnRenderMode[];
 }
 
 /**
@@ -86,6 +92,8 @@ export interface DataFrameColumnGroupHeaderProps {
  */
 export function DataFrameColumnGroupHeader({
   name,
+  displayName,
+  hidePrimaryKeyIcon = false,
   columnStatus,
   columnType,
   primaryKeys = [],
@@ -93,6 +101,7 @@ export function DataFrameColumnGroupHeader({
   pinnedColumns = [],
   onPinnedColumnsChange,
   onColumnsRenderModeChanged,
+  allowedRenderModes,
 }: DataFrameColumnGroupHeaderProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
@@ -123,6 +132,7 @@ export function DataFrameColumnGroupHeader({
     selectOptions = columnPrecisionSelectOptions(
       name,
       onColumnsRenderModeChanged,
+      allowedRenderModes,
     );
   }
 
@@ -161,7 +171,7 @@ export function DataFrameColumnGroupHeader({
       className="grid-header"
     >
       {/* Primary key icon */}
-      {isPK && <VscKey />}
+      {isPK && !hidePrimaryKeyIcon && <VscKey data-testid="primary-key-icon" />}
 
       {/* Column name */}
       <Box
@@ -172,7 +182,7 @@ export function DataFrameColumnGroupHeader({
           whiteSpace: "nowrap",
         }}
       >
-        {name}
+        {displayName ?? name}
       </Box>
 
       {/* Primary key toggle (only when onPrimaryKeyChange is provided) */}
@@ -203,7 +213,11 @@ export function DataFrameColumnGroupHeader({
 
       {/* Precision menu for number columns (only for non-PK columns) */}
       {!isPK &&
-        (columnType === "number" || columnType === "float") &&
+        // Profile Diff can explicitly opt integer fields into its scoped menu.
+        // All other grids retain their historical number/float eligibility.
+        (columnType === "number" ||
+          columnType === "float" ||
+          allowedRenderModes !== undefined) &&
         selectOptions.length > 0 && (
           <>
             <IconButton

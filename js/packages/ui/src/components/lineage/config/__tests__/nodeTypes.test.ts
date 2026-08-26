@@ -14,7 +14,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { LineageGraphNode } from "../../../../contexts/lineage/types";
-import { colors } from "../../../../theme";
+import { colors, getSemanticColorTheme } from "../../../../theme";
 import { getNodeChangeStyle, getStyleForImpacted } from "../../styles";
 import { makeGetNodeColor } from "../nodeTypes";
 
@@ -83,6 +83,19 @@ describe("makeGetNodeColor", () => {
         getNodeChangeStyle({ changeStatus: "modified" }).color,
       );
     });
+  });
+
+  describe("theme resolution", () => {
+    it.each([false, true])(
+      "uses the dark=%s semantic structural token",
+      (isDark) => {
+        const getColor = makeGetNodeColor({ isDark });
+
+        expect(getColor(makeNode("added_model", "added"))).toBe(
+          getSemanticColorTheme(isDark).structural.neutral.border,
+        );
+      },
+    );
   });
 
   describe("unchanged-node color (literal pin, DRC-3250)", () => {

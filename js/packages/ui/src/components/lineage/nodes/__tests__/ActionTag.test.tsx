@@ -13,6 +13,7 @@
  */
 
 import { render, screen } from "@testing-library/react";
+import { getSemanticColorTheme } from "../../../../theme";
 import {
   type ActionProgress,
   ActionTag,
@@ -238,10 +239,15 @@ describe("ActionTag - success with row count diff", () => {
 
     expect(screen.getByText("100")).toBeInTheDocument();
     expect(screen.getByText("150")).toBeInTheDocument();
-    expect(screen.getByText("↑")).toHaveAttribute(
-      "data-row-count-direction",
-      "increase",
-    );
+    const direction = screen.getByText("↑");
+    expect(direction).toHaveAttribute("data-row-count-direction", "increase");
+    expect(direction).toHaveStyle({
+      color: getSemanticColorTheme(false).direction.foreground,
+    });
+    expect(direction.closest(".MuiChip-root")).toHaveStyle({
+      backgroundColor: getSemanticColorTheme(false).direction.background,
+      borderColor: getSemanticColorTheme(false).direction.border,
+    });
   });
 
   it("shows row counts with decrease indicator", () => {
@@ -259,10 +265,15 @@ describe("ActionTag - success with row count diff", () => {
 
     expect(screen.getByText("200")).toBeInTheDocument();
     expect(screen.getByText("50")).toBeInTheDocument();
-    expect(screen.getByText("↓")).toHaveAttribute(
-      "data-row-count-direction",
-      "decrease",
-    );
+    const direction = screen.getByText("↓");
+    expect(direction).toHaveAttribute("data-row-count-direction", "decrease");
+    expect(direction).toHaveStyle({
+      color: getSemanticColorTheme(false).direction.foreground,
+    });
+    expect(direction.closest(".MuiChip-root")).toHaveStyle({
+      backgroundColor: getSemanticColorTheme(false).direction.background,
+      borderColor: getSemanticColorTheme(false).direction.border,
+    });
   });
 
   it("shows equal indicator when counts match", () => {

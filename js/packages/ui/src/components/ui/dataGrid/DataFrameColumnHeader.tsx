@@ -23,6 +23,8 @@ import { columnPrecisionSelectOptions } from "../../../utils/dataGrid/columnPrec
 export interface DataFrameColumnHeaderProps {
   /** Column name to display */
   name: string;
+  /** Optional presentation-only name for the column */
+  displayName?: string;
   /** Column data type for determining available options */
   columnType: ColumnType;
   /** List of currently pinned column names */
@@ -31,6 +33,8 @@ export interface DataFrameColumnHeaderProps {
   onPinnedColumnsChange?: (pinnedColumns: string[]) => void;
   /** Callback when column render mode changes */
   onColumnsRenderModeChanged?: (col: Record<string, ColumnRenderMode>) => void;
+  /** Optional list limiting which render modes appear in the precision menu */
+  allowedRenderModes?: readonly ColumnRenderMode[];
 }
 
 /**
@@ -53,12 +57,14 @@ export interface DataFrameColumnHeaderProps {
  */
 export function DataFrameColumnHeader({
   name,
+  displayName,
   pinnedColumns = [],
   onPinnedColumnsChange = () => {
     return void 0;
   },
   columnType,
   onColumnsRenderModeChanged,
+  allowedRenderModes,
 }: DataFrameColumnHeaderProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
@@ -76,6 +82,7 @@ export function DataFrameColumnHeader({
     selectOptions = columnPrecisionSelectOptions(
       name,
       onColumnsRenderModeChanged,
+      allowedRenderModes,
     );
   }
 
@@ -96,7 +103,7 @@ export function DataFrameColumnHeader({
       sx={{ display: "flex", alignItems: "center", width: "100%" }}
       className="grid-header"
     >
-      <Box sx={{ flex: 1 }}>{name}</Box>
+      <Box sx={{ flex: 1 }}>{displayName ?? name}</Box>
 
       <Box
         component={isPinned ? VscPinned : VscPin}
@@ -107,7 +114,9 @@ export function DataFrameColumnHeader({
         }}
         onClick={isPinned ? handleUnpin : handlePin}
       />
-      {(columnType === "number" || columnType === "float") && (
+      {((allowedRenderModes === undefined &&
+        (columnType === "number" || columnType === "float")) ||
+        (allowedRenderModes !== undefined && selectOptions.length > 0)) && (
         <>
           <IconButton
             aria-label="Options"

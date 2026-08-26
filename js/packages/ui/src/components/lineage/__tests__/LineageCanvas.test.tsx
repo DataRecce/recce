@@ -23,6 +23,41 @@ import { vi } from "vitest";
 // Track registered node types to verify CLL support
 let registeredNodeTypes: Record<string, unknown> = {};
 let registeredEdgeTypes: Record<string, unknown> = {};
+let registeredMiniMapNodeColor:
+  | ((node: { data?: unknown }) => string)
+  | undefined;
+
+vi.mock("../../../hooks/useIsDark", () => ({
+  useIsDark: vi.fn(() => false),
+}));
+
+vi.mock("../nodes", () => ({
+  LineageNode: ({
+    id,
+    isDark,
+    onContextMenu,
+  }: {
+    id?: string;
+    isDark?: boolean;
+    onContextMenu?: (event: React.MouseEvent, nodeId: string) => void;
+  }) => (
+    <button
+      type="button"
+      data-testid={`registered-lineage-node-${id ?? "unknown"}`}
+      data-is-dark={String(isDark)}
+      onClick={(event) => onContextMenu?.(event, id ?? "unknown")}
+    />
+  ),
+}));
+
+vi.mock("../columns", () => ({
+  LineageColumnNode: ({ id, isDark }: { id?: string; isDark?: boolean }) => (
+    <div
+      data-testid={`registered-lineage-column-node-${id ?? "unknown"}`}
+      data-is-dark={String(isDark)}
+    />
+  ),
+}));
 
 // Mock @xyflow/react
 vi.mock("@xyflow/react", () => ({
@@ -54,17 +89,37 @@ vi.mock("@xyflow/react", () => ({
     return (
       <div data-testid="react-flow">
         <div data-testid="nodes-container">
-          {nodes.map((node) => (
-            <div
-              key={node.id}
-              data-testid={`node-${node.id}`}
-              data-node-type={node.type}
-              onClick={(e) => onNodeClick?.(e, node)}
-              onDoubleClick={(e) => onNodeDoubleClick?.(e, node)}
-            >
-              {node.id}
-            </div>
-          ))}
+          {nodes.map((node) => {
+            const NodeRenderer = node.type
+              ? (nodeTypes?.[node.type] as
+                  | React.ComponentType<{
+                      id: string;
+                      data: unknown;
+                      selected: boolean;
+                    }>
+                  | undefined)
+              : undefined;
+
+            return (
+              <div
+                key={node.id}
+                data-testid={`node-${node.id}`}
+                data-node-type={node.type}
+                onClick={(e) => onNodeClick?.(e, node)}
+                onDoubleClick={(e) => onNodeDoubleClick?.(e, node)}
+              >
+                {NodeRenderer ? (
+                  <NodeRenderer
+                    id={node.id}
+                    data={node.data}
+                    selected={false}
+                  />
+                ) : (
+                  node.id
+                )}
+              </div>
+            );
+          })}
         </div>
         <div data-testid="edges-container">
           {edges.map((edge) => (
@@ -84,9 +139,14 @@ vi.mock("@xyflow/react", () => ({
   },
   Background: () => <div data-testid="background" />,
   Controls: () => <div data-testid="controls" />,
-  MiniMap: ({ nodeColor }: { nodeColor?: (node: unknown) => string }) => (
-    <div data-testid="minimap" />
-  ),
+  MiniMap: ({
+    nodeColor,
+  }: {
+    nodeColor?: (node: { data?: unknown }) => string;
+  }) => {
+    registeredMiniMapNodeColor = nodeColor;
+    return <div data-testid="minimap" />;
+  },
   useNodesState: (initialNodes: unknown[]) => [initialNodes, vi.fn(), vi.fn()],
   useEdgesState: (initialEdges: unknown[]) => [initialEdges, vi.fn(), vi.fn()],
 }));
@@ -97,6 +157,8 @@ vi.mock("@xyflow/react", () => ({
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { Edge, Node } from "@xyflow/react";
+import { useIsDark } from "../../../hooks/useIsDark";
+import { getSemanticColorTheme } from "../../../theme";
 import type { LineageEdgeData } from "../edges";
 import { LineageCanvas, type LineageCanvasProps } from "../LineageCanvas";
 import type { LineageNodeData } from "../nodes";
@@ -169,6 +231,8 @@ describe("LineageCanvas", () => {
   beforeEach(() => {
     registeredNodeTypes = {};
     registeredEdgeTypes = {};
+    registeredMiniMapNodeColor = undefined;
+    vi.mocked(useIsDark).mockReturnValue(false);
   });
 
   // ==========================================================================
@@ -228,6 +292,49 @@ describe("LineageCanvas", () => {
 
       expect(registeredNodeTypes).toHaveProperty("lineageGraphColumnNode");
     });
+
+    it("keeps node types stable while propagating dark mode to both raw renderers", () => {
+      const props = createDefaultProps({
+        nodes: createMockColumnNodes() as Node<LineageNodeData>[],
+      });
+      const { rerender } = render(<LineageCanvas {...props} />);
+      const initialNodeTypes = registeredNodeTypes;
+
+      expect(
+        screen.getByTestId("registered-lineage-node-node1"),
+      ).toHaveAttribute("data-is-dark", "false");
+      expect(
+        screen.getByTestId("registered-lineage-column-node-node1_col1"),
+      ).toHaveAttribute("data-is-dark", "false");
+
+      vi.mocked(useIsDark).mockReturnValue(true);
+      rerender(<LineageCanvas {...props} />);
+
+      expect(registeredNodeTypes).toBe(initialNodeTypes);
+      expect(
+        screen.getByTestId("registered-lineage-node-node1"),
+      ).toHaveAttribute("data-is-dark", "true");
+      expect(
+        screen.getByTestId("registered-lineage-column-node-node1_col1"),
+      ).toHaveAttribute("data-is-dark", "true");
+    });
+
+    it("updates the model-node context-menu callback without rebuilding node types", () => {
+      const firstCallback = vi.fn();
+      const secondCallback = vi.fn();
+      const props = createDefaultProps({ onNodeContextMenu: firstCallback });
+      const { rerender } = render(<LineageCanvas {...props} />);
+      const initialNodeTypes = registeredNodeTypes;
+
+      fireEvent.click(screen.getByTestId("registered-lineage-node-node1"));
+      expect(firstCallback).toHaveBeenCalledWith(expect.anything(), "node1");
+
+      rerender(<LineageCanvas {...props} onNodeContextMenu={secondCallback} />);
+      fireEvent.click(screen.getByTestId("registered-lineage-node-node1"));
+
+      expect(registeredNodeTypes).toBe(initialNodeTypes);
+      expect(secondCallback).toHaveBeenCalledWith(expect.anything(), "node1");
+    });
   });
 
   // ==========================================================================
@@ -283,6 +390,29 @@ describe("LineageCanvas", () => {
       render(<LineageCanvas {...createDefaultProps()} />);
 
       expect(screen.getByTestId("minimap")).toBeInTheDocument();
+    });
+
+    it("resolves MiniMap node colors from the active light and dark themes", () => {
+      const props = createDefaultProps();
+      const modifiedNode = props.nodes[1];
+      const { rerender } = render(<LineageCanvas {...props} />);
+
+      const lightNodeColor = registeredMiniMapNodeColor;
+      expect(lightNodeColor?.(modifiedNode)).toBe(
+        getSemanticColorTheme(false).structural.neutral.border,
+      );
+
+      vi.mocked(useIsDark).mockReturnValue(true);
+      rerender(<LineageCanvas {...props} />);
+
+      const darkNodeColor = registeredMiniMapNodeColor;
+      expect(darkNodeColor?.(modifiedNode)).toBe(
+        getSemanticColorTheme(true).structural.neutral.border,
+      );
+      expect(darkNodeColor).not.toBe(lightNodeColor);
+
+      rerender(<LineageCanvas {...props} />);
+      expect(registeredMiniMapNodeColor).toBe(darkNodeColor);
     });
 
     it("hides minimap when showMiniMap is false", () => {

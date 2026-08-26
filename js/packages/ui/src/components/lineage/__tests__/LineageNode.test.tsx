@@ -162,34 +162,42 @@ describe("LineageNode", () => {
   // ==========================================================================
 
   describe("change status", () => {
-    it("renders without errors for added status", () => {
-      const props = createMockNodeProps(
-        {},
-        { label: "test", changeStatus: "added" },
+    it.each([
+      ["added", "+", "Added change"],
+      ["removed", "−", "Removed change"],
+      ["modified", "Δ", "Modified change"],
+    ] as const)(
+      "renders the visible %s symbol with an accessible status name",
+      (changeStatus, symbol, accessibleName) => {
+        render(
+          <LineageNode
+            {...createMockNodeProps({}, { label: "test", changeStatus })}
+          />,
+        );
+
+        expect(screen.getByText(symbol)).toBeVisible();
+        expect(screen.getByLabelText(accessibleName)).toBeInTheDocument();
+      },
+    );
+
+    it("uses a neutral card with a narrow secondary accent rail", () => {
+      const { container } = render(
+        <LineageNode {...createMockNodeProps({}, { changeStatus: "added" })} />,
       );
 
-      const { container } = render(<LineageNode {...props} />);
-      expect(container.firstChild).toBeInTheDocument();
-    });
+      const style = getComputedStyle(screen.getByTestId("lineage-node-card"));
+      expect(style.backgroundColor).toBe("#FAFAFA");
+      expect(style.borderTopColor).toBe("#737373");
+      expect(style.borderRightColor).toBe("#737373");
+      expect(style.borderBottomColor).toBe("#737373");
+      expect(style.borderLeftColor).toBe("#15803D");
+      expect(style.borderLeftWidth).toBe("3px");
 
-    it("renders without errors for removed status", () => {
-      const props = createMockNodeProps(
-        {},
-        { label: "test", changeStatus: "removed" },
-      );
-
-      const { container } = render(<LineageNode {...props} />);
-      expect(container.firstChild).toBeInTheDocument();
-    });
-
-    it("renders without errors for modified status", () => {
-      const props = createMockNodeProps(
-        {},
-        { label: "test", changeStatus: "modified" },
-      );
-
-      const { container } = render(<LineageNode {...props} />);
-      expect(container.firstChild).toBeInTheDocument();
+      fireEvent.mouseEnter(container.firstChild as Element);
+      expect(
+        getComputedStyle(screen.getByTestId("lineage-node-card"))
+          .backgroundColor,
+      ).toBe("#F5F5F5");
     });
 
     it("defaults to unchanged status when not provided", () => {
@@ -559,6 +567,35 @@ describe("LineageNode", () => {
       // Component still renders, but content has visibility:hidden
       expect(container.firstChild).toBeInTheDocument();
     });
+
+    it.each([
+      ["added", "+", "Added change"],
+      ["removed", "−", "Removed change"],
+      ["modified", "Δ", "Modified change"],
+    ] as const)(
+      "keeps a compact visible %s symbol when content is hidden",
+      (changeStatus, symbol, accessibleName) => {
+        render(
+          <LineageNode
+            {...createMockNodeProps(
+              { showContent: false },
+              { label: "test", changeStatus },
+            )}
+          />,
+        );
+
+        const compactIndicator = screen.getByTestId(
+          "compact-structural-change-indicator",
+        );
+        expect(compactIndicator).toBeVisible();
+        expect(compactIndicator).toHaveTextContent(symbol);
+        expect(
+          screen
+            .getAllByLabelText(accessibleName)
+            .find((element) => compactIndicator.contains(element)),
+        ).toBeDefined();
+      },
+    );
   });
 
   // ==========================================================================

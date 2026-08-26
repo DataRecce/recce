@@ -16,8 +16,14 @@
 import { BaseEdge, type EdgeProps, getBezierPath } from "@xyflow/react";
 import { memo } from "react";
 import type { LineageGraphEdge } from "../../../contexts/lineage/types";
+import { useIsDark } from "../../../hooks/useIsDark";
+import {
+  getSemanticColorTheme,
+  STRUCTURAL_CHANGE_PRESENTATION,
+  STRUCTURAL_EDGE_DASH,
+  type StructuralChangeStatus,
+} from "../../../theme";
 import { DIM_FILTER } from "../config/zoomConstants";
-import { type ChangeStatus, getIconForChangeStatus } from "../styles";
 
 // =============================================================================
 // TYPES
@@ -63,8 +69,8 @@ export interface GraphEdgeProps extends EdgeProps<LineageGraphEdge> {
  * Graph edge component for lineage visualization
  *
  * Renders a bezier edge with:
- * - Color based on change status (green for added, red for removed)
- * - Dashed line for changed edges
+ * - Neutral structural stroke across change statuses
+ * - Status-specific dash patterns as a redundant non-color cue
  * - Dimmed appearance for non-highlighted edges
  *
  * @param props - Edge props including source/target coordinates and data
@@ -97,20 +103,17 @@ function GraphEdgeComponent(props: GraphEdgeProps) {
     data,
     isEdgeHighlighted,
   } = props;
+  const isDark = useIsDark();
+  const semantic = getSemanticColorTheme(isDark);
+  const changeStatus = (data?.changeStatus ??
+    "unchanged") as StructuralChangeStatus;
+  const accessibleName = `${STRUCTURAL_CHANGE_PRESENTATION[changeStatus].label} change`;
 
   const style: React.CSSProperties = {
+    stroke: semantic.structural.neutral.border,
+    strokeDasharray: STRUCTURAL_EDGE_DASH[changeStatus],
     ...styleOverride,
   };
-
-  // Apply change status styling
-  if (data?.changeStatus) {
-    // Cast to ChangeStatus from styles module (added, removed, modified, unchanged)
-    const statusStyle = getIconForChangeStatus(
-      data.changeStatus as ChangeStatus,
-    );
-    style.stroke = statusStyle.hexColor;
-    style.strokeDasharray = "5";
-  }
 
   // Apply highlighting filter via dependency injection
   // Default to highlighted (true) if no function provided
@@ -136,7 +139,9 @@ function GraphEdgeComponent(props: GraphEdgeProps) {
       <BaseEdge
         path={edgePath}
         markerEnd={markerEnd}
-        style={{ ...style, ...styleOverride }}
+        style={style}
+        role="img"
+        aria-label={accessibleName}
       />
     </>
   );

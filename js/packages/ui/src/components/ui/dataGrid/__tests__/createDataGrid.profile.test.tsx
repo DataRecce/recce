@@ -8,7 +8,7 @@
  * but buildDiffRows lowercases PK keys in diff rows.
  */
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type {
   ColDef,
   ColGroupDef,
@@ -85,11 +85,16 @@ const LOWERCASE_COLUMNS = [
   { key: "data_type", name: "data_type", type: "text" },
   { key: "row_count", name: "row_count", type: "integer" },
   { key: "distinct_count", name: "distinct_count", type: "integer" },
+  {
+    key: "not_null_proportion",
+    name: "not_null_proportion",
+    type: "float",
+  },
 ] as const;
 
 const LOWERCASE_DATA: (string | number)[][] = [
-  ["customer_id", "integer", 500, 450],
-  ["name", "varchar", 500, 400],
+  ["customer_id", "integer", 500, 450, 0.9],
+  ["name", "varchar", 500, 400, 0.8],
 ];
 
 // ============================================================================
@@ -138,6 +143,26 @@ function findColumn(
   ) as ColDef<RowObjectType> | undefined;
 }
 
+function profileStatHeaderText(
+  column: ColDef<RowObjectType> | ColGroupDef<RowObjectType> | undefined,
+): string {
+  if (!column) {
+    throw new Error("Expected a profile stat column");
+  }
+
+  const Header =
+    (column as ColDef<RowObjectType>).headerComponent ??
+    (column as ColGroupDef<RowObjectType>).headerGroupComponent;
+  if (!Header) {
+    throw new Error("Expected a profile stat header component");
+  }
+
+  const { container, unmount } = render(<Header />);
+  const text = container.querySelector(".grid-header")?.textContent ?? "";
+  unmount();
+  return text;
+}
+
 // ============================================================================
 // 1. Profile (single env) with UPPERCASE keys
 // ============================================================================
@@ -177,6 +202,15 @@ describe("createDataGrid - profile (single env) with UPPERCASE keys", () => {
     // The row should have COLUMN_NAME accessible (original case or lowercase)
     const colNameValue = firstRow.COLUMN_NAME ?? firstRow.column_name;
     expect(colNameValue).toBe("CUSTOMER_ID");
+  });
+
+  test("humanizes profile statistic headers without changing raw fields", () => {
+    const result = createDataGrid(run, {})!;
+
+    expect(profileStatHeaderText(findColumn(result.columns, "row_count"))).toBe(
+      "Row Count",
+    );
+    expect(findColumn(result.columns, "row_count")?.field).toBe("ROW_COUNT");
   });
 });
 
@@ -246,6 +280,18 @@ describe("createDataGrid - profile_diff (inline) with UPPERCASE keys", () => {
     // Both base and current have the same 3 columns
     expect(result.rows.length).toBe(3);
   });
+
+  test("humanizes inline profile diff headers and retains the structural key", () => {
+    const result = createDataGrid(run, { displayMode: "inline" })!;
+    const primaryKeyColumn = findColumn(result.columns, "column_name");
+
+    expect(profileStatHeaderText(findColumn(result.columns, "row_count"))).toBe(
+      "Row Count",
+    );
+    expect(findColumn(result.columns, "row_count")?.field).toBe("ROW_COUNT");
+    expect(primaryKeyColumn?.field).toBe("COLUMN_NAME");
+    expect(primaryKeyColumn?.pinned).toBe("left");
+  });
 });
 
 // ============================================================================
@@ -314,6 +360,346 @@ describe("createDataGrid - profile_diff (side_by_side) with UPPERCASE keys", () 
       }
     }
   });
+
+  test("humanizes side-by-side profile diff group headers", () => {
+    const result = createDataGrid(run, { displayMode: "side_by_side" })!;
+    const rowCountGroup = result.columns.find(
+      (column) =>
+        "children" in column &&
+        column.headerName?.toLowerCase() === "row_count",
+    ) as ColGroupDef<RowObjectType> | undefined;
+
+    expect(profileStatHeaderText(rowCountGroup)).toBe("Row Count");
+    expect(
+      rowCountGroup?.children.map(
+        (child) => (child as ColDef<RowObjectType>).field,
+      ),
+    ).toEqual(["base__ROW_COUNT", "current__ROW_COUNT"]);
+  });
+});
+
+// ============================================================================
+// DRC-2866: explicit percentage modes are limited to inline Profile Diff
+// ============================================================================
+
+describe("createDataGrid - profile_diff explicit percentage mode eligibility", () => {
+  const columns = [
+    { key: "column_name", name: "column_name", type: "text" },
+    { key: "data_type", name: "data_type", type: "text" },
+    { key: "row_count", name: "row_count", type: "integer" },
+    {
+      key: "not_null_proportion",
+      name: "not_null_proportion",
+      type: "float",
+    },
+  ] as const;
+  const run = makeProfileDiffRun({
+    base: makeDataFrame([...columns], [["id", "integer", 10, 0.98]]),
+    current: makeDataFrame([...columns], [["id", "integer", 12, 0.94]]),
+  });
+
+  function renderHeaderFor(
+    result: ReturnType<typeof createDataGrid>,
+    field: string,
+  ) {
+    const column = findColumn(result!.columns, field);
+    const Header = column?.headerComponent;
+    if (!Header) {
+      throw new Error(`Expected ${field} to have a header component`);
+    }
+    render(<Header />);
+    fireEvent.click(screen.getByRole("button", { name: "Options" }));
+  }
+
+  function renderActualCellFor(
+    result: ReturnType<typeof createDataGrid>,
+    field: string,
+    row: RowObjectType = result!.rows[0],
+  ) {
+    const column = findColumn(result!.columns, field)!;
+    const renderer = column.cellRenderer as (
+      params: ICellRendererParams<RowObjectType>,
+    ) => React.ReactNode;
+
+    render(<>{renderer(createRendererParams(row, column))}</>);
+  }
+
+  test("offers percentage-point delta only for inline proportion fields", () => {
+    const callback = vi.fn();
+    const result = createDataGrid(run, {
+      displayMode: "inline",
+      onColumnsRenderModeChanged: callback,
+    });
+
+    renderHeaderFor(result, "not_null_proportion");
+
+    expect(screen.getByText("Show percentage-point delta")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Show relative percentage change"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Show percentage-point delta"));
+    expect(callback).toHaveBeenCalledWith({
+      not_null_proportion: "percent_delta",
+    });
+  });
+
+  test("offers relative percentage change for other inline numeric fields", () => {
+    const callback = vi.fn();
+    const result = createDataGrid(run, {
+      displayMode: "inline",
+      onColumnsRenderModeChanged: callback,
+    });
+
+    renderHeaderFor(result, "row_count");
+
+    expect(
+      screen.getByText("Show relative percentage change"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Show percentage-point delta"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Show relative percentage change"));
+    expect(callback).toHaveBeenCalledWith({ row_count: "percent_change" });
+  });
+
+  test("renders percent_delta through the actual modified Profile Diff row", () => {
+    const result = createDataGrid(run, {
+      displayMode: "inline",
+      columnsRenderMode: { not_null_proportion: "percent_delta" },
+    });
+
+    expect(result!.rows[0].__status).toBe("modified");
+    renderActualCellFor(result, "not_null_proportion");
+
+    expect(screen.getByText("94%")).toBeInTheDocument();
+    expect(screen.getByText("(-4pp)")).toHaveAttribute(
+      "data-direction",
+      "decrease",
+    );
+  });
+
+  test.each(["added", "removed"] as const)(
+    "renders an %s percent_delta row in the column's percentage unit",
+    (status) => {
+      const withExtraRow = makeDataFrame(
+        [...columns],
+        [
+          ["id", "integer", 10, 0.98],
+          ["email", "varchar", 12, 0.94],
+        ],
+      );
+      const withoutExtraRow = makeDataFrame(
+        [...columns],
+        [["id", "integer", 10, 0.98]],
+      );
+      const structuralRun = makeProfileDiffRun({
+        base: status === "added" ? withoutExtraRow : withExtraRow,
+        current: status === "added" ? withExtraRow : withoutExtraRow,
+      });
+      const result = createDataGrid(structuralRun, {
+        displayMode: "inline",
+        columnsRenderMode: { not_null_proportion: "percent_delta" },
+      });
+
+      const structuralRow = result!.rows.find((row) => row.__status === status);
+      expect(structuralRow).toBeDefined();
+      renderActualCellFor(result, "not_null_proportion", structuralRow);
+
+      expect(screen.getByText("94%")).toBeInTheDocument();
+      expect(screen.queryByText("0.94")).not.toBeInTheDocument();
+    },
+  );
+
+  test("renders percent_change with an ordinary current value through the factory", () => {
+    const result = createDataGrid(run, {
+      displayMode: "inline",
+      columnsRenderMode: { row_count: "percent_change" },
+    });
+
+    renderActualCellFor(result, "row_count");
+
+    expect(screen.getByText("12")).toBeInTheDocument();
+    expect(screen.getByText("(+20%)")).toHaveAttribute(
+      "data-direction",
+      "increase",
+    );
+    expect(screen.queryByText("1,200%")).not.toBeInTheDocument();
+  });
+
+  test("renders zero-to-zero percent_change through the actual factory cell", async () => {
+    const zeroRun = makeProfileDiffRun({
+      base: makeDataFrame([...columns], [["id", "integer", 0, 0.98]]),
+      current: makeDataFrame([...columns], [["id", "integer", 0, 0.94]]),
+    });
+    const result = createDataGrid(zeroRun, {
+      displayMode: "inline",
+      columnsRenderMode: { row_count: "percent_change" },
+    });
+
+    renderActualCellFor(result, "row_count");
+
+    expect(screen.getByText("0")).toBeInTheDocument();
+    expect(screen.getByText("0%")).toBeInTheDocument();
+
+    // Exact text content, not a substring regex: a tooltip whose newlines are
+    // the two literal characters `\n` matches every substring regex too.
+    fireEvent.mouseOver(screen.getByText("0%"));
+    const tooltip = await screen.findByRole("tooltip");
+    expect(tooltip.textContent).toBe("Base: 0\nCurrent: 0\nChange: 0");
+  });
+
+  test.each([
+    ["row_count", "percent_delta", "10", "12"],
+    ["not_null_proportion", "percent_change", "0.98", "0.94"],
+  ] as const)(
+    "falls back for persisted %s on %s",
+    (field, mode, baseText, currentText) => {
+      const result = createDataGrid(run, {
+        displayMode: "inline",
+        columnsRenderMode: { [field]: mode },
+      });
+
+      renderActualCellFor(result, field);
+
+      expect(screen.getByText(baseText)).toBeInTheDocument();
+      expect(screen.getByText(currentText)).toBeInTheDocument();
+      expect(screen.queryByText(/pp\)|%\)/)).not.toBeInTheDocument();
+    },
+  );
+
+  test("keeps the new modes out of side-by-side Profile Diff headers", () => {
+    const result = createDataGrid(run, {
+      displayMode: "side_by_side",
+      onColumnsRenderModeChanged: vi.fn(),
+    })!;
+    const proportionGroup = result.columns.find(
+      (column) =>
+        "children" in column &&
+        column.headerName?.toLowerCase() === "not_null_proportion",
+    ) as ColGroupDef<RowObjectType>;
+
+    const Header = proportionGroup.headerGroupComponent;
+    if (!Header) {
+      throw new Error("Expected a side-by-side Profile Diff group header");
+    }
+    render(<Header />);
+    fireEvent.click(screen.getByRole("button", { name: "Options" }));
+
+    expect(
+      screen.queryByText("Show percentage-point delta"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Show relative percentage change"),
+    ).not.toBeInTheDocument();
+  });
+
+  test("keeps the new modes out of single Profile headers", () => {
+    const singleProfileRun = makeProfileRun({
+      current: makeDataFrame([...columns], [["id", "integer", 12, 0.94]]),
+    });
+    const result = createDataGrid(singleProfileRun, {
+      onColumnsRenderModeChanged: vi.fn(),
+    });
+    const column = findColumn(result!.columns, "not_null_proportion");
+    const Header = column?.headerComponent;
+    if (!Header) {
+      throw new Error("Expected a single Profile header component");
+    }
+
+    render(<Header />);
+    fireEvent.click(screen.getByRole("button", { name: "Options" }));
+
+    expect(
+      screen.queryByText("Show percentage-point delta"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Show relative percentage change"),
+    ).not.toBeInTheDocument();
+  });
+
+  test("passes profile presentation metadata through the factory to hide the key icon", () => {
+    const result = createDataGrid(run, { displayMode: "inline" })!;
+    const primaryKeyColumn = findColumn(result.columns, "column_name");
+
+    render(<>{primaryKeyColumn?.headerComponent?.()}</>);
+
+    expect(screen.queryByTestId("primary-key-icon")).not.toBeInTheDocument();
+  });
+});
+
+// ============================================================================
+// DRC-2866: generic grid factories never expose Profile Diff-only modes
+// ============================================================================
+
+describe("createDataGrid - generic percentage mode exclusion", () => {
+  const dataframe = makeDataFrame(
+    [
+      { key: "id", name: "id", type: "integer" },
+      { key: "value", name: "value", type: "number" },
+    ],
+    [[1, 10]],
+  );
+  const queryRun = {
+    type: "query",
+    run_id: "query-run",
+    run_at: "2026-01-01T00:00:00Z",
+    status: "Finished",
+    params: { sql_template: "select 1" },
+    result: dataframe,
+  } as Extract<Run, { type: "query" }>;
+  const queryDiffRun = {
+    type: "query_diff",
+    run_id: "query-diff-run",
+    run_at: "2026-01-01T00:00:00Z",
+    status: "Finished",
+    params: { sql_template: "select 1", primary_keys: ["id"] },
+    result: { base: dataframe, current: dataframe },
+  } as Extract<Run, { type: "query_diff" }>;
+  const valueDiffDetailDataframe = makeDataFrame(
+    [
+      { key: "id", name: "id", type: "integer" },
+      { key: "value", name: "value", type: "number" },
+      { key: "in_a", name: "in_a", type: "boolean" },
+      { key: "in_b", name: "in_b", type: "boolean" },
+    ],
+    [[1, 10, true, true]],
+  );
+  const valueDiffDetailRun = {
+    type: "value_diff_detail",
+    run_id: "value-diff-detail-run",
+    run_at: "2026-01-01T00:00:00Z",
+    status: "Finished",
+    params: { model: "model", primary_key: "id" },
+    result: valueDiffDetailDataframe,
+  } as Extract<Run, { type: "value_diff_detail" }>;
+
+  test.each([
+    ["Query", queryRun],
+    ["Query Diff", queryDiffRun],
+    ["Value Diff Detail", valueDiffDetailRun],
+  ] as const)("keeps Profile Diff-only modes out of %s", (_name, run) => {
+    const result = createDataGrid(run, {
+      displayMode: "inline",
+      onColumnsRenderModeChanged: vi.fn(),
+    })!;
+    const column = findColumn(result.columns, "value")!;
+    const Header = column.headerComponent;
+    if (!Header) {
+      throw new Error("Expected a numeric grid header");
+    }
+
+    render(<Header />);
+    fireEvent.click(screen.getByRole("button", { name: "Options" }));
+
+    expect(
+      screen.queryByText("Show percentage-point delta"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Show relative percentage change"),
+    ).not.toBeInTheDocument();
+  });
 });
 
 // ============================================================================
@@ -363,6 +749,18 @@ describe("createDataGrid - profile with lowercase keys (backwards compat)", () =
 
     render(<>{renderer(params)}</>);
     expect(screen.getByText("customer_id")).toBeInTheDocument();
+  });
+
+  test("humanizes lowercase profile statistic headers", () => {
+    const result = createDataGrid(run, {})!;
+
+    expect(profileStatHeaderText(findColumn(result.columns, "row_count"))).toBe(
+      "Row Count",
+    );
+    expect(findColumn(result.columns, "row_count")?.field).toBe("row_count");
+    expect(
+      profileStatHeaderText(findColumn(result.columns, "not_null_proportion")),
+    ).toBe("Not Null Proportion");
   });
 });
 

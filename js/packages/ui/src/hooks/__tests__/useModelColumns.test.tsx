@@ -116,6 +116,10 @@ describe("useModelColumns", () => {
     expect(mockGetModelInfo).toHaveBeenCalledTimes(1);
     expect(mockGetModelInfo).toHaveBeenCalledWith(NODE_ID, mockApiClient);
     expect(result.current.columns.map((c) => c.name)).toEqual(["id", "name"]);
+    expect(result.current.columnAvailability).toEqual({
+      id: { base: true, current: true },
+      name: { base: false, current: true },
+    });
     expect(result.current.primaryKey).toBe("id");
     expect(result.current.error).toBe(null);
   });
@@ -170,6 +174,39 @@ describe("useModelColumns", () => {
     expect(result.current.error).toBe(null);
   });
 
+  it("reports two-sided availability from distinct base/current catalogs", async () => {
+    mockGetModelInfo.mockResolvedValue({
+      model: {
+        base: {
+          columns: {
+            shared: { name: "shared", type: "INT" },
+            removed_only: { name: "removed_only", type: "DOUBLE" },
+          },
+        },
+        current: {
+          columns: {
+            shared: { name: "shared", type: "BIGINT" },
+            added_only: { name: "added_only", type: "DECIMAL(12, 2)" },
+          },
+        },
+      },
+    });
+
+    const { result } = renderHook(() => useModelColumns(MODEL_NAME), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.columnAvailability).toEqual({
+      shared: { base: true, current: true },
+      removed_only: { base: true, current: false },
+      added_only: { base: false, current: true },
+    });
+  });
+
   it("dedupes the /api/models/{id} fetch when a sibling useQuery shares the cache key (DRC-3343)", async () => {
     mockGetModelInfo.mockResolvedValue(fakeModelInfo);
 
@@ -210,6 +247,7 @@ describe("useModelColumns", () => {
 
     expect(result.current.isLoading).toBe(false);
     expect(result.current.columns).toEqual([]);
+    expect(result.current.columnAvailability).toEqual({});
     expect(result.current.primaryKey).toBeUndefined();
     expect(mockGetModelInfo).not.toHaveBeenCalled();
   });

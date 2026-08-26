@@ -31,7 +31,7 @@ import React, {
 } from "react";
 
 import { useIsDark } from "../../hooks";
-import { getComparisonThemeColors } from "../../theme/chartTheme";
+import { getSemanticColorTheme } from "../../theme";
 import "./agGridStyles.css";
 import { dataGridThemeDark, dataGridThemeLight } from "./agGridTheme";
 
@@ -183,7 +183,7 @@ function _ScreenshotDataGrid<TData = DataGridRow>(
 
   // Use useIsDark for reliable dark mode detection with CSS Variables
   const isDark = useIsDark();
-  const comparisonColors = getComparisonThemeColors(isDark);
+  const semantic = getSemanticColorTheme(isDark);
 
   // Select AG Grid theme based on dark mode
   const gridTheme = useMemo(
@@ -280,53 +280,71 @@ function _ScreenshotDataGrid<TData = DataGridRow>(
         "& .ag-header-cell": {
           borderRight: "1px solid var(--ag-border-color)",
         },
-        // Diff cell styling - theme-aware colors
-        "& .diff-cell-added": {
-          backgroundColor: isDark ? "#1a4d1a !important" : "#cefece !important",
-          color: "var(--mui-palette-text-primary)",
+        // Comparison role styling stays independent from row/column structure.
+        "& .comparison-cell-base": {
+          backgroundColor: `${semantic.comparison.base.background} !important`,
+          boxShadow: `inset 0 0 0 2px ${semantic.comparison.base.border}`,
+          color: `${semantic.comparison.base.foreground} !important`,
         },
-        "& .diff-cell-removed": {
-          backgroundColor: isDark ? "#5c1f1f !important" : "#ffc5c5 !important",
-          color: "var(--mui-palette-text-primary)",
+        "& .comparison-cell-current": {
+          backgroundColor: `${semantic.comparison.current.background} !important`,
+          boxShadow: `inset 0 0 0 2px ${semantic.comparison.current.border}`,
+          color: `${semantic.comparison.current.foreground} !important`,
         },
+        // Structural rows use a leading rail instead of a full-cell fill.
+        "& .structural-row-added": {
+          boxShadow: `inset 3px 0 ${semantic.structural.secondaryAccent.added}`,
+        },
+        "& .structural-row-removed": {
+          boxShadow: `inset 3px 0 ${semantic.structural.secondaryAccent.removed}`,
+        },
+        "& .structural-row-modified": {
+          boxShadow: `inset 3px 0 ${semantic.structural.secondaryAccent.modified}`,
+        },
+        "& .comparison-cell-base.structural-row-added": {
+          boxShadow: `inset 0 0 0 2px ${semantic.comparison.base.border}, inset 3px 0 ${semantic.structural.secondaryAccent.added}`,
+        },
+        "& .comparison-cell-base.structural-row-removed": {
+          boxShadow: `inset 0 0 0 2px ${semantic.comparison.base.border}, inset 3px 0 ${semantic.structural.secondaryAccent.removed}`,
+        },
+        "& .comparison-cell-base.structural-row-modified": {
+          boxShadow: `inset 0 0 0 2px ${semantic.comparison.base.border}, inset 3px 0 ${semantic.structural.secondaryAccent.modified}`,
+        },
+        "& .comparison-cell-current.structural-row-added": {
+          boxShadow: `inset 0 0 0 2px ${semantic.comparison.current.border}, inset 3px 0 ${semantic.structural.secondaryAccent.added}`,
+        },
+        "& .comparison-cell-current.structural-row-removed": {
+          boxShadow: `inset 0 0 0 2px ${semantic.comparison.current.border}, inset 3px 0 ${semantic.structural.secondaryAccent.removed}`,
+        },
+        "& .comparison-cell-current.structural-row-modified": {
+          boxShadow: `inset 0 0 0 2px ${semantic.comparison.current.border}, inset 3px 0 ${semantic.structural.secondaryAccent.modified}`,
+        },
+        // Retain the value-summary cue while avoiding its former full-cell fill.
         "& .diff-cell-modified": {
-          backgroundColor: isDark ? "#713F12 !important" : "#FEF3C7 !important",
-          color: "var(--mui-palette-text-primary)",
+          boxShadow: `inset 3px 0 ${semantic.structural.secondaryAccent.modified}`,
         },
-        // Row count direction uses the existing base/current visualization
-        // palette. The fixed tint does not encode change magnitude.
-        "& .row-count-delta-increase": {
-          backgroundColor: `${comparisonColors.current.background} !important`,
-          boxShadow: `inset 3px 0 ${comparisonColors.current.accent}`,
-          color: `${comparisonColors.current.foreground} !important`,
-          fontWeight: 600,
+        // Direction uses one neutral family; the arrow/text carries direction.
+        "& .row-count-delta-increase, & .row-count-delta-decrease, & .row-count-delta-unchanged, & .row-count-delta-structural":
+          {
+            backgroundColor: `${semantic.direction.background} !important`,
+            color: `${semantic.direction.foreground} !important`,
+            fontWeight: 600,
+          },
+        // Structural headers stay neutral and use a bottom status rail.
+        "& .structural-header-added": {
+          backgroundColor: `${semantic.structural.neutral.background} !important`,
+          borderBottom: `3px solid ${semantic.structural.secondaryAccent.added}`,
+          color: `${semantic.structural.neutral.foreground} !important`,
         },
-        "& .row-count-delta-decrease": {
-          backgroundColor: `${comparisonColors.base.background} !important`,
-          boxShadow: `inset 3px 0 ${comparisonColors.base.accent}`,
-          color: `${comparisonColors.base.foreground} !important`,
-          fontWeight: 600,
+        "& .structural-header-removed": {
+          backgroundColor: `${semantic.structural.neutral.background} !important`,
+          borderBottom: `3px solid ${semantic.structural.secondaryAccent.removed}`,
+          color: `${semantic.structural.neutral.foreground} !important`,
         },
-        "& .row-count-delta-unchanged": {
-          color: "var(--mui-palette-text-secondary)",
-          fontWeight: 600,
-        },
-        "& .row-count-delta-structural": {
-          color: "var(--mui-palette-text-secondary)",
-          fontWeight: 600,
-        },
-        // Diff header styling
-        "& .diff-header-added": {
-          backgroundColor: "#15803d !important",
-          color: "white",
-        },
-        "& .diff-header-removed": {
-          backgroundColor: "#f43f5e !important",
-          color: "white",
-        },
-        "& .diff-header-modified": {
-          backgroundColor: "#f59e0b !important",
-          color: "white",
+        "& .structural-header-modified": {
+          backgroundColor: `${semantic.structural.neutral.background} !important`,
+          borderBottom: `3px solid ${semantic.structural.secondaryAccent.modified}`,
+          color: `${semantic.structural.neutral.foreground} !important`,
         },
         // Index column styling
         "& .index-column": {

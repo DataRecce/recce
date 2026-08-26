@@ -6,12 +6,17 @@
  * into actual column definitions with React components for headers.
  */
 
+import Box from "@mui/material/Box";
 import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
 import type { RowObjectType } from "../../api";
+import { StructuralChangeIndicator } from "../../components/ui/StructuralChangeIndicator";
+import type { StructuralChangeStatus } from "../../theme";
 import type { ColumnConfig } from "./columnBuilders";
+import { getHeaderCellClass } from "./gridUtils";
 import type {
   DataFrameColumnGroupHeaderProps,
   DiffColumnRenderComponents,
+  HeaderPresentation,
 } from "./renderTypes";
 import type { RecceColumnContext } from "./toDiffColumn";
 import { toDiffColumn } from "./toDiffColumn";
@@ -48,7 +53,9 @@ export interface BuildDiffColumnDefinitionsConfig {
   /**
    * Props to pass to DataFrameColumnGroupHeader for all columns
    */
-  headerProps: Partial<DataFrameColumnGroupHeaderProps>;
+  headerProps: Partial<DataFrameColumnGroupHeaderProps> & {
+    headerPresentation?: Record<string, HeaderPresentation>;
+  };
 
   /**
    * Title for base column in side_by_side mode
@@ -95,13 +102,35 @@ export interface BuildDiffColumnDefinitionsResult {
 /**
  * Creates the index fallback column used when no primary keys are specified
  */
-function createIndexColumn(): DiffColumnDefinition {
+function structuralRowClass(
+  status: RowObjectType["__status"],
+): string | undefined {
+  return status ? `structural-row-${status}` : undefined;
+}
+
+function isStructuralChangeStatus(
+  status: string | undefined,
+): status is Exclude<StructuralChangeStatus, "unchanged"> {
+  return status === "added" || status === "removed" || status === "modified";
+}
+
+function createIndexColumn(
+  renderComponents: DiffColumnRenderComponents,
+): DiffColumnDefinition {
   return {
     field: "_index",
     headerName: "",
     width: 50,
     maxWidth: 100,
-    cellClass: "index-column",
+    cellClass: (params: CellClassParams<RowObjectType>) =>
+      ["index-column", structuralRowClass(params.data?.__status)]
+        .filter(Boolean)
+        .join(" "),
+    cellRenderer: renderComponents.defaultRenderCell,
+    context: {
+      columnType: "integer",
+      showStructuralIndicator: true,
+    },
     resizable: false,
     pinned: "left",
   };
@@ -117,32 +146,47 @@ function createIndexColumn(): DiffColumnDefinition {
  */
 function createPrimaryKeyColumn(
   config: ColumnConfig,
-  headerProps: Partial<DataFrameColumnGroupHeaderProps>,
+  headerProps: BuildDiffColumnDefinitionsConfig["headerProps"],
   renderComponents: DiffColumnRenderComponents,
+  showStructuralIndicator: boolean,
 ): DiffColumnDefinition {
   const { key, name, columnType, columnStatus, columnRenderMode } = config;
   const { DataFrameColumnGroupHeader, defaultRenderCell } = renderComponents;
+  const { headerPresentation, ...headerComponentProps } = headerProps;
 
   return {
     field: key,
     headerName: name,
+    headerClass: getHeaderCellClass(columnStatus),
     headerComponent: () => (
-      <DataFrameColumnGroupHeader
-        name={name}
-        columnStatus={columnStatus ?? ""}
-        columnType={columnType}
-        {...headerProps}
-      />
+      <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
+        {isStructuralChangeStatus(columnStatus) && (
+          <StructuralChangeIndicator
+            status={columnStatus}
+            size="sm"
+            showLabel={false}
+            emphasis="secondary"
+          />
+        )}
+        <DataFrameColumnGroupHeader
+          name={name}
+          columnStatus={columnStatus ?? ""}
+          columnType={columnType}
+          {...headerComponentProps}
+          {...headerPresentation?.[key]}
+        />
+      </Box>
     ),
     pinned: "left",
     cellClass: (params: CellClassParams<RowObjectType>) => {
-      if (params.data?.__status) {
-        return `diff-header-${params.data.__status}`;
-      }
-      return undefined;
+      return structuralRowClass(params.data?.__status);
     },
     cellRenderer: defaultRenderCell,
-    context: { columnType, columnRenderMode },
+    context: {
+      columnType,
+      columnRenderMode,
+      showStructuralIndicator,
+    },
   };
 }
 
@@ -258,23 +302,32 @@ export function buildDiffColumnDefinitions(
 
   const columns: DiffColumnDefinition[] = [];
   let usedIndexFallback = false;
+  let structuralAnchorAssigned = false;
 
   // Check if we have any primary key columns
   const hasPrimaryKeys = columnConfigs.some((col) => col.isPrimaryKey);
 
   // Add index fallback if no PKs and allowed
   if (!hasPrimaryKeys && allowIndexFallback) {
-    columns.push(createIndexColumn());
+    columns.push(createIndexColumn(renderComponents));
     usedIndexFallback = true;
+    structuralAnchorAssigned = true;
   }
 
   // Build column definitions
   for (const colConfig of columnConfigs) {
     if (colConfig.isPrimaryKey) {
       // Primary key column - pinned with special cellClass
+      const showStructuralIndicator = !structuralAnchorAssigned;
       columns.push(
-        createPrimaryKeyColumn(colConfig, headerProps, renderComponents),
+        createPrimaryKeyColumn(
+          colConfig,
+          headerProps,
+          renderComponents,
+          showStructuralIndicator,
+        ),
       );
+      structuralAnchorAssigned = true;
     } else {
       // Regular diff column - uses toDiffColumn for inline/side_by_side
       const diffColumn = createDiffColumn(

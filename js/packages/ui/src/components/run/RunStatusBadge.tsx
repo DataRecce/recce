@@ -62,18 +62,21 @@ export interface RunStatusBadgeProps {
 /**
  * Get status display properties
  */
-function getStatusDisplay(status: RunStatus): { color: string; label: string } {
+export function getStatusDisplay(status: RunStatus): {
+  color: string;
+  label: string;
+} {
   switch (status) {
     case "Running":
-      return { color: "blue", label: "Running" };
+      return { color: "primary.main", label: "Running" };
     case "Finished":
-      return { color: "green", label: "Finished" };
+      return { color: "text.secondary", label: "Last computed" };
     case "Failed":
-      return { color: "red", label: "Failed" };
+      return { color: "error.main", label: "Failed" };
     case "Cancelled":
-      return { color: "grey", label: "Cancelled" };
+      return { color: "text.secondary", label: "Cancelled" };
     default:
-      return { color: "green", label: "Finished" };
+      return { color: "text.secondary", label: "Last computed" };
   }
 }
 
@@ -132,7 +135,7 @@ function RunStatusBadgeComponent({
         sx={{
           fontWeight: 500,
           fontSize,
-          color: `${color}.500`,
+          color,
         }}
       >
         {label}

@@ -22,7 +22,7 @@ import {
   type RowCountResult,
   type Run,
 } from "../../api";
-import { getComparisonThemeColors } from "../../theme/chartTheme";
+import { getSemanticColorTheme } from "../../theme";
 import { toRowCountDataGrid, toRowCountDiffDataGrid } from "../../utils";
 import type { DataGridHandle } from "../data/ScreenshotDataGrid";
 import { createResultView } from "../result/createResultView";
@@ -115,22 +115,22 @@ function transformRowCountDiffData(
 }
 
 export function RowCountDiffLegend({ isDark }: { isDark: boolean }) {
-  const comparisonColors = getComparisonThemeColors(isDark);
+  const direction = getSemanticColorTheme(isDark).direction;
   const items = [
     {
-      label: "Decrease",
-      accent: comparisonColors.base.accent,
-      background: comparisonColors.base.background,
-    },
-    {
-      label: "No change",
-      accent: isDark ? "#6B7280" : "#9CA3AF",
-      background: "transparent",
-    },
-    {
+      symbol: "↑",
       label: "Increase",
-      accent: comparisonColors.current.accent,
-      background: comparisonColors.current.background,
+      direction: "increase",
+    },
+    {
+      symbol: "↓",
+      label: "Decrease",
+      direction: "decrease",
+    },
+    {
+      symbol: "=",
+      label: "No change",
+      direction: "equal",
     },
   ];
 
@@ -138,6 +138,7 @@ export function RowCountDiffLegend({ isDark }: { isDark: boolean }) {
     <Box
       component="ul"
       aria-label="Row count change legend"
+      data-color-axis="neutral-direction"
       sx={{
         display: "flex",
         alignItems: "center",
@@ -149,7 +150,8 @@ export function RowCountDiffLegend({ isDark }: { isDark: boolean }) {
         borderTop: 1,
         borderColor: "divider",
         listStyle: "none",
-        color: "text.primary",
+        bgcolor: direction.background,
+        color: direction.foreground,
         fontSize: "0.8125rem",
       }}
     >
@@ -162,15 +164,16 @@ export function RowCountDiffLegend({ isDark }: { isDark: boolean }) {
           <Box
             component="span"
             aria-hidden="true"
+            data-direction={item.direction}
             sx={{
               width: 14,
               height: 14,
               borderRadius: 0.5,
-              bgcolor: item.background,
-              border: `1px solid ${item.accent}`,
+              bgcolor: direction.background,
+              border: `1px solid ${direction.border}`,
             }}
           />
-          {item.label}
+          {`${item.symbol} ${item.label}`}
         </Box>
       ))}
     </Box>
@@ -210,8 +213,8 @@ export const RowCountResultView = createResultView<
  * Result view for comparing row counts between base and current environments
  *
  * Displays a grid with model names, base counts, current counts, and delta.
- * The Delta cell uses current blue for increases and base orange for decreases,
- * with arrows and signed values as non-color cues.
+ * The Delta cell uses neutral direction styling with arrows and signed values
+ * as the non-color cues.
  *
  * @example
  * ```tsx

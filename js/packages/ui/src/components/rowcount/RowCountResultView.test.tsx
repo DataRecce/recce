@@ -2,23 +2,24 @@ import { render, screen } from "@testing-library/react";
 import { RowCountDiffLegend } from "./RowCountResultView";
 
 describe("RowCountDiffLegend", () => {
-  test("names every directional color cue", () => {
+  test("names every neutral directional cue with a symbol", () => {
     render(<RowCountDiffLegend isDark={false} />);
 
+    expect(screen.getByText("↑ Increase")).toBeVisible();
+    expect(screen.getByText("↓ Decrease")).toBeVisible();
+    expect(screen.getByText("= No change")).toBeVisible();
     expect(
       screen.getByRole("list", { name: "Row count change legend" }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Decrease")).toBeInTheDocument();
-    expect(screen.getByText("No change")).toBeInTheDocument();
-    expect(screen.getByText("Increase")).toBeInTheDocument();
+    ).toHaveAttribute("data-color-axis", "neutral-direction");
   });
 
-  test("renders the no-change swatch without a fill", () => {
+  test("uses the same neutral swatch for every direction", () => {
     render(<RowCountDiffLegend isDark={false} />);
 
-    const noChangeItem = screen.getByText("No change");
-    const swatch = noChangeItem.querySelector("[aria-hidden='true']");
+    const swatches = Array.from(
+      document.querySelectorAll("[data-direction]"),
+    ).map((swatch) => swatch.getAttribute("data-direction"));
 
-    expect(swatch).toHaveStyle({ backgroundColor: "transparent" });
+    expect(swatches).toEqual(["increase", "decrease", "equal"]);
   });
 });

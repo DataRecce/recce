@@ -29,7 +29,10 @@ export function buildColumnTooltip(input: ColumnTooltipInput): string {
       return `deleted ${name}`;
 
     case "type_changed":
-      text = `${name}, was ${baseType} now ${currentType}`;
+      text =
+        currentType && baseType === currentType
+          ? `${name} ${currentType}`
+          : `${name}, was ${baseType} now ${currentType}`;
       break;
 
     case "definition_changed":

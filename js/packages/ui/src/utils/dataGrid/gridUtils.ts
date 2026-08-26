@@ -529,25 +529,28 @@ export function toRenderedValue(
  */
 export function getCellClass(
   row: RowObjectType,
-  columnStatus: string | undefined,
+  _columnStatus: string | undefined,
   columnKey: string,
   isBase: boolean,
   colType?: ColumnType,
 ): string | undefined {
-  const rowStatus = row.__status;
-
-  if (rowStatus === "removed") return "diff-cell-removed";
-  if (rowStatus === "added") return "diff-cell-added";
-  if (columnStatus === "added" || columnStatus === "removed") return undefined;
-
   const baseKey = `base__${columnKey}`.toLowerCase();
   const currentKey = `current__${columnKey}`.toLowerCase();
+  const classes: string[] = [];
 
   if (isCellChanged(row[baseKey], row[currentKey], colType)) {
-    return isBase ? "diff-cell-removed" : "diff-cell-added";
+    classes.push(isBase ? "comparison-cell-base" : "comparison-cell-current");
   }
 
-  return undefined;
+  if (
+    row.__status === "added" ||
+    row.__status === "removed" ||
+    row.__status === "modified"
+  ) {
+    classes.push(`structural-row-${row.__status}`);
+  }
+
+  return classes.length > 0 ? classes.join(" ") : undefined;
 }
 
 /**
@@ -556,7 +559,12 @@ export function getCellClass(
 export function getHeaderCellClass(
   columnStatus: string | undefined,
 ): string | undefined {
-  if (columnStatus === "added") return "diff-header-added";
-  if (columnStatus === "removed") return "diff-header-removed";
+  if (
+    columnStatus === "added" ||
+    columnStatus === "removed" ||
+    columnStatus === "modified"
+  ) {
+    return `structural-header-${columnStatus}`;
+  }
   return undefined;
 }

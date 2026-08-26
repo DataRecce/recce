@@ -14,7 +14,10 @@
 import type { ColDef, ColGroupDef } from "ag-grid-community";
 import type { ColumnRenderMode, RowObjectType } from "../../api";
 import type { ColumnConfig } from "./columnBuilders";
-import type { SimpleColumnRenderComponents } from "./renderTypes";
+import type {
+  HeaderPresentation,
+  SimpleColumnRenderComponents,
+} from "./renderTypes";
 import type { RecceColumnContext } from "./toDiffColumn";
 
 // Re-export RecceColumnContext for convenience
@@ -51,6 +54,7 @@ export interface BuildSimpleColumnDefinitionsConfig {
     onColumnsRenderModeChanged?: (
       cols: Record<string, ColumnRenderMode>,
     ) => void;
+    headerPresentation?: Record<string, HeaderPresentation>;
   };
 
   /**
@@ -114,6 +118,7 @@ function createPrimaryKeyColumn(
 ): SimpleColumnDefinition {
   const { key, name, columnType, columnRenderMode } = config;
   const { DataFrameColumnGroupHeader, defaultRenderCell } = renderComponents;
+  const { headerPresentation, ...headerComponentProps } = headerProps;
 
   return {
     field: key,
@@ -121,11 +126,14 @@ function createPrimaryKeyColumn(
     headerComponent: () => (
       <DataFrameColumnGroupHeader
         name={name}
+        {...headerPresentation?.[key]}
         columnStatus=""
         columnType={columnType}
-        pinnedColumns={headerProps.pinnedColumns}
-        onPinnedColumnsChange={headerProps.onPinnedColumnsChange}
-        onColumnsRenderModeChanged={headerProps.onColumnsRenderModeChanged}
+        pinnedColumns={headerComponentProps.pinnedColumns}
+        onPinnedColumnsChange={headerComponentProps.onPinnedColumnsChange}
+        onColumnsRenderModeChanged={
+          headerComponentProps.onColumnsRenderModeChanged
+        }
       />
     ),
     pinned: "left",
@@ -146,6 +154,7 @@ function createRegularColumn(
 ): SimpleColumnDefinition {
   const { key, name, columnType, columnRenderMode } = config;
   const { DataFrameColumnHeader, defaultRenderCell } = renderComponents;
+  const { headerPresentation, ...headerComponentProps } = headerProps;
 
   return {
     field: key,
@@ -153,10 +162,13 @@ function createRegularColumn(
     headerComponent: () => (
       <DataFrameColumnHeader
         name={name}
+        {...headerPresentation?.[key]}
         columnType={columnType}
-        pinnedColumns={headerProps.pinnedColumns}
-        onPinnedColumnsChange={headerProps.onPinnedColumnsChange}
-        onColumnsRenderModeChanged={headerProps.onColumnsRenderModeChanged}
+        pinnedColumns={headerComponentProps.pinnedColumns}
+        onPinnedColumnsChange={headerComponentProps.onPinnedColumnsChange}
+        onColumnsRenderModeChanged={
+          headerComponentProps.onColumnsRenderModeChanged
+        }
       />
     ),
     cellRenderer: defaultRenderCell,

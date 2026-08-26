@@ -10,9 +10,12 @@ import type {
   CellClassParams,
   ColDef,
   ColGroupDef,
+  ICellRendererParams,
   ValueFormatterParams,
 } from "ag-grid-community";
+import { createElement } from "react";
 import type { RowCountDiffResult, RowObjectType } from "../../../api";
+import { StructuralChangeIndicator } from "../../../components/ui/StructuralChangeIndicator";
 import { dataFrameToRowObjects } from "../../transforms";
 import {
   getRowCountChangeDirection,
@@ -69,19 +72,25 @@ function createRowCountDeltaCellClass(): (
 function formatRowCountDelta(
   params: ValueFormatterParams<RowObjectType>,
 ): string {
-  const row = params.data;
-  if (!row) return String(params.value ?? "");
+  return formatRowCountDeltaValue(params.data, params.value);
+}
+
+function formatRowCountDeltaValue(
+  row: RowObjectType | undefined,
+  value: unknown,
+): string {
+  if (!row) return String(value ?? "");
 
   const base = typeof row.base === "number" ? row.base : null;
   const current = typeof row.current === "number" ? row.current : null;
   const direction = getRowCountChangeDirection(base, current);
-  const value = String(params.value ?? "");
+  const displayValue = String(value ?? "");
 
   switch (direction) {
     case "increase":
-      return `↑ ${value}`;
+      return `↑ ${displayValue}`;
     case "decrease":
-      return `↓ ${value}`;
+      return `↓ ${displayValue}`;
     case "unchanged":
       return "= 0%";
     case "added":
@@ -91,6 +100,24 @@ function formatRowCountDelta(
     case "unavailable":
       return "N/A";
   }
+}
+
+function renderRowCountDelta(params: ICellRendererParams<RowObjectType>) {
+  const row = params.data;
+  if (!row) return String(params.value ?? "");
+
+  const base = typeof row.base === "number" ? row.base : null;
+  const current = typeof row.current === "number" ? row.current : null;
+  const direction = getRowCountChangeDirection(base, current);
+
+  if (direction === "added" || direction === "removed") {
+    return createElement(StructuralChangeIndicator, {
+      status: direction,
+      showLabel: true,
+    });
+  }
+
+  return formatRowCountDeltaValue(row, params.value);
 }
 
 // ============================================================================
@@ -157,6 +184,7 @@ export function toRowCountDiffDataGrid(
       headerName: "Delta",
       resizable: true,
       cellClass: createRowCountDeltaCellClass(),
+      cellRenderer: renderRowCountDelta,
       valueFormatter: formatRowCountDelta,
     },
   ];

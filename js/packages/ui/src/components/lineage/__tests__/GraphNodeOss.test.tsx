@@ -46,6 +46,7 @@ import type {
   LineageGraphNode,
   LineageViewContextType,
 } from "../../../contexts";
+import { getSemanticColorTheme } from "../../../theme";
 import { GraphNode, type GraphNodeProps } from "../GraphNodeOss";
 
 function createViewContext(
@@ -192,14 +193,14 @@ describe("GraphNode", () => {
       expect(chip).toHaveAttribute("data-row-count-direction", direction);
       if (direction === "increase") {
         expect(chip).toHaveStyle({
-          backgroundColor: "#E6F3FC",
-          color: "#245A85",
+          backgroundColor: getSemanticColorTheme(false).direction.background,
+          color: getSemanticColorTheme(false).direction.foreground,
         });
       }
       if (direction === "decrease") {
         expect(chip).toHaveStyle({
-          backgroundColor: "#FFF3E6",
-          color: "#98471F",
+          backgroundColor: getSemanticColorTheme(false).direction.background,
+          color: getSemanticColorTheme(false).direction.foreground,
         });
       }
     },

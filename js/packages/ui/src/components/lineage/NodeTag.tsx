@@ -23,7 +23,7 @@ import {
 } from "../../contexts";
 import type { LineageGraphNode } from "../../contexts/lineage/types";
 import { useIsDark } from "../../hooks";
-import { getComparisonThemeColors } from "../../theme/chartTheme";
+import { getSemanticColorTheme } from "../../theme";
 import { deltaPercentageString, getRowCountChangeDirection } from "../../utils";
 import { SetupConnectionPopover } from "../app";
 import { findByRunType } from "../run";
@@ -70,7 +70,7 @@ function RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
   const base = rowCount.base;
   const current = rowCount.curr;
   const isDark = useIsDark();
-  const comparisonColors = getComparisonThemeColors(isDark);
+  const directionColors = getSemanticColorTheme(isDark).direction;
   const direction = getRowCountChangeDirection(base, current);
   const baseLabel = formatRowCountValue(base);
   const currentLabel = formatRowCountValue(current);
@@ -108,20 +108,26 @@ function RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
     return (
       <Stack
         component="span"
+        data-row-count-direction="equal"
         direction="row"
         spacing={0.5}
         sx={{
           display: "inline-flex",
           alignItems: "center",
+          backgroundColor: directionColors.background,
+          border: `1px solid ${directionColors.border}`,
+          borderRadius: "6px",
+          color: directionColors.foreground,
+          px: 0.5,
         }}
       >
         <Typography variant="body2" component="span">
           {currentLabel}
         </Typography>
-        <Box component="span" sx={{ color: "grey.500", display: "flex" }}>
+        <Box component="span" sx={{ display: "flex" }}>
           <RiSwapLine />
         </Box>
-        <Typography variant="body2" component="span" sx={{ color: "grey.500" }}>
+        <Typography variant="body2" component="span">
           No Change
         </Typography>
       </Stack>
@@ -131,27 +137,29 @@ function RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
     return (
       <Stack
         component="span"
+        data-row-count-direction="increase"
         direction="row"
         spacing={0.5}
         sx={{
           display: "inline-flex",
           alignItems: "center",
+          backgroundColor: directionColors.background,
+          border: `1px solid ${directionColors.border}`,
+          borderRadius: "6px",
+          color: directionColors.foreground,
+          px: 0.5,
         }}
       >
         <Typography variant="body2" component="span">
           {currentLabel}
         </Typography>
-        <Box
-          component="span"
-          sx={{ color: comparisonColors.current.foreground, display: "flex" }}
-        >
+        <Box component="span" sx={{ display: "flex" }}>
           <RiArrowUpSFill />
         </Box>
         <Typography
           variant="body2"
           component="span"
-          data-row-count-direction="increase"
-          sx={{ color: comparisonColors.current.foreground }}
+          sx={{ color: directionColors.foreground }}
         >
           {deltaPercentageString(base, current)}
         </Typography>
@@ -161,27 +169,29 @@ function RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
   return (
     <Stack
       component="span"
+      data-row-count-direction="decrease"
       direction="row"
       spacing={0.5}
       sx={{
         display: "inline-flex",
         alignItems: "center",
+        backgroundColor: directionColors.background,
+        border: `1px solid ${directionColors.border}`,
+        borderRadius: "6px",
+        color: directionColors.foreground,
+        px: 0.5,
       }}
     >
       <Typography variant="body2" component="span">
         {currentLabel}
       </Typography>
-      <Box
-        component="span"
-        sx={{ color: comparisonColors.base.foreground, display: "flex" }}
-      >
+      <Box component="span" sx={{ display: "flex" }}>
         <RiArrowDownSFill />
       </Box>
       <Typography
         variant="body2"
         component="span"
-        data-row-count-direction="decrease"
-        sx={{ color: comparisonColors.base.foreground }}
+        sx={{ color: directionColors.foreground }}
       >
         {deltaPercentageString(base, current)}
       </Typography>

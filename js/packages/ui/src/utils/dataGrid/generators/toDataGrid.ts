@@ -14,7 +14,10 @@ import type { ColumnRenderMode, DataFrame, RowObjectType } from "../../../api";
 import { dataFrameToRowObjects } from "../../transforms";
 import { getSimpleDisplayColumns } from "../columnBuilders";
 import { buildColumnMap } from "../gridUtils";
-import type { SimpleColumnRenderComponents } from "../renderTypes";
+import type {
+  HeaderPresentation,
+  SimpleColumnRenderComponents,
+} from "../renderTypes";
 import {
   buildSimpleColumnDefinitions,
   type SimpleColumnDefinition,
@@ -35,6 +38,7 @@ export interface QueryDataGridOptions {
   onPinnedColumnsChange?: (pinnedColumns: string[]) => void;
   columnsRenderMode?: Record<string, ColumnRenderMode>;
   onColumnsRenderModeChanged?: (col: Record<string, ColumnRenderMode>) => void;
+  headerPresentation?: Record<string, HeaderPresentation>;
 }
 
 /**
@@ -105,6 +109,7 @@ export function toDataGrid(
       pinnedColumns,
       onPinnedColumnsChange: options.onPinnedColumnsChange,
       onColumnsRenderModeChanged: options.onColumnsRenderModeChanged,
+      headerPresentation: options.headerPresentation,
     },
     allowIndexFallback: true,
     renderComponents: config.renderComponents,

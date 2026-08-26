@@ -14,24 +14,26 @@ import { theme } from "../../../theme";
 import { ColumnNameCell } from "../ColumnNameCell";
 import type { SchemaDiffRow } from "../types";
 
-// Mock DataTypeIcon and buildColumnTooltip
-vi.mock("../../ui/DataTypeIcon", () => ({
-  DataTypeIcon: ({ type, size }: { type: string; size?: number }) => (
-    <span data-testid="data-type-icon" data-type={type} data-size={size} />
-  ),
-  buildColumnTooltip: vi.fn(
-    ({ name, currentType }: { name: string; currentType?: string }) =>
-      `${name} ${currentType ?? ""}`,
-  ),
-}));
+// Keep tooltip behavior real; replace only the SVG-heavy icon rendering.
+vi.mock("../../ui/DataTypeIcon", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../ui/DataTypeIcon")>();
+  return {
+    ...actual,
+    DataTypeIcon: ({ type, size }: { type: string; size?: number }) => (
+      <span data-testid="data-type-icon" data-type={type} data-size={size} />
+    ),
+  };
+});
 
 // Mock dependencies with dynamic isActionAvailable and lineageViewContext
-const { mockIsActionAvailable, mockLineageViewContext } = vi.hoisted(() => ({
-  mockIsActionAvailable: vi.fn(() => true),
-  mockLineageViewContext: { current: undefined as unknown },
-}));
+const { mockIsActionAvailable, mockLineageViewContext, mockRunAction } =
+  vi.hoisted(() => ({
+    mockIsActionAvailable: vi.fn(() => true),
+    mockLineageViewContext: { current: undefined as unknown },
+    mockRunAction: vi.fn(),
+  }));
 vi.mock("../../../contexts", () => ({
-  useRecceActionContext: () => ({ runAction: vi.fn() }),
+  useRecceActionContext: () => ({ runAction: mockRunAction }),
   useRecceInstanceContext: () => ({
     featureToggles: { disableDatabaseQuery: false },
   }),
@@ -87,6 +89,10 @@ function renderWithMui(ui: React.ReactElement) {
 // ============================================================================
 
 describe("ColumnNameCell", () => {
+  beforeEach(() => {
+    mockRunAction.mockClear();
+  });
+
   describe("showMenu prop", () => {
     test("renders menu button when showMenu is true (default)", () => {
       renderWithMui(
@@ -153,7 +159,53 @@ describe("ColumnNameCell", () => {
     });
   });
 
+  test("keeps schema-column Histogram as a direct launch with its source", async () => {
+    const user = userEvent.setup();
+    renderWithMui(
+      <ColumnNameCell model={createMockModel()} row={createMockRow()} />,
+    );
+
+    await user.click(screen.getByRole("button"));
+    await user.click(await screen.findByText("Histogram Diff"));
+
+    expect(mockRunAction).toHaveBeenCalledWith(
+      "histogram_diff",
+      {
+        model: "users",
+        column_name: "user_id",
+        column_type: "INT",
+      },
+      {
+        showForm: false,
+        trackProps: {
+          action: "histogram_diff",
+          source: "schema_column_menu",
+          node_count: 1,
+        },
+      },
+    );
+  });
+
   describe("column name display", () => {
+    test("normalizes the Schema type in the column tooltip", async () => {
+      const user = userEvent.setup();
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={createMockRow({
+            baseType: "character varying",
+            currentType: "character varying",
+          })}
+          showMenu={false}
+        />,
+      );
+
+      await user.hover(screen.getByText("user_id"));
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "user_id VARCHAR",
+      );
+    });
+
     test("renders column name", () => {
       renderWithMui(
         <ColumnNameCell

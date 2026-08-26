@@ -489,6 +489,18 @@ describe("LineageTabContent", () => {
     );
   });
 
+  test("renders structural neighbor status with a visible symbol, label, and accessible name", () => {
+    const parents = { added_parent: {} as never };
+    const node = makeNode("focus", { parents });
+    const nodesById = makeNodesById(["added_parent"], {
+      added_parent: { changeStatus: "added" },
+    });
+
+    render(<LineageTabContent node={node} nodesById={nodesById} />);
+
+    expect(screen.getByLabelText("Added change")).toHaveTextContent("+Added");
+  });
+
   test("focusInImpact triggers when focus is impacting (source of breaking change) even if not impacted", () => {
     // Focus is the partial_breaking source (impacted=false but in
     // impactingNodeIds) — downstream marks must still render.

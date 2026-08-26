@@ -56,9 +56,14 @@ import {
   toRowCountDiffDataGrid,
   toValueDiffGridConfigured as toValueDiffGrid,
 } from "../../../utils/dataGrid";
+import type { HeaderPresentation } from "../../../utils/dataGrid/renderTypes";
 import { hasOwn } from "../../../utils/hasOwn";
 import { getCaseInsensitive } from "../../../utils/transforms";
-import { buildColumnTooltip, DataTypeIcon } from "../DataTypeIcon";
+import {
+  buildColumnTooltip,
+  DataTypeIcon,
+  normalizeTypeName,
+} from "../DataTypeIcon";
 import { toValueDataGrid } from "./generators/toValueDataGrid";
 
 // ============================================================================
@@ -202,7 +207,10 @@ export function profileColumnNameRenderer(
   const name = String(getCaseInsensitive(row, fieldName) ?? params.value ?? "");
   const dataType =
     String(getCaseInsensitive(row, "data_type") ?? "") || undefined;
-  const tooltipText = buildColumnTooltip({ name, currentType: dataType });
+  const tooltipText = buildColumnTooltip({
+    name,
+    currentType: dataType ? normalizeTypeName(dataType) : undefined,
+  });
 
   return (
     <Tooltip title={tooltipText} placement="top">
@@ -253,7 +261,11 @@ export function profileDiffColumnNameRenderer(
   const isTypeChanged =
     baseType != null && currentType != null && baseType !== currentType;
   const displayType = currentType ?? baseType;
-  const tooltipText = buildColumnTooltip({ name, baseType, currentType });
+  const tooltipText = buildColumnTooltip({
+    name,
+    baseType: baseType ? normalizeTypeName(baseType) : undefined,
+    currentType: currentType ? normalizeTypeName(currentType) : undefined,
+  });
 
   return (
     <Tooltip title={tooltipText} placement="top">
@@ -389,6 +401,100 @@ function getProfilePrimaryKey(result: ProfileDiffResult): string {
   return field?.name ?? "column_name";
 }
 
+export function humanizeProfileStatLabel(name: string): string {
+  return name
+    .trim()
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map(
+      (part) => `${part.charAt(0).toUpperCase()}${part.slice(1).toLowerCase()}`,
+    )
+    .join(" ");
+}
+
+const profileDiffLegacyRenderModes: readonly ColumnRenderMode[] = [
+  "raw",
+  2,
+  "percent",
+  "delta",
+];
+
+function isNumericProfileColumn(column: DataFrame["columns"][number]): boolean {
+  return (
+    column.type === "number" ||
+    column.type === "float" ||
+    column.type === "integer"
+  );
+}
+
+function profileDiffPercentMode(
+  field: string,
+): "percent_delta" | "percent_change" {
+  return ["distinct_proportion", "not_null_proportion"].includes(
+    field.toLowerCase(),
+  )
+    ? "percent_delta"
+    : "percent_change";
+}
+
+function getProfileHeaderPresentation(
+  result: ProfileDiffResult,
+  displayMode?: DiffGridOptions["displayMode"],
+): Record<string, HeaderPresentation> {
+  const columns = [
+    ...(result.base?.columns ?? []),
+    ...(result.current?.columns ?? []),
+  ];
+
+  return Object.fromEntries(
+    columns.map((column) => [
+      column.key,
+      {
+        displayName: humanizeProfileStatLabel(column.key),
+        hidePrimaryKeyIcon: column.key.toLowerCase() === "column_name",
+        allowedRenderModes:
+          displayMode === "inline" && isNumericProfileColumn(column)
+            ? [
+                ...profileDiffLegacyRenderModes,
+                profileDiffPercentMode(column.key),
+              ]
+            : undefined,
+      },
+    ]),
+  );
+}
+
+function enableProfileDiffPercentModes(result: DataGridResult): DataGridResult {
+  const columns = result.columns.map((column) => {
+    if ("children" in column && column.children) {
+      return column;
+    }
+
+    const colDef = column as ColDef<RowObjectType>;
+    const columnType = (
+      colDef.context as { columnType?: ColumnType } | undefined
+    )?.columnType;
+    const isNumeric =
+      columnType === "number" ||
+      columnType === "float" ||
+      columnType === "integer";
+
+    if (!isNumeric) {
+      return column;
+    }
+
+    return {
+      ...colDef,
+      context: {
+        ...colDef.context,
+        profileDiffPercentMode: profileDiffPercentMode(colDef.field ?? ""),
+      },
+    };
+  });
+
+  return { ...result, columns };
+}
+
 // ============================================================================
 // Factory Function
 // ============================================================================
@@ -481,6 +587,7 @@ export function createDataGrid(
         onPinnedColumnsChange: options.onPinnedColumnsChange,
         columnsRenderMode: options.columnsRenderMode,
         onColumnsRenderModeChanged: options.onColumnsRenderModeChanged,
+        headerPresentation: getProfileHeaderPresentation(dataKind.result),
       });
       return injectProfileColumnNameRenderer(profileResult);
     }
@@ -497,9 +604,15 @@ export function createDataGrid(
           displayMode: options.displayMode,
           columnsRenderMode: options.columnsRenderMode,
           onColumnsRenderModeChanged: options.onColumnsRenderModeChanged,
+          headerPresentation: getProfileHeaderPresentation(
+            dataKind.result,
+            options.displayMode ?? "inline",
+          ),
         },
       );
-      return injectProfileColumnNameRenderer(profileDiffResult);
+      return enableProfileDiffPercentModes(
+        injectProfileColumnNameRenderer(profileDiffResult),
+      );
     }
 
     case "row_count":

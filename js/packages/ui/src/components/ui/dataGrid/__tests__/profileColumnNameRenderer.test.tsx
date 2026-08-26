@@ -9,6 +9,7 @@
  */
 
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ColDef, ICellRendererParams } from "ag-grid-community";
 import { describe, expect, test, vi } from "vitest";
 import type { RowObjectType } from "../../../../api";
@@ -54,6 +55,23 @@ function createParams(
 // ============================================================================
 
 describe("profileColumnNameRenderer", () => {
+  test("normalizes the Profile type in the column tooltip", async () => {
+    const user = userEvent.setup();
+    const colDef: ColDef<RowObjectType> = { field: "COLUMN_NAME" };
+    const params = createParams(
+      { COLUMN_NAME: "CUSTOMER_ID", data_type: "varchar" },
+      colDef,
+      "CUSTOMER_ID",
+    );
+
+    render(<>{profileColumnNameRenderer(params)}</>);
+
+    await user.hover(screen.getByText("CUSTOMER_ID"));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "CUSTOMER_ID VARCHAR",
+    );
+  });
+
   test("renders column name from row data with UPPERCASE field (single profile)", () => {
     // Simulates: field="COLUMN_NAME", row has row["COLUMN_NAME"]="CUSTOMER_ID"
     // This is the non-diff case where dataFrameToRowObjects preserves original keys
@@ -114,6 +132,27 @@ describe("profileColumnNameRenderer", () => {
 // ============================================================================
 
 describe("profileDiffColumnNameRenderer", () => {
+  test("normalizes both Profile Diff types in the column tooltip", async () => {
+    const user = userEvent.setup();
+    const colDef: ColDef<RowObjectType> = { field: "COLUMN_NAME" };
+    const params = createParams(
+      {
+        column_name: "FIRST_NAME",
+        base__data_type: "character varying",
+        current__data_type: "varchar",
+      },
+      colDef,
+      "FIRST_NAME",
+    );
+
+    render(<>{profileDiffColumnNameRenderer(params)}</>);
+
+    await user.hover(screen.getByText("FIRST_NAME"));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "FIRST_NAME VARCHAR",
+    );
+  });
+
   test("renders column name when row key is lowercase but field is UPPERCASE (inline diff)", () => {
     // This is the exact bug scenario: inline diff mode with UPPERCASE column keys
     const colDef: ColDef<RowObjectType> = { field: "COLUMN_NAME" };

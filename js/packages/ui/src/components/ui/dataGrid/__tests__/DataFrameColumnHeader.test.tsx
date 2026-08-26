@@ -31,6 +31,28 @@ describe("DataFrameColumnHeader - Basic Rendering", () => {
 
     expect(container.querySelector(".grid-header")).toBeInTheDocument();
   });
+
+  test("shows displayName while precision callbacks keep the raw name", () => {
+    const onColumnsRenderModeChanged = vi.fn();
+    render(
+      <DataFrameColumnHeader
+        name="ROW_COUNT"
+        displayName="Row Count"
+        columnType="number"
+        onColumnsRenderModeChanged={onColumnsRenderModeChanged}
+      />,
+    );
+
+    expect(screen.getByText("Row Count")).toBeInTheDocument();
+    expect(screen.queryByText("ROW_COUNT")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("Options"));
+    fireEvent.click(screen.getByText("Show raw value"));
+
+    expect(onColumnsRenderModeChanged).toHaveBeenCalledWith({
+      ROW_COUNT: "raw",
+    });
+  });
 });
 
 // ============================================================================
@@ -126,6 +148,19 @@ describe("DataFrameColumnHeader - Precision Menu", () => {
       <DataFrameColumnHeader
         name="name"
         columnType="text"
+        onColumnsRenderModeChanged={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByLabelText("Options")).not.toBeInTheDocument();
+  });
+
+  test("does not show an empty menu for an explicit empty allow-list", () => {
+    render(
+      <DataFrameColumnHeader
+        name="price"
+        columnType="number"
+        allowedRenderModes={[]}
         onColumnsRenderModeChanged={vi.fn()}
       />,
     );

@@ -438,6 +438,18 @@ describe("NodeView", () => {
       );
     });
 
+    test("does not launch Histogram while database queries are disabled", async () => {
+      const onHistogramDiffClick = vi.fn();
+      renderNodeView(createNode("model", testColumns), testColumns, {
+        featureToggles: { disableDatabaseQuery: true },
+        actionCallbacks: { onHistogramDiffClick },
+      });
+
+      const histogram = screen.getByRole("button", { name: /histogram/i });
+      expect(histogram).toBeDisabled();
+      expect(onHistogramDiffClick).not.toHaveBeenCalled();
+    });
+
     test("shows no reason on an action that is available", async () => {
       const node = createNode("model", testColumns);
       node.data.changeStatus = "modified";

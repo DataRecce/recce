@@ -1,10 +1,23 @@
 import type { LineageGraph, LineageGraphNode } from "@datarecce/ui";
 import { SchemaSummary } from "@datarecce/ui/components/summary";
+import { useQuery } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { vi } from "vitest";
 
 vi.mock("@datarecce/ui/components/schema", () => ({
-  SchemaView: () => <div />,
+  SchemaView: ({
+    base,
+    current,
+  }: {
+    base?: { resource_type?: string };
+    current?: { resource_type?: string };
+  }) => (
+    <span
+      data-testid="schema-view"
+      data-base-resource-type={base?.resource_type}
+      data-current-resource-type={current?.resource_type}
+    />
+  ),
 }));
 
 // Recorded, not blanked: the card's whole job beyond the schema table is to
@@ -91,6 +104,13 @@ function createGraph(
 }
 
 describe("SchemaSummary", () => {
+  beforeEach(() => {
+    vi.mocked(useQuery).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as unknown as ReturnType<typeof useQuery>);
+  });
+
   it("shows the empty state when the graph has no schema changes", () => {
     render(<SchemaSummary lineageGraph={createGraph([])} />);
 
@@ -153,6 +173,22 @@ describe("SchemaSummary", () => {
     const rowCountTags = screen.getAllByTestId("row-count-diff-tag");
     expect(rowCountTags).toHaveLength(1);
     expect(rowCountTags[0]).toHaveAttribute("data-node-id", "model.changed");
+  });
+
+  it("gives SchemaView the node's resource type, which the model detail response lacks", async () => {
+    vi.mocked(useQuery).mockReturnValue({
+      data: { model: { base: { columns: {} }, current: { columns: {} } } },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useQuery>);
+    const graph = createGraph([
+      createNode("model.changed", "changed_model", { new_column: "added" }),
+    ]);
+
+    render(<SchemaSummary lineageGraph={graph} />);
+
+    const schemaView = await screen.findByTestId("schema-view");
+    expect(schemaView).toHaveAttribute("data-base-resource-type", "model");
+    expect(schemaView).toHaveAttribute("data-current-resource-type", "model");
   });
 
   it("does not show a changed node outside modifiedSet", () => {

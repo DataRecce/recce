@@ -30,7 +30,7 @@ export interface DiffDisplayModeSwitchProps {
 /**
  * A switch component for toggling between inline and side-by-side diff display modes.
  *
- * When in inline mode, also shows color legend (Base = red, Current = green).
+ * When in inline mode, also shows the semantic Base/Current legend.
  *
  * @example
  * ```tsx
@@ -50,14 +50,14 @@ export function DiffDisplayModeSwitch({
         <>
           <DiffText
             value="Base"
-            colorPalette="red"
+            comparisonRole="base"
             grayOut={false}
             fontSize="10pt"
             noCopy
           />
           <DiffText
             value="Current"
-            colorPalette="green"
+            comparisonRole="current"
             grayOut={false}
             fontSize="10pt"
             noCopy

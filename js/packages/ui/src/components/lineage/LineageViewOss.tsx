@@ -513,8 +513,8 @@ export function PrivateLineageView(
   // impacted-but-unchanged nodes are amber, so thread the impacted set through
   // instead of coloring by change status alone (DRC-3250).
   const minimapNodeColor = useMemo(
-    () => makeGetNodeColor({ impactedNodeIds, newCllExperience }),
-    [impactedNodeIds, newCllExperience],
+    () => makeGetNodeColor({ impactedNodeIds, isDark, newCllExperience }),
+    [impactedNodeIds, isDark, newCllExperience],
   );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only run when lineageGraph changes (initial load/refetch).

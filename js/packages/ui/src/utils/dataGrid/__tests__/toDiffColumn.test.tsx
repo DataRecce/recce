@@ -12,6 +12,7 @@
  * - Render component injection
  */
 
+import { render, screen } from "@testing-library/react";
 import type { CellClassParams } from "ag-grid-community";
 import React from "react";
 import { vi } from "vitest";
@@ -45,6 +46,7 @@ const mockRenderComponents: DiffColumnRenderComponents = {
 interface TestColumnContext {
   columnType?: ColumnType;
   columnRenderMode?: ColumnRenderMode;
+  showStructuralIndicator?: boolean;
 }
 
 interface TestColumn {
@@ -135,34 +137,44 @@ describe("createCellClassBase", () => {
     expect(typeof cellClassFn).toBe("function");
   });
 
-  test("returns 'diff-cell-removed' for removed row status", () => {
+  test("returns the removed structural row class for removed rows", () => {
     const cellClassFn = createCellClassBase("value", "");
     const row = createRow({}, "removed");
-    expect(cellClassFn(createCellClassParams(row))).toBe("diff-cell-removed");
+    expect(cellClassFn(createCellClassParams(row))).toContain(
+      "structural-row-removed",
+    );
   });
 
-  test("returns 'diff-cell-added' for added row status", () => {
+  test("returns the added structural row class for added rows", () => {
     const cellClassFn = createCellClassBase("value", "");
     const row = createRow({}, "added");
-    expect(cellClassFn(createCellClassParams(row))).toBe("diff-cell-added");
+    expect(cellClassFn(createCellClassParams(row))).toContain(
+      "structural-row-added",
+    );
   });
 
-  test("returns undefined for added column status", () => {
+  test("keeps comparison styling independent of added column status", () => {
     const cellClassFn = createCellClassBase("value", "added");
     const row = createRow({ base__value: 100, current__value: 200 });
-    expect(cellClassFn(createCellClassParams(row))).toBeUndefined();
+    expect(cellClassFn(createCellClassParams(row))).toBe(
+      "comparison-cell-base",
+    );
   });
 
-  test("returns undefined for removed column status", () => {
+  test("keeps comparison styling independent of removed column status", () => {
     const cellClassFn = createCellClassBase("value", "removed");
     const row = createRow({ base__value: 100, current__value: 200 });
-    expect(cellClassFn(createCellClassParams(row))).toBeUndefined();
+    expect(cellClassFn(createCellClassParams(row))).toBe(
+      "comparison-cell-base",
+    );
   });
 
-  test("returns 'diff-cell-removed' when base and current values differ", () => {
+  test("returns the base comparison class when paired values differ", () => {
     const cellClassFn = createCellClassBase("value", "");
     const row = createRow({ base__value: 100, current__value: 200 });
-    expect(cellClassFn(createCellClassParams(row))).toBe("diff-cell-removed");
+    expect(cellClassFn(createCellClassParams(row))).toBe(
+      "comparison-cell-base",
+    );
   });
 
   test("returns undefined when base and current values are equal", () => {
@@ -174,13 +186,29 @@ describe("createCellClassBase", () => {
   test("handles case-insensitive key lookup (lowercase)", () => {
     const cellClassFn = createCellClassBase("Value", "");
     const row = createRow({ base__value: 100, current__value: 200 });
-    expect(cellClassFn(createCellClassParams(row))).toBe("diff-cell-removed");
+    expect(cellClassFn(createCellClassParams(row))).toBe(
+      "comparison-cell-base",
+    );
   });
 
   test("handles null values", () => {
     const cellClassFn = createCellClassBase("value", "");
     const row = createRow({ base__value: null, current__value: "test" });
-    expect(cellClassFn(createCellClassParams(row))).toBe("diff-cell-removed");
+    expect(cellClassFn(createCellClassParams(row))).toBe(
+      "comparison-cell-base",
+    );
+  });
+
+  test("joins comparison and structural classes for modified rows", () => {
+    const cellClassFn = createCellClassBase("value", "");
+    const row = createRow(
+      { base__value: 100, current__value: 200 },
+      "modified",
+    );
+
+    expect(cellClassFn(createCellClassParams(row))).toBe(
+      "comparison-cell-base structural-row-modified",
+    );
   });
 
   test("handles undefined values (both undefined = equal)", () => {
@@ -200,22 +228,28 @@ describe("createCellClassCurrent", () => {
     expect(typeof cellClassFn).toBe("function");
   });
 
-  test("returns 'diff-cell-removed' for removed row status", () => {
+  test("returns the removed structural row class for removed rows", () => {
     const cellClassFn = createCellClassCurrent("value", "");
     const row = createRow({}, "removed");
-    expect(cellClassFn(createCellClassParams(row))).toBe("diff-cell-removed");
+    expect(cellClassFn(createCellClassParams(row))).toContain(
+      "structural-row-removed",
+    );
   });
 
-  test("returns 'diff-cell-added' for added row status", () => {
+  test("returns the added structural row class for added rows", () => {
     const cellClassFn = createCellClassCurrent("value", "");
     const row = createRow({}, "added");
-    expect(cellClassFn(createCellClassParams(row))).toBe("diff-cell-added");
+    expect(cellClassFn(createCellClassParams(row))).toContain(
+      "structural-row-added",
+    );
   });
 
-  test("returns 'diff-cell-added' when base and current values differ", () => {
+  test("returns the current comparison class when paired values differ", () => {
     const cellClassFn = createCellClassCurrent("value", "");
     const row = createRow({ base__value: 100, current__value: 200 });
-    expect(cellClassFn(createCellClassParams(row))).toBe("diff-cell-added");
+    expect(cellClassFn(createCellClassParams(row))).toBe(
+      "comparison-cell-current",
+    );
   });
 
   test("returns undefined when base and current values are equal", () => {
@@ -251,6 +285,19 @@ describe("toDiffColumn - inline mode", () => {
     expect(col.cellRenderer).toBe(mockRenderComponents.inlineRenderCell);
   });
 
+  test("applies structural row classes to inline cells", () => {
+    const result = toDiffColumn(createConfig({ displayMode: "inline" }));
+    const col = asColumn(result);
+    const cellClass = col.cellClass;
+
+    expect(typeof cellClass).toBe("function");
+    if (typeof cellClass !== "function") return;
+
+    expect(cellClass(createCellClassParams(createRow({}, "modified")))).toBe(
+      "structural-row-modified",
+    );
+  });
+
   test("preserves columnType", () => {
     const result = toDiffColumn(
       createConfig({ columnType: "number", displayMode: "inline" }),
@@ -269,14 +316,21 @@ describe("toDiffColumn - inline mode", () => {
     const result = toDiffColumn(
       createConfig({ columnStatus: "added", displayMode: "inline" }),
     );
-    expect(result.headerClass).toBe("diff-header-added");
+    expect(result.headerClass).toBe("structural-header-added");
   });
 
   test("sets headerClass for removed column", () => {
     const result = toDiffColumn(
       createConfig({ columnStatus: "removed", displayMode: "inline" }),
     );
-    expect(result.headerClass).toBe("diff-header-removed");
+    expect(result.headerClass).toBe("structural-header-removed");
+  });
+
+  test("sets headerClass for modified column", () => {
+    const result = toDiffColumn(
+      createConfig({ columnStatus: "modified", displayMode: "inline" }),
+    );
+    expect(result.headerClass).toBe("structural-header-modified");
   });
 
   test("headerClass is undefined for empty status", () => {
@@ -288,9 +342,25 @@ describe("toDiffColumn - inline mode", () => {
 
   test("has headerComponent", () => {
     const result = toDiffColumn(createConfig({ displayMode: "inline" }));
-    // biome-ignore lint/suspicious/noExplicitAny: Accessing AG Grid internal property for testing
-    expect((result as any).headerComponent).toBeDefined();
+    expect(asColumn(result).headerComponent).toBeDefined();
   });
+
+  test.each([
+    ["added", "+"],
+    ["removed", "−"],
+    ["modified", "Δ"],
+  ])(
+    "renders the %s structural symbol in the header",
+    (columnStatus, symbol) => {
+      const result = toDiffColumn(createConfig({ columnStatus }));
+      const Header = asColumn(result).headerComponent;
+
+      expect(Header).toBeDefined();
+      render(Header ? <Header /> : null);
+
+      expect(screen.getByText(symbol)).toBeInTheDocument();
+    },
+  );
 });
 
 // ============================================================================
@@ -363,8 +433,10 @@ describe("toDiffColumn - side_by_side mode", () => {
 
   test("has headerGroupComponent", () => {
     const result = toDiffColumn(createConfig({ displayMode: "side_by_side" }));
-    // biome-ignore lint/suspicious/noExplicitAny: Accessing AG Grid internal property for testing
-    expect((result as any).headerGroupComponent).toBeDefined();
+    expect(
+      (result as unknown as { headerGroupComponent?: React.ComponentType })
+        .headerGroupComponent,
+    ).toBeDefined();
   });
 });
 
@@ -387,8 +459,7 @@ describe("toDiffColumn - render component injection", () => {
       }),
     );
 
-    // biome-ignore lint/suspicious/noExplicitAny: Accessing AG Grid internal property for testing
-    expect((result as any).headerComponent).toBeDefined();
+    expect(asColumn(result).headerComponent).toBeDefined();
   });
 
   test("uses injected inlineRenderCell for inline mode", () => {
