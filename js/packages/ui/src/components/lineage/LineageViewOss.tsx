@@ -846,14 +846,9 @@ export function PrivateLineageView(
 
   const resetColumnLevelLineage = async (previous?: boolean) => {
     if (previous) {
-      const previousEntry = cllStateHistory.peek();
-      if (!previousEntry) {
-        return;
-      }
-      const applied = await applyColumnLevelLineage(previousEntry.input, true);
-      if (applied) {
-        cllStateHistory.pop();
-      }
+      await cllStateHistory.restore((input) =>
+        applyColumnLevelLineage(input, true),
+      );
     } else {
       // In the new CLL experience, reset returns to Layer 2 (global impact)
       // instead of clearing CLL entirely.
