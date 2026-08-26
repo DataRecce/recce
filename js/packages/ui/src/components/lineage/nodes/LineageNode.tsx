@@ -10,7 +10,7 @@
  * Features:
  * - Change status visualization (added, removed, modified, unchanged)
  * - Selection modes (normal, selecting, action_result)
- * - Interactive checkbox for multi-select
+ * - Actionable checkbox for multi-select and action results
  * - Action tag display for run status
  * - Resource type and change status icons
  * - Hover menu with context actions
@@ -113,7 +113,7 @@ export interface LineageNodeProps {
   selected?: boolean;
 
   // === Interactive Mode Props ===
-  /** Enable interactive mode with checkbox */
+  /** Enable interactive selection controls */
   interactive?: boolean;
   /** Selection mode */
   selectMode?: SelectMode;
@@ -342,6 +342,7 @@ function LineageNodeComponent({
   const isSelected = isNodeSelected || dataIsSelected || selected || false;
   const showColumns = columnCount > 0;
   const hasAction = selectMode === "action_result" && actionTag;
+  const showSelectionControl = interactive && selectMode !== "normal";
 
   // Structural presentation wins over impact when the node itself changed.
   // The MiniMap resolves the same neutral structural channel through this
@@ -532,14 +533,14 @@ function LineageNodeComponent({
           position: "relative",
         }}
       >
-        {/* Left panel with checkbox */}
+        {/* Left status panel and mode-specific selection control */}
         <Box
           data-testid="lineage-node-status-block"
           sx={{
             display: "flex",
             bgcolor: statusBlockColor,
             color: statusBlockText,
-            padding: interactive ? "8px" : "2px",
+            padding: showSelectionControl ? "8px" : "2px",
             borderRightWidth: borderWidth,
             borderRightStyle: "solid",
             borderColor,
@@ -547,7 +548,7 @@ function LineageNodeComponent({
             visibility: showContent ? "inherit" : "hidden",
           }}
         >
-          {interactive && (
+          {showSelectionControl && (
             <Checkbox
               checked={
                 (selectMode === "selecting" && isSelected) ||
