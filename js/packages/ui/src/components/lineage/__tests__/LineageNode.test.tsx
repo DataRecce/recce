@@ -211,6 +211,26 @@ describe("LineageNode", () => {
       expect(block.color).toBe("#FFFFFF");
     });
 
+    it("inverts the status block foreground in dark mode", () => {
+      render(
+        <LineageNode
+          {...createMockNodeProps(
+            { isDark: true },
+            { changeStatus: "modified" },
+          )}
+        />,
+      );
+
+      const block = getComputedStyle(
+        screen.getByTestId("lineage-node-status-block"),
+      );
+      expect(block.backgroundColor).toBe("#FCD34D");
+      expect(block.color).toBe("#000000");
+
+      const card = getComputedStyle(screen.getByTestId("lineage-node-card"));
+      expect(card.borderTopColor).toBe("#FCD34D");
+    });
+
     it("keeps an unchanged card fully neutral", () => {
       render(
         <LineageNode
