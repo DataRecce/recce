@@ -509,10 +509,212 @@ def test_profile_column_jinja_template():
                 "column_name": "profile_column",
                 "db_type": db_type,
                 "relation": "test_table",
-                "adapter": DummyAdapter(),
-                "dbt": DummyDbt(),
+                "adapter": DummyAdapter(db_type),
+                "dbt": DummyDbt(db_type),
             }
 
             sql = Template(PROFILE_COLUMN_JINJA_TEMPLATE).render(context)
             dialect = db_type if db_type != "sqlserver" else "tsql"
             parse_one(sql, read=dialect)
+
+
+def test_profile_template_temporal_time_types():
+    # Extract DummyAdapter and DummyDbt
+    class DummyAdapter:
+        def __init__(self, database_type="duckdb"):
+            self.database_type = database_type
+
+        def quote(self, col):
+            quote_marks = {
+                "athena": '"',
+                "bigquery": "`",
+                "databricks": "`",
+                "duckdb": '"',
+                "postgres": '"',
+                "redshift": '"',
+                "snowflake": '"',
+                "sqlite": '"',
+                "sqlserver": '"',
+                "trino": '"',
+            }
+            quote_mark = quote_marks.get(self.database_type, '"')
+            return f"{quote_mark}{col}{quote_mark}"
+
+    class DummyDbt:
+        def __init__(self, database_type="postgres"):
+            self.database_type = database_type
+
+        def type_bigint(self):
+            return "BIGINT"
+
+        def type_numeric(self):
+            return "NUMERIC"
+
+        def type_string(self):
+            return "VARCHAR"
+
+    time_aliases_by_db = {
+        "duckdb": ["time", "time with time zone"],
+        "postgres": ["time", "timetz", "time without time zone", "time with time zone", "time(6)", "timetz(6)"],
+        "redshift": ["time", "timetz"],
+        "snowflake": ["time"],
+        "bigquery": ["time"],
+        "trino": ["time", "time with time zone", "time(3)", "time(6) with time zone"],
+        "sqlserver": ["time"],
+    }
+
+    for db_type, column_types in time_aliases_by_db.items():
+        for column_type in column_types:
+            context = {
+                "column_type": column_type,
+                "column_name": "event_time",
+                "db_type": db_type,
+                "relation": "events_table",
+                "adapter": DummyAdapter(db_type),
+                "dbt": DummyDbt(db_type),
+            }
+
+            sql = Template(PROFILE_COLUMN_JINJA_TEMPLATE).render(context)
+            dialect = db_type if db_type != "sqlserver" else "tsql"
+            parsed = parse_one(sql, read=dialect)
+            assert parsed is not None, f"Failed to parse rendered SQL for {db_type} {column_type}"
+
+            # Extract select expressions
+            select_exprs = {exp.alias_or_name: exp.sql(dialect) for exp in parsed.selects}
+
+            # min and max must compute extrema and cast to string, not emit null literals
+            assert (
+                "min(" in select_exprs["min"].lower()
+            ), f"Expected min() aggregation for {db_type} {column_type}, got: {select_exprs['min']}"
+            assert (
+                "max(" in select_exprs["max"].lower()
+            ), f"Expected max() aggregation for {db_type} {column_type}, got: {select_exprs['max']}"
+
+            # avg and median must remain null literals (no cross-warehouse temporal arithmetic)
+            # Prefix match: a bare "null" substring also matches a column named "null_count".
+            assert (
+                select_exprs["avg"].lower().startswith("cast(null")
+            ), f"Expected null avg for {db_type} {column_type}, got: {select_exprs['avg']}"
+            assert (
+                select_exprs["median"].lower().startswith("cast(null")
+            ), f"Expected null median for {db_type} {column_type}, got: {select_exprs['median']}"
+
+
+def test_profile_task_with_time_columns(dbt_test_helper):
+    dbt_test_helper.create_model(
+        "temporal_events",
+        base_sql="select 1 as id",
+        curr_sql="select 1 as id",
+    )
+    with dbt_test_helper.adapter.connection_named("create time table"):
+        dbt_test_helper.adapter.execute(
+            f"CREATE OR REPLACE TABLE {dbt_test_helper.curr_schema}.temporal_events AS "
+            f"SELECT 1 AS id, TIME '08:30:00' AS event_time, DATE '2026-01-01' AS event_date, TIMESTAMP '2026-01-01 08:30:00' AS event_ts "
+            f"UNION ALL SELECT 2, TIME '17:45:00', DATE '2026-01-02', TIMESTAMP '2026-01-02 17:45:00' "
+            f"UNION ALL SELECT 3, TIME '12:00:00', DATE '2026-01-03', TIMESTAMP '2026-01-03 12:00:00'"
+        )
+        dbt_test_helper.adapter.execute(
+            f"CREATE OR REPLACE TABLE {dbt_test_helper.base_schema}.temporal_events AS "
+            f"SELECT 1 AS id, TIME '08:30:00' AS event_time, DATE '2026-01-01' AS event_date, TIMESTAMP '2026-01-01 08:30:00' AS event_ts "
+            f"UNION ALL SELECT 2, TIME '15:00:00', DATE '2026-01-02', TIMESTAMP '2026-01-02 15:00:00' "
+            f"UNION ALL SELECT 3, TIME '11:00:00', DATE '2026-01-03', TIMESTAMP '2026-01-03 11:00:00'"
+        )
+
+    params = dict(model="temporal_events")
+    task = ProfileTask(params)
+    run_result = task.execute()
+
+    col_names = [c.name for c in run_result.current.columns]
+    idx_col_name = col_names.index("column_name")
+    idx_min = col_names.index("min")
+    idx_max = col_names.index("max")
+    idx_avg = col_names.index("avg")
+    idx_median = col_names.index("median")
+
+    time_row = None
+    for row in run_result.current.data:
+        if row[idx_col_name] == "event_time":
+            time_row = row
+            break
+
+    assert time_row is not None
+    assert time_row[idx_min] == "08:30:00"
+    assert time_row[idx_max] == "17:45:00"
+    assert time_row[idx_avg] is None
+    assert time_row[idx_median] is None
+
+    # The predicate change must not disturb DATE and TIMESTAMP extrema.
+    profiles = {row[idx_col_name]: row for row in run_result.current.data}
+    assert profiles["event_date"][idx_min] == "2026-01-01"
+    assert profiles["event_date"][idx_max] == "2026-01-03"
+    assert profiles["event_ts"][idx_min] == "2026-01-01 08:30:00"
+    assert profiles["event_ts"][idx_max] == "2026-01-03 12:00:00"
+
+    # Also test ProfileDiffTask
+    diff_task = ProfileDiffTask(params)
+    diff_result = diff_task.execute()
+
+    base_time_row = None
+    for row in diff_result.base.data:
+        if row[idx_col_name] == "event_time":
+            base_time_row = row
+            break
+
+    assert base_time_row is not None
+    assert base_time_row[idx_min] == "08:30:00"
+    assert base_time_row[idx_max] == "15:00:00"
+    assert base_time_row[idx_avg] is None
+    assert base_time_row[idx_median] is None
+
+
+def test_profile_time_columns_empty_and_null(dbt_test_helper):
+    dbt_test_helper.create_model(
+        "empty_temporal_events",
+        base_sql="select 1 as id",
+        curr_sql="select 1 as id",
+    )
+    with dbt_test_helper.adapter.connection_named("create empty time table"):
+        dbt_test_helper.adapter.execute(
+            f"CREATE OR REPLACE TABLE {dbt_test_helper.curr_schema}.empty_temporal_events ("
+            f"id INTEGER, event_time TIME, all_null_time TIME)"
+        )
+        dbt_test_helper.adapter.execute(
+            f"CREATE OR REPLACE TABLE {dbt_test_helper.base_schema}.empty_temporal_events ("
+            f"id INTEGER, event_time TIME, all_null_time TIME)"
+        )
+        dbt_test_helper.adapter.execute(
+            f"INSERT INTO {dbt_test_helper.curr_schema}.empty_temporal_events VALUES (1, TIME '09:00:00', NULL), (2, TIME '10:00:00', NULL)"
+        )
+
+    params = dict(model="empty_temporal_events")
+    task = ProfileTask(params)
+    run_result = task.execute()
+
+    col_names = [c.name for c in run_result.current.columns]
+    idx_col_name = col_names.index("column_name")
+    idx_min = col_names.index("min")
+    idx_max = col_names.index("max")
+
+    profiles = {row[idx_col_name]: row for row in run_result.current.data}
+    assert {"all_null_time", "event_time"} <= profiles.keys()
+
+    assert profiles["all_null_time"][idx_min] is None
+    assert profiles["all_null_time"][idx_max] is None
+    assert profiles["event_time"][idx_min] == "09:00:00"
+    assert profiles["event_time"][idx_max] == "10:00:00"
+
+    # Only ProfileDiffTask queries the base schema, where the empty table lives.
+    diff_result = ProfileDiffTask(params).execute()
+
+    base_col_names = [c.name for c in diff_result.base.columns]
+    base_rows = [dict(zip(base_col_names, row)) for row in diff_result.base.data]
+    base_profiles = {row["column_name"]: row for row in base_rows}
+
+    assert "event_time" in base_profiles
+    empty_time = base_profiles["event_time"]
+    assert empty_time["row_count"] == 0
+    assert empty_time["min"] is None
+    assert empty_time["max"] is None
+    assert empty_time["not_null_proportion"] is None
+    assert empty_time["distinct_count"] == 0
+    assert empty_time["is_unique"] is None

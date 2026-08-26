@@ -45,7 +45,8 @@ PROFILE_COLUMN_JINJA_TEMPLATE = r"""
 -%}
 {%- set is_date_or_time =
     column_type.startswith('date') or
-    column_type.startswith('timestamp')
+    column_type.startswith('timestamp') or
+    column_type.startswith('time')
 -%}
 {%- set is_logical = column_type.startswith('bool') -%}
 
