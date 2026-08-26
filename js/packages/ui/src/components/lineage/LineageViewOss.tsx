@@ -7,7 +7,6 @@ import {
   cacheKeys,
   createLineageDiffCheck,
   createSchemaDiffCheck,
-  getCll,
   type LineageDiffViewOptions,
   select,
 } from "../../api";
@@ -50,7 +49,7 @@ import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Background,
   BackgroundVariant,
@@ -91,7 +90,6 @@ import {
   nextChangeAnalysisMode,
   resolveResetCllInput,
 } from "./changeAnalysisState";
-import { createCllCachePatchLifecycle } from "./cllCachePatchLifecycle";
 import { computeColumnLineage } from "./computeColumnLineage";
 import { computeImpactedColumns } from "./computeImpactedColumns";
 import { computeIsImpacted } from "./computeIsImpacted";
@@ -108,7 +106,6 @@ import {
 import {
   useLineageCopyToClipboard,
   useNavToCheck,
-  usePublishedImpactSets,
   useResizeObserver,
   useTrackLineageRender,
 } from "./hooks";
@@ -132,6 +129,7 @@ import {
   LineageViewNoChanges,
 } from "./states";
 import { LineageViewTopBarOss as LineageViewTopBar } from "./topbar/LineageViewTopBarOss";
+import { useCllState } from "./useCllState";
 
 /** Hide MiniMap when node count exceeds this threshold to reduce DOM pressure */
 export const MINIMAP_NODE_THRESHOLD = 500;
@@ -259,26 +257,28 @@ export function PrivateLineageView(
   });
 
   const trackLineageRender = useTrackLineageRender();
-
-  const cllHistory = useRef<(CllInput | undefined)[]>([]).current;
-
-  const [cll, setCll] = useState<ColumnLineageData | undefined>(undefined);
+  const {
+    cll,
+    action: cllAction,
+    commit: commitCll,
+    resolveForLayout: resolveCllForLayout,
+    refresh: refreshCll,
+    invalidate: invalidateCll,
+    supersedeInteraction: supersedeCllInteraction,
+    isInteractionCurrent: isCllInteractionCurrent,
+    history: cllStateHistory,
+    impactedNodeIds,
+    impactedColumnIds,
+    wholeModelImpactedNodeIds,
+    wholeModelChangedNodeIds,
+    publishImpactSets,
+  } = useCllState({ apiClient, queryClient });
   const [changeAnalysisMode, setChangeAnalysisMode] = useState(false);
   // Ref mirror of changeAnalysisMode for reading inside useLayoutEffect
   // without adding it as a dependency (avoids re-running layout on toggle).
   const changeAnalysisModeRef = useRef(false);
   changeAnalysisModeRef.current = changeAnalysisMode;
-  const actionGetCll = useMutation({
-    mutationFn: (input: CllInput) => getCll(input, apiClient),
-  });
-  // Owns the CLL fetch / cache-patch / re-entry lifecycle. When setQueryData
-  // patches the lineage query, queryServerInfo.data changes, lineageGraph
-  // recomputes via useMemo, and the layout effect re-fires — the lifecycle is
-  // what tells the effect to reuse the previous CLL result instead of calling
-  // the API and patching again (which would loop forever).
-  const cllCachePatch = useRef(createCllCachePatchLifecycle()).current;
   const layoutGenerationRef = useRef(0);
-  const cllInteractionGenerationRef = useRef(0);
   const runFocusIntentRef = useRef<string | undefined>(undefined);
   const pendingRunFocusIntentRef = useRef<
     | {
@@ -287,10 +287,6 @@ export function PrivateLineageView(
       }
     | undefined
   >(undefined);
-  const supersedeCllInteraction = useCallback(
-    () => ++cllInteractionGenerationRef.current,
-    [],
-  );
   // Bumped when a layout owner gives up without producing a layout, so the
   // layout effect runs again. Without it the view can be left with `nodes` still
   // at its initial identity, which the render guard below turns into an empty
@@ -308,10 +304,9 @@ export function PrivateLineageView(
       // A user-triggered refresh may own a newer one, so unmount must
       // unconditionally supersede every component-owned async continuation.
       ++layoutGenerationRef.current;
-      supersedeCllInteraction();
-      cllCachePatch.invalidate();
+      invalidateCll();
     };
-  }, [cllCachePatch, supersedeCllInteraction]);
+  }, [invalidateCll]);
 
   const findNodeByName = useCallback(
     (name: string) => {
@@ -501,14 +496,6 @@ export function PrivateLineageView(
 
   // Guard: auto-trigger impact analysis only once per mount
   const impactAtStartupFired = useRef(false);
-  const {
-    impactedNodeIds,
-    impactedColumnIds,
-    wholeModelImpactedNodeIds,
-    wholeModelChangedNodeIds,
-    publish: publishImpactSets,
-  } = usePublishedImpactSets();
-
   // MiniMap node coloring. Mirror the canvas: in the new CLL experience,
   // impacted-but-unchanged nodes are amber, so thread the impacted set through
   // instead of coloring by change status alone (DRC-3250).
@@ -539,11 +526,9 @@ export function PrivateLineageView(
       let filteredNodeIds: string[] | undefined = undefined;
 
       if (!lineageGraph) {
-        void cllCachePatch.resolveCllForLayout({
+        void resolveCllForLayout({
           cllInput: undefined,
           changeAnalysis: changeAnalysisModeRef.current,
-          actionGetCll,
-          queryClient,
         });
         return;
       }
@@ -627,11 +612,9 @@ export function PrivateLineageView(
       try {
         // Fetch + patch for a genuine input, reuse the pending result when this
         // effect re-fired because of our own patch, disarm when CLL is off.
-        const resolution = await cllCachePatch.resolveCllForLayout({
+        const resolution = await resolveCllForLayout({
           cllInput,
           changeAnalysis: changeAnalysisModeRef.current,
-          actionGetCll,
-          queryClient,
         });
         if (!isCurrentGeneration() || !resolution.isCurrent()) {
           return;
@@ -686,7 +669,7 @@ export function PrivateLineageView(
       setNodes(nodes);
       setEdges(edges);
       setNodeColumSetMap(nodeColumnSetMap);
-      setCll(cll);
+      commitCll(cll);
 
       // Snapshot impacted sets during impact analysis so they stay stable
       // when the user clicks a column (which returns column-scoped CLL data).
@@ -714,7 +697,7 @@ export function PrivateLineageView(
     // impact_at_startup flag arrives (may load after lineageGraph), or when a
     // layout owner abandoned its turn without laying anything out.
     // viewOptions changes are handled separately by handleViewOptionsChanged.
-    // Other dependencies (setNodes, setEdges, actionGetCll) are stable.
+    // Other dependencies (setNodes, setEdges, resolveCllForLayout) are stable.
     // changeAnalysisModeRef is a ref to avoid stale closure issues.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineageGraph, serverFlags?.impact_at_startup, layoutRetryNonce]);
@@ -841,12 +824,12 @@ export function PrivateLineageView(
       interactionGeneration,
     );
 
-    if (cllInteractionGenerationRef.current !== interactionGeneration) {
+    if (!isCllInteractionCurrent(interactionGeneration)) {
       return false;
     }
 
     if (!previous) {
-      cllHistory.push(previousColumnLevelLineage);
+      cllStateHistory.push(previousColumnLevelLineage);
     }
     if (columnLevelLineage?.node_id) {
       setFocusedNodeId(columnLevelLineage.node_id);
@@ -863,13 +846,13 @@ export function PrivateLineageView(
 
   const resetColumnLevelLineage = async (previous?: boolean) => {
     if (previous) {
-      if (cllHistory.length === 0) {
+      const previousEntry = cllStateHistory.peek();
+      if (!previousEntry) {
         return;
       }
-      const previousCll = cllHistory[cllHistory.length - 1];
-      const applied = await applyColumnLevelLineage(previousCll, true);
+      const applied = await applyColumnLevelLineage(previousEntry.input, true);
       if (applied) {
-        cllHistory.pop();
+        cllStateHistory.pop();
       }
     } else {
       // In the new CLL experience, reset returns to Layer 2 (global impact)
@@ -967,11 +950,9 @@ export function PrivateLineageView(
       // Nothing can be armed yet in that state — the layout effect disarms on
       // every lineageGraph transition — so this is defence in depth for a future
       // caller that reaches refreshLayout without owning that transition.
-      void cllCachePatch.refreshCll({
+      void refreshCll({
         cllInput: undefined,
         changeAnalysis: changeAnalysisMode,
-        actionGetCll,
-        queryClient,
       });
       return;
     }
@@ -1025,11 +1006,9 @@ export function PrivateLineageView(
     // re-run the layout effect, so this is the only place a cleared CLL is
     // guaranteed to drop whatever the last patch left pending.
     try {
-      const resolution = await cllCachePatch.refreshCll({
+      const resolution = await refreshCll({
         cllInput: newViewOptions.column_level_lineage,
         changeAnalysis: changeAnalysisMode,
-        actionGetCll,
-        queryClient,
       });
       if (!isCurrentGeneration() || !resolution.isCurrent()) {
         return;
@@ -1101,7 +1080,7 @@ export function PrivateLineageView(
     setNodes(newNodes);
     setEdges(newEdges);
     setNodeColumSetMap(newNodeColumnSetMap);
-    setCll(cll);
+    commitCll(cll);
 
     // Snapshot impacted node and column IDs during impact analysis (see layout effect).
     if (impacted && !cllInput2?.column) {
@@ -1206,8 +1185,7 @@ export function PrivateLineageView(
     const pendingIntent = pendingRunFocusIntentRef.current;
     const isCurrentPendingIntent =
       pendingIntent?.key === intentKey &&
-      pendingIntent.interactionGeneration ===
-        cllInteractionGenerationRef.current;
+      isCllInteractionCurrent(pendingIntent.interactionGeneration);
 
     if (!isNewIntent && !isCurrentPendingIntent) {
       pendingRunFocusIntentRef.current = undefined;
@@ -1713,7 +1691,7 @@ export function PrivateLineageView(
             </Panel>
             <Panel position="top-left">
               <Stack spacing="5px">
-                <ColumnLevelLineageControlOss action={actionGetCll} />
+                <ColumnLevelLineageControlOss action={cllAction} />
                 {nodes.length == 0 && (
                   <Typography
                     sx={{ fontSize: "1.25rem", color: "grey", opacity: 0.5 }}
