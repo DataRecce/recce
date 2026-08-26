@@ -209,6 +209,10 @@ describe("NodeView", () => {
 
       const viewButtons = screen.getAllByRole("button", { name: /view/i });
       expect(viewButtons).toHaveLength(2);
+      expect(viewButtons[0]).toHaveAccessibleName("View Profile result");
+      expect(viewButtons[1]).toHaveAccessibleName(
+        "View Histogram result for STATUS",
+      );
       fireEvent.click(viewButtons[1]);
       expect(onViewAnalysisRun).toHaveBeenCalledWith("histogram-1");
     });
@@ -254,6 +258,44 @@ describe("NodeView", () => {
         "true",
       );
     });
+
+    test.each(["Analysis", "Lineage"])(
+      "resets to Columns when focus moves from the %s tab to a source node",
+      (selectedTab) => {
+        const sharedProps = {
+          onCloseNode: vi.fn(),
+          isSingleEnv: false,
+          SchemaView: MockSchemaView,
+          lineageTabContent: <div data-testid="lineage-content">lineage</div>,
+        };
+        const { rerender } = render(
+          <NodeView
+            {...sharedProps}
+            node={createNode("model", testColumns)}
+            modelDetail={createModelDetail(testColumns)}
+          />,
+        );
+        fireEvent.click(screen.getByRole("tab", { name: selectedTab }));
+
+        rerender(
+          <NodeView
+            {...sharedProps}
+            node={{
+              ...createNode("source", testColumns),
+              id: "source.test.next_node",
+            }}
+            modelDetail={createModelDetail(testColumns)}
+          />,
+        );
+
+        expect(screen.getByRole("tab", { name: "Columns" })).toHaveAttribute(
+          "aria-selected",
+          "true",
+        );
+        expect(screen.getByTestId("schema-view")).toBeInTheDocument();
+        expect(screen.queryByTestId("lineage-content")).toBeNull();
+      },
+    );
   });
 
   describe("change category", () => {

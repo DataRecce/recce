@@ -37,7 +37,7 @@ const mockCancelRun = vi.fn();
 
 vi.mock("../../api", () => ({
   cacheKeys: {
-    run: (id: string) => ["run", id],
+    run: (id: string) => ["runs", id],
     runs: () => ["runs"],
   },
   waitRun: (...args: unknown[]) => mockWaitRun(...args),
@@ -185,7 +185,10 @@ describe("useRun", () => {
         expect(result.current.isRunning).toBe(false);
       });
       expect(invalidateQueries).toHaveBeenCalledTimes(1);
-      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["runs"] });
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: ["runs"],
+        exact: true,
+      });
     });
 
     it("stops polling when run.result is received", async () => {

@@ -54,7 +54,10 @@ export const useRun = (runId?: string): UseRunResult => {
       if (completedRunIdRef.current !== run.run_id) {
         completedRunIdRef.current = run.run_id;
         setIsRunning(false);
-        void queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
+        void queryClient.invalidateQueries({
+          queryKey: cacheKeys.runs(),
+          exact: true,
+        });
       }
     } else if (normalizedStatus === "running" && !userCanceled) {
       completedRunIdRef.current = null;
