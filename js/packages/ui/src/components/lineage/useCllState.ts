@@ -77,6 +77,9 @@ function createCllHistory(): CllHistory {
       if (!entry || !(await apply(entry.input))) {
         return false;
       }
+      if (entries[entries.length - 1] !== entry) {
+        return false;
+      }
       entries.pop();
       return true;
     },
