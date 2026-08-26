@@ -591,11 +591,12 @@ def test_profile_template_temporal_time_types():
             ), f"Expected max() aggregation for {db_type} {column_type}, got: {select_exprs['max']}"
 
             # avg and median must remain null literals (no cross-warehouse temporal arithmetic)
+            # Prefix match: a bare "null" substring also matches a column named "null_count".
             assert (
-                "null" in select_exprs["avg"].lower()
+                select_exprs["avg"].lower().startswith("cast(null")
             ), f"Expected null avg for {db_type} {column_type}, got: {select_exprs['avg']}"
             assert (
-                "null" in select_exprs["median"].lower()
+                select_exprs["median"].lower().startswith("cast(null")
             ), f"Expected null median for {db_type} {column_type}, got: {select_exprs['median']}"
 
 
@@ -642,6 +643,13 @@ def test_profile_task_with_time_columns(dbt_test_helper):
     assert time_row[idx_avg] is None
     assert time_row[idx_median] is None
 
+    # The predicate change must not disturb DATE and TIMESTAMP extrema.
+    profiles = {row[idx_col_name]: row for row in run_result.current.data}
+    assert profiles["event_date"][idx_min] == "2026-01-01"
+    assert profiles["event_date"][idx_max] == "2026-01-03"
+    assert profiles["event_ts"][idx_min] == "2026-01-01 08:30:00"
+    assert profiles["event_ts"][idx_max] == "2026-01-03 12:00:00"
+
     # Also test ProfileDiffTask
     diff_task = ProfileDiffTask(params)
     diff_result = diff_task.execute()
@@ -687,10 +695,26 @@ def test_profile_time_columns_empty_and_null(dbt_test_helper):
     idx_min = col_names.index("min")
     idx_max = col_names.index("max")
 
-    for row in run_result.current.data:
-        if row[idx_col_name] == "all_null_time":
-            assert row[idx_min] is None
-            assert row[idx_max] is None
-        elif row[idx_col_name] == "event_time":
-            assert row[idx_min] == "09:00:00"
-            assert row[idx_max] == "10:00:00"
+    profiles = {row[idx_col_name]: row for row in run_result.current.data}
+    assert {"all_null_time", "event_time"} <= profiles.keys()
+
+    assert profiles["all_null_time"][idx_min] is None
+    assert profiles["all_null_time"][idx_max] is None
+    assert profiles["event_time"][idx_min] == "09:00:00"
+    assert profiles["event_time"][idx_max] == "10:00:00"
+
+    # Only ProfileDiffTask queries the base schema, where the empty table lives.
+    diff_result = ProfileDiffTask(params).execute()
+
+    base_col_names = [c.name for c in diff_result.base.columns]
+    base_rows = [dict(zip(base_col_names, row)) for row in diff_result.base.data]
+    base_profiles = {row["column_name"]: row for row in base_rows}
+
+    assert "event_time" in base_profiles
+    empty_time = base_profiles["event_time"]
+    assert empty_time["row_count"] == 0
+    assert empty_time["min"] is None
+    assert empty_time["max"] is None
+    assert empty_time["not_null_proportion"] is None
+    assert empty_time["distinct_count"] == 0
+    assert empty_time["is_unique"] is None
