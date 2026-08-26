@@ -927,6 +927,7 @@ describe("LineageNode", () => {
         {
           selected: true,
           interactive: true,
+          selectMode: "selecting",
           hasParents: true,
           hasChildren: true,
         },
