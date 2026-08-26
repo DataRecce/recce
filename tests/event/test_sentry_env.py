@@ -35,6 +35,7 @@ def test_development_build_still_sets_up_amplitude(stubs):
 
     stubs.collector.set_api_key.assert_called_once_with("key")
     stubs.collector.set_user_id.assert_called_once_with("uid-test")
+    stubs.collector.set_unsend_events_file.assert_called_once_with(event.RECCE_USER_EVENT_PATH)
 
 
 @pytest.mark.parametrize(
