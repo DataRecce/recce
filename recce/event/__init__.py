@@ -52,12 +52,14 @@ def init():
 
     # Sentry init
     sentry_env = _get_sentry_env()
+    if sentry_env == "development":
+        return
+
     sentry_dns = _get_sentry_dns()
-    release_version = __version__ if sentry_env != "development" else None
     sentry_sdk.init(
         dsn=sentry_dns,
         environment=sentry_env,
-        release=release_version,
+        release=__version__,
         # Set traces_sample_rate to 1.0 to capture 100%
         # of transactions for performance monitoring.
         # We recommend adjusting this value in production.
