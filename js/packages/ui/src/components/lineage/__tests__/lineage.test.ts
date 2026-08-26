@@ -215,10 +215,13 @@ describe("toReactFlow", () => {
       current: {
         nodes: {},
         columns: {
-          [`${modelA}_id`]: { name: "id" },
-          [`${modelB}_id`]: { name: "id" },
-          [`${modelB}_account_id`]: { name: "account_id" },
-          [`${modelC}_id`]: { name: "id" },
+          [`${modelA}_id`]: { name: "id", type: "integer" },
+          [`${modelB}_id`]: { name: "id", type: "integer" },
+          [`${modelB}_account_id`]: {
+            name: "account_id",
+            type: "integer",
+          },
+          [`${modelC}_id`]: { name: "id", type: "integer" },
         },
         parent_map: {
           [`${modelA}_id`]: [],
@@ -259,5 +262,18 @@ describe("toReactFlow", () => {
     expect(
       nodes.find((node) => node.id === `${modelC}_id`)?.data,
     ).toMatchObject({ hiddenUpstreamColumnCount: 2 });
+
+    const [fullChainNodes] = toReactFlow(lineageGraph, {
+      selectedNodes: [modelA, modelB, modelC],
+      cll,
+      newCllExperience: true,
+      columnAncestry,
+    });
+    expect(
+      fullChainNodes.find((node) => node.id === `${modelA}_id`)?.data,
+    ).toHaveProperty("hiddenDownstreamColumnCount", undefined);
+    expect(
+      fullChainNodes.find((node) => node.id === `${modelC}_id`)?.data,
+    ).toHaveProperty("hiddenUpstreamColumnCount", undefined);
   });
 });
