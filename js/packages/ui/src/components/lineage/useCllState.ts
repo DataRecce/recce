@@ -3,10 +3,11 @@ import {
   type UseMutationResult,
   useMutation,
 } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type CllInput, type ColumnLineageData, getCll } from "../../api/cll";
 import type { ApiClient } from "../../lib/fetchClient";
 import {
+  type CllFetcher,
   type CllLifecycleRequest,
   type CllLifecycleResolution,
   createCllCachePatchLifecycle,
@@ -29,6 +30,9 @@ export interface CllHistory {
   push(input: CllInput | undefined): void;
   peek(): CllHistoryEntry | undefined;
   pop(): CllHistoryEntry | undefined;
+  restore(
+    apply: (input: CllInput | undefined) => Promise<boolean>,
+  ): Promise<boolean>;
   reset(): void;
 }
 
@@ -68,6 +72,14 @@ function createCllHistory(): CllHistory {
     pop() {
       return entries.pop();
     },
+    async restore(apply) {
+      const entry = entries[entries.length - 1];
+      if (!entry || !(await apply(entry.input))) {
+        return false;
+      }
+      entries.pop();
+      return true;
+    },
     reset() {
       entries.length = 0;
     },
@@ -79,8 +91,8 @@ export function useCllState({
   queryClient,
 }: UseCllStateOptions): UseCllStateResult {
   const [cll, setCll] = useState<ColumnLineageData>();
-  const history = useRef(createCllHistory()).current;
-  const lifecycle = useRef(createCllCachePatchLifecycle()).current;
+  const [history] = useState(createCllHistory);
+  const [lifecycle] = useState(createCllCachePatchLifecycle);
   const interactionGeneration = useRef(0);
   const {
     impactedNodeIds,
@@ -97,14 +109,20 @@ export function useCllState({
     },
     queryClient,
   );
+  const mutateCll = actionGetCll.mutateAsync;
+  const resetMutation = actionGetCll.reset;
+  const cllFetcher = useMemo<CllFetcher>(
+    () => ({ mutateAsync: mutateCll }),
+    [mutateCll],
+  );
 
   const bindRequest = useCallback(
     (request: CllStateRequest): CllLifecycleRequest => ({
       ...request,
-      actionGetCll,
+      actionGetCll: cllFetcher,
       queryClient,
     }),
-    [actionGetCll, queryClient],
+    [cllFetcher, queryClient],
   );
 
   const resolveForLayout = useCallback(
@@ -142,7 +160,8 @@ export function useCllState({
     history.reset();
     setCll(undefined);
     resetImpactSets();
-  }, [history, invalidate, resetImpactSets]);
+    resetMutation();
+  }, [history, invalidate, resetImpactSets, resetMutation]);
 
   useEffect(
     () => () => {

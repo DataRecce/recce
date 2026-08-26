@@ -39,4 +39,80 @@ Measurements ran locally with Node.js. Raw bytes use compact `JSON.stringify`, g
 
 These results are directional, not a production browser benchmark: they use a warm local Node runtime, omit network latency, and reproduce the proprietary project's counts and captured object shapes rather than its source payload. They are sufficient for the transport choice because the browser cost is paid up front even when a user inspects only one column.
 
+### Reproduction
+
+The measurement used Node.js v26.7.0 and fixture commit `329a59989d94e83c74a021a6d2799e8e0bc4b2a1`. The fixture's SHA-256 is `ffd66a9ff511e51d6374df003a652e59345c0e5e45eeaef7faf59b09e38868f1`.
+
+```bash
+cll_fixture_path=$(mktemp)
+git show 329a59989d94e83c74a021a6d2799e8e0bc4b2a1:js/packages/ui/src/components/lineage/__tests__/fixtures/cll-full-map.json > "$cll_fixture_path"
+CLL_FIXTURE_PATH="$cll_fixture_path" node --expose-gc <<'NODE'
+const fs = require("node:fs");
+const zlib = require("node:zlib");
+
+const sourceJson = fs.readFileSync(process.env.CLL_FIXTURE_PATH, "utf8");
+const source = JSON.parse(sourceJson).current;
+
+function cycle(entries, count) {
+  return Object.fromEntries(
+    Array.from({ length: count }, (_, index) => {
+      const [key, value] = entries[index % entries.length];
+      const prefix = `synthetic_${index}_`;
+      const copy = structuredClone(value);
+      if (copy && typeof copy === "object" && "id" in copy) {
+        copy.id = prefix + copy.id;
+      }
+      return [prefix + key, copy];
+    }),
+  );
+}
+
+function cycleMap(entries, count) {
+  return Object.fromEntries(
+    Array.from({ length: count }, (_, index) => {
+      const [key, value] = entries[index % entries.length];
+      const prefix = `synthetic_${index}_`;
+      return [
+        prefix + key,
+        Array.isArray(value) ? value.map((item) => prefix + item) : value,
+      ];
+    }),
+  );
+}
+
+const payload = {
+  current: {
+    nodes: cycle(Object.entries(source.nodes), 1796),
+    columns: cycle(Object.entries(source.columns), 15520),
+    parent_map: cycleMap(Object.entries(source.parent_map), 17316),
+    child_map: cycleMap(Object.entries(source.child_map), 17316),
+  },
+};
+const json = JSON.stringify(payload);
+const parseTimes = [];
+for (let index = 0; index < 12; index++) {
+  const started = process.hrtime.bigint();
+  JSON.parse(json);
+  parseTimes.push(Number(process.hrtime.bigint() - started) / 1e6);
+}
+parseTimes.sort((left, right) => left - right);
+
+global.gc();
+const heapBefore = process.memoryUsage().heapUsed;
+global.parsedCllPayload = JSON.parse(json);
+global.gc();
+const heapAfter = process.memoryUsage().heapUsed;
+
+console.log({
+  sourceRawBytes: Buffer.byteLength(sourceJson),
+  sourceGzipBytes: zlib.gzipSync(sourceJson).length,
+  syntheticRawBytes: Buffer.byteLength(json),
+  syntheticGzipBytes: zlib.gzipSync(json).length,
+  parseMedianMs: parseTimes[Math.floor(parseTimes.length / 2)],
+  retainedHeapBytes: heapAfter - heapBefore,
+});
+NODE
+rm "$cll_fixture_path"
+```
+
 The complete-map option would trade cached slice requests for about 15.6 MB of JSON allocation and about 19.4 MB of retained heap at the measured large shape. Since complete-map computation is already cached server-side, that trade is not justified without evidence from production click-latency and browser-memory telemetry.
