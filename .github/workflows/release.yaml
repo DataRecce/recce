@@ -27,9 +27,21 @@ jobs:
         with:
           node-version-file: 'js/.nvmrc'
 
-      - uses: pnpm/action-setup@v6
+      - name: Set up pnpm
+        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
         with:
-          version: 11.1.1
+          package-json-file: js/package.json
+          install: false
+          cache: true
+          cache-dependency-path: js/pnpm-lock.yaml
+
+      - name: Verify pnpm version
+        working-directory: ./js
+        run: |
+          expected=$(node -p "require('./package.json').packageManager.match(/^pnpm@([^+]+)/)[1]")
+          actual=$(pnpm --version)
+          echo "pnpm version: $actual"
+          test "$actual" = "$expected"
 
       - name: Install dependencies
         run: |
