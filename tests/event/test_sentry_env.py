@@ -1,11 +1,22 @@
-"""Sentry starts for released builds only. The environment comes from __version__."""
+"""Sentry is on for released builds, and for a development build that opts in.
 
+The environment comes from __version__.
+"""
+
+import os
 from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
 
 import recce.event as event
+
+
+@pytest.fixture(autouse=True)
+def _clear_opt_in():
+    with patch.dict(os.environ, {}, clear=False):
+        os.environ.pop("RECCE_ENABLE_SENTRY_IN_DEVELOPMENT", None)
+        yield
 
 
 @pytest.fixture
@@ -20,9 +31,8 @@ def stubs():
         yield SimpleNamespace(sentry_sdk=sentry_sdk, collector=collector)
 
 
-@pytest.mark.parametrize("version", ["1.62.0.dev0", "1.62.0.dev12"])
-def test_development_build_does_not_start_sentry(stubs, version):
-    with patch("recce.event.__version__", version):
+def test_development_build_does_not_start_sentry(stubs):
+    with patch("recce.event.__version__", "1.62.0.dev0"):
         event.init()
 
     stubs.sentry_sdk.init.assert_not_called()
@@ -54,3 +64,24 @@ def test_released_build_starts_sentry(stubs, version, expected_env):
     kwargs = stubs.sentry_sdk.init.call_args.kwargs
     assert kwargs["environment"] == expected_env
     assert kwargs["release"] == version
+
+
+@pytest.mark.parametrize("value", ["1", "TRUE"])
+def test_opt_in_starts_sentry_on_a_development_build(stubs, value):
+    with (
+        patch.dict(os.environ, {"RECCE_ENABLE_SENTRY_IN_DEVELOPMENT": value}),
+        patch("recce.event.__version__", "1.62.0.dev0"),
+    ):
+        event.init()
+
+    assert stubs.sentry_sdk.init.call_args.kwargs["environment"] == "development"
+
+
+def test_unrecognized_opt_in_value_does_not_start_sentry(stubs):
+    with (
+        patch.dict(os.environ, {"RECCE_ENABLE_SENTRY_IN_DEVELOPMENT": "0"}),
+        patch("recce.event.__version__", "1.62.0.dev0"),
+    ):
+        event.init()
+
+    stubs.sentry_sdk.init.assert_not_called()
