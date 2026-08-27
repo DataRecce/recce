@@ -52,7 +52,7 @@ def init():
 
     # Sentry init
     sentry_env = _get_sentry_env()
-    if sentry_env == "development":
+    if sentry_env == "development" and not _is_development_sentry_enabled():
         return
 
     sentry_dns = _get_sentry_dns()
@@ -94,6 +94,11 @@ def _get_sentry_dns():
     with open(dns_file, encoding="utf-8") as f:
         dns = f.read().strip()
         return dns
+
+
+def _is_development_sentry_enabled():
+    """Opt in to Sentry in the development environment."""
+    return os.environ.get("RECCE_ENABLE_SENTRY_IN_DEVELOPMENT", "").lower() in ("1", "true", "yes")
 
 
 def _get_sentry_env():
