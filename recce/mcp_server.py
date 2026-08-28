@@ -2664,15 +2664,15 @@ class RecceMCPServer:
             except RecceException as e:
                 raise ValueError(str(e)) from e
 
-        # Auto-approve only when the run carries a verified empty schema diff
-        # with complete coverage. Successful execution alone is not evidence.
-        # The auto-approve runs OUTSIDE the RecceException try blocks so a cloud-side
-        # failure (RecceCloudException, which is NOT a RecceException subclass) is not
-        # silently absorbed by the wrapper above. Same persistence policy as
-        # _tool_create_check: state is exported to disk/cloud after the approval.
-        if run_succeeded and schema_result_is_approvable(approval_result):
-            check_dao.update_check_by_id(check_id, PatchCheckIn(is_checked=True))
-            logger.info(f"Auto-approved check {check_id} (triggered_by={triggered_by})")
+        if run_succeeded:
+            # Auto-approve only when the run carries a verified empty schema diff
+            # with complete coverage. Successful execution alone is not evidence.
+            if schema_result_is_approvable(approval_result):
+                check_dao.update_check_by_id(check_id, PatchCheckIn(is_checked=True))
+                logger.info(f"Auto-approved check {check_id} (triggered_by={triggered_by})")
+
+            # Every successful run is durable, including unapproved partial,
+            # unknown, mismatching, lineage-only, and non-schema evidence.
             await asyncio.get_event_loop().run_in_executor(None, export_persistent_state)
 
         return run_dump

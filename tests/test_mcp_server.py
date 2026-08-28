@@ -1007,6 +1007,25 @@ class TestRecceMCPServer:
         assert check.is_checked is expected_checked
 
     @pytest.mark.asyncio
+    async def test_tool_run_check_persists_successful_unapproved_run(self, mcp_server):
+        server, context = mcp_server
+        check = Check(name="Partial Schema Check", type=RunType.SCHEMA_DIFF, params={"select": "orders"})
+        context.checks = [check]
+        context.runs = []
+        context.state_loader = None
+
+        with (
+            patch("recce.core.default_context", return_value=context),
+            patch.object(server, "_tool_schema_diff", new=AsyncMock(return_value=_schema_result("partial"))),
+            patch("recce.apis.check_func.export_persistent_state") as mock_export,
+        ):
+            await server._tool_run_check({"check_id": str(check.check_id)})
+
+        assert check.is_checked is False
+        assert len(context.runs) == 1
+        mock_export.assert_called_once_with()
+
+    @pytest.mark.asyncio
     async def test_tool_run_check_metadata_branch_recce_exception_no_auto_approve(self, mcp_server):
         """Negative-path coverage: when _tool_lineage_diff raises RecceException,
         control jumps to `raise ValueError(str(e))` and update_check_by_id MUST
