@@ -1,0 +1,130 @@
+from collections.abc import Mapping
+from dataclasses import dataclass
+from typing import Any, Literal
+
+ArtifactHealthStatus = Literal["complete", "partial", "empty", "absent", "not_applicable", "unknown"]
+
+
+@dataclass(frozen=True)
+class ArtifactHealth:
+    status: ArtifactHealthStatus
+    expected_node_ids: frozenset[str]
+    covered_node_ids: frozenset[str]
+    catalog_node_ids: frozenset[str]
+    missing_node_ids: frozenset[str]
+    orphan_node_ids: frozenset[str]
+
+
+_ELIGIBLE_RESOURCE_TYPES = frozenset({"model", "seed", "snapshot"})
+_EXCLUDED_MATERIALIZATIONS = frozenset({"ephemeral", "semantic_view"})
+
+
+def _unknown_health(expected_node_ids: frozenset[str] = frozenset()) -> ArtifactHealth:
+    return ArtifactHealth(
+        status="unknown",
+        expected_node_ids=expected_node_ids,
+        covered_node_ids=frozenset(),
+        catalog_node_ids=frozenset(),
+        missing_node_ids=frozenset(),
+        orphan_node_ids=frozenset(),
+    )
+
+
+def _manifest_expected_node_ids(manifest: Mapping[str, Any]) -> frozenset[str] | None:
+    nodes = manifest.get("nodes")
+    if not isinstance(nodes, Mapping):
+        return None
+
+    expected: set[str] = set()
+    for node_id, node in nodes.items():
+        if not isinstance(node_id, str) or not isinstance(node, Mapping):
+            return None
+        if node.get("resource_type") not in _ELIGIBLE_RESOURCE_TYPES:
+            continue
+        config = node.get("config")
+        materialized = config.get("materialized") if isinstance(config, Mapping) else None
+        if materialized in _EXCLUDED_MATERIALIZATIONS:
+            continue
+        expected.add(node_id)
+    return frozenset(expected)
+
+
+def classify_artifact_health(
+    manifest: Mapping[str, Any] | None,
+    catalog: Mapping[str, Any] | None,
+) -> ArtifactHealth:
+    if manifest is None or not isinstance(manifest, Mapping):
+        return _unknown_health()
+
+    expected_node_ids = _manifest_expected_node_ids(manifest)
+    if expected_node_ids is None:
+        return _unknown_health()
+
+    if catalog is None:
+        if not expected_node_ids:
+            return ArtifactHealth(
+                status="not_applicable",
+                expected_node_ids=expected_node_ids,
+                covered_node_ids=frozenset(),
+                catalog_node_ids=frozenset(),
+                missing_node_ids=frozenset(),
+                orphan_node_ids=frozenset(),
+            )
+        return ArtifactHealth(
+            status="absent",
+            expected_node_ids=expected_node_ids,
+            covered_node_ids=frozenset(),
+            catalog_node_ids=frozenset(),
+            missing_node_ids=expected_node_ids,
+            orphan_node_ids=frozenset(),
+        )
+
+    if not isinstance(catalog, Mapping):
+        return _unknown_health(expected_node_ids)
+    catalog_nodes = catalog.get("nodes")
+    if not isinstance(catalog_nodes, Mapping):
+        return _unknown_health(expected_node_ids)
+    if any(not isinstance(node_id, str) or not isinstance(node, Mapping) for node_id, node in catalog_nodes.items()):
+        return _unknown_health(expected_node_ids)
+
+    catalog_node_ids = frozenset(catalog_nodes)
+    covered_node_ids = expected_node_ids & catalog_node_ids
+    missing_node_ids = expected_node_ids - covered_node_ids
+    orphan_node_ids = catalog_node_ids - expected_node_ids
+
+    if not expected_node_ids:
+        status: ArtifactHealthStatus = "not_applicable"
+    elif not covered_node_ids:
+        status = "empty"
+    elif not missing_node_ids:
+        status = "complete"
+    else:
+        status = "partial"
+
+    return ArtifactHealth(
+        status=status,
+        expected_node_ids=expected_node_ids,
+        covered_node_ids=covered_node_ids,
+        catalog_node_ids=catalog_node_ids,
+        missing_node_ids=missing_node_ids,
+        orphan_node_ids=orphan_node_ids,
+    )
+
+
+def artifact_health_payload(
+    health: ArtifactHealth,
+    *,
+    sample_limit: int = 50,
+) -> dict[str, Any]:
+    return {
+        "status": health.status,
+        "expected_count": len(health.expected_node_ids),
+        "covered_count": len(health.covered_node_ids),
+        "catalog_entry_count": len(health.catalog_node_ids),
+        "missing_node_count": len(health.missing_node_ids),
+        "missing_nodes": sorted(health.missing_node_ids)[:sample_limit],
+        "missing_more": len(health.missing_node_ids) > sample_limit,
+        "orphan_node_count": len(health.orphan_node_ids),
+        "orphan_nodes": sorted(health.orphan_node_ids)[:sample_limit],
+        "orphan_more": len(health.orphan_node_ids) > sample_limit,
+    }
