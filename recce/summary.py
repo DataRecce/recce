@@ -8,8 +8,10 @@ if TYPE_CHECKING:
 from pydantic import BaseModel
 
 from recce.apis.check_func import get_node_name_by_id
+from recce.artifact_health import schema_coverage_payload
 from recce.core import RecceContext
 from recce.models import CheckDAO, Run, RunDAO, RunType
+from recce.models.types import SchemaCoveragePayload
 from recce.tasks.core import TaskResultDiffer
 from recce.tasks.histogram import HistogramDiffTaskResultDiffer
 from recce.tasks.profile import ProfileDiffResultDiffer
@@ -241,6 +243,7 @@ class CheckSummary(BaseModel):
     changes: dict
     node_ids: Optional[List[str]]
     changed_nodes: Optional[List[str]]
+    schema_coverage: SchemaCoveragePayload | None = None
 
     @property
     def related_nodes(self):
@@ -464,6 +467,8 @@ def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], D
     checks = CheckDAO().list()
     checks_summary: List[CheckSummary] = []
     failed_checks_count = 0
+    incomplete_checks_count = 0
+    mismatch_checks_count = 0
 
     # TODO: find a way to count failed checks, currently the state file won't include failed checks
 
@@ -497,23 +502,37 @@ def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], D
             # Check the result is changed or not
             differ = differ_factory(run)
 
-        if differ and differ.changes is not None:
+        coverage = None
+        is_incomplete = False
+        if isinstance(differ, SchemaDiffResultDiffer):
+            coverage = SchemaCoveragePayload(**schema_coverage_payload(differ.schema_coverage))
+            is_incomplete = coverage.status != "complete"
+            if is_incomplete:
+                incomplete_checks_count += 1
+
+        has_mismatch = differ is not None and differ.changes is not None
+        if has_mismatch:
+            mismatch_checks_count += 1
+
+        if differ and (has_mismatch or is_incomplete):
             checks_summary.append(
                 CheckSummary(
                     id=check.check_id,
                     type=check.type,
                     name=check.name,
                     description=check.description,
-                    changes=differ.changes,
+                    changes=differ.changes or {},
                     node_ids=differ.related_node_ids,
                     changed_nodes=differ.changed_nodes,
+                    schema_coverage=coverage,
                 )
             )
 
     return checks_summary, {
         "total": len(checks),
-        "mismatch": len(checks_summary),
+        "mismatch": mismatch_checks_count,
         "failed": failed_checks_count,
+        "incomplete": incomplete_checks_count,
     }
 
 
@@ -606,10 +625,16 @@ def generate_check_content(graph, check_statistics):
 
     content = ""
     check_content = None
+    mismatched_checks = [check for check in graph.checks if check.changes]
+    incomplete_checks = [
+        check
+        for check in graph.checks
+        if check.schema_coverage is not None and check.schema_coverage.status != "complete"
+    ]
     # Generate the check summary if we found any changes
-    if len(graph.checks) > 0:
+    if mismatched_checks:
         data = []
-        for check in graph.checks:
+        for check in mismatched_checks:
             data.append(
                 {
                     "Name": check.name,
@@ -635,6 +660,7 @@ def generate_check_content(graph, check_statistics):
         statistics = {
             "Checks Run": check_statistics.get("total", 0),
             "Data Mismatch Detected": check_statistics.get("mismatch", 0),
+            "Incomplete Schema Comparisons": check_statistics.get("incomplete", 0),
         }
         if check_statistics.get("failed", 0) > 0:
             statistics["Incomplete Checks"] = check_statistics.get("failed", 0)
@@ -653,4 +679,20 @@ Please check the output of `recce run` for more information
 ### Checks of Data Mismatch Detected
 {check_content}
 """
+    for check in incomplete_checks:
+        coverage = check.schema_coverage
+        if coverage.status == "unknown":
+            scope = "The unchecked scope could not be determined."
+        else:
+            noun = "node" if coverage.unchecked_node_count == 1 else "nodes"
+            sample = ", ".join(f"`{node_id}`" for node_id in coverage.unchecked_nodes)
+            scope = f"{coverage.unchecked_node_count} unchecked {noun}"
+            if sample:
+                scope += f" (sample: {sample}{', more not shown' if coverage.more else ''})"
+            scope += "."
+        content += (
+            f"\n:warning: **Schema comparison incomplete for {check.name}.** "
+            f"{scope} Regenerate the affected base/current catalog with `dbt docs generate` "
+            "after its build completes.\n"
+        )
     return content

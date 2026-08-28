@@ -4,14 +4,17 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+from dbt.flags import get_flags
 
 from recce.adapter.dbt_adapter import DbtAdapter, DbtVersion, load_manifest
 from recce.core import RecceContext, set_default_context
-from recce.models.types import NodeDiff
+from recce.models.types import Check, NodeDiff
 from recce.summary import (
     MERMAID_NODE_SHAPES,
     Node,
     _build_lineage_graph,
+    generate_check_content,
+    generate_check_summary,
     generate_mermaid_lineage_graph,
     generate_summary_metadata,
 )
@@ -19,6 +22,20 @@ from recce.summary import (
 current_dir = os.path.dirname(os.path.abspath(__file__))
 base_manifest_dir = os.path.join(current_dir, "data", "manifest", "base")
 pr2_manifest_dir = os.path.join(current_dir, "data", "manifest", "pr2")  # Pull Request 2l
+
+
+@pytest.fixture
+def dbt_state_modified_flag():
+    """Supply the dbt 1.12 flag absent from the repository's older fixtures."""
+    flags = get_flags()
+    had_flag = hasattr(flags, "state_modified_compare_more_unrendered_values")
+    previous_flag = getattr(flags, "state_modified_compare_more_unrendered_values", None)
+    flags.state_modified_compare_more_unrendered_values = False
+    yield
+    if had_flag:
+        flags.state_modified_compare_more_unrendered_values = previous_flag
+    else:
+        del flags.state_modified_compare_more_unrendered_values
 
 
 def test_generate_summary_metadata():
@@ -71,7 +88,7 @@ def test_generate_summary_metadata_without_artifact_timestamps(missing_metadata)
     )
 
 
-def test_generate_summary_metadata_accepts_adapter_lineage():
+def test_generate_summary_metadata_accepts_adapter_lineage(dbt_state_modified_flag):
     """
     The literal shapes above are only worth anything if they are the shapes an
     adapter really hands over, so run the dbt adapter's own get_lineage output
@@ -102,7 +119,7 @@ def test_generate_summary_metadata_accepts_adapter_lineage():
     assert diff_summary.count("N/A") == 2
 
 
-def test_build_lineage_graph():
+def test_build_lineage_graph(dbt_state_modified_flag):
     dbt_version = DbtVersion()
     if dbt_version < "1.8.1":
         pytest.skip("Dbt version is less than 1.8.1")
@@ -121,7 +138,7 @@ def test_build_lineage_graph():
     assert len(lineage_graph.modified_set) == 3
 
 
-def test_generate_mermaid_lineage_graph():
+def test_generate_mermaid_lineage_graph(dbt_state_modified_flag):
     dbt_version = DbtVersion()
     if dbt_version < "1.8.1":
         pytest.skip("Dbt version is less than 1.8.1")
@@ -370,7 +387,7 @@ class TestBuildLineageGraphWithDiff:
         changes = graph.nodes["model.test.a"]._what_changed()
         assert "Code" in changes
 
-    def test_no_diff_preserves_existing_behavior(self):
+    def test_no_diff_preserves_existing_behavior(self, dbt_state_modified_flag):
         """Passing diff=None should behave identically to the original implementation."""
         dbt_version = DbtVersion()
         if dbt_version < "1.8.1":
@@ -387,3 +404,151 @@ class TestBuildLineageGraphWithDiff:
         graph_no_diff = _build_lineage_graph(base_lineage, curr_lineage)
         graph_with_none = _build_lineage_graph(base_lineage, curr_lineage, None)
         assert graph_no_diff.modified_set == graph_with_none.modified_set
+
+
+def _catalogued_schema_node(name, columns, catalog_status="covered"):
+    return {
+        "name": name,
+        "resource_type": "model",
+        "config": {"materialized": "table"},
+        "catalog_status": catalog_status,
+        "columns": columns,
+    }
+
+
+def _generate_schema_check_summary(base_lineage, current_lineage, node_ids):
+    check = Check(
+        name="schema coverage",
+        description="schema evidence",
+        type="schema_diff",
+        params={"node_id": node_ids},
+    )
+    with (
+        patch("recce.summary.CheckDAO.list", return_value=[check]),
+        patch("recce.summary.RunDAO.list", return_value=[]),
+    ):
+        return generate_check_summary(base_lineage, current_lineage)
+
+
+def _render_check_summary(checks, statistics):
+    graph = SimpleNamespace(checks=checks)
+    with patch("recce.summary.get_node_name_by_id", side_effect=lambda node_id: node_id.rsplit(".", 1)[-1]):
+        return generate_check_content(graph, statistics)
+
+
+def test_partial_schema_coverage_preserves_verified_removal_before_incomplete_scope():
+    verified_id = "model.project.verified"
+    unchecked_id = "model.project.not_rebuilt"
+    base_lineage = {
+        "nodes": {
+            verified_id: _catalogued_schema_node(
+                "verified",
+                {"id": {"type": "integer"}, "removed": {"type": "text"}},
+            ),
+            unchecked_id: _catalogued_schema_node(
+                "not_rebuilt",
+                {"id": {"type": "integer"}, "not_removed": {"type": "text"}},
+            ),
+        }
+    }
+    current_lineage = {
+        "nodes": {
+            verified_id: _catalogued_schema_node("verified", {"id": {"type": "integer"}}),
+            unchecked_id: _catalogued_schema_node(
+                "not_rebuilt",
+                {"id": {"type": "integer"}},
+                catalog_status="unchecked",
+            ),
+        }
+    }
+
+    checks, statistics = _generate_schema_check_summary(
+        base_lineage,
+        current_lineage,
+        [verified_id, unchecked_id],
+    )
+
+    assert statistics == {"total": 1, "mismatch": 1, "failed": 0, "incomplete": 1}
+    assert len(checks) == 1
+    assert checks[0].changed_nodes == ["verified"]
+    assert checks[0].schema_coverage.model_dump() == {
+        "status": "partial",
+        "unchecked_nodes": [unchecked_id],
+        "unchecked_node_count": 1,
+        "more": False,
+    }
+
+    markdown = _render_check_summary(checks, statistics)
+    mismatch_section, incomplete_section = markdown.split(":warning: **Schema comparison incomplete", 1)
+    assert "verified" in mismatch_section
+    assert "not_rebuilt" not in mismatch_section
+    assert unchecked_id in incomplete_section
+    assert markdown.index("verified") < markdown.index(unchecked_id)
+    assert "1 unchecked node" in incomplete_section
+    assert "dbt docs generate" in incomplete_section
+
+
+def test_incomplete_schema_coverage_without_verified_change_is_not_a_clean_pass():
+    checked_id = "model.project.checked"
+    unchecked_id = "model.project.not_rebuilt"
+    columns = {"id": {"type": "integer"}}
+    base_lineage = {
+        "nodes": {
+            checked_id: _catalogued_schema_node("checked", columns),
+            unchecked_id: _catalogued_schema_node("not_rebuilt", columns),
+        }
+    }
+    current_lineage = {
+        "nodes": {
+            checked_id: _catalogued_schema_node("checked", columns),
+            unchecked_id: _catalogued_schema_node("not_rebuilt", columns, catalog_status="unchecked"),
+        }
+    }
+
+    checks, statistics = _generate_schema_check_summary(
+        base_lineage,
+        current_lineage,
+        [checked_id, unchecked_id],
+    )
+
+    assert statistics == {"total": 1, "mismatch": 0, "failed": 0, "incomplete": 1}
+    assert len(checks) == 1
+    markdown = _render_check_summary(checks, statistics)
+    assert "Checks of Data Mismatch Detected" not in markdown
+    assert "Incomplete Schema Comparisons" in markdown
+    assert ":warning: **Schema comparison incomplete" in markdown
+    assert unchecked_id in markdown
+
+
+def test_missing_catalog_legacy_input_reports_unknown_schema_coverage():
+    checks, statistics = _generate_schema_check_summary(
+        {},
+        {"nodes": {}},
+        ["model.project.legacy"],
+    )
+
+    assert statistics == {"total": 1, "mismatch": 0, "failed": 0, "incomplete": 1}
+    assert len(checks) == 1
+    assert checks[0].schema_coverage.model_dump() == {
+        "status": "unknown",
+        "unchecked_nodes": [],
+        "unchecked_node_count": 0,
+        "more": False,
+    }
+    markdown = _render_check_summary(checks, statistics)
+    assert "unchecked scope could not be determined" in markdown
+    assert "dbt docs generate" in markdown
+
+
+def test_complete_schema_coverage_without_changes_remains_silent():
+    node_id = "model.project.healthy"
+    columns = {"id": {"type": "integer"}}
+    lineage = {"nodes": {node_id: _catalogued_schema_node("healthy", columns)}}
+
+    checks, statistics = _generate_schema_check_summary(lineage, lineage, [node_id])
+
+    assert checks == []
+    assert statistics == {"total": 1, "mismatch": 0, "failed": 0, "incomplete": 0}
+    markdown = _render_check_summary(checks, statistics)
+    assert "Schema comparison incomplete" not in markdown
+    assert "Checks of Data Mismatch Detected" not in markdown
