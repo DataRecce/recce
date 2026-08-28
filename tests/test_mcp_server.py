@@ -7,11 +7,7 @@ import pytest
 pytest.importorskip("mcp")
 
 from recce.core import RecceContext  # noqa: E402
-from recce.mcp_server import (  # noqa: E402
-    _UNCHECKED_NODE_LIMIT,
-    RecceMCPServer,
-    run_mcp_server,
-)
+from recce.mcp_server import RecceMCPServer, run_mcp_server  # noqa: E402
 from recce.models.types import LineageDiff  # noqa: E402
 from recce.server import RecceServerMode  # noqa: E402
 from recce.tasks.histogram import HistogramDiffTask  # noqa: E402
@@ -199,6 +195,7 @@ class TestRecceMCPServer:
                     "model.project.model_a": {
                         "name": "model_a",
                         "resource_type": "model",
+                        "catalog_status": "covered",
                         "columns": {
                             "id": {"name": "id", "type": "integer"},
                             "name": {"name": "name", "type": "text"},
@@ -211,6 +208,7 @@ class TestRecceMCPServer:
                     "model.project.model_a": {
                         "name": "model_a",
                         "resource_type": "model",
+                        "catalog_status": "covered",
                         "columns": {
                             "id": {"name": "id", "type": "integer"},
                             "name": {"name": "name", "type": "text"},
@@ -245,14 +243,10 @@ class TestRecceMCPServer:
     async def test_tool_schema_diff_does_not_report_an_unbuilt_model_as_removed(self, mcp_server):
         """A model the run did not rebuild must not read as a column drop.
 
-        `_build_lineage` in the dbt adapter builds every node from the manifest
-        but assigns `columns` only when the catalog holds that node, so a
-        selective build leaves an unrebuilt model present on both sides with no
-        `columns` key on the current side. Comparing the two column sets then
-        turns "we never looked" into "every column was dropped".
-
-        Node keys below mirror what that builder emits, so the absent-`columns`
-        shape is the producer's, not the test's invention.
+        `_build_lineage` marks exact catalog membership with `catalog_status`.
+        Retained columns can still be present after state merging, so column-map
+        truthiness must not overrule an unchecked evidence marker and turn "we
+        never looked" into "columns were dropped".
         """
         server, mock_context = mcp_server
 
@@ -277,22 +271,25 @@ class TestRecceMCPServer:
                 "nodes": {
                     "model.project.not_rebuilt": node("not_rebuilt", columns=["a", "b", "c"]),
                     "model.project.rebuilt": node("rebuilt", columns=["kept", "dropped"]),
-                    "model.project.empty_entry": node("empty_entry", columns=["x", "y"]),
                 },
             },
             "current": {
                 "nodes": {
                     # Absent from this run's catalog, so the builder never set
-                    # the key at all.
-                    "model.project.not_rebuilt": node("not_rebuilt"),
+                    # the status to covered. Retained columns are deliberately
+                    # present to prove exact catalog membership, rather than a
+                    # truthiness check, decides whether comparison is safe.
+                    "model.project.not_rebuilt": {
+                        **node("not_rebuilt", columns=["a"]),
+                        "catalog_status": "unchecked",
+                    },
                     "model.project.rebuilt": node("rebuilt", columns=["kept"]),
-                    # Catalogued but described nothing. A relation with no
-                    # columns cannot exist, so this is the same gap wearing a
-                    # different shape and must not read as a wholesale drop.
-                    "model.project.empty_entry": node("empty_entry", columns=[]),
                 },
             },
         }
+        for side in ("base", "current"):
+            for node_data in mock_lineage_diff.model_dump.return_value[side]["nodes"].values():
+                node_data.setdefault("catalog_status", "covered")
         mock_context.get_lineage_diff.return_value = mock_lineage_diff
 
         result = await server._tool_schema_diff({})
@@ -302,10 +299,6 @@ class TestRecceMCPServer:
         assert not [
             row for row in removed if row[0] == "model.project.not_rebuilt"
         ], "columns of a model that was not rebuilt were reported as removed"
-        assert not [
-            row for row in removed if row[0] == "model.project.empty_entry"
-        ], "columns of a model with an empty catalog entry were reported as removed"
-
         # A real drop on a model that WAS rebuilt still reports, so the guard
         # cannot be satisfied by suppressing everything.
         assert ["model.project.rebuilt", "dropped", "removed"] in result["data"]
@@ -315,8 +308,7 @@ class TestRecceMCPServer:
         coverage = result["schema_coverage"]
         assert coverage["status"] == "partial"
         assert "model.project.not_rebuilt" in coverage["unchecked_nodes"]
-        assert "model.project.empty_entry" in coverage["unchecked_nodes"]
-        assert coverage["unchecked_node_count"] == 2
+        assert coverage["unchecked_node_count"] == 1
 
     @pytest.mark.asyncio
     async def test_tool_schema_diff_coverage_ignores_nodes_the_catalog_never_describes(self, mcp_server):
@@ -338,6 +330,7 @@ class TestRecceMCPServer:
                 "name": "clean",
                 "resource_type": "model",
                 "config": {"materialized": "table"},
+                "catalog_status": "covered",
                 "columns": {"id": {"name": "id", "type": "text"}},
             },
             "exposure.project.dash": {
@@ -345,24 +338,28 @@ class TestRecceMCPServer:
                 "name": "dash",
                 "resource_type": "exposure",
                 "config": {},
+                "catalog_status": "not_applicable",
             },
             "metric.project.revenue": {
                 "id": "metric.project.revenue",
                 "name": "revenue",
                 "resource_type": "metric",
                 "config": {},
+                "catalog_status": "not_applicable",
             },
             "semantic_model.project.orders_sm": {
                 "id": "semantic_model.project.orders_sm",
                 "name": "orders_sm",
                 "resource_type": "semantic_model",
                 "config": {},
+                "catalog_status": "not_applicable",
             },
             "model.project.inlined": {
                 "id": "model.project.inlined",
                 "name": "inlined",
                 "resource_type": "model",
                 "config": {"materialized": "ephemeral"},
+                "catalog_status": "not_applicable",
             },
         }
 
@@ -390,7 +387,8 @@ class TestRecceMCPServer:
         """
         server, mock_context = mcp_server
 
-        node_ids = [f"model.project.m{i:03d}" for i in range(_UNCHECKED_NODE_LIMIT + 5)]
+        unchecked_node_limit = 50
+        node_ids = [f"model.project.m{i:03d}" for i in range(unchecked_node_limit + 5)]
 
         def node(node_id, *, catalogued):
             n = {
@@ -398,6 +396,7 @@ class TestRecceMCPServer:
                 "name": node_id.rsplit(".", 1)[-1],
                 "resource_type": "model",
                 "config": {"materialized": "table"},
+                "catalog_status": "covered" if catalogued else "unchecked",
             }
             if catalogued:
                 n["columns"] = {"id": {"name": "id", "type": "text"}}
@@ -416,10 +415,10 @@ class TestRecceMCPServer:
         coverage = result["schema_coverage"]
         assert coverage["status"] == "partial"
         assert coverage["unchecked_node_count"] == len(node_ids)
-        assert len(coverage["unchecked_nodes"]) == _UNCHECKED_NODE_LIMIT
+        assert len(coverage["unchecked_nodes"]) == unchecked_node_limit
         assert coverage["more"] is True
         # Sorted, so the truncation is a stable prefix rather than dict order.
-        assert coverage["unchecked_nodes"] == sorted(node_ids)[:_UNCHECKED_NODE_LIMIT]
+        assert coverage["unchecked_nodes"] == sorted(node_ids)[:unchecked_node_limit]
 
     @pytest.mark.asyncio
     async def test_tool_query(self, mcp_server):
@@ -2457,6 +2456,9 @@ class TestSchemaDiffEdgeCases:
                 "nodes": {
                     "model.project.model_a": {
                         "name": "model_a",
+                        "resource_type": "model",
+                        "config": {"materialized": "table"},
+                        "catalog_status": "covered",
                         "columns": {
                             "id": {"name": "id", "type": "integer"},
                             "legacy_col": {"name": "legacy_col", "type": "text"},
@@ -2468,6 +2470,9 @@ class TestSchemaDiffEdgeCases:
                 "nodes": {
                     "model.project.model_a": {
                         "name": "model_a",
+                        "resource_type": "model",
+                        "config": {"materialized": "table"},
+                        "catalog_status": "covered",
                         "columns": {
                             "id": {"name": "id", "type": "integer"},
                         },
@@ -2495,6 +2500,9 @@ class TestSchemaDiffEdgeCases:
                 "nodes": {
                     "model.project.model_a": {
                         "name": "model_a",
+                        "resource_type": "model",
+                        "config": {"materialized": "table"},
+                        "catalog_status": "covered",
                         "columns": {
                             "id": {"name": "id", "type": "integer"},
                             "amount": {"name": "amount", "type": "integer"},
@@ -2506,6 +2514,9 @@ class TestSchemaDiffEdgeCases:
                 "nodes": {
                     "model.project.model_a": {
                         "name": "model_a",
+                        "resource_type": "model",
+                        "config": {"materialized": "table"},
+                        "catalog_status": "covered",
                         "columns": {
                             "id": {"name": "id", "type": "integer"},
                             "amount": {"name": "amount", "type": "float"},
@@ -3057,6 +3068,7 @@ class TestImpactAnalysisBehavior:
                     "name": "deleted_model",
                     "resource_type": "model",
                     "config": {"materialized": "table"},
+                    "catalog_status": "covered",
                     "columns": {
                         "id": {"type": "INTEGER"},
                         "gone": {"type": "TEXT"},
@@ -3071,6 +3083,7 @@ class TestImpactAnalysisBehavior:
                     "name": "new_model",
                     "resource_type": "model",
                     "config": {"materialized": "table"},
+                    "catalog_status": "covered",
                     "columns": {
                         "id": {"type": "INTEGER"},
                         "new_col": {"type": "TEXT"},
@@ -3138,6 +3151,68 @@ class TestImpactAnalysisBehavior:
         assert coverage["status"] == "complete", "one-sided models were counted as a coverage gap"
 
     @pytest.mark.asyncio
+    async def test_impact_analysis_keeps_verified_schema_changes_and_nulls_unchecked_models(self, mcp_server):
+        server, mock_context = mcp_server
+        verified_id = "model.project.verified"
+        unchecked_id = "model.project.not_rebuilt"
+
+        def node(name, status, columns):
+            return {
+                "name": name,
+                "resource_type": "model",
+                "config": {"materialized": "table"},
+                "catalog_status": status,
+                "columns": {column: {"type": "TEXT"} for column in columns},
+            }
+
+        mock_context.get_lineage_diff.return_value = MagicMock(
+            model_dump=MagicMock(
+                return_value={
+                    "base": {
+                        "nodes": {
+                            verified_id: node("verified", "covered", ["id", "removed"]),
+                            unchecked_id: node("not_rebuilt", "covered", ["id", "not_removed"]),
+                        },
+                        "parent_map": {},
+                    },
+                    "current": {
+                        "nodes": {
+                            verified_id: node("verified", "covered", ["id"]),
+                            unchecked_id: node("not_rebuilt", "unchecked", ["id"]),
+                        },
+                        "parent_map": {},
+                    },
+                    "diff": {
+                        verified_id: {"change_status": "modified"},
+                        unchecked_id: {"change_status": "modified"},
+                    },
+                }
+            )
+        )
+
+        adapter = MagicMock()
+        adapter.select_nodes.return_value = {verified_id, unchecked_id}
+        adapter.get_model.return_value = {}
+        mock_context.adapter = adapter
+
+        with (
+            patch("recce.mcp_server.sentry_metrics", None),
+            patch.object(RowCountDiffTask, "execute", return_value={}),
+        ):
+            result = await server._tool_impact_analysis({"skip_value_diff": True})
+
+        assert result["errors"] == []
+        by_name = {model["name"]: model for model in result["confirmed_impacted_models"]}
+        assert by_name["verified"]["schema_changes"] == [{"column": "removed", "change_status": "removed"}]
+        assert by_name["not_rebuilt"]["schema_changes"] is None
+        assert result["schema_coverage"] == {
+            "status": "partial",
+            "unchecked_nodes": [unchecked_id],
+            "unchecked_node_count": 1,
+            "more": False,
+        }
+
+    @pytest.mark.asyncio
     async def test_ephemeral_model_is_not_a_coverage_gap(self, mcp_server):
         """An ephemeral model is inlined as a CTE, so it never enters the catalog.
 
@@ -3150,6 +3225,7 @@ class TestImpactAnalysisBehavior:
             "name": "inlined",
             "resource_type": "model",
             "config": {"materialized": "ephemeral"},
+            "catalog_status": "not_applicable",
         }
         mock_context.get_lineage_diff.return_value = MagicMock(
             model_dump=MagicMock(

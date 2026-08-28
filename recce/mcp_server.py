@@ -11,6 +11,7 @@ import logging
 import os
 import textwrap
 import time
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -27,6 +28,7 @@ from mcp.types import CallToolResult, ListToolsResult, TextContent, Tool
 # persist Runs to the in-process RecceContext so the state exported to S3
 # at MCP-server shutdown carries the analysis runs.
 from recce.apis.run_func import submit_run as _submit_run_fn  # noqa: E402
+from recce.artifact_health import classify_schema_coverage, schema_coverage_payload
 from recce.core import RecceContext, load_context
 from recce.exceptions import RecceException
 from recce.server import RecceServerMode
@@ -412,7 +414,7 @@ class CloudBackend:
         # says nothing about which nodes it could not describe, so coverage is
         # unassessed rather than complete. Emitted under the same key as the
         # local path so the one shared tool description holds for both backends.
-        result["schema_coverage"] = _schema_coverage(None)
+        result["schema_coverage"] = schema_coverage_payload(classify_schema_coverage(None, None, ()))
         return result
 
     async def _tool_impact_analysis(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
@@ -464,8 +466,8 @@ class CloudBackend:
             "confirmed_not_impacted_models": not_impacted_models,
             # Metadata-only triage: the session reports the column changes it
             # found but not what it failed to describe, so coverage is
-            # unassessed. Same key as the local path (see _schema_coverage).
-            "schema_coverage": _schema_coverage(None),
+            # unassessed. Same key as the local path.
+            "schema_coverage": schema_coverage_payload(classify_schema_coverage(None, None, ())),
             "errors": [],
         }
 
@@ -579,84 +581,6 @@ class MCPLogger:
             log_entry["response"] = _truncate_strings(response)
 
         self._write_log(log_entry)
-
-
-# Bounds the node names schema_diff names as unverifiable. Independent of the
-# row cap so an under-catalogued project cannot crowd out the changes it did find.
-_UNCHECKED_NODE_LIMIT = 50
-
-
-def _columns_comparable(base_node: dict, current_node: dict) -> bool:
-    """Whether the two sides carry enough column data to be compared at all.
-
-    Nodes come from the manifest but their columns come from the catalog, so a
-    model a selective build did not rebuild arrives with no column data on the
-    current side. Differencing the two sets anyway turns "we never looked" into
-    a full sweep of added or removed columns.
-
-    Emptiness counts as absence: a relation with no columns cannot exist, so an
-    empty map means the catalog never described the model rather than that it
-    lost everything.
-
-    What this observes is the absence, not its cause. A selective build is the
-    commonest reason but not the only one, so callers must not turn a False here
-    into a claim about what the user's pipeline did.
-    """
-    return bool(base_node.get("columns")) and bool(current_node.get("columns"))
-
-
-# Resource types dbt never describes in catalog.json, because the catalog
-# describes warehouse relations and these are not relations. See
-# `recce/adapter/dbt_adapter/__init__.py`, which builds them with no `columns`
-# key at all.
-_NON_RELATION_RESOURCE_TYPES = frozenset({"exposure", "metric", "semantic_model", "saved_query"})
-
-
-def _can_carry_catalog_columns(node: dict) -> bool:
-    """Whether the catalog could ever have described this node's columns.
-
-    Missing columns on a node dbt never catalogues are the normal state, not a
-    gap in what we checked. Exposures, metrics and semantic models are not
-    relations, and an ephemeral model is inlined as a CTE rather than
-    materialized, so none of them ever get a catalog entry. Counting them as
-    unchecked would pin `status` to "partial" on any project that owns one — a
-    genuinely clean schema_diff could then never be reported as verified — and
-    would spend the capped `unchecked_nodes` slots on nodes that were never
-    comparable to begin with.
-
-    A denylist, not an allowlist: a resource type we have not met, or a node
-    carrying no `resource_type` at all, still counts as a coverage gap. The
-    trade-off is deliberate. Skipping every node with no columns on *either*
-    side would also have covered these cases, but it would silently drop a model
-    that neither environment built — precisely the absence `unchecked_nodes`
-    exists to name — so we over-report a gap rather than hide one.
-    """
-    if node.get("resource_type") in _NON_RELATION_RESOURCE_TYPES:
-        return False
-    return (node.get("config") or {}).get("materialized") != "ephemeral"
-
-
-def _schema_coverage(unchecked_node_ids: Optional[List[str]]) -> Dict[str, Any]:
-    """Build the schema_coverage block shared by schema_diff and impact_analysis.
-
-    `None` means the comparison never ran — it raised, or the backend does not
-    report coverage. That is distinct from an empty list, which means the
-    comparison ran and found nothing it could not check.
-    """
-    if unchecked_node_ids is None:
-        return {
-            "status": "unknown",
-            "unchecked_nodes": [],
-            "unchecked_node_count": 0,
-            "more": False,
-        }
-    ordered = sorted(unchecked_node_ids)
-    return {
-        "status": "partial" if ordered else "complete",
-        "unchecked_nodes": ordered[:_UNCHECKED_NODE_LIMIT],
-        "unchecked_node_count": len(ordered),
-        "more": len(ordered) > _UNCHECKED_NODE_LIMIT,
-    }
 
 
 class RecceMCPServer:
@@ -1882,14 +1806,11 @@ class RecceMCPServer:
         # Get lineage diff from adapter
         lineage_diff = self.context.get_lineage_diff().model_dump(mode="json")
 
-        # Get all nodes from current environment
-        current_nodes = {}
-        if "current" in lineage_diff and "nodes" in lineage_diff["current"]:
-            current_nodes = lineage_diff["current"]["nodes"]
-
-        # Filter to only nodes that exist in both base and current (exclude added nodes)
-        base_nodes = lineage_diff.get("base", {}).get("nodes", {})
-        nodes_to_compare = set(current_nodes.keys()) & set(base_nodes.keys())
+        base_nodes = lineage_diff.get("base", {}).get("nodes")
+        current_nodes = lineage_diff.get("current", {}).get("nodes")
+        nodes_to_compare = set(base_nodes) if isinstance(base_nodes, Mapping) else set()
+        if isinstance(current_nodes, Mapping):
+            nodes_to_compare.update(current_nodes)
 
         # Apply filtering if arguments provided
         if select or exclude or packages:
@@ -1898,28 +1819,19 @@ class RecceMCPServer:
                 exclude=exclude,
                 packages=packages,
             )
-            nodes_to_compare = nodes_to_compare & selected_node_ids
+            nodes_to_compare &= set(selected_node_ids)
+
+        coverage = classify_schema_coverage(base_nodes, current_nodes, nodes_to_compare)
 
         # Build schema changes
         schema_changes = []
-        unchecked_nodes = []
 
-        for node_id in nodes_to_compare:
+        for node_id in coverage.checked_node_ids:
             base_node = base_nodes.get(node_id, {})
             current_node = current_nodes.get(node_id, {})
 
             base_columns = base_node.get("columns") or {}
             current_columns = current_node.get("columns") or {}
-
-            # Skipped before the row cap so unverifiable rows can neither
-            # displace real changes nor inflate `more`. A node the catalog never
-            # describes is skipped without being named: it is not a gap in what
-            # we checked, and naming it would make `status` permanently
-            # "partial" on any project that owns one.
-            if not _columns_comparable(base_node, current_node):
-                if _can_carry_catalog_columns(current_node):
-                    unchecked_nodes.append(node_id)
-                continue
 
             # Get column names in base and current
             base_col_names = set(base_columns.keys())
@@ -1963,7 +1875,7 @@ class RecceMCPServer:
         # that ignore it still see the unchanged shape, minus rows we cannot
         # stand behind. `data == []` means "no column changes" only when
         # `status` is "complete".
-        result["schema_coverage"] = _schema_coverage(unchecked_nodes)
+        result["schema_coverage"] = schema_coverage_payload(coverage)
         return result
 
     async def _tool_row_count_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
@@ -2147,39 +2059,27 @@ class RecceMCPServer:
         # Step 2b: Schema diff (compare columns between base and current)
         # Unknown until the step runs, so a failure below leaves it unknown
         # rather than claiming complete coverage.
-        schema_coverage = _schema_coverage(None)
+        schema_coverage = schema_coverage_payload(classify_schema_coverage(None, None, ()))
         try:
-            base_nodes = lineage_diff.get("base", {}).get("nodes", {})
-            current_nodes = lineage_diff.get("current", {}).get("nodes", {})
+            base_nodes = lineage_diff.get("base", {}).get("nodes")
+            current_nodes = lineage_diff.get("current", {}).get("nodes")
+            selected_schema_node_ids = [
+                node_id_by_name[model["name"]] for model in impacted_models if model["name"] in node_id_by_name
+            ]
+            coverage = classify_schema_coverage(base_nodes, current_nodes, selected_schema_node_ids)
+            schema_coverage = schema_coverage_payload(coverage)
 
-            schema_unchecked = []
             for model in impacted_models:
                 node_id = node_id_by_name.get(model["name"])
                 if not node_id:
                     continue
 
+                if coverage.status == "unknown" or node_id in coverage.unchecked_node_ids:
+                    model["schema_changes"] = None
+                    continue
+
                 base_node = base_nodes.get(node_id, {})
                 current_node = current_nodes.get(node_id, {})
-
-                # The same absence guard as the schema_diff tool, but that tool
-                # compares only nodes present in BOTH lineages. Added and removed
-                # models reach this loop too, and a one-sided node is an
-                # observation, not an absence: a new model's columns really are
-                # all added, and a deleted model's really are all removed. Nodes
-                # the catalog never describes fall through as well — comparing
-                # two empty maps yields the honest empty result without claiming
-                # a coverage gap.
-                # `None` rather than `[]` for a real gap: an empty list reads as
-                # "checked, nothing changed", which is the claim we cannot make.
-                exists_in_both = bool(base_node) and bool(current_node)
-                if (
-                    exists_in_both
-                    and not _columns_comparable(base_node, current_node)
-                    and _can_carry_catalog_columns(current_node)
-                ):
-                    model["schema_changes"] = None
-                    schema_unchecked.append(node_id)
-                    continue
 
                 base_columns = base_node.get("columns") or {}
                 current_columns = current_node.get("columns") or {}
@@ -2198,8 +2098,6 @@ class RecceMCPServer:
                         changes.append({"column": col, "change_status": "modified"})
 
                 model["schema_changes"] = changes
-
-            schema_coverage = _schema_coverage(schema_unchecked)
         except Exception as e:
             errors.append({"step": "schema_diff", "message": str(e)})
 

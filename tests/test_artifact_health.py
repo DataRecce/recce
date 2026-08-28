@@ -2,7 +2,12 @@ from typing import Any
 
 import pytest
 
-from recce.artifact_health import artifact_health_payload, classify_artifact_health
+from recce.artifact_health import (
+    artifact_health_payload,
+    classify_artifact_health,
+    classify_schema_coverage,
+    schema_coverage_payload,
+)
 
 
 def _manifest(
@@ -139,3 +144,163 @@ def test_malformed_non_dict_catalog_nodes_are_unknown() -> None:
     assert health.covered_node_ids == frozenset()
     assert health.missing_node_ids == frozenset()
     assert health.orphan_node_ids == frozenset()
+
+
+def _lineage_node(
+    *,
+    resource_type: str = "model",
+    materialized: str = "table",
+    catalog_status: str | None = "covered",
+    columns: tuple[str, ...] = ("id",),
+) -> dict[str, Any]:
+    node: dict[str, Any] = {
+        "resource_type": resource_type,
+        "config": {"materialized": materialized},
+        "columns": {column: {"type": "text"} for column in columns},
+    }
+    if catalog_status is not None:
+        node["catalog_status"] = catalog_status
+    return node
+
+
+@pytest.mark.parametrize(
+    ("base_nodes", "current_nodes"),
+    [
+        (None, {}),
+        ({}, None),
+        (None, None),
+    ],
+    ids=["missing-base", "missing-current", "missing-both"],
+)
+def test_schema_coverage_is_unknown_when_either_node_mapping_is_missing(
+    base_nodes: dict[str, dict[str, Any]] | None,
+    current_nodes: dict[str, dict[str, Any]] | None,
+) -> None:
+    coverage = classify_schema_coverage(base_nodes, current_nodes, ["model.pkg.orders"])
+
+    assert coverage.status == "unknown"
+    assert coverage.checked_node_ids == frozenset()
+    assert coverage.unchecked_node_ids == frozenset()
+
+
+@pytest.mark.parametrize(
+    ("base_status", "current_status"),
+    [
+        ("unchecked", "covered"),
+        ("covered", "unchecked"),
+        ("unchecked", "unchecked"),
+    ],
+    ids=["missing-base-catalog", "missing-current-catalog", "missing-both-catalogs"],
+)
+def test_schema_coverage_is_partial_when_either_catalog_side_is_unchecked(
+    base_status: str,
+    current_status: str,
+) -> None:
+    node_id = "model.pkg.orders"
+
+    coverage = classify_schema_coverage(
+        {node_id: _lineage_node(catalog_status=base_status)},
+        {node_id: _lineage_node(catalog_status=current_status)},
+        [node_id],
+    )
+
+    assert coverage.status == "partial"
+    assert coverage.checked_node_ids == frozenset()
+    assert coverage.unchecked_node_ids == frozenset({node_id})
+
+
+def test_schema_coverage_keeps_checked_nodes_when_other_nodes_are_unchecked() -> None:
+    checked_id = "model.pkg.verified_removal"
+    unchecked_id = "model.pkg.not_rebuilt"
+
+    coverage = classify_schema_coverage(
+        {
+            checked_id: _lineage_node(columns=("id", "removed")),
+            unchecked_id: _lineage_node(),
+        },
+        {
+            checked_id: _lineage_node(columns=("id",)),
+            unchecked_id: _lineage_node(catalog_status="unchecked", columns=()),
+        },
+        [unchecked_id, checked_id],
+    )
+
+    assert coverage.status == "partial"
+    assert coverage.checked_node_ids == frozenset({checked_id})
+    assert coverage.unchecked_node_ids == frozenset({unchecked_id})
+
+
+def test_schema_coverage_excludes_one_sided_structural_nodes() -> None:
+    removed_id = "model.pkg.removed"
+
+    coverage = classify_schema_coverage(
+        {removed_id: _lineage_node()},
+        {},
+        [removed_id],
+    )
+
+    assert coverage.status == "complete"
+    assert coverage.checked_node_ids == frozenset()
+    assert coverage.unchecked_node_ids == frozenset()
+
+
+@pytest.mark.parametrize(
+    ("node_id", "node"),
+    [
+        ("model.pkg.inlined", _lineage_node(materialized="ephemeral", catalog_status="not_applicable", columns=())),
+        (
+            "model.pkg.semantic",
+            _lineage_node(materialized="semantic_view", catalog_status="not_applicable", columns=()),
+        ),
+    ],
+    ids=["ephemeral", "semantic-view"],
+)
+def test_schema_coverage_excludes_models_that_cannot_carry_catalog_columns(
+    node_id: str,
+    node: dict[str, Any],
+) -> None:
+    coverage = classify_schema_coverage({node_id: node}, {node_id: node}, [node_id])
+
+    assert coverage.status == "complete"
+    assert coverage.checked_node_ids == frozenset()
+    assert coverage.unchecked_node_ids == frozenset()
+
+
+def test_schema_coverage_checks_catalogued_sources() -> None:
+    source_id = "source.pkg.raw_orders"
+    source = _lineage_node(resource_type="source")
+
+    coverage = classify_schema_coverage({source_id: source}, {source_id: source}, [source_id])
+
+    assert coverage.status == "complete"
+    assert coverage.checked_node_ids == frozenset({source_id})
+    assert coverage.unchecked_node_ids == frozenset()
+
+
+def test_schema_coverage_treats_legacy_nodes_without_catalog_status_as_unchecked() -> None:
+    node_id = "model.pkg.legacy"
+    legacy_node = _lineage_node(catalog_status=None)
+
+    coverage = classify_schema_coverage({node_id: legacy_node}, {node_id: legacy_node}, [node_id])
+
+    assert coverage.status == "partial"
+    assert coverage.checked_node_ids == frozenset()
+    assert coverage.unchecked_node_ids == frozenset({node_id})
+
+
+def test_schema_coverage_payload_sorts_and_bounds_unchecked_nodes() -> None:
+    node_ids = [f"model.pkg.m{index:02d}" for index in range(55)]
+    base_nodes = {node_id: _lineage_node() for node_id in node_ids}
+    current_nodes = {node_id: _lineage_node(catalog_status="unchecked", columns=()) for node_id in reversed(node_ids)}
+
+    payload = schema_coverage_payload(
+        classify_schema_coverage(base_nodes, current_nodes, reversed(node_ids)),
+        sample_limit=100,
+    )
+
+    assert payload == {
+        "status": "partial",
+        "unchecked_nodes": sorted(node_ids)[:50],
+        "unchecked_node_count": 55,
+        "more": True,
+    }

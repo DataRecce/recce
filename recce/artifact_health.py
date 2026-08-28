@@ -1,8 +1,9 @@
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any, Literal
 
 ArtifactHealthStatus = Literal["complete", "partial", "empty", "absent", "not_applicable", "unknown"]
+SchemaCoverageStatus = Literal["complete", "partial", "unknown"]
 
 
 @dataclass(frozen=True)
@@ -15,8 +16,16 @@ class ArtifactHealth:
     orphan_node_ids: frozenset[str]
 
 
+@dataclass(frozen=True)
+class SchemaCoverage:
+    status: SchemaCoverageStatus
+    checked_node_ids: frozenset[str]
+    unchecked_node_ids: frozenset[str]
+
+
 _ELIGIBLE_RESOURCE_TYPES = frozenset({"model", "seed", "snapshot"})
 _EXCLUDED_MATERIALIZATIONS = frozenset({"ephemeral", "semantic_view"})
+_NON_RELATION_RESOURCE_TYPES = frozenset({"exposure", "metric", "semantic_model", "saved_query"})
 
 
 def _unknown_health(expected_node_ids: frozenset[str] = frozenset()) -> ArtifactHealth:
@@ -128,4 +137,73 @@ def artifact_health_payload(
         "orphan_node_count": len(health.orphan_node_ids),
         "orphan_nodes": sorted(health.orphan_node_ids)[:effective_limit],
         "orphan_more": len(health.orphan_node_ids) > effective_limit,
+    }
+
+
+def _unknown_schema_coverage() -> SchemaCoverage:
+    return SchemaCoverage(
+        status="unknown",
+        checked_node_ids=frozenset(),
+        unchecked_node_ids=frozenset(),
+    )
+
+
+def _catalog_columns_are_applicable(node: Mapping[str, Any]) -> bool:
+    if node.get("catalog_status") == "not_applicable":
+        return False
+    if node.get("resource_type") in _NON_RELATION_RESOURCE_TYPES:
+        return False
+    config = node.get("config")
+    materialized = config.get("materialized") if isinstance(config, Mapping) else None
+    return materialized not in _EXCLUDED_MATERIALIZATIONS
+
+
+def classify_schema_coverage(
+    base_nodes: Mapping[str, Mapping[str, Any]] | None,
+    current_nodes: Mapping[str, Mapping[str, Any]] | None,
+    node_ids: Iterable[str],
+) -> SchemaCoverage:
+    if not isinstance(base_nodes, Mapping) or not isinstance(current_nodes, Mapping):
+        return _unknown_schema_coverage()
+
+    selected_node_ids = frozenset(node_ids)
+    if any(not isinstance(node_id, str) for node_id in selected_node_ids):
+        return _unknown_schema_coverage()
+
+    checked: set[str] = set()
+    unchecked: set[str] = set()
+    for node_id in selected_node_ids:
+        if node_id not in base_nodes or node_id not in current_nodes:
+            continue
+
+        base_node = base_nodes[node_id]
+        current_node = current_nodes[node_id]
+        if not isinstance(base_node, Mapping) or not isinstance(current_node, Mapping):
+            return _unknown_schema_coverage()
+        if not _catalog_columns_are_applicable(base_node) or not _catalog_columns_are_applicable(current_node):
+            continue
+
+        if base_node.get("catalog_status") == current_node.get("catalog_status") == "covered":
+            checked.add(node_id)
+        else:
+            unchecked.add(node_id)
+
+    return SchemaCoverage(
+        status="partial" if unchecked else "complete",
+        checked_node_ids=frozenset(checked),
+        unchecked_node_ids=frozenset(unchecked),
+    )
+
+
+def schema_coverage_payload(
+    coverage: SchemaCoverage,
+    *,
+    sample_limit: int = 50,
+) -> dict[str, Any]:
+    effective_limit = min(sample_limit, 50)
+    return {
+        "status": coverage.status,
+        "unchecked_nodes": sorted(coverage.unchecked_node_ids)[:effective_limit],
+        "unchecked_node_count": len(coverage.unchecked_node_ids),
+        "more": len(coverage.unchecked_node_ids) > effective_limit,
     }

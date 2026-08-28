@@ -1,13 +1,16 @@
+from collections.abc import Mapping
 from typing import List, Literal, Optional, Union
 
 from pydantic import BaseModel
 
+from recce.artifact_health import SchemaCoverage, classify_schema_coverage
 from recce.models import Check
 from recce.tasks.core import CheckValidator, TaskResultDiffer
 
 
 class SchemaDiffResultDiffer:
     related_node_ids: List[str] = None
+    schema_coverage: SchemaCoverage
 
     def __init__(self, check, base_lineage, curr_lineage):
         self.check = check
@@ -30,9 +33,13 @@ class SchemaDiffResultDiffer:
     def _check_result_changed_fn(self, base_lineage, curr_lineage):
         base = {}
         current = {}
-        base_nodes = base_lineage.get("nodes", {})
-        curr_nodes = curr_lineage.get("nodes", {})
-        for node_id in self.related_node_ids:
+        base_nodes = base_lineage.get("nodes") if isinstance(base_lineage, Mapping) else None
+        curr_nodes = curr_lineage.get("nodes") if isinstance(curr_lineage, Mapping) else None
+        self.schema_coverage = classify_schema_coverage(base_nodes, curr_nodes, self.related_node_ids or [])
+        if self.schema_coverage.status == "unknown":
+            return None
+
+        for node_id in self.schema_coverage.checked_node_ids:
             node = curr_nodes.get(node_id) or base_nodes.get(node_id)
             if not node:
                 continue
