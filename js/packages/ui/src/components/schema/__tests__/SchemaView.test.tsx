@@ -182,10 +182,52 @@ describe("SchemaView comparison coverage", () => {
     });
     expect(warning).toHaveTextContent("current environment");
     expect(warning).toHaveTextContent("1 node was not checked");
+    expect(warning).toHaveTextContent(nodeId);
     expect(warning).toHaveTextContent("Regenerate the current catalog");
     expect(warning).toHaveTextContent("dbt docs generate");
     expect(screen.getByText("id")).toBeInTheDocument();
     expect(screen.queryByText("legacy")).not.toBeInTheDocument();
+  });
+
+  it("uses generic side wording when bounded samples do not identify the node", () => {
+    const nodeId = "model.shop.orders";
+    const health = (missingNode: string) => ({
+      status: "partial" as const,
+      expected_count: 3,
+      covered_count: 2,
+      catalog_entry_count: 2,
+      missing_node_count: 1,
+      missing_nodes: [missingNode],
+      missing_more: false,
+      orphan_node_count: 0,
+      orphan_nodes: [],
+      orphan_more: false,
+    });
+    lineageGraph.current = {
+      nodes: {
+        [nodeId]: { data: { schemaComparisonStatus: "unchecked" } },
+      },
+      catalogMetadata: { base: {}, current: {} },
+      artifactHealth: {
+        base: health("model.shop.base_only_missing"),
+        current: health("model.shop.current_only_missing"),
+      },
+      schemaCoverage: {
+        status: "partial",
+        unchecked_nodes: [nodeId],
+        unchecked_node_count: 1,
+        more: false,
+      },
+    };
+
+    render(wrap(model(nodeId)));
+
+    const warning = screen.getByRole("alert", {
+      name: "Incomplete schema comparison",
+    });
+    expect(warning).toHaveTextContent("base/current environments");
+    expect(warning).toHaveTextContent("Regenerate the base/current catalogs");
+    expect(warning).not.toHaveTextContent("base and current environments");
   });
 
   it("renders no comparison warning for complete healthy evidence", () => {

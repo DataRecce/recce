@@ -44,6 +44,16 @@ function normalizeSchemaCoverage(
   ) {
     return { ...UNKNOWN_SCHEMA_COVERAGE, unchecked_nodes: [] };
   }
+  const hasUncheckedNodes = value.unchecked_node_count > 0;
+  const sampleIsTruncated =
+    value.unchecked_node_count > value.unchecked_nodes.length;
+  const invariantsHold =
+    value.status === "partial"
+      ? hasUncheckedNodes && value.more === sampleIsTruncated
+      : !hasUncheckedNodes && value.unchecked_nodes.length === 0 && !value.more;
+  if (!invariantsHold) {
+    return { ...UNKNOWN_SCHEMA_COVERAGE, unchecked_nodes: [] };
+  }
   return {
     status: value.status,
     unchecked_nodes: [...value.unchecked_nodes],

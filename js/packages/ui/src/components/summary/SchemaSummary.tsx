@@ -15,6 +15,7 @@ import type { LineageGraph, LineageGraphNode } from "../../contexts";
 import { useApiConfig } from "../../hooks";
 import { NodeTag, RowCountDiffTag } from "../lineage";
 import { SchemaView } from "../schema";
+import { formatUncheckedNodeText } from "../schema/formatSchemaCoverage";
 
 interface SchemaDiffCardProps {
   title: string;
@@ -138,13 +139,6 @@ export function SchemaSummary({ lineageGraph }: SchemaSummaryProps) {
     more: false,
   };
   const comparisonIncomplete = schemaCoverage.status !== "complete";
-  const uncheckedText =
-    schemaCoverage.status === "unknown" &&
-    schemaCoverage.unchecked_node_count === 0
-      ? "The number of unchecked nodes is unknown."
-      : `${schemaCoverage.unchecked_node_count} ${
-          schemaCoverage.unchecked_node_count === 1 ? "node was" : "nodes were"
-        } not checked.`;
 
   return (
     <>
@@ -167,9 +161,10 @@ export function SchemaSummary({ lineageGraph }: SchemaSummaryProps) {
             aria-label="Incomplete schema comparison"
             sx={{ fontSize: "0.875rem", mb: 2 }}
           >
-            Schema comparison incomplete. {uncheckedText} Regenerate the{" "}
+            Schema comparison incomplete.{" "}
+            {formatUncheckedNodeText(schemaCoverage)} Regenerate the{" "}
             {affectedCatalogs(lineageGraph)} with <code>dbt docs generate</code>
-            , then rerun the comparison.
+            {", then rerun the comparison."}
           </MuiAlert>
         )}
         {changedNodes.length === 0 ? (

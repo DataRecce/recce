@@ -25,9 +25,9 @@ describe("SchemaSummary comparison coverage", () => {
         lineageGraph={graphWithCoverage(
           {
             status: "partial",
-            unchecked_nodes: ["model.shop.orders"],
-            unchecked_node_count: 1,
-            more: false,
+            unchecked_nodes: ["model.shop.orders", "model.shop.customers"],
+            unchecked_node_count: 3,
+            more: true,
           },
           {
             base: {
@@ -63,7 +63,10 @@ describe("SchemaSummary comparison coverage", () => {
       name: "Incomplete schema comparison",
     });
     expect(warning).toHaveTextContent("Schema comparison incomplete");
-    expect(warning).toHaveTextContent("1 node was not checked");
+    expect(warning).toHaveTextContent("3 nodes were not checked");
+    expect(warning).toHaveTextContent("model.shop.orders");
+    expect(warning).toHaveTextContent("model.shop.customers");
+    expect(warning).toHaveTextContent("and 1 more");
     expect(warning).toHaveTextContent("Regenerate the current catalog");
     expect(warning).toHaveTextContent("dbt docs generate");
     expect(

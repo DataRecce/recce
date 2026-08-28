@@ -18,7 +18,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import type { ArtifactHealthPair, NodeData, SchemaCoverage } from "../../api";
+import type { ArtifactHealthPair, NodeData } from "../../api";
 import {
   useLineageGraphContext,
   useLineageViewContext,
@@ -38,6 +38,7 @@ import {
 import { ProfileDistributionUnsupportedBanner } from "../data/ProfileDistributionUnsupportedBanner";
 import { createDataGridFromData } from "../ui/dataGrid";
 import type { SchemaDistributionData } from "../ui/dataGrid/schemaCells";
+import { formatUncheckedNodeText } from "./formatSchemaCoverage";
 import { getColumnChangeStatus } from "./getColumnChangeStatus";
 import { selectInlineProfileScope } from "./selectInlineProfileScope";
 
@@ -101,25 +102,7 @@ function affectedEnvironment(
   if (baseAffected) return "base environment";
   if (currentAffected) return "current environment";
 
-  const baseIncomplete =
-    artifactHealth?.base != null &&
-    !["complete", "not_applicable"].includes(artifactHealth.base.status);
-  const currentIncomplete =
-    artifactHealth?.current != null &&
-    !["complete", "not_applicable"].includes(artifactHealth.current.status);
-  if (baseIncomplete && currentIncomplete)
-    return "base and current environments";
-  if (baseIncomplete) return "base environment";
-  if (currentIncomplete) return "current environment";
   return "base/current environments";
-}
-
-function uncheckedNodeText(coverage: SchemaCoverage): string {
-  if (coverage.status === "unknown" && coverage.unchecked_node_count === 0) {
-    return "The number of unchecked nodes is unknown.";
-  }
-  const noun = coverage.unchecked_node_count === 1 ? "node was" : "nodes were";
-  return `${coverage.unchecked_node_count} ${noun} not checked.`;
 }
 
 function PrivateSingleEnvSchemaView(
@@ -572,7 +555,7 @@ export function PrivateSchemaView(
           sx={{ fontSize: "0.75rem", p: 1 }}
         >
           Schema comparison incomplete for the {affectedEnvironmentText}.{" "}
-          {uncheckedNodeText(schemaCoverage)} Regenerate the{" "}
+          {formatUncheckedNodeText(schemaCoverage)} Regenerate the{" "}
           {affectedCatalogText} with <code>dbt docs generate</code>, then rerun
           the comparison.
         </MuiAlert>

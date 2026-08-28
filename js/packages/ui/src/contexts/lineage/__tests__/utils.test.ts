@@ -76,6 +76,68 @@ describe("buildLineageGraph", () => {
     expect(buildLineageGraph(lineage).schemaCoverage?.status).toBe("unknown");
   });
 
+  test.each([
+    {
+      name: "complete status with unchecked nodes",
+      coverage: {
+        status: "complete",
+        unchecked_nodes: ["model.proj.orders"],
+        unchecked_node_count: 1,
+        more: false,
+      },
+    },
+    {
+      name: "partial status with no unchecked nodes",
+      coverage: {
+        status: "partial",
+        unchecked_nodes: [],
+        unchecked_node_count: 0,
+        more: false,
+      },
+    },
+    {
+      name: "truncated sample without the more marker",
+      coverage: {
+        status: "partial",
+        unchecked_nodes: ["model.proj.orders"],
+        unchecked_node_count: 2,
+        more: false,
+      },
+    },
+    {
+      name: "complete sample with the more marker",
+      coverage: {
+        status: "partial",
+        unchecked_nodes: ["model.proj.orders"],
+        unchecked_node_count: 1,
+        more: true,
+      },
+    },
+    {
+      name: "unknown status with unchecked nodes",
+      coverage: {
+        status: "unknown",
+        unchecked_nodes: ["model.proj.orders"],
+        unchecked_node_count: 1,
+        more: false,
+      },
+    },
+  ])("treats contradictory coverage as unknown: $name", ({ coverage }) => {
+    const lineage = {
+      nodes: {},
+      edges: [],
+      metadata: { base: {}, current: {} },
+      schema_coverage: coverage,
+    } as unknown as MergedLineageResponse;
+
+    expect(buildLineageGraph(lineage).schemaCoverage).toEqual({
+      status: "unknown",
+      unchecked_nodes: [],
+      unchecked_node_count: 0,
+      more: false,
+    });
+  });
+
   test("builds graph with correct node and edge counts", () => {
     const lineage: MergedLineageResponse = {
       nodes: {
