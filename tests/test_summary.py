@@ -4,7 +4,6 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
-from dbt.flags import get_flags
 
 from recce.adapter.dbt_adapter import DbtAdapter, DbtVersion, load_manifest
 from recce.core import RecceContext, set_default_context
@@ -18,6 +17,7 @@ from recce.summary import (
     generate_mermaid_lineage_graph,
     generate_summary_metadata,
 )
+from tests.dbt_flags import temporarily_set_state_modified_compare_flag
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 base_manifest_dir = os.path.join(current_dir, "data", "manifest", "base")
@@ -27,15 +27,9 @@ pr2_manifest_dir = os.path.join(current_dir, "data", "manifest", "pr2")  # Pull 
 @pytest.fixture
 def dbt_state_modified_flag():
     """Supply the dbt 1.12 flag absent from the repository's older fixtures."""
-    flags = get_flags()
-    had_flag = hasattr(flags, "state_modified_compare_more_unrendered_values")
-    previous_flag = getattr(flags, "state_modified_compare_more_unrendered_values", None)
-    flags.state_modified_compare_more_unrendered_values = False
+    restore = temporarily_set_state_modified_compare_flag()
     yield
-    if had_flag:
-        flags.state_modified_compare_more_unrendered_values = previous_flag
-    else:
-        del flags.state_modified_compare_more_unrendered_values
+    restore()
 
 
 def test_generate_summary_metadata():

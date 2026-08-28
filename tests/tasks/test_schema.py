@@ -3,13 +3,13 @@ from unittest import TestCase
 from unittest.mock import MagicMock
 
 import pytest
-from dbt.flags import get_flags
 
 from recce.adapter.dbt_adapter import DbtAdapter, load_catalog, load_manifest
 from recce.core import RecceContext, set_default_context
 from recce.models import Check
 from recce.run import schema_diff_should_be_approved
 from recce.tasks.schema import SchemaDiffResultDiffer
+from tests.dbt_flags import temporarily_set_state_modified_compare_flag
 
 
 def test_validator():
@@ -85,18 +85,7 @@ class TestSchemaDiffAutoApprove(TestCase):
 
     def setUp(self):
         self.default_context = MagicMock(spec=RecceContext)
-        flags = get_flags()
-        had_flag = hasattr(flags, "state_modified_compare_more_unrendered_values")
-        previous_flag = getattr(flags, "state_modified_compare_more_unrendered_values", None)
-        flags.state_modified_compare_more_unrendered_values = False
-
-        def restore_flag():
-            if had_flag:
-                flags.state_modified_compare_more_unrendered_values = previous_flag
-            else:
-                del flags.state_modified_compare_more_unrendered_values
-
-        self.addCleanup(restore_flag)
+        self.addCleanup(temporarily_set_state_modified_compare_flag())
         manifest = load_manifest(path=os.path.join(test_root_path, "manifest.json"))
         catalog = load_catalog(path=os.path.join(test_root_path, "catalog.json"))
         dbt_adapter = DbtAdapter(curr_manifest=manifest, curr_catalog=catalog)
