@@ -49,3 +49,21 @@ def test_recce_context_propagates_duckdb_external_access():
         )
 
     assert ctx.adapter.duckdb_external_access is True
+
+
+def test_get_lineage_catalog_status_marks_missing_current_model_unchecked(dbt_test_helper):
+    """Catalog membership, not timestamps, controls current-side coverage."""
+    node_id = "model.recce_test.not_cataloged"
+    dbt_test_helper.create_model(
+        "not_cataloged",
+        base_sql="select 1 as id",
+        curr_sql="select 1 as id",
+        unique_id=node_id,
+        base_columns={"id": "integer"},
+    )
+
+    lineage = dbt_test_helper.adapter.get_lineage()
+
+    assert lineage["nodes"][node_id]["catalog_status"] == "unchecked"
+    assert lineage["artifact_health"]["missing_node_count"] >= 1
+    assert "covered_node_ids" not in lineage["artifact_health"]

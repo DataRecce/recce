@@ -55,7 +55,7 @@ def _build_info_payload(adapter: BaseAdapter, lineage_diff: LineageDiff) -> dict
     merged_lineage = build_merged_lineage(lineage_diff)
     return {
         "adapter_type": _resolve_adapter_type(adapter),
-        "lineage": merged_lineage.model_dump(exclude_none=True, by_alias=True),
+        "lineage": merged_lineage.model_dump(mode="json", exclude_none=True, by_alias=True),
     }
 
 

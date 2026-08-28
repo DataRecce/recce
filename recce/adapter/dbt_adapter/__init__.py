@@ -62,6 +62,7 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 from recce.adapter.base import BaseAdapter
+from recce.artifact_health import artifact_health_payload, classify_artifact_health
 from recce.state import ArtifactsRoot
 
 from ...models import RunType
@@ -820,6 +821,8 @@ class DbtAdapter(BaseAdapter):
         catalog_metadata = catalog.metadata if catalog is not None else None
 
         manifest_dict = manifest.to_dict()
+        catalog_dict = catalog.to_dict() if catalog is not None else None
+        artifact_health = artifact_health_payload(classify_artifact_health(manifest_dict, catalog_dict))
 
         nodes = {}
 
@@ -839,6 +842,7 @@ class DbtAdapter(BaseAdapter):
                 "config": node["config"],
                 "checksum": node["checksum"],
                 "raw_code": node["raw_code"],
+                "catalog_status": "covered" if catalog is not None and unique_id in catalog.nodes else "unchecked",
             }
 
             # List of <type>.<package_name>.<node_name>.<hash>
@@ -892,6 +896,7 @@ class DbtAdapter(BaseAdapter):
                 "resource_type": source["resource_type"],
                 "package_name": source["package_name"],
                 "config": source["config"],
+                "catalog_status": "covered" if catalog is not None and unique_id in catalog.sources else "unchecked",
             }
 
             if catalog is not None and unique_id in catalog.sources:
@@ -907,6 +912,7 @@ class DbtAdapter(BaseAdapter):
                 "resource_type": exposure["resource_type"],
                 "package_name": exposure["package_name"],
                 "config": exposure["config"],
+                "catalog_status": "not_applicable",
             }
         for metric in manifest_dict["metrics"].values():
             nodes[metric["unique_id"]] = {
@@ -915,6 +921,7 @@ class DbtAdapter(BaseAdapter):
                 "resource_type": metric["resource_type"],
                 "package_name": metric["package_name"],
                 "config": metric["config"],
+                "catalog_status": "not_applicable",
             }
 
         if "semantic_models" in manifest_dict:
@@ -925,6 +932,7 @@ class DbtAdapter(BaseAdapter):
                     "resource_type": semantic_models["resource_type"],
                     "package_name": semantic_models["package_name"],
                     "config": semantic_models["config"],
+                    "catalog_status": "not_applicable",
                 }
 
         parent_map = self.build_parent_map(nodes, base)
@@ -940,6 +948,7 @@ class DbtAdapter(BaseAdapter):
             nodes=nodes,
             manifest_metadata=manifest_metadata,
             catalog_metadata=catalog_metadata,
+            artifact_health=artifact_health,
         )
 
     @lru_cache(maxsize=1)

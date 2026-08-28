@@ -233,6 +233,37 @@ class LineageDiff(BaseModel):
     diff: dict[str, NodeDiff]
 
 
+class ArtifactHealthPayload(BaseModel):
+    """Bounded public summary of one side's manifest/catalog health."""
+
+    status: Literal["complete", "partial", "empty", "absent", "not_applicable", "unknown"]
+    expected_count: int
+    covered_count: int
+    catalog_entry_count: int
+    missing_node_count: int
+    missing_nodes: list[str]
+    missing_more: bool
+    orphan_node_count: int
+    orphan_nodes: list[str]
+    orphan_more: bool
+
+
+class ArtifactHealthPair(BaseModel):
+    """Artifact-health summaries for the base and current environments."""
+
+    base: ArtifactHealthPayload | None = None
+    current: ArtifactHealthPayload | None = None
+
+
+class SchemaCoveragePayload(BaseModel):
+    """Bounded summary of schema-comparison coverage when it is available."""
+
+    status: Literal["complete", "partial", "unknown"]
+    unchecked_nodes: list[str]
+    unchecked_node_count: int
+    more: bool
+
+
 class MergedNode(BaseModel):
     """A single node in the merged lineage wire-format response.
 
@@ -254,6 +285,7 @@ class MergedNode(BaseModel):
     source_name: str | None = None
     change_status: ChangeStatus | None = None
     change: NodeChange | None = None
+    schema_comparison_status: Literal["complete", "unchecked", "not_applicable"] | None = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -275,6 +307,8 @@ class MergedLineage(BaseModel):
     nodes: dict[str, MergedNode]
     edges: list[MergedEdge]
     metadata: dict[str, Any]
+    artifact_health: ArtifactHealthPair | None = None
+    schema_coverage: SchemaCoveragePayload | None = None
 
 
 # Column Level Linage

@@ -56,6 +56,20 @@ def build_merged_lineage(lineage_diff: LineageDiff) -> MergedLineage:
             merged.change_status = node_diff.change_status
             merged.change = node_diff.change
 
+        if base_node is None or current_node is None:
+            merged.schema_comparison_status = "not_applicable"
+        else:
+            base_catalog_status = base_node.get("catalog_status")
+            current_catalog_status = current_node.get("catalog_status")
+            if base_catalog_status == current_catalog_status == "not_applicable":
+                merged.schema_comparison_status = "not_applicable"
+            elif base_catalog_status == current_catalog_status == "covered":
+                merged.schema_comparison_status = "complete"
+            else:
+                # Missing markers from old producers are deliberately unchecked:
+                # absent evidence must never be upgraded to a complete comparison.
+                merged.schema_comparison_status = "unchecked"
+
         nodes[node_id] = merged
 
     # 2. Compute edges from dual parent_maps
@@ -100,4 +114,13 @@ def build_merged_lineage(lineage_diff: LineageDiff) -> MergedLineage:
         },
     }
 
-    return MergedLineage(nodes=nodes, edges=edges, metadata=metadata)
+    base_artifact_health = base.get("artifact_health")
+    current_artifact_health = current.get("artifact_health")
+    artifact_health = None
+    if base_artifact_health is not None or current_artifact_health is not None:
+        artifact_health = {
+            "base": base_artifact_health,
+            "current": current_artifact_health,
+        }
+
+    return MergedLineage(nodes=nodes, edges=edges, metadata=metadata, artifact_health=artifact_health)

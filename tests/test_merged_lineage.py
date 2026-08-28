@@ -144,6 +144,21 @@ class TestMergedLineage:
         assert len(lineage.edges) == 1
         assert lineage.metadata["generated_at"] == "2024-01-01"
 
+    def test_artifact_health_serializes_only_bounded_public_payload(self):
+        health = _artifact_health("partial")
+        lineage = MergedLineage(
+            nodes={},
+            edges=[],
+            metadata={},
+            artifact_health={"base": health, "current": health},
+        )
+
+        wire = lineage.model_dump(exclude_none=True, mode="json")
+
+        assert wire["artifact_health"] == {"base": health, "current": health}
+        assert "expected_node_ids" not in str(wire)
+        assert "covered_node_ids" not in str(wire)
+
 
 def _make_lineage_diff(
     *,
@@ -175,7 +190,70 @@ def _make_lineage_diff(
     return LineageDiff(base=base, current=current, diff=node_diffs)
 
 
+def _artifact_health(status: str, **counts: int) -> dict:
+    """Build the bounded public artifact-health payload produced by adapters."""
+    return {
+        "status": status,
+        "expected_count": counts.get("expected_count", 1),
+        "covered_count": counts.get("covered_count", 0),
+        "catalog_entry_count": counts.get("catalog_entry_count", 0),
+        "missing_node_count": counts.get("missing_node_count", 1),
+        "missing_nodes": counts.get("missing_nodes", ["model.pkg.unchecked"]),
+        "missing_more": counts.get("missing_more", False),
+        "orphan_node_count": counts.get("orphan_node_count", 0),
+        "orphan_nodes": counts.get("orphan_nodes", []),
+        "orphan_more": counts.get("orphan_more", False),
+    }
+
+
 class TestBuildMergedLineageNodes:
+
+    def test_side_artifact_health_blocks_survive_the_merge(self):
+        base_health = _artifact_health("complete", covered_count=1, missing_node_count=0, missing_nodes=[])
+        current_health = _artifact_health("partial")
+        ld = _make_lineage_diff()
+        ld.base["artifact_health"] = base_health
+        ld.current["artifact_health"] = current_health
+
+        merged = build_merged_lineage(ld)
+
+        assert merged.artifact_health.model_dump(exclude_none=True) == {
+            "base": base_health,
+            "current": current_health,
+        }
+
+    def test_both_uncovered_manifest_nodes_are_schema_unchecked(self):
+        node = {
+            "name": "unchecked",
+            "resource_type": "model",
+            "package_name": "pkg",
+            "catalog_status": "unchecked",
+        }
+        ld = _make_lineage_diff(
+            base_nodes={"model.pkg.unchecked": node},
+            current_nodes={"model.pkg.unchecked": node},
+        )
+
+        merged = build_merged_lineage(ld).nodes["model.pkg.unchecked"]
+
+        assert merged.schema_comparison_status == "unchecked"
+
+    def test_one_sided_removal_preserves_structural_change_status(self):
+        node = {
+            "name": "removed",
+            "resource_type": "model",
+            "package_name": "pkg",
+            "catalog_status": "covered",
+        }
+        ld = _make_lineage_diff(
+            base_nodes={"model.pkg.removed": node},
+            diff={"model.pkg.removed": {"change_status": "removed"}},
+        )
+
+        merged = build_merged_lineage(ld).nodes["model.pkg.removed"]
+
+        assert merged.change_status == "removed"
+        assert merged.schema_comparison_status == "not_applicable"
 
     def test_unchanged_node_in_both_envs(self):
         node = {"name": "a", "resource_type": "model", "package_name": "pkg", "schema": "public", "id": "model.pkg.a"}
