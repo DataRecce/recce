@@ -1,5 +1,6 @@
 "use client";
 
+import MuiAlert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -20,6 +21,20 @@ interface SchemaDiffCardProps {
   node: LineageGraphNode;
 }
 
+function affectedCatalogs(lineageGraph: LineageGraph): string {
+  const baseStatus = lineageGraph.artifactHealth?.base?.status;
+  const currentStatus = lineageGraph.artifactHealth?.current?.status;
+  const baseIncomplete =
+    baseStatus != null && !["complete", "not_applicable"].includes(baseStatus);
+  const currentIncomplete =
+    currentStatus != null &&
+    !["complete", "not_applicable"].includes(currentStatus);
+  if (baseIncomplete && currentIncomplete) return "base and current catalogs";
+  if (baseIncomplete) return "base catalog";
+  if (currentIncomplete) return "current catalog";
+  return "affected base/current catalogs";
+}
+
 function SchemaDiffCard({ node, ...props }: SchemaDiffCardProps) {
   const { apiClient } = useApiConfig();
 
@@ -35,7 +50,7 @@ function SchemaDiffCard({ node, ...props }: SchemaDiffCardProps) {
     <Card sx={{ maxWidth: 500 }}>
       <CardHeader
         title={
-          <Typography sx={{ fontSize: 18, fontWeight: "bold" }}>
+          <Typography sx={{ fontSize: "1.125rem", fontWeight: "bold" }}>
             {props.title}
           </Typography>
         }
@@ -116,6 +131,21 @@ export function SchemaSummary({ lineageGraph }: SchemaSummaryProps) {
     setChangedNodes(listChangedNodes(lineageGraph));
   }, [lineageGraph]);
 
+  const schemaCoverage = lineageGraph.schemaCoverage ?? {
+    status: "unknown",
+    unchecked_nodes: [],
+    unchecked_node_count: 0,
+    more: false,
+  };
+  const comparisonIncomplete = schemaCoverage.status !== "complete";
+  const uncheckedText =
+    schemaCoverage.status === "unknown" &&
+    schemaCoverage.unchecked_node_count === 0
+      ? "The number of unchecked nodes is unknown."
+      : `${schemaCoverage.unchecked_node_count} ${
+          schemaCoverage.unchecked_node_count === 1 ? "node was" : "nodes were"
+        } not checked.`;
+
   return (
     <>
       <Box
@@ -126,15 +156,28 @@ export function SchemaSummary({ lineageGraph }: SchemaSummaryProps) {
           mt: "20px",
         }}
       >
-        <Typography variant="h5" sx={{ fontSize: 24 }}>
+        <Typography variant="h5" sx={{ fontSize: "1.5rem" }}>
           Schema Summary
         </Typography>
       </Box>
       <Box sx={{ width: "100%", pb: "10px", mb: "20px" }}>
+        {comparisonIncomplete && (
+          <MuiAlert
+            severity="warning"
+            aria-label="Incomplete schema comparison"
+            sx={{ fontSize: "0.875rem", mb: 2 }}
+          >
+            Schema comparison incomplete. {uncheckedText} Regenerate the{" "}
+            {affectedCatalogs(lineageGraph)} with <code>dbt docs generate</code>
+            , then rerun the comparison.
+          </MuiAlert>
+        )}
         {changedNodes.length === 0 ? (
-          <Typography sx={{ fontSize: 18, color: "grey.600" }}>
-            No schema changes detected.
-          </Typography>
+          !comparisonIncomplete && (
+            <Typography sx={{ fontSize: "1.125rem", color: "grey.600" }}>
+              No schema changes detected.
+            </Typography>
+          )
         ) : (
           <Box
             sx={{

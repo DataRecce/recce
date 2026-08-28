@@ -2,10 +2,12 @@ import type { Edge, Node } from "@xyflow/react";
 import type React from "react";
 import type { CllInput, ColumnLineageData } from "../../api/cll";
 import type {
+  ArtifactHealthPair,
   CatalogMetadata,
   GitInfo,
   ManifestMetadata,
   PullRequestInfo,
+  SchemaCoverage,
   SQLMeshInfo,
   StateMetadata,
 } from "../../api/info";
@@ -51,6 +53,11 @@ export type LineageGraphNode = Node<
       category: "breaking" | "non_breaking" | "partial_breaking" | "unknown";
       columns?: Record<string, "added" | "removed" | "modified" | "unknown">;
     };
+    schemaComparisonStatus?:
+      | "complete"
+      | "unchecked"
+      | "not_applicable"
+      | "unknown";
     parents: Record<string, LineageGraphEdge>;
     children: Record<string, LineageGraphEdge>;
   },
@@ -104,6 +111,8 @@ export interface LineageGraph {
     base?: CatalogMetadata;
     current?: CatalogMetadata;
   };
+  artifactHealth?: ArtifactHealthPair | null;
+  schemaCoverage?: SchemaCoverage;
 }
 
 /**

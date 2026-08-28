@@ -5,6 +5,8 @@ export const VERSION = "0.2.0";
 
 // API utilities
 export type {
+  ArtifactHealth,
+  ArtifactHealthPair,
   CatalogMetadata,
   GitInfo,
   LineageData,
@@ -22,6 +24,7 @@ export type {
   RecceInstanceInfo,
   RecceServerFlags,
   RunsAggregated,
+  SchemaCoverage,
   ServerInfoResult,
   ServerMode,
   SQLMeshInfo,

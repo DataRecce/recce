@@ -77,6 +77,12 @@ export interface SchemaDataGridOptions {
    * the `inline_profile` flag is off or the adapter is unsupported.
    */
   distribution?: SchemaDistributionData;
+  /** Whether this model's two catalog schemas were actually comparable. */
+  schemaComparisonStatus?:
+    | "complete"
+    | "unchecked"
+    | "not_applicable"
+    | "unknown";
 }
 
 export interface SchemaDataGridResult {
@@ -154,6 +160,7 @@ export function toSchemaDataGrid(
     impactedColumns,
     nodeId,
     distribution,
+    schemaComparisonStatus,
   } = options;
 
   const columns: ColDef<SchemaDiffRow>[] = [
@@ -208,7 +215,18 @@ export function toSchemaDataGrid(
     });
   }
 
-  const rows = Object.values(schemaDiff);
+  const comparisonIncomplete =
+    schemaComparisonStatus === "unchecked" ||
+    schemaComparisonStatus === "unknown";
+  const rows = Object.values(schemaDiff).filter((row) => {
+    if (!comparisonIncomplete) return true;
+    return (
+      row.baseIndex !== undefined &&
+      row.currentIndex !== undefined &&
+      row.baseType === row.currentType &&
+      !row.reordered
+    );
+  });
 
   // Mark columns whose SQL definition changed but have no other visible change
   if (columnChanges) {

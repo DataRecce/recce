@@ -19,36 +19,59 @@ import type { NodeData } from "../../../api";
 import { theme } from "../../../theme";
 import { SchemaView } from "../SchemaView";
 
-const { flags, distribution, lineageViewContext } = vi.hoisted(() => ({
-  flags: {
-    current: { new_cll_experience: true, inline_profile: true } as Record<
-      string,
-      boolean
-    >,
-  },
-  // biome-ignore lint/suspicious/noExplicitAny: minimal hook-return stub
-  distribution: { current: {} as any },
-  lineageViewContext: {
-    current: {
-      impactedColumnIds: new Set<string>(),
-      wholeModelChangedNodeIds: new Set<string>(),
-      viewOptions: {},
-      showColumnLevelLineage: vi.fn(),
-    } as unknown,
-  },
-}));
+const { flags, distribution, lineageGraph, lineageViewContext } = vi.hoisted(
+  () => ({
+    flags: {
+      current: { new_cll_experience: true, inline_profile: true } as Record<
+        string,
+        boolean
+      >,
+    },
+    distribution: { current: {} as Record<string, unknown> },
+    lineageGraph: {
+      current: {
+        nodes: {},
+        catalogMetadata: { base: {}, current: {} },
+        schemaCoverage: {
+          status: "complete",
+          unchecked_nodes: [],
+          unchecked_node_count: 0,
+          more: false,
+        },
+      } as unknown,
+    },
+    lineageViewContext: {
+      current: {
+        impactedColumnIds: new Set<string>(),
+        wholeModelChangedNodeIds: new Set<string>(),
+        viewOptions: {},
+        showColumnLevelLineage: vi.fn(),
+      } as unknown,
+    },
+  }),
+);
 
 vi.mock("../../../contexts", () => ({
   useRecceServerFlag: () => ({ data: flags.current }),
   useLineageViewContext: () => lineageViewContext.current,
   useLineageGraphContext: () => ({
-    lineageGraph: { catalogMetadata: { base: {}, current: {} } },
+    lineageGraph: lineageGraph.current,
     isActionAvailable: () => true,
   }),
 }));
 
 vi.mock("../../../hooks/useInlineProfileDistribution", () => ({
   useInlineProfileDistribution: () => distribution.current,
+}));
+
+vi.mock("ag-grid-react", () => ({
+  AgGridReact: ({ rowData = [] }: { rowData?: Array<{ name: string }> }) => (
+    <div>
+      {rowData.map((row) => (
+        <span key={row.name}>{row.name}</span>
+      ))}
+    </div>
+  ),
 }));
 
 const model = (id: string): NodeData =>
@@ -79,6 +102,113 @@ beforeEach(() => {
     error: undefined,
     isLoading: false,
   };
+  lineageGraph.current = {
+    nodes: {},
+    catalogMetadata: { base: {}, current: {} },
+    schemaCoverage: {
+      status: "complete",
+      unchecked_nodes: [],
+      unchecked_node_count: 0,
+      more: false,
+    },
+  };
+});
+
+describe("SchemaView comparison coverage", () => {
+  it("labels an unchecked current-side comparison and renders no removed row", () => {
+    const nodeId = "model.shop.orders";
+    const base = {
+      ...model(nodeId),
+      columns: {
+        id: { name: "id", type: "INT" },
+        legacy: { name: "legacy", type: "VARCHAR" },
+      },
+    };
+    const current = {
+      ...model(nodeId),
+      columns: { id: { name: "id", type: "INT" } },
+    };
+    lineageGraph.current = {
+      nodes: {
+        [nodeId]: {
+          data: { schemaComparisonStatus: "unchecked" },
+        },
+      },
+      catalogMetadata: { base: {}, current: {} },
+      artifactHealth: {
+        base: {
+          status: "complete",
+          expected_count: 1,
+          covered_count: 1,
+          catalog_entry_count: 1,
+          missing_node_count: 0,
+          missing_nodes: [],
+          missing_more: false,
+          orphan_node_count: 0,
+          orphan_nodes: [],
+          orphan_more: false,
+        },
+        current: {
+          status: "partial",
+          expected_count: 1,
+          covered_count: 0,
+          catalog_entry_count: 0,
+          missing_node_count: 1,
+          missing_nodes: [nodeId],
+          missing_more: false,
+          orphan_node_count: 0,
+          orphan_nodes: [],
+          orphan_more: false,
+        },
+      },
+      schemaCoverage: {
+        status: "partial",
+        unchecked_nodes: [nodeId],
+        unchecked_node_count: 1,
+        more: false,
+      },
+    };
+
+    // Render explicit base/current evidence rather than the helper's identical pair.
+    render(
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <SchemaView base={base as NodeData} current={current as NodeData} />
+      </ThemeProvider>,
+    );
+
+    const warning = screen.getByRole("alert", {
+      name: "Incomplete schema comparison",
+    });
+    expect(warning).toHaveTextContent("current environment");
+    expect(warning).toHaveTextContent("1 node was not checked");
+    expect(warning).toHaveTextContent("Regenerate the current catalog");
+    expect(warning).toHaveTextContent("dbt docs generate");
+    expect(screen.getByText("id")).toBeInTheDocument();
+    expect(screen.queryByText("legacy")).not.toBeInTheDocument();
+  });
+
+  it("renders no comparison warning for complete healthy evidence", () => {
+    const nodeId = "model.shop.orders";
+    lineageGraph.current = {
+      nodes: {
+        [nodeId]: { data: { schemaComparisonStatus: "complete" } },
+      },
+      catalogMetadata: { base: {}, current: {} },
+      schemaCoverage: {
+        status: "complete",
+        unchecked_nodes: [],
+        unchecked_node_count: 0,
+        more: false,
+      },
+    };
+
+    render(wrap(model(nodeId)));
+
+    expect(
+      screen.queryByRole("alert", { name: "Incomplete schema comparison" }),
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe("SchemaView inline-profile wiring", () => {

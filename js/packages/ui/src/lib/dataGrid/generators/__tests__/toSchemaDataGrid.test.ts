@@ -282,6 +282,40 @@ describe("toSchemaDataGrid - Column Structure", () => {
 // ============================================================================
 
 describe("toSchemaDataGrid - Row Generation", () => {
+  test("suppresses unverified added, removed, and type-changed rows", () => {
+    const schemaDiff = mergeColumns(
+      createColumns({
+        stable: "INT",
+        removed: "VARCHAR",
+        changed: "INT",
+      }),
+      createColumns({
+        stable: "INT",
+        added: "VARCHAR",
+        changed: "DECIMAL",
+      }),
+    );
+
+    const { rows } = toSchemaDataGrid(schemaDiff, {
+      schemaComparisonStatus: "unchecked",
+    });
+
+    expect(rows.map((row) => row.name)).toEqual(["stable"]);
+  });
+
+  test("retains verified differences for a complete model", () => {
+    const schemaDiff = mergeColumns(
+      createColumns({ stable: "INT", removed: "VARCHAR" }),
+      createColumns({ stable: "INT", added: "VARCHAR" }),
+    );
+
+    const { rows } = toSchemaDataGrid(schemaDiff, {
+      schemaComparisonStatus: "complete",
+    });
+
+    expect(rows.map((row) => row.name)).toEqual(["stable", "removed", "added"]);
+  });
+
   test("returns rows from schemaDiff", () => {
     const schemaDiff = mergeColumns(
       createColumns({ id: "INT", name: "VARCHAR" }),

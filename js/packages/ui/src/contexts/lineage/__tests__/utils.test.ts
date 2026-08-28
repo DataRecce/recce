@@ -2,6 +2,80 @@ import type { MergedLineageResponse } from "../../../api/info";
 import { buildLineageGraph } from "../utils";
 
 describe("buildLineageGraph", () => {
+  test("treats legacy lineage evidence as unknown", () => {
+    const lineage: MergedLineageResponse = {
+      nodes: {
+        "model.proj.orders": {
+          name: "orders",
+          resource_type: "model",
+          package_name: "proj",
+        },
+      },
+      edges: [],
+      metadata: { base: {}, current: {} },
+    };
+
+    const graph = buildLineageGraph(lineage);
+
+    expect(graph.schemaCoverage).toEqual({
+      status: "unknown",
+      unchecked_nodes: [],
+      unchecked_node_count: 0,
+      more: false,
+    });
+    expect(graph.nodes["model.proj.orders"].data.schemaComparisonStatus).toBe(
+      "unknown",
+    );
+  });
+
+  test("keeps verified nodes when another model is unchecked", () => {
+    const lineage: MergedLineageResponse = {
+      nodes: {
+        "model.proj.orders": {
+          name: "orders",
+          resource_type: "model",
+          package_name: "proj",
+          schema_comparison_status: "complete",
+        },
+        "model.proj.customers": {
+          name: "customers",
+          resource_type: "model",
+          package_name: "proj",
+          schema_comparison_status: "unchecked",
+        },
+      },
+      edges: [],
+      metadata: { base: {}, current: {} },
+      schema_coverage: {
+        status: "partial",
+        unchecked_nodes: ["model.proj.customers"],
+        unchecked_node_count: 1,
+        more: false,
+      },
+    };
+
+    const graph = buildLineageGraph(lineage);
+
+    expect(graph.schemaCoverage?.status).toBe("partial");
+    expect(graph.nodes["model.proj.orders"].data.schemaComparisonStatus).toBe(
+      "complete",
+    );
+    expect(
+      graph.nodes["model.proj.customers"].data.schemaComparisonStatus,
+    ).toBe("unchecked");
+  });
+
+  test("treats malformed coverage as unknown", () => {
+    const lineage = {
+      nodes: {},
+      edges: [],
+      metadata: { base: {}, current: {} },
+      schema_coverage: { status: "complete" },
+    } as unknown as MergedLineageResponse;
+
+    expect(buildLineageGraph(lineage).schemaCoverage?.status).toBe("unknown");
+  });
+
   test("builds graph with correct node and edge counts", () => {
     const lineage: MergedLineageResponse = {
       nodes: {

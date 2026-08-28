@@ -18,7 +18,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import type { NodeData } from "../../api";
+import type { ArtifactHealthPair, NodeData, SchemaCoverage } from "../../api";
 import {
   useLineageGraphContext,
   useLineageViewContext,
@@ -87,6 +87,39 @@ interface SchemaViewProps {
   onViewCode?: () => void;
   /** Optional action element rendered next to the legend (e.g. add-to-checklist button) */
   headerAction?: ReactNode;
+}
+
+function affectedEnvironment(
+  artifactHealth: ArtifactHealthPair | null | undefined,
+  nodeId: string | undefined,
+): string {
+  const baseAffected =
+    artifactHealth?.base?.missing_nodes.includes(nodeId ?? "") ?? false;
+  const currentAffected =
+    artifactHealth?.current?.missing_nodes.includes(nodeId ?? "") ?? false;
+  if (baseAffected && currentAffected) return "base and current environments";
+  if (baseAffected) return "base environment";
+  if (currentAffected) return "current environment";
+
+  const baseIncomplete =
+    artifactHealth?.base != null &&
+    !["complete", "not_applicable"].includes(artifactHealth.base.status);
+  const currentIncomplete =
+    artifactHealth?.current != null &&
+    !["complete", "not_applicable"].includes(artifactHealth.current.status);
+  if (baseIncomplete && currentIncomplete)
+    return "base and current environments";
+  if (baseIncomplete) return "base environment";
+  if (currentIncomplete) return "current environment";
+  return "base/current environments";
+}
+
+function uncheckedNodeText(coverage: SchemaCoverage): string {
+  if (coverage.status === "unknown" && coverage.unchecked_node_count === 0) {
+    return "The number of unchecked nodes is unknown.";
+  }
+  const noun = coverage.unchecked_node_count === 1 ? "node was" : "nodes were";
+  return `${coverage.unchecked_node_count} ${noun} not checked.`;
 }
 
 function PrivateSingleEnvSchemaView(
@@ -184,11 +217,11 @@ function PrivateSingleEnvSchemaView(
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {catalogMissingMessage ? (
-        <MuiAlert severity="warning" sx={{ fontSize: "12px", p: 1 }}>
+        <MuiAlert severity="warning" sx={{ fontSize: "0.75rem", p: 1 }}>
           {catalogMissingMessage}
         </MuiAlert>
       ) : schemaMissingMessage ? (
-        <MuiAlert severity="warning" sx={{ fontSize: "12px", p: 1 }}>
+        <MuiAlert severity="warning" sx={{ fontSize: "0.75rem", p: 1 }}>
           {schemaMissingMessage}
         </MuiAlert>
       ) : (
@@ -201,7 +234,7 @@ function PrivateSingleEnvSchemaView(
             blockSize: "auto",
             maxHeight: "100%",
             overflow: "auto",
-            fontSize: "10pt",
+            fontSize: "0.833rem",
             borderWidth: 1,
           }}
           columns={columns}
@@ -267,6 +300,31 @@ export function PrivateSchemaView(
       : undefined;
   }, [current, base]);
   const nodeId = current?.id ?? base?.id;
+  const { lineageGraph, isActionAvailable } = useLineageGraphContext();
+  const schemaComparisonStatus = nodeId
+    ? (lineageGraph?.nodes[nodeId]?.data.schemaComparisonStatus ?? "unknown")
+    : "not_applicable";
+  const schemaCoverage = lineageGraph?.schemaCoverage ?? {
+    status: "unknown",
+    unchecked_nodes: [],
+    unchecked_node_count: 0,
+    more: false,
+  };
+  const comparisonIncomplete =
+    schemaComparisonStatus === "unchecked" ||
+    schemaComparisonStatus === "unknown";
+  const affectedEnvironmentText = affectedEnvironment(
+    lineageGraph?.artifactHealth,
+    nodeId,
+  );
+  const affectedCatalogText =
+    affectedEnvironmentText === "base environment"
+      ? "base catalog"
+      : affectedEnvironmentText === "current environment"
+        ? "current catalog"
+        : affectedEnvironmentText === "base and current environments"
+          ? "base and current catalogs"
+          : "base/current catalogs";
 
   // This node's own column names (base ∪ current), used to attribute impacted
   // ids to this node by exact `<nodeId>_<column>` membership in the scoping
@@ -370,6 +428,7 @@ export function PrivateSchemaView(
         impactedColumns,
         nodeId,
         distribution: distributionData,
+        schemaComparisonStatus,
       },
     );
   }, [
@@ -383,9 +442,9 @@ export function PrivateSchemaView(
     onViewCode,
     impactedColumns,
     distributionData,
+    schemaComparisonStatus,
   ]);
 
-  const { lineageGraph, isActionAvailable } = useLineageGraphContext();
   const changeAnalysisAvailable = isActionAvailable("change_analysis");
   const noCatalogBase = !lineageGraph?.catalogMetadata.base;
   const noCatalogCurrent = !lineageGraph?.catalogMetadata.current;
@@ -506,12 +565,23 @@ export function PrivateSchemaView(
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      {catalogMissingMessage ? (
-        <MuiAlert severity="warning" sx={{ fontSize: "12px", p: 1 }}>
+      {comparisonIncomplete ? (
+        <MuiAlert
+          severity="warning"
+          aria-label="Incomplete schema comparison"
+          sx={{ fontSize: "0.75rem", p: 1 }}
+        >
+          Schema comparison incomplete for the {affectedEnvironmentText}.{" "}
+          {uncheckedNodeText(schemaCoverage)} Regenerate the{" "}
+          {affectedCatalogText} with <code>dbt docs generate</code>, then rerun
+          the comparison.
+        </MuiAlert>
+      ) : catalogMissingMessage ? (
+        <MuiAlert severity="warning" sx={{ fontSize: "0.75rem", p: 1 }}>
           {catalogMissingMessage}
         </MuiAlert>
       ) : schemaMissingMessage ? (
-        <MuiAlert severity="warning" sx={{ fontSize: "12px", p: 1 }}>
+        <MuiAlert severity="warning" sx={{ fontSize: "0.75rem", p: 1 }}>
           {schemaMissingMessage}
         </MuiAlert>
       ) : (

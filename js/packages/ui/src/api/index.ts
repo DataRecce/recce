@@ -62,6 +62,8 @@ export type { RecceServerFlags } from "./flag";
 export { getServerFlag, markRelaunchHintCompleted } from "./flag";
 // Server info API (lineage, environment, dbt metadata)
 export type {
+  ArtifactHealth,
+  ArtifactHealthPair,
   CatalogCoverage,
   CatalogMetadata,
   GitInfo,
@@ -78,6 +80,7 @@ export type {
   NodeColumnData,
   NodeData,
   PullRequestInfo,
+  SchemaCoverage,
   ServerInfoResult,
   SessionStaleness,
   SQLMeshInfo,
