@@ -83,6 +83,7 @@ def verified_schema_diff_is_empty(result: Mapping[str, Any] | None) -> bool:
     if not isinstance(result, Mapping):
         return False
     limit = result.get("limit")
+    total_row_count = result.get("total_row_count")
     if (
         not isinstance(result.get("columns"), list)
         or not isinstance(result.get("data"), list)
@@ -90,6 +91,9 @@ def verified_schema_diff_is_empty(result: Mapping[str, Any] | None) -> bool:
         or isinstance(limit, bool)
         or limit <= 0
         or result.get("more") is not False
+        or not isinstance(total_row_count, int)
+        or isinstance(total_row_count, bool)
+        or total_row_count != 0
     ):
         return False
     try:
@@ -99,7 +103,7 @@ def verified_schema_diff_is_empty(result: Mapping[str, Any] | None) -> bool:
 
     expected_columns = [(name, name, type_name) for name, type_name in _SCHEMA_DIFF_COLUMNS.items()]
     actual_columns = [(column.key, column.name, column.type.value) for column in frame.columns]
-    return actual_columns == expected_columns and not frame.data and frame.more is False
+    return actual_columns == expected_columns and not frame.data and frame.more is False and frame.total_row_count == 0
 
 
 def schema_result_is_approvable(result: Mapping[str, Any] | None) -> bool:
@@ -180,6 +184,7 @@ def schema_diff_should_be_approved(check_params: dict) -> bool:
             limit=100,
             more=False,
         )
+        diff_frame.total_row_count = len(diff_frame.data)
         result = diff_frame.model_dump(mode="json")
         result["schema_coverage"] = schema_coverage_payload(coverage)
         return schema_result_is_approvable(result)

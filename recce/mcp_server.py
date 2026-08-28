@@ -411,6 +411,7 @@ class CloudBackend:
             limit=limit,
             more=len(changes) > limit,
         ).model_dump(mode="json")
+        result["total_row_count"] = len(changes)
         # The cloud session hands us the column changes it already computed but
         # says nothing about which nodes it could not describe, so coverage is
         # unassessed rather than complete. Emitted under the same key as the
@@ -1875,6 +1876,7 @@ class RecceMCPServer:
             more=has_more,
         )
         result = diff_df.model_dump(mode="json")
+        result["total_row_count"] = len(schema_changes)
 
         # Carried alongside the frame rather than inside it: `DataFrame` backs
         # every tool's payload, and coverage only means something here. Consumers

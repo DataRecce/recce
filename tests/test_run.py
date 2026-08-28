@@ -31,7 +31,7 @@ def _schema_coverage(
     }
 
 
-def _schema_result(*, data=None, coverage=None, frame_more=False):
+def _schema_result(*, data=None, coverage=None, frame_more=False, total_row_count=0):
     return {
         "columns": [
             {"key": "node_id", "name": "node_id", "type": "text"},
@@ -41,6 +41,7 @@ def _schema_result(*, data=None, coverage=None, frame_more=False):
         "data": [] if data is None else data,
         "limit": 100,
         "more": frame_more,
+        "total_row_count": total_row_count,
         "schema_coverage": _schema_coverage() if coverage is None else coverage,
     }
 
@@ -141,6 +142,24 @@ class TestSchemaDiffShouldBeApproved:
 
         assert result is False
 
+    @patch("recce.run.default_context")
+    def test_complete_covered_explicit_node_is_auto_approved(self, mock_ctx):
+        node_id = "model.project.orders"
+        node = {
+            "resource_type": "model",
+            "config": {"materialized": "table"},
+            "catalog_status": "covered",
+            "columns": {"id": {"type": "INTEGER"}},
+        }
+        mock_ctx.return_value.get_lineage.side_effect = [
+            {"nodes": {node_id: node}},
+            {"nodes": {node_id: node}},
+        ]
+
+        result = schema_diff_should_be_approved({"node_id": node_id})
+
+        assert result is True
+
 
 @pytest.mark.parametrize("coverage", ["partial", "unknown", None])
 def test_schema_result_is_not_approvable_without_complete_coverage(coverage):
@@ -195,4 +214,15 @@ def test_complete_contradictory_schema_coverage_is_not_approvable(coverage):
     ids=["missing-columns", "wrong-schema", "more-rows"],
 )
 def test_malformed_or_incomplete_empty_dataframe_is_not_approvable(result):
+    assert schema_result_is_approvable(result) is False
+
+
+@pytest.mark.parametrize(
+    "total_row_count",
+    [1, True, "0", None],
+    ids=["nonzero", "boolean", "string", "missing"],
+)
+def test_empty_schema_result_requires_exact_zero_total_row_count(total_row_count):
+    result = _schema_result(total_row_count=total_row_count)
+
     assert schema_result_is_approvable(result) is False

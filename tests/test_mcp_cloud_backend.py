@@ -33,6 +33,7 @@ def _schema_result(
     unchecked_node_count=None,
     coverage_more=False,
     frame_more=False,
+    total_row_count=0,
 ):
     result = {
         "columns": [
@@ -43,6 +44,7 @@ def _schema_result(
         "data": [] if data is None else data,
         "limit": 100,
         "more": frame_more,
+        "total_row_count": total_row_count,
     }
     if coverage_status is not None:
         if unchecked_nodes is None:
@@ -175,6 +177,7 @@ async def test_run_check_auto_approve_failure_does_not_mask_run_result(cloud_req
             False,
         ),
         (_schema_result("complete", coverage_more=True), False),
+        (_schema_result("complete", total_row_count=1), False),
         ({"data": [], "schema_coverage": _schema_result("complete")["schema_coverage"]}, False),
         (_schema_result("complete"), True),
     ],
@@ -311,6 +314,7 @@ async def test_create_check_runs_lineage_diff_via_checks_run_endpoint(cloud_requ
             False,
         ),
         (_schema_result("complete", coverage_more=True), False),
+        (_schema_result("complete", total_row_count=1), False),
         ({"data": [], "schema_coverage": _schema_result("complete")["schema_coverage"]}, False),
         (_schema_result("complete"), True),
     ],
