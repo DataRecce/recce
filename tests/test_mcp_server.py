@@ -8,7 +8,7 @@ pytest.importorskip("mcp")
 
 from recce.core import RecceContext  # noqa: E402
 from recce.mcp_server import RecceMCPServer, run_mcp_server  # noqa: E402
-from recce.models.types import LineageDiff  # noqa: E402
+from recce.models.types import Check, LineageDiff, RunType  # noqa: E402
 from recce.server import RecceServerMode  # noqa: E402
 from recce.tasks.histogram import HistogramDiffTask  # noqa: E402
 from recce.tasks.profile import ProfileDiffTask  # noqa: E402
@@ -28,6 +28,18 @@ def mcp_server():
     """Fixture to create a RecceMCPServer instance for testing"""
     mock_context = MagicMock(spec=RecceContext)
     return RecceMCPServer(mock_context), mock_context
+
+
+def _schema_result(coverage_status=None, data=None):
+    result = {
+        "columns": [],
+        "data": [] if data is None else data,
+        "limit": 100,
+        "more": False,
+    }
+    if coverage_status is not None:
+        result["schema_coverage"] = {"status": coverage_status}
+    return result
 
 
 class TestRecceMCPServer:
@@ -602,11 +614,8 @@ class TestRecceMCPServer:
             check_id=check_id,
             triggered_by="user",
         )
-        # Auto-approve: successful run → is_checked=True
-        mock_check_dao.update_check_by_id.assert_called_once()
-        approve_call = mock_check_dao.update_check_by_id.call_args
-        assert approve_call[0][0] == check_id
-        assert approve_call[0][1].is_checked is True
+        # Successful execution without complete empty schema evidence stays unapproved.
+        mock_check_dao.update_check_by_id.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_tool_create_check_idempotent_update(self, mcp_server):
@@ -646,17 +655,14 @@ class TestRecceMCPServer:
 
         assert result["check_id"] == str(check_id)
         assert result["created"] is False
-        # Two calls: (1) name/desc update, (2) auto-approve after successful run
-        assert mock_check_dao.update_check_by_id.call_count == 2
-        first_call = mock_check_dao.update_check_by_id.call_args_list[0]
-        assert first_call[0][0] == check_id
-        patch_in = first_call[0][1]
+        # Only the idempotent name/description update occurs; the run carries no
+        # complete empty schema evidence for a second approval update.
+        mock_check_dao.update_check_by_id.assert_called_once()
+        update_call = mock_check_dao.update_check_by_id.call_args
+        assert update_call[0][0] == check_id
+        patch_in = update_call[0][1]
         assert patch_in.name == "Updated name"
         assert patch_in.description == "Updated description"
-        # Second call: auto-approve (is_checked=True) after run succeeded
-        second_call = mock_check_dao.update_check_by_id.call_args_list[1]
-        assert second_call[0][0] == check_id
-        assert second_call[0][1].is_checked is True
 
     @pytest.mark.asyncio
     async def test_tool_create_check_metadata_run_for_schema_diff(self, mcp_server):
@@ -702,11 +708,45 @@ class TestRecceMCPServer:
         mock_submit.assert_not_called()
         # Verify a metadata run was created via RunDAO
         mock_run_dao.create.assert_called_once()
-        # Auto-approve: metadata run succeeded → is_checked=True
-        mock_check_dao.update_check_by_id.assert_called_once()
-        approve_call = mock_check_dao.update_check_by_id.call_args
-        assert approve_call[0][0] == check_id
-        assert approve_call[0][1].is_checked is True
+        # Approval behavior is covered against real check state below.
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("schema_result", "expected_checked"),
+        [
+            (_schema_result("partial"), False),
+            (_schema_result("unknown"), False),
+            (_schema_result(), False),
+            (_schema_result("complete", [["model.project.orders", "customer_id", "added"]]), False),
+            (_schema_result("complete"), True),
+        ],
+    )
+    async def test_tool_create_schema_check_approves_only_complete_empty_results(
+        self,
+        mcp_server,
+        schema_result,
+        expected_checked,
+    ):
+        server, context = mcp_server
+        context.checks = []
+        context.runs = []
+        context.state_loader = None
+
+        with (
+            patch("recce.core.default_context", return_value=context),
+            patch.object(server, "_tool_schema_diff", new=AsyncMock(return_value=schema_result)),
+            patch("recce.apis.check_func.export_persistent_state"),
+        ):
+            await server._tool_create_check(
+                {
+                    "type": "schema_diff",
+                    "params": {"select": "orders"},
+                    "name": "Schema Diff of orders",
+                }
+            )
+
+        assert len(context.checks) == 1
+        assert context.checks[0].is_checked is expected_checked
 
     @pytest.mark.asyncio
     async def test_tool_create_check_run_failure(self, mcp_server):
@@ -797,7 +837,7 @@ class TestRecceMCPServer:
         mock_check.type = RunType.ROW_COUNT_DIFF
         mock_check.params = {"node_names": ["model_a"]}
 
-        # Create mock run — status must be FINISHED for auto-approve to trigger
+        # Create a successful run without schema evidence; it must not approve.
         from recce.models.types import RunStatus
 
         mock_run = MagicMock()
@@ -835,12 +875,8 @@ class TestRecceMCPServer:
         assert "check_id" in result
         assert result["check_id"] == str(check_id)
 
-        # Regression: successful task-branch run must auto-approve (DRC-3307 root cause).
-        # If this fails, the auto-approve gate (run.status == FINISHED and not run.error)
-        # has been changed and preset checks will silently stay Unapproved.
-        from recce.apis.check_api import PatchCheckIn
-
-        mock_check_dao.update_check_by_id.assert_called_once_with(str(check_id), PatchCheckIn(is_checked=True))
+        # A successful non-schema run has no complete schema evidence.
+        mock_check_dao.update_check_by_id.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_tool_run_check_with_lineage_diff(self, mcp_server):
@@ -886,11 +922,8 @@ class TestRecceMCPServer:
         assert "check_id" in result
         # Verify a metadata run was persisted
         mock_run_dao.create.assert_called_once()
-        # Regression: metadata-branch (lineage_diff) success must auto-approve.
-        # An empty result IS valid evidence (zero changes confirms no lineage shift).
-        from recce.apis.check_api import PatchCheckIn
-
-        mock_check_dao.update_check_by_id.assert_called_once_with(str(check_id), PatchCheckIn(is_checked=True))
+        # Lineage-only results have no complete schema comparison contract.
+        mock_check_dao.update_check_by_id.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_tool_run_check_with_schema_diff(self, mcp_server):
@@ -936,11 +969,42 @@ class TestRecceMCPServer:
         assert "check_id" in result
         # Verify a metadata run was persisted
         mock_run_dao.create.assert_called_once()
-        # Regression: metadata-branch (schema_diff) success must auto-approve.
-        # An empty result IS valid evidence (zero schema changes is a meaningful signal).
+        # Empty schema diff with complete coverage is valid approval evidence.
         from recce.apis.check_api import PatchCheckIn
 
         mock_check_dao.update_check_by_id.assert_called_once_with(str(check_id), PatchCheckIn(is_checked=True))
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("schema_result", "expected_checked"),
+        [
+            (_schema_result("partial"), False),
+            (_schema_result("unknown"), False),
+            (_schema_result(), False),
+            (_schema_result("complete", [["model.project.orders", "customer_id", "added"]]), False),
+            (_schema_result("complete"), True),
+        ],
+    )
+    async def test_tool_run_schema_check_approves_only_complete_empty_results(
+        self,
+        mcp_server,
+        schema_result,
+        expected_checked,
+    ):
+        server, context = mcp_server
+        check = Check(name="Schema Check", type=RunType.SCHEMA_DIFF, params={"select": "orders"})
+        context.checks = [check]
+        context.runs = []
+        context.state_loader = None
+
+        with (
+            patch("recce.core.default_context", return_value=context),
+            patch.object(server, "_tool_schema_diff", new=AsyncMock(return_value=schema_result)),
+            patch("recce.apis.check_func.export_persistent_state"),
+        ):
+            await server._tool_run_check({"check_id": str(check.check_id)})
+
+        assert check.is_checked is expected_checked
 
     @pytest.mark.asyncio
     async def test_tool_run_check_metadata_branch_recce_exception_no_auto_approve(self, mcp_server):

@@ -1,8 +1,14 @@
 import logging
 from unittest.mock import patch
 
+import pytest
+
 from recce.models.types import Run, RunType
-from recce.run import run_should_be_approved, schema_diff_should_be_approved
+from recce.run import (
+    run_should_be_approved,
+    schema_diff_should_be_approved,
+    schema_result_is_approvable,
+)
 
 
 def _make_run(result=None, error=None, run_type=RunType.ROW_COUNT_DIFF):
@@ -96,3 +102,30 @@ class TestSchemaDiffShouldBeApproved:
             result = schema_diff_should_be_approved({"select": "state:modified"})
         assert result is False
         assert "schema_diff approval check failed (unexpected)" in caplog.text
+
+
+@pytest.mark.parametrize("coverage", ["partial", "unknown", None])
+def test_schema_result_is_not_approvable_without_complete_coverage(coverage):
+    result = {"data": []}
+    if coverage is not None:
+        result["schema_coverage"] = {"status": coverage}
+
+    assert schema_result_is_approvable(result) is False
+
+
+def test_schema_result_is_not_approvable_when_verified_diff_has_a_mismatch():
+    result = {
+        "data": [["model.project.orders", "customer_id", "added"]],
+        "schema_coverage": {"status": "complete"},
+    }
+
+    assert schema_result_is_approvable(result) is False
+
+
+def test_complete_empty_schema_result_is_approvable():
+    result = {
+        "data": [],
+        "schema_coverage": {"status": "complete"},
+    }
+
+    assert schema_result_is_approvable(result) is True

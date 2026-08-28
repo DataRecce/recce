@@ -31,6 +31,7 @@ from recce.apis.run_func import submit_run as _submit_run_fn  # noqa: E402
 from recce.artifact_health import classify_schema_coverage, schema_coverage_payload
 from recce.core import RecceContext, load_context
 from recce.exceptions import RecceException
+from recce.run import schema_result_is_approvable
 from recce.server import RecceServerMode
 from recce.tasks.dataframe import DataFrame
 from recce.tasks.histogram import HistogramDiffTask
@@ -267,7 +268,7 @@ class CloudBackend:
             f"checks/{quote(str(check_id), safe='')}/run",
             json={"nowait": False},
         )
-        if self._run_succeeded(run):
+        if self._run_succeeded(run) and schema_result_is_approvable(run.get("result")):
             await self._auto_approve(check_id)
         return run
 
@@ -298,7 +299,7 @@ class CloudBackend:
             )
             run_executed = True
             run_error = run.get("error")
-            if self._run_succeeded(run):
+            if self._run_succeeded(run) and schema_result_is_approvable(run.get("result")):
                 await self._auto_approve(check_id)
         result = {
             "check_id": str(check_id),
@@ -310,7 +311,7 @@ class CloudBackend:
         return result
 
     async def _auto_approve(self, check_id) -> None:
-        """Best-effort auto-approve on successful run.
+        """Best-effort auto-approve after evidence satisfies the caller's gate.
 
         The run already succeeded; an approve-side failure must not blow up the
         tool response. Mirrors the local-mode invariant that auto-approve is a
@@ -2628,6 +2629,7 @@ class RecceMCPServer:
 
         triggered_by = arguments.get("triggered_by", "user")
         run_succeeded = False
+        approval_result = None
 
         if check.type in (RunType.LINEAGE_DIFF, RunType.SCHEMA_DIFF):
             try:
@@ -2643,6 +2645,7 @@ class RecceMCPServer:
                     triggered_by=triggered_by,
                 )
                 run_succeeded = True
+                approval_result = result
                 run_dump = run.model_dump(mode="json")
             except RecceException as e:
                 raise ValueError(str(e)) from e
@@ -2656,19 +2659,18 @@ class RecceMCPServer:
                 )
                 run.result = await future
                 run_succeeded = run.status == RunStatus.FINISHED and not run.error
+                approval_result = run.result
                 run_dump = run.model_dump(mode="json")
             except RecceException as e:
                 raise ValueError(str(e)) from e
 
-        # Auto-approve on successful run — same gate as _tool_create_check (line 1832:
-        # run_executed and not run_error). PM decision: Passed = Approved (See: DRC-3307).
-        # For metadata-only types (lineage_diff/schema_diff), an empty result IS valid
-        # evidence: zero changes confirms the upstream PR did not affect lineage/schema.
+        # Auto-approve only when the run carries a verified empty schema diff
+        # with complete coverage. Successful execution alone is not evidence.
         # The auto-approve runs OUTSIDE the RecceException try blocks so a cloud-side
         # failure (RecceCloudException, which is NOT a RecceException subclass) is not
         # silently absorbed by the wrapper above. Same persistence policy as
         # _tool_create_check: state is exported to disk/cloud after the approval.
-        if run_succeeded:
+        if run_succeeded and schema_result_is_approvable(approval_result):
             check_dao.update_check_by_id(check_id, PatchCheckIn(is_checked=True))
             logger.info(f"Auto-approved check {check_id} (triggered_by={triggered_by})")
             await asyncio.get_event_loop().run_in_executor(None, export_persistent_state)
@@ -2719,6 +2721,7 @@ class RecceMCPServer:
         # Auto-run for evidence
         run_executed = False
         run_error = None
+        approval_result = None
         triggered_by = arguments.get("triggered_by", "user")
         if check_type in (RunType.LINEAGE_DIFF, RunType.SCHEMA_DIFF):
             # Metadata-only: read from manifest, create Run record for Activity
@@ -2735,6 +2738,7 @@ class RecceMCPServer:
                     triggered_by=triggered_by,
                 )
                 run_executed = True
+                approval_result = result
             except Exception as e:
                 run_error = str(e)
         else:
@@ -2743,16 +2747,13 @@ class RecceMCPServer:
             # submit_run's future always resolves (errors caught internally).
             # Check run.status, not the return value.
             run_executed = run.status == RunStatus.FINISHED
+            approval_result = run.result
             if run.status == RunStatus.FAILED:
                 run_error = run.error
 
-        # Auto-approve check when run succeeded without errors.
-        # In the PR summary, Passed = Approved (PM decision): a check that
-        # ran successfully is considered reviewed by the agent.
-        # Note: this differs from run_should_be_approved() in run.py, which
-        # only approves ROW_COUNT_DIFF with matching counts.  Here we blanket-
-        # approve any successful run — intentional per PM decision.
-        if run_executed and not run_error:
+        # Auto-approve only with complete coverage and a verified empty schema
+        # diff. Lineage-only and legacy results without coverage fail closed.
+        if run_executed and not run_error and schema_result_is_approvable(approval_result):
             check_dao.update_check_by_id(check_id, PatchCheckIn(is_checked=True))
 
         # Persist state to cloud/disk (matches REST endpoint pattern)

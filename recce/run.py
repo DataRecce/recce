@@ -2,8 +2,9 @@ import logging
 import os
 import sys
 import time
+from collections.abc import Mapping
 from datetime import datetime, timezone
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 from deepdiff import DeepDiff
 from rich import box
@@ -16,6 +17,7 @@ from recce.apis.check_func import (
     purge_preset_checks,
 )
 from recce.apis.run_func import submit_run
+from recce.artifact_health import classify_schema_coverage, schema_coverage_payload
 from recce.config import RecceConfig
 from recce.core import default_context
 from recce.models import CheckDAO
@@ -27,6 +29,24 @@ from recce.tasks.rowcount import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def result_schema_coverage_status(result: Mapping[str, Any] | None) -> str:
+    if not isinstance(result, Mapping):
+        return "unknown"
+    coverage = result.get("schema_coverage")
+    if not isinstance(coverage, Mapping):
+        return "unknown"
+    status = coverage.get("status")
+    return status if status in {"complete", "partial", "unknown"} else "unknown"
+
+
+def verified_schema_diff_is_empty(result: Mapping[str, Any] | None) -> bool:
+    return isinstance(result, Mapping) and isinstance(result.get("data"), list) and not result["data"]
+
+
+def schema_result_is_approvable(result: Mapping[str, Any] | None) -> bool:
+    return result_schema_coverage_status(result) == "complete" and verified_schema_diff_is_empty(result)
 
 
 def check_github_ci_env(**kwargs):
@@ -85,20 +105,23 @@ def schema_diff_should_be_approved(check_params: dict) -> bool:
 
         selected_node_ids = [node for node in selected_node_ids if not node.startswith("test.")]
 
-        def _get_selected_node_columns_from_lineage(lineage, node_ids: list[str]):
-            nodes = {}
-            for node_id, node in lineage.get("nodes", {}).items():
-                if node_id in node_ids:
-                    nodes[node_id] = node.get("columns", {})
-            return nodes
+        base_lineage_nodes = context.get_lineage(base=True).get("nodes", {})
+        current_lineage_nodes = context.get_lineage(base=False).get("nodes", {})
+        coverage = classify_schema_coverage(base_lineage_nodes, current_lineage_nodes, selected_node_ids)
 
-        base_nodes = _get_selected_node_columns_from_lineage(context.get_lineage(base=True), selected_node_ids)
-        curr_nodes = _get_selected_node_columns_from_lineage(context.get_lineage(base=False), selected_node_ids)
-        diff = DeepDiff(base_nodes, curr_nodes, ignore_order=True)
+        def _checked_node_columns(lineage_nodes):
+            return {node_id: lineage_nodes[node_id].get("columns", {}) for node_id in coverage.checked_node_ids}
 
-        # If the diff is empty, then the check should be approved
-        if bool(diff) is False:
-            return True
+        diff = DeepDiff(
+            _checked_node_columns(base_lineage_nodes),
+            _checked_node_columns(current_lineage_nodes),
+            ignore_order=True,
+        )
+        result = {
+            "data": [] if not diff else [True],
+            "schema_coverage": schema_coverage_payload(coverage),
+        }
+        return schema_result_is_approvable(result)
     except Exception as e:
         error_msg = str(e).upper()
         if any(ind in error_msg for ind in TABLE_NOT_FOUND_INDICATORS + PERMISSION_DENIED_INDICATORS):
