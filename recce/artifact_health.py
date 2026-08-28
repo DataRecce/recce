@@ -116,15 +116,16 @@ def artifact_health_payload(
     *,
     sample_limit: int = 50,
 ) -> dict[str, Any]:
+    effective_limit = min(sample_limit, 50)
     return {
         "status": health.status,
         "expected_count": len(health.expected_node_ids),
         "covered_count": len(health.covered_node_ids),
         "catalog_entry_count": len(health.catalog_node_ids),
         "missing_node_count": len(health.missing_node_ids),
-        "missing_nodes": sorted(health.missing_node_ids)[:sample_limit],
-        "missing_more": len(health.missing_node_ids) > sample_limit,
+        "missing_nodes": sorted(health.missing_node_ids)[:effective_limit],
+        "missing_more": len(health.missing_node_ids) > effective_limit,
         "orphan_node_count": len(health.orphan_node_ids),
-        "orphan_nodes": sorted(health.orphan_node_ids)[:sample_limit],
-        "orphan_more": len(health.orphan_node_ids) > sample_limit,
+        "orphan_nodes": sorted(health.orphan_node_ids)[:effective_limit],
+        "orphan_more": len(health.orphan_node_ids) > effective_limit,
     }

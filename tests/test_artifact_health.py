@@ -111,6 +111,16 @@ def test_payload_sorts_and_bounds_orphan_ids() -> None:
     }
 
 
+def test_payload_caps_samples_at_fifty_even_when_limit_is_larger() -> None:
+    orphan_ids = tuple(f"model.pkg.orphan{index:02d}" for index in range(51))
+    health = classify_artifact_health(_manifest(models=1), _catalog(models=orphan_ids))
+
+    payload = artifact_health_payload(health, sample_limit=100)
+
+    assert len(payload["orphan_nodes"]) == 50
+    assert payload["orphan_more"] is True
+
+
 def test_malformed_non_dict_manifest_nodes_are_unknown() -> None:
     health = classify_artifact_health({"nodes": []}, _catalog(models=()))
 
