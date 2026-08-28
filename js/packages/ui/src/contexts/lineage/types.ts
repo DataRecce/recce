@@ -6,6 +6,7 @@ import type {
   CatalogMetadata,
   GitInfo,
   ManifestMetadata,
+  NodeCatalogStatus,
   PullRequestInfo,
   SchemaCoverage,
   SQLMeshInfo,
@@ -58,6 +59,8 @@ export type LineageGraphNode = Node<
       | "unchecked"
       | "not_applicable"
       | "unknown";
+    baseCatalogStatus?: NodeCatalogStatus;
+    currentCatalogStatus?: NodeCatalogStatus;
     parents: Record<string, LineageGraphEdge>;
     children: Record<string, LineageGraphEdge>;
   },

@@ -96,6 +96,25 @@ def test_ephemeral_and_semantic_view_models_are_not_expected() -> None:
     assert health.expected_node_ids == frozenset({"model.pkg.m0"})
 
 
+@pytest.mark.parametrize("resource_type", ["seed", "snapshot"])
+def test_seed_and_snapshot_relations_are_expected(resource_type: str) -> None:
+    node_id = f"{resource_type}.pkg.orders"
+    manifest = {
+        "nodes": {
+            node_id: {
+                "resource_type": resource_type,
+                "config": {"materialized": resource_type},
+            }
+        }
+    }
+
+    health = classify_artifact_health(manifest, _catalog(models=(node_id,)))
+
+    assert health.status == "complete"
+    assert health.expected_node_ids == frozenset({node_id})
+    assert health.covered_node_ids == frozenset({node_id})
+
+
 def test_payload_sorts_and_bounds_orphan_ids() -> None:
     manifest = _manifest(models=1)
     catalog = _catalog(models=("model.pkg.z", "model.pkg.a", "model.pkg.m0", "model.pkg.b"))
@@ -244,6 +263,16 @@ def test_schema_coverage_excludes_one_sided_structural_nodes() -> None:
     assert coverage.unchecked_node_ids == frozenset()
 
 
+def test_schema_coverage_fails_closed_for_selected_id_absent_from_both_manifests() -> None:
+    stale_id = "model.pkg.misspelled_orders"
+
+    coverage = classify_schema_coverage({}, {}, [stale_id])
+
+    assert coverage.status == "partial"
+    assert coverage.checked_node_ids == frozenset()
+    assert coverage.unchecked_node_ids == frozenset({stale_id})
+
+
 @pytest.mark.parametrize(
     ("base_nodes", "current_nodes"),
     [
@@ -279,6 +308,36 @@ def test_schema_coverage_excludes_models_that_cannot_carry_catalog_columns(
     node: dict[str, Any],
 ) -> None:
     coverage = classify_schema_coverage({node_id: node}, {node_id: node}, [node_id])
+
+    assert coverage.status == "complete"
+    assert coverage.checked_node_ids == frozenset()
+    assert coverage.unchecked_node_ids == frozenset()
+
+
+@pytest.mark.parametrize(
+    ("base_materialized", "current_materialized"),
+    [("table", "ephemeral"), ("semantic_view", "table")],
+    ids=["table-to-ephemeral", "semantic-view-to-table"],
+)
+def test_schema_coverage_excludes_transitions_with_a_non_catalogable_side(
+    base_materialized: str,
+    current_materialized: str,
+) -> None:
+    node_id = "model.pkg.transitioned"
+    base_node = _lineage_node(
+        materialized=base_materialized,
+        catalog_status="covered" if base_materialized == "table" else "not_applicable",
+    )
+    current_node = _lineage_node(
+        materialized=current_materialized,
+        catalog_status="covered" if current_materialized == "table" else "not_applicable",
+    )
+
+    coverage = classify_schema_coverage(
+        {node_id: base_node},
+        {node_id: current_node},
+        [node_id],
+    )
 
     assert coverage.status == "complete"
     assert coverage.checked_node_ids == frozenset()

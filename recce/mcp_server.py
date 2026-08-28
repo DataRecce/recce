@@ -1820,7 +1820,12 @@ class RecceMCPServer:
                 exclude=exclude,
                 packages=packages,
             )
-            nodes_to_compare &= set(selected_node_ids)
+            # Preserve the exact selected scope. The canonical classifier must
+            # see stale IDs absent from both manifests so they fail closed; XOR
+            # one-sided nodes remain valid structural evidence.
+            nodes_to_compare = {
+                node_id for node_id in selected_node_ids if isinstance(node_id, str) and not node_id.startswith("test.")
+            }
 
         coverage = classify_schema_coverage(base_nodes, current_nodes, nodes_to_compare)
 

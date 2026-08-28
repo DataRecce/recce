@@ -15,7 +15,8 @@ import { ThemeProvider } from "@mui/material/styles";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { NodeData } from "../../../api";
+import type { MergedLineageResponse, NodeData } from "../../../api";
+import { buildLineageGraph } from "../../../contexts/lineage/utils";
 import { theme } from "../../../theme";
 import { SchemaView } from "../SchemaView";
 
@@ -131,7 +132,11 @@ describe("SchemaView comparison coverage", () => {
     lineageGraph.current = {
       nodes: {
         [nodeId]: {
-          data: { schemaComparisonStatus: "unchecked" },
+          data: {
+            schemaComparisonStatus: "unchecked",
+            baseCatalogStatus: "covered",
+            currentCatalogStatus: "unchecked",
+          },
         },
       },
       catalogMetadata: { base: {}, current: {} },
@@ -189,8 +194,8 @@ describe("SchemaView comparison coverage", () => {
     expect(screen.queryByText("legacy")).not.toBeInTheDocument();
   });
 
-  it("uses generic side wording when bounded samples do not identify the node", () => {
-    const nodeId = "model.shop.orders";
+  it("uses exact source-side evidence when bounded samples do not identify the node", () => {
+    const nodeId = "source.shop.orders";
     const health = (missingNode: string) => ({
       status: "partial" as const,
       expected_count: 3,
@@ -203,31 +208,48 @@ describe("SchemaView comparison coverage", () => {
       orphan_nodes: [],
       orphan_more: false,
     });
-    lineageGraph.current = {
+    const mergedLineage: MergedLineageResponse = {
       nodes: {
-        [nodeId]: { data: { schemaComparisonStatus: "unchecked" } },
+        [nodeId]: {
+          name: "orders",
+          resource_type: "source",
+          package_name: "shop",
+          schema_comparison_status: "unchecked",
+          base_catalog_status: "covered",
+          current_catalog_status: "unchecked",
+        },
       },
-      catalogMetadata: { base: {}, current: {} },
-      artifactHealth: {
+      edges: [],
+      metadata: {
+        base: { catalog_metadata: {} as never },
+        current: { catalog_metadata: {} as never },
+      },
+      artifact_health: {
         base: health("model.shop.base_only_missing"),
         current: health("model.shop.current_only_missing"),
       },
-      schemaCoverage: {
+      schema_coverage: {
         status: "partial",
         unchecked_nodes: [nodeId],
         unchecked_node_count: 1,
         more: false,
       },
     };
+    lineageGraph.current = buildLineageGraph(mergedLineage);
 
-    render(wrap(model(nodeId)));
+    const source = {
+      ...model(nodeId),
+      resource_type: "source",
+    } as NodeData;
+
+    render(wrap(source));
 
     const warning = screen.getByRole("alert", {
       name: "Incomplete schema comparison",
     });
-    expect(warning).toHaveTextContent("base/current environments");
-    expect(warning).toHaveTextContent("Regenerate the base/current catalogs");
-    expect(warning).not.toHaveTextContent("base and current environments");
+    expect(warning).toHaveTextContent("current environment");
+    expect(warning).toHaveTextContent("Regenerate the current catalog");
+    expect(warning).not.toHaveTextContent("base/current environments");
   });
 
   it("renders no comparison warning for complete healthy evidence", () => {

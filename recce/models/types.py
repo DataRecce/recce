@@ -286,6 +286,8 @@ class MergedNode(BaseModel):
     change_status: ChangeStatus | None = None
     change: NodeChange | None = None
     schema_comparison_status: Literal["complete", "unchecked", "not_applicable"] | None = None
+    base_catalog_status: Literal["covered", "unchecked", "not_applicable"] | None = None
+    current_catalog_status: Literal["covered", "unchecked", "not_applicable"] | None = None
 
     model_config = ConfigDict(
         populate_by_name=True,

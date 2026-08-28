@@ -534,6 +534,28 @@ def test_missing_catalog_legacy_input_reports_unknown_schema_coverage():
     assert "dbt docs generate" in markdown
 
 
+def test_stale_selected_node_id_reports_incomplete_schema_coverage():
+    stale_id = "model.project.misspelled_orders"
+
+    checks, statistics = _generate_schema_check_summary(
+        {"nodes": {}},
+        {"nodes": {}},
+        [stale_id],
+    )
+
+    assert statistics == {"total": 1, "mismatch": 0, "failed": 0, "incomplete": 1}
+    assert len(checks) == 1
+    assert checks[0].schema_coverage.model_dump() == {
+        "status": "partial",
+        "unchecked_nodes": [stale_id],
+        "unchecked_node_count": 1,
+        "more": False,
+    }
+    markdown = _render_check_summary(checks, statistics)
+    assert stale_id in markdown
+    assert "Schema comparison incomplete" in markdown
+
+
 def test_complete_schema_coverage_without_changes_remains_silent():
     node_id = "model.project.healthy"
     columns = {"id": {"type": "integer"}}

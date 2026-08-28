@@ -18,7 +18,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import type { ArtifactHealthPair, NodeData } from "../../api";
+import type { MergedNodeData, NodeData } from "../../api";
 import {
   useLineageGraphContext,
   useLineageViewContext,
@@ -91,13 +91,11 @@ interface SchemaViewProps {
 }
 
 function affectedEnvironment(
-  artifactHealth: ArtifactHealthPair | null | undefined,
-  nodeId: string | undefined,
+  baseCatalogStatus: MergedNodeData["base_catalog_status"],
+  currentCatalogStatus: MergedNodeData["current_catalog_status"],
 ): string {
-  const baseAffected =
-    artifactHealth?.base?.missing_nodes.includes(nodeId ?? "") ?? false;
-  const currentAffected =
-    artifactHealth?.current?.missing_nodes.includes(nodeId ?? "") ?? false;
+  const baseAffected = baseCatalogStatus === "unchecked";
+  const currentAffected = currentCatalogStatus === "unchecked";
   if (baseAffected && currentAffected) return "base and current environments";
   if (baseAffected) return "base environment";
   if (currentAffected) return "current environment";
@@ -284,8 +282,9 @@ export function PrivateSchemaView(
   }, [current, base]);
   const nodeId = current?.id ?? base?.id;
   const { lineageGraph, isActionAvailable } = useLineageGraphContext();
+  const lineageNode = nodeId ? lineageGraph?.nodes[nodeId]?.data : undefined;
   const schemaComparisonStatus = nodeId
-    ? (lineageGraph?.nodes[nodeId]?.data.schemaComparisonStatus ?? "unknown")
+    ? (lineageNode?.schemaComparisonStatus ?? "unknown")
     : "not_applicable";
   const schemaCoverage = lineageGraph?.schemaCoverage ?? {
     status: "unknown",
@@ -297,8 +296,8 @@ export function PrivateSchemaView(
     schemaComparisonStatus === "unchecked" ||
     schemaComparisonStatus === "unknown";
   const affectedEnvironmentText = affectedEnvironment(
-    lineageGraph?.artifactHealth,
-    nodeId,
+    lineageNode?.baseCatalogStatus,
+    lineageNode?.currentCatalogStatus,
   );
   const affectedCatalogText =
     affectedEnvironmentText === "base environment"

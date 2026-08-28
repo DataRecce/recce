@@ -91,5 +91,11 @@ describe("ServerInfoResult schema evidence contract", () => {
     expectTypeOf<MergedNodeData["schema_comparison_status"]>().toEqualTypeOf<
       "complete" | "unchecked" | "not_applicable" | undefined
     >();
+    expectTypeOf<MergedNodeData["base_catalog_status"]>().toEqualTypeOf<
+      "covered" | "unchecked" | "not_applicable" | undefined
+    >();
+    expectTypeOf<MergedNodeData["current_catalog_status"]>().toEqualTypeOf<
+      "covered" | "unchecked" | "not_applicable" | undefined
+    >();
   });
 });

@@ -16,6 +16,35 @@ def _make_run(result=None, error=None, run_type=RunType.ROW_COUNT_DIFF):
     return Run(type=run_type, result=result, error=error)
 
 
+def _schema_coverage(
+    status="complete",
+    *,
+    unchecked_nodes=None,
+    unchecked_node_count=0,
+    more=False,
+):
+    return {
+        "status": status,
+        "unchecked_nodes": [] if unchecked_nodes is None else unchecked_nodes,
+        "unchecked_node_count": unchecked_node_count,
+        "more": more,
+    }
+
+
+def _schema_result(*, data=None, coverage=None, frame_more=False):
+    return {
+        "columns": [
+            {"key": "node_id", "name": "node_id", "type": "text"},
+            {"key": "column", "name": "column", "type": "text"},
+            {"key": "change_status", "name": "change_status", "type": "text"},
+        ],
+        "data": [] if data is None else data,
+        "limit": 100,
+        "more": frame_more,
+        "schema_coverage": _schema_coverage() if coverage is None else coverage,
+    }
+
+
 class TestRunShouldBeApproved:
     """Tests for run_should_be_approved handling None values and edge cases."""
 
@@ -103,6 +132,15 @@ class TestSchemaDiffShouldBeApproved:
         assert result is False
         assert "schema_diff approval check failed (unexpected)" in caplog.text
 
+    @patch("recce.run.default_context")
+    def test_stale_explicit_node_id_is_not_auto_approved(self, mock_ctx):
+        stale_id = "model.project.misspelled_orders"
+        mock_ctx.return_value.get_lineage.return_value = {"nodes": {}}
+
+        result = schema_diff_should_be_approved({"node_id": stale_id})
+
+        assert result is False
+
 
 @pytest.mark.parametrize("coverage", ["partial", "unknown", None])
 def test_schema_result_is_not_approvable_without_complete_coverage(coverage):
@@ -114,18 +152,47 @@ def test_schema_result_is_not_approvable_without_complete_coverage(coverage):
 
 
 def test_schema_result_is_not_approvable_when_verified_diff_has_a_mismatch():
-    result = {
-        "data": [["model.project.orders", "customer_id", "added"]],
-        "schema_coverage": {"status": "complete"},
-    }
+    result = _schema_result(data=[["model.project.orders", "customer_id", "added"]])
 
     assert schema_result_is_approvable(result) is False
 
 
 def test_complete_empty_schema_result_is_approvable():
-    result = {
-        "data": [],
-        "schema_coverage": {"status": "complete"},
-    }
+    result = _schema_result()
 
     assert schema_result_is_approvable(result) is True
+
+
+def test_complete_schema_result_allows_additive_coverage_fields():
+    coverage = {**_schema_coverage(), "computed_at": "2026-08-28T00:00:00Z"}
+
+    assert schema_result_is_approvable(_schema_result(coverage=coverage)) is True
+
+
+@pytest.mark.parametrize(
+    "coverage",
+    [
+        {"status": "complete"},
+        _schema_coverage(
+            unchecked_nodes=["model.project.orders"],
+            unchecked_node_count=1,
+        ),
+        _schema_coverage(more=True),
+    ],
+    ids=["missing-fields", "unchecked-node", "more-marker"],
+)
+def test_complete_contradictory_schema_coverage_is_not_approvable(coverage):
+    assert schema_result_is_approvable(_schema_result(coverage=coverage)) is False
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        {"data": [], "schema_coverage": _schema_coverage()},
+        {**_schema_result(), "columns": []},
+        _schema_result(frame_more=True),
+    ],
+    ids=["missing-columns", "wrong-schema", "more-rows"],
+)
+def test_malformed_or_incomplete_empty_dataframe_is_not_approvable(result):
+    assert schema_result_is_approvable(result) is False

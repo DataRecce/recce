@@ -25,15 +25,36 @@ class MockResponse:
         return self._payload
 
 
-def _schema_result(coverage_status=None, data=None):
+def _schema_result(
+    coverage_status=None,
+    data=None,
+    *,
+    unchecked_nodes=None,
+    unchecked_node_count=None,
+    coverage_more=False,
+    frame_more=False,
+):
     result = {
-        "columns": [],
+        "columns": [
+            {"key": "node_id", "name": "node_id", "type": "text"},
+            {"key": "column", "name": "column", "type": "text"},
+            {"key": "change_status", "name": "change_status", "type": "text"},
+        ],
         "data": [] if data is None else data,
         "limit": 100,
-        "more": False,
+        "more": frame_more,
     }
     if coverage_status is not None:
-        result["schema_coverage"] = {"status": coverage_status}
+        if unchecked_nodes is None:
+            unchecked_nodes = ["model.project.unchecked"] if coverage_status == "partial" else []
+        if unchecked_node_count is None:
+            unchecked_node_count = len(unchecked_nodes)
+        result["schema_coverage"] = {
+            "status": coverage_status,
+            "unchecked_nodes": unchecked_nodes,
+            "unchecked_node_count": unchecked_node_count,
+            "more": coverage_more,
+        }
     return result
 
 
@@ -144,6 +165,17 @@ async def test_run_check_auto_approve_failure_does_not_mask_run_result(cloud_req
         (_schema_result("unknown"), False),
         (_schema_result(), False),
         (_schema_result("complete", [["model.project.orders", "customer_id", "added"]]), False),
+        ({**_schema_result("complete"), "schema_coverage": {"status": "complete"}}, False),
+        (
+            _schema_result(
+                "complete",
+                unchecked_nodes=["model.project.orders"],
+                unchecked_node_count=1,
+            ),
+            False,
+        ),
+        (_schema_result("complete", coverage_more=True), False),
+        ({"data": [], "schema_coverage": _schema_result("complete")["schema_coverage"]}, False),
         (_schema_result("complete"), True),
     ],
 )
@@ -269,6 +301,17 @@ async def test_create_check_runs_lineage_diff_via_checks_run_endpoint(cloud_requ
         (_schema_result("unknown"), False),
         (_schema_result(), False),
         (_schema_result("complete", [["model.project.orders", "customer_id", "added"]]), False),
+        ({**_schema_result("complete"), "schema_coverage": {"status": "complete"}}, False),
+        (
+            _schema_result(
+                "complete",
+                unchecked_nodes=["model.project.orders"],
+                unchecked_node_count=1,
+            ),
+            False,
+        ),
+        (_schema_result("complete", coverage_more=True), False),
+        ({"data": [], "schema_coverage": _schema_result("complete")["schema_coverage"]}, False),
         (_schema_result("complete"), True),
     ],
 )

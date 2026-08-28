@@ -185,6 +185,8 @@ export function buildLineageGraph(
         schemaComparisonStatus: normalizeSchemaComparisonStatus(
           merged.schema_comparison_status,
         ),
+        baseCatalogStatus: merged.base_catalog_status,
+        currentCatalogStatus: merged.current_catalog_status,
         parents: {},
         children: {},
       },

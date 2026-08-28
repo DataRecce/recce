@@ -42,6 +42,8 @@ describe("buildLineageGraph", () => {
           resource_type: "model",
           package_name: "proj",
           schema_comparison_status: "unchecked",
+          base_catalog_status: "covered",
+          current_catalog_status: "unchecked",
         },
       },
       edges: [],
@@ -63,6 +65,12 @@ describe("buildLineageGraph", () => {
     expect(
       graph.nodes["model.proj.customers"].data.schemaComparisonStatus,
     ).toBe("unchecked");
+    expect(graph.nodes["model.proj.customers"].data.baseCatalogStatus).toBe(
+      "covered",
+    );
+    expect(graph.nodes["model.proj.customers"].data.currentCatalogStatus).toBe(
+      "unchecked",
+    );
   });
 
   test("treats malformed coverage as unknown", () => {

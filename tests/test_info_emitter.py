@@ -99,7 +99,18 @@ class TestBuildInfoPayload:
         payload = _build_info_payload(adapter, diff)
 
         assert payload["adapter_type"] == "duckdb"
-        assert set(payload["lineage"].keys()) == {"nodes", "edges", "metadata"}
+        assert set(payload["lineage"].keys()) == {
+            "nodes",
+            "edges",
+            "metadata",
+            "schema_coverage",
+        }
+        assert payload["lineage"]["schema_coverage"] == {
+            "status": "partial",
+            "unchecked_nodes": ["model.demo.a"],
+            "unchecked_node_count": 1,
+            "more": False,
+        }
         # Both nodes present in merged output
         assert set(payload["lineage"]["nodes"].keys()) == {"model.demo.a", "model.demo.b"}
         # change_status baked into node

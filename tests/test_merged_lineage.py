@@ -1,3 +1,5 @@
+import pytest
+
 from recce.models.lineage import build_merged_lineage
 from recce.models.types import (
     LineageDiff,
@@ -222,6 +224,59 @@ class TestBuildMergedLineageNodes:
             "current": current_health,
         }
 
+    def test_full_merged_selection_emits_canonical_schema_coverage(self):
+        checked_id = "model.pkg.checked"
+        unchecked_id = "source.pkg.not_rebuilt"
+        checked = {
+            "name": "checked",
+            "resource_type": "model",
+            "package_name": "pkg",
+            "config": {"materialized": "table"},
+            "catalog_status": "covered",
+        }
+        source_base = {
+            "name": "not_rebuilt",
+            "resource_type": "source",
+            "package_name": "pkg",
+            "catalog_status": "covered",
+        }
+        source_current = {**source_base, "catalog_status": "unchecked"}
+        ld = _make_lineage_diff(
+            base_nodes={checked_id: checked, unchecked_id: source_base},
+            current_nodes={checked_id: checked, unchecked_id: source_current},
+        )
+
+        merged = build_merged_lineage(ld)
+
+        assert merged.schema_coverage.model_dump() == {
+            "status": "partial",
+            "unchecked_nodes": [unchecked_id],
+            "unchecked_node_count": 1,
+            "more": False,
+        }
+
+    def test_merged_node_retains_exact_catalog_status_for_both_sides(self):
+        node_id = "source.pkg.orders"
+        base_node = {
+            "name": "orders",
+            "resource_type": "source",
+            "package_name": "pkg",
+            "catalog_status": "covered",
+        }
+        current_node = {**base_node, "catalog_status": "unchecked"}
+        ld = _make_lineage_diff(
+            base_nodes={node_id: base_node},
+            current_nodes={node_id: current_node},
+        )
+
+        merged = build_merged_lineage(ld).nodes[node_id]
+        wire = merged.model_dump(exclude_none=True)
+
+        assert merged.base_catalog_status == "covered"
+        assert merged.current_catalog_status == "unchecked"
+        assert wire["base_catalog_status"] == "covered"
+        assert wire["current_catalog_status"] == "unchecked"
+
     def test_both_uncovered_manifest_nodes_are_schema_unchecked(self):
         node = {
             "name": "unchecked",
@@ -252,6 +307,36 @@ class TestBuildMergedLineageNodes:
         )
 
         merged = build_merged_lineage(ld).nodes["model.pkg.ephemeral_model"]
+
+        assert merged.schema_comparison_status == "not_applicable"
+
+    @pytest.mark.parametrize(
+        ("base_materialized", "current_materialized"),
+        [("table", "ephemeral"), ("semantic_view", "table")],
+        ids=["table-to-ephemeral", "semantic-view-to-table"],
+    )
+    def test_transition_with_either_non_catalogable_side_is_not_applicable(
+        self,
+        base_materialized,
+        current_materialized,
+    ):
+        node_id = "model.pkg.transitioned"
+
+        def node(materialized):
+            return {
+                "name": "transitioned",
+                "resource_type": "model",
+                "package_name": "pkg",
+                "config": {"materialized": materialized},
+                "catalog_status": "covered" if materialized == "table" else "not_applicable",
+            }
+
+        ld = _make_lineage_diff(
+            base_nodes={node_id: node(base_materialized)},
+            current_nodes={node_id: node(current_materialized)},
+        )
+
+        merged = build_merged_lineage(ld).nodes[node_id]
 
         assert merged.schema_comparison_status == "not_applicable"
 

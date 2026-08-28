@@ -4,6 +4,7 @@ from typing import Any, Literal
 
 ArtifactHealthStatus = Literal["complete", "partial", "empty", "absent", "not_applicable", "unknown"]
 SchemaCoverageStatus = Literal["complete", "partial", "unknown"]
+SchemaComparisonStatus = Literal["complete", "unchecked", "not_applicable"]
 
 
 @dataclass(frozen=True)
@@ -156,6 +157,31 @@ def _catalog_columns_are_applicable(node: Mapping[str, Any]) -> bool:
     return materialized not in _EXCLUDED_MATERIALIZATIONS
 
 
+def classify_node_schema_comparison(
+    base_nodes: Mapping[str, Mapping[str, Any]],
+    current_nodes: Mapping[str, Mapping[str, Any]],
+    node_id: str,
+) -> SchemaComparisonStatus:
+    """Classify one selected node from exact two-sided lineage evidence."""
+    in_base = node_id in base_nodes
+    in_current = node_id in current_nodes
+    if in_base != in_current:
+        return "not_applicable"
+    if not in_base:
+        # A stale or misspelled selection is not structural one-sided evidence.
+        return "unchecked"
+
+    base_node = base_nodes.get(node_id)
+    current_node = current_nodes.get(node_id)
+    if not isinstance(base_node, Mapping) or not isinstance(current_node, Mapping):
+        return "unchecked"
+    if not _catalog_columns_are_applicable(base_node) or not _catalog_columns_are_applicable(current_node):
+        return "not_applicable"
+    if base_node.get("catalog_status") == current_node.get("catalog_status") == "covered":
+        return "complete"
+    return "unchecked"
+
+
 def classify_schema_coverage(
     base_nodes: Mapping[str, Mapping[str, Any]] | None,
     current_nodes: Mapping[str, Mapping[str, Any]] | None,
@@ -177,14 +203,10 @@ def classify_schema_coverage(
             node_id in current_nodes and not isinstance(current_node, Mapping)
         ):
             return _unknown_schema_coverage()
-        if node_id not in base_nodes or node_id not in current_nodes:
-            continue
-        if not _catalog_columns_are_applicable(base_node) or not _catalog_columns_are_applicable(current_node):
-            continue
-
-        if base_node.get("catalog_status") == current_node.get("catalog_status") == "covered":
+        comparison_status = classify_node_schema_comparison(base_nodes, current_nodes, node_id)
+        if comparison_status == "complete":
             checked.add(node_id)
-        else:
+        elif comparison_status == "unchecked":
             unchecked.add(node_id)
 
     return SchemaCoverage(

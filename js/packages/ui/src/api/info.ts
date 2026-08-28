@@ -66,6 +66,8 @@ export interface SQLMeshInfo {
 
 export type CatalogMetadata = ArtifactMetadata;
 
+export type NodeCatalogStatus = "covered" | "unchecked" | "not_applicable";
+
 /**
  * Merged node from server-side lineage merge (DRC-3258).
  * Contains unified metadata from base+current with baked-in diff.
@@ -90,6 +92,8 @@ export interface MergedNodeData {
     columns?: Record<string, "added" | "removed" | "modified" | "unknown">;
   };
   schema_comparison_status?: "complete" | "unchecked" | "not_applicable";
+  base_catalog_status?: NodeCatalogStatus;
+  current_catalog_status?: NodeCatalogStatus;
 }
 
 /**

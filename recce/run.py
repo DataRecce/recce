@@ -21,8 +21,9 @@ from recce.artifact_health import classify_schema_coverage, schema_coverage_payl
 from recce.config import RecceConfig
 from recce.core import default_context
 from recce.models import CheckDAO
-from recce.models.types import RunType
+from recce.models.types import RunType, SchemaCoveragePayload
 from recce.summary import generate_markdown_summary
+from recce.tasks.dataframe import DataFrame
 from recce.tasks.rowcount import (
     PERMISSION_DENIED_INDICATORS,
     TABLE_NOT_FOUND_INDICATORS,
@@ -30,19 +31,75 @@ from recce.tasks.rowcount import (
 
 logger = logging.getLogger(__name__)
 
+_SCHEMA_DIFF_COLUMNS = {
+    "node_id": "text",
+    "column": "text",
+    "change_status": "text",
+}
+
+
+def _canonical_schema_coverage(result: Mapping[str, Any] | None) -> SchemaCoveragePayload | None:
+    if not isinstance(result, Mapping):
+        return None
+    raw_coverage = result.get("schema_coverage")
+    if not isinstance(raw_coverage, Mapping):
+        return None
+    required_fields = {"status", "unchecked_nodes", "unchecked_node_count", "more"}
+    if not required_fields.issubset(raw_coverage):
+        return None
+    unchecked_nodes = raw_coverage.get("unchecked_nodes")
+    unchecked_node_count = raw_coverage.get("unchecked_node_count")
+    more = raw_coverage.get("more")
+    if (
+        not isinstance(unchecked_nodes, list)
+        or any(not isinstance(node_id, str) for node_id in unchecked_nodes)
+        or not isinstance(unchecked_node_count, int)
+        or isinstance(unchecked_node_count, bool)
+        or unchecked_node_count < len(unchecked_nodes)
+        or not isinstance(more, bool)
+    ):
+        return None
+    try:
+        coverage = SchemaCoveragePayload.model_validate(raw_coverage)
+    except (TypeError, ValueError):
+        return None
+
+    has_unchecked_nodes = coverage.unchecked_node_count > 0
+    sample_is_truncated = coverage.unchecked_node_count > len(coverage.unchecked_nodes)
+    invariants_hold = (
+        has_unchecked_nodes and coverage.more == sample_is_truncated
+        if coverage.status == "partial"
+        else not has_unchecked_nodes and not coverage.unchecked_nodes and not coverage.more
+    )
+    return coverage if invariants_hold else None
+
 
 def result_schema_coverage_status(result: Mapping[str, Any] | None) -> str:
-    if not isinstance(result, Mapping):
-        return "unknown"
-    coverage = result.get("schema_coverage")
-    if not isinstance(coverage, Mapping):
-        return "unknown"
-    status = coverage.get("status")
-    return status if status in {"complete", "partial", "unknown"} else "unknown"
+    coverage = _canonical_schema_coverage(result)
+    return coverage.status if coverage is not None else "unknown"
 
 
 def verified_schema_diff_is_empty(result: Mapping[str, Any] | None) -> bool:
-    return isinstance(result, Mapping) and isinstance(result.get("data"), list) and not result["data"]
+    if not isinstance(result, Mapping):
+        return False
+    limit = result.get("limit")
+    if (
+        not isinstance(result.get("columns"), list)
+        or not isinstance(result.get("data"), list)
+        or not isinstance(limit, int)
+        or isinstance(limit, bool)
+        or limit <= 0
+        or result.get("more") is not False
+    ):
+        return False
+    try:
+        frame = DataFrame.model_validate(result)
+    except (TypeError, ValueError):
+        return False
+
+    expected_columns = [(name, name, type_name) for name, type_name in _SCHEMA_DIFF_COLUMNS.items()]
+    actual_columns = [(column.key, column.name, column.type.value) for column in frame.columns]
+    return actual_columns == expected_columns and not frame.data and frame.more is False
 
 
 def schema_result_is_approvable(result: Mapping[str, Any] | None) -> bool:
@@ -117,10 +174,14 @@ def schema_diff_should_be_approved(check_params: dict) -> bool:
             _checked_node_columns(current_lineage_nodes),
             ignore_order=True,
         )
-        result = {
-            "data": [] if not diff else [True],
-            "schema_coverage": schema_coverage_payload(coverage),
-        }
+        diff_frame = DataFrame.from_data(
+            columns=_SCHEMA_DIFF_COLUMNS,
+            data=[] if not diff else [("selection", "schema", "modified")],
+            limit=100,
+            more=False,
+        )
+        result = diff_frame.model_dump(mode="json")
+        result["schema_coverage"] = schema_coverage_payload(coverage)
         return schema_result_is_approvable(result)
     except Exception as e:
         error_msg = str(e).upper()

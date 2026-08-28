@@ -30,15 +30,36 @@ def mcp_server():
     return RecceMCPServer(mock_context), mock_context
 
 
-def _schema_result(coverage_status=None, data=None):
+def _schema_result(
+    coverage_status=None,
+    data=None,
+    *,
+    unchecked_nodes=None,
+    unchecked_node_count=None,
+    coverage_more=False,
+    frame_more=False,
+):
     result = {
-        "columns": [],
+        "columns": [
+            {"key": "node_id", "name": "node_id", "type": "text"},
+            {"key": "column", "name": "column", "type": "text"},
+            {"key": "change_status", "name": "change_status", "type": "text"},
+        ],
         "data": [] if data is None else data,
         "limit": 100,
-        "more": False,
+        "more": frame_more,
     }
     if coverage_status is not None:
-        result["schema_coverage"] = {"status": coverage_status}
+        if unchecked_nodes is None:
+            unchecked_nodes = ["model.project.unchecked"] if coverage_status == "partial" else []
+        if unchecked_node_count is None:
+            unchecked_node_count = len(unchecked_nodes)
+        result["schema_coverage"] = {
+            "status": coverage_status,
+            "unchecked_nodes": unchecked_nodes,
+            "unchecked_node_count": unchecked_node_count,
+            "more": coverage_more,
+        }
     return result
 
 
@@ -433,6 +454,28 @@ class TestRecceMCPServer:
         assert coverage["unchecked_nodes"] == sorted(node_ids)[:unchecked_node_limit]
 
     @pytest.mark.asyncio
+    async def test_tool_schema_diff_fails_closed_for_stale_selected_id(self, mcp_server):
+        server, mock_context = mcp_server
+        stale_id = "model.project.misspelled_orders"
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {"nodes": {}},
+            "current": {"nodes": {}},
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+        mock_context.adapter.select_nodes.return_value = {stale_id}
+
+        result = await server._tool_schema_diff({"select": "misspelled_orders"})
+
+        assert result["data"] == []
+        assert result["schema_coverage"] == {
+            "status": "partial",
+            "unchecked_nodes": [stale_id],
+            "unchecked_node_count": 1,
+            "more": False,
+        }
+
+    @pytest.mark.asyncio
     async def test_tool_query(self, mcp_server):
         """Test the query tool"""
         server, _ = mcp_server
@@ -718,6 +761,17 @@ class TestRecceMCPServer:
             (_schema_result("unknown"), False),
             (_schema_result(), False),
             (_schema_result("complete", [["model.project.orders", "customer_id", "added"]]), False),
+            ({**_schema_result("complete"), "schema_coverage": {"status": "complete"}}, False),
+            (
+                _schema_result(
+                    "complete",
+                    unchecked_nodes=["model.project.orders"],
+                    unchecked_node_count=1,
+                ),
+                False,
+            ),
+            (_schema_result("complete", coverage_more=True), False),
+            ({"data": [], "schema_coverage": _schema_result("complete")["schema_coverage"]}, False),
             (_schema_result("complete"), True),
         ],
     )
@@ -780,6 +834,7 @@ class TestRecceMCPServer:
 
         assert result["run_executed"] is False
         assert result["run_error"] == "Table not found: orders"
+        mock_check_dao.update_check_by_id.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_tool_create_check_idempotent_update_with_run_failure(self, mcp_server):
@@ -818,6 +873,10 @@ class TestRecceMCPServer:
         assert result["created"] is False
         assert result["run_executed"] is False
         assert result["run_error"] == "Permission denied"
+        assert all(
+            update_call.args[1].is_checked is not True
+            for update_call in mock_check_dao.update_check_by_id.call_args_list
+        )
 
     @pytest.mark.asyncio
     async def test_tool_run_check_row_count_diff(self, mcp_server):
@@ -982,6 +1041,17 @@ class TestRecceMCPServer:
             (_schema_result("unknown"), False),
             (_schema_result(), False),
             (_schema_result("complete", [["model.project.orders", "customer_id", "added"]]), False),
+            ({**_schema_result("complete"), "schema_coverage": {"status": "complete"}}, False),
+            (
+                _schema_result(
+                    "complete",
+                    unchecked_nodes=["model.project.orders"],
+                    unchecked_node_count=1,
+                ),
+                False,
+            ),
+            (_schema_result("complete", coverage_more=True), False),
+            ({"data": [], "schema_coverage": _schema_result("complete")["schema_coverage"]}, False),
             (_schema_result("complete"), True),
         ],
     )
