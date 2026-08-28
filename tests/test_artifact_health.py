@@ -245,6 +245,25 @@ def test_schema_coverage_excludes_one_sided_structural_nodes() -> None:
 
 
 @pytest.mark.parametrize(
+    ("base_nodes", "current_nodes"),
+    [
+        ({"model.pkg.broken": []}, {}),
+        ({}, {"model.pkg.broken": []}),
+    ],
+    ids=["malformed-base", "malformed-current"],
+)
+def test_schema_coverage_rejects_malformed_one_sided_nodes(
+    base_nodes: dict[str, Any],
+    current_nodes: dict[str, Any],
+) -> None:
+    coverage = classify_schema_coverage(base_nodes, current_nodes, ["model.pkg.broken"])
+
+    assert coverage.status == "unknown"
+    assert coverage.checked_node_ids == frozenset()
+    assert coverage.unchecked_node_ids == frozenset()
+
+
+@pytest.mark.parametrize(
     ("node_id", "node"),
     [
         ("model.pkg.inlined", _lineage_node(materialized="ephemeral", catalog_status="not_applicable", columns=())),
@@ -288,6 +307,34 @@ def test_schema_coverage_treats_legacy_nodes_without_catalog_status_as_unchecked
     assert coverage.unchecked_node_ids == frozenset({node_id})
 
 
+@pytest.mark.parametrize(
+    ("node_id", "resource_type"),
+    [
+        ("model.pkg.orders", "model"),
+        ("source.pkg.raw_orders", "source"),
+    ],
+    ids=["table-model", "source"],
+)
+def test_schema_coverage_does_not_let_not_applicable_marker_hide_a_relation(
+    node_id: str,
+    resource_type: str,
+) -> None:
+    malformed_node = _lineage_node(
+        resource_type=resource_type,
+        catalog_status="not_applicable",
+    )
+
+    coverage = classify_schema_coverage(
+        {node_id: malformed_node},
+        {node_id: malformed_node},
+        [node_id],
+    )
+
+    assert coverage.status == "partial"
+    assert coverage.checked_node_ids == frozenset()
+    assert coverage.unchecked_node_ids == frozenset({node_id})
+
+
 def test_schema_coverage_payload_sorts_and_bounds_unchecked_nodes() -> None:
     node_ids = [f"model.pkg.m{index:02d}" for index in range(55)]
     base_nodes = {node_id: _lineage_node() for node_id in node_ids}
@@ -301,6 +348,24 @@ def test_schema_coverage_payload_sorts_and_bounds_unchecked_nodes() -> None:
     assert payload == {
         "status": "partial",
         "unchecked_nodes": sorted(node_ids)[:50],
+        "unchecked_node_count": 55,
+        "more": True,
+    }
+
+
+def test_schema_coverage_payload_clamps_negative_sample_limit_to_zero() -> None:
+    node_ids = [f"model.pkg.m{index:02d}" for index in range(55)]
+    base_nodes = {node_id: _lineage_node() for node_id in node_ids}
+    current_nodes = {node_id: _lineage_node(catalog_status="unchecked", columns=()) for node_id in node_ids}
+
+    payload = schema_coverage_payload(
+        classify_schema_coverage(base_nodes, current_nodes, node_ids),
+        sample_limit=-1,
+    )
+
+    assert payload == {
+        "status": "partial",
+        "unchecked_nodes": [],
         "unchecked_node_count": 55,
         "more": True,
     }

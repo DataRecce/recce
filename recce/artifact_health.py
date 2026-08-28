@@ -149,8 +149,6 @@ def _unknown_schema_coverage() -> SchemaCoverage:
 
 
 def _catalog_columns_are_applicable(node: Mapping[str, Any]) -> bool:
-    if node.get("catalog_status") == "not_applicable":
-        return False
     if node.get("resource_type") in _NON_RELATION_RESOURCE_TYPES:
         return False
     config = node.get("config")
@@ -173,13 +171,14 @@ def classify_schema_coverage(
     checked: set[str] = set()
     unchecked: set[str] = set()
     for node_id in selected_node_ids:
+        base_node = base_nodes.get(node_id)
+        current_node = current_nodes.get(node_id)
+        if (node_id in base_nodes and not isinstance(base_node, Mapping)) or (
+            node_id in current_nodes and not isinstance(current_node, Mapping)
+        ):
+            return _unknown_schema_coverage()
         if node_id not in base_nodes or node_id not in current_nodes:
             continue
-
-        base_node = base_nodes[node_id]
-        current_node = current_nodes[node_id]
-        if not isinstance(base_node, Mapping) or not isinstance(current_node, Mapping):
-            return _unknown_schema_coverage()
         if not _catalog_columns_are_applicable(base_node) or not _catalog_columns_are_applicable(current_node):
             continue
 
@@ -200,7 +199,7 @@ def schema_coverage_payload(
     *,
     sample_limit: int = 50,
 ) -> dict[str, Any]:
-    effective_limit = min(sample_limit, 50)
+    effective_limit = max(0, min(sample_limit, 50))
     return {
         "status": coverage.status,
         "unchecked_nodes": sorted(coverage.unchecked_node_ids)[:effective_limit],
