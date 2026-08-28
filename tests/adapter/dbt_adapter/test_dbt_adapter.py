@@ -1,6 +1,8 @@
 import os
 from unittest.mock import patch
 
+import pytest
+
 from recce.adapter.dbt_adapter import DbtAdapter, dbt_supported_registry
 
 
@@ -67,3 +69,23 @@ def test_get_lineage_catalog_status_marks_missing_current_model_unchecked(dbt_te
     assert lineage["nodes"][node_id]["catalog_status"] == "unchecked"
     assert lineage["artifact_health"]["missing_node_count"] >= 1
     assert "covered_node_ids" not in lineage["artifact_health"]
+
+
+@pytest.mark.parametrize("materialized", ["ephemeral", "semantic_view"])
+def test_get_lineage_catalog_status_marks_excluded_materializations_not_applicable(dbt_test_helper, materialized):
+    node_id = f"model.recce_test.{materialized}_model"
+
+    def exclude_from_catalog_coverage(node):
+        node["config"]["materialized"] = materialized
+
+    dbt_test_helper.create_model(
+        f"{materialized}_model",
+        base_sql="select 1 as id",
+        curr_sql="select 1 as id",
+        unique_id=node_id,
+        patch_func=exclude_from_catalog_coverage,
+    )
+
+    lineage = dbt_test_helper.adapter.get_lineage()
+
+    assert lineage["nodes"][node_id]["catalog_status"] == "not_applicable"

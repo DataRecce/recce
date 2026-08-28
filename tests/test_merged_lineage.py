@@ -238,6 +238,23 @@ class TestBuildMergedLineageNodes:
 
         assert merged.schema_comparison_status == "unchecked"
 
+    def test_excluded_materialization_schema_comparison_status_is_not_applicable(self):
+        node = {
+            "name": "ephemeral_model",
+            "resource_type": "model",
+            "package_name": "pkg",
+            "config": {"materialized": "ephemeral"},
+            "catalog_status": "not_applicable",
+        }
+        ld = _make_lineage_diff(
+            base_nodes={"model.pkg.ephemeral_model": node},
+            current_nodes={"model.pkg.ephemeral_model": node},
+        )
+
+        merged = build_merged_lineage(ld).nodes["model.pkg.ephemeral_model"]
+
+        assert merged.schema_comparison_status == "not_applicable"
+
     def test_one_sided_removal_preserves_structural_change_status(self):
         node = {
             "name": "removed",

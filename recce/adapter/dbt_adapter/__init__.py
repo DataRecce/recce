@@ -833,6 +833,12 @@ class DbtAdapter(BaseAdapter):
             if resource_type not in ["model", "seed", "exposure", "snapshot"]:
                 continue
 
+            materialized = node["config"].get("materialized")
+            is_catalogable = resource_type in {"model", "seed", "snapshot"} and materialized not in {
+                "ephemeral",
+                "semantic_view",
+            }
+
             nodes[unique_id] = {
                 "id": node["unique_id"],
                 "name": node["name"],
@@ -842,7 +848,11 @@ class DbtAdapter(BaseAdapter):
                 "config": node["config"],
                 "checksum": node["checksum"],
                 "raw_code": node["raw_code"],
-                "catalog_status": "covered" if catalog is not None and unique_id in catalog.nodes else "unchecked",
+                "catalog_status": (
+                    "covered"
+                    if is_catalogable and catalog is not None and unique_id in catalog.nodes
+                    else "unchecked" if is_catalogable else "not_applicable"
+                ),
             }
 
             # List of <type>.<package_name>.<node_name>.<hash>
