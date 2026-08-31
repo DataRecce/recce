@@ -610,6 +610,93 @@ class TestRecceMCPServer:
         assert approve_call[0][1].is_checked is True
 
     @pytest.mark.asyncio
+    async def test_tool_create_check_approve_false_leaves_check_unapproved(self, mcp_server):
+        """create_check with approve=False runs the check but does not approve it."""
+        server, _ = mcp_server
+        from uuid import uuid4
+
+        from recce.models.types import Check, RunStatus
+
+        check_id = uuid4()
+        mock_check = MagicMock(spec=Check)
+        mock_check.check_id = check_id
+
+        mock_run = MagicMock()
+        mock_run.status = RunStatus.FINISHED
+        mock_run.error = None
+
+        mock_check_dao = MagicMock()
+        mock_check_dao.list.return_value = []
+
+        with (
+            patch("recce.models.CheckDAO", return_value=mock_check_dao),
+            patch("recce.apis.check_func.create_check_without_run", return_value=mock_check),
+            patch("recce.apis.run_func.submit_run", return_value=(mock_run, asyncio.sleep(0))),
+            patch("recce.apis.check_func.export_persistent_state"),
+        ):
+            result = await server._tool_create_check(
+                {
+                    "type": "row_count_diff",
+                    "params": {"node_names": ["orders"]},
+                    "name": "Row Count Diff of orders",
+                    "approve": False,
+                }
+            )
+
+        assert result["run_executed"] is True
+        mock_check_dao.update_check_by_id.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_tool_update_check_unapproves_and_persists(self, mcp_server):
+        """update_check patches only the given fields and exports the state."""
+        server, _ = mcp_server
+        from uuid import uuid4
+
+        from recce.models.types import Check
+
+        check_id = uuid4()
+        existing = MagicMock(spec=Check)
+        existing.check_id = check_id
+        existing.is_checked = False
+
+        mock_check_dao = MagicMock()
+        mock_check_dao.find_check_by_id.return_value = existing
+        mock_check_dao.update_check_by_id.return_value = existing
+
+        with (
+            patch("recce.models.CheckDAO", return_value=mock_check_dao),
+            patch("recce.apis.check_func.export_persistent_state") as mock_export,
+        ):
+            result = await server._tool_update_check(
+                {"check_id": str(check_id), "is_checked": False, "description": "still open"}
+            )
+
+        patch_in = mock_check_dao.update_check_by_id.call_args[0][1]
+        assert patch_in.is_checked is False
+        assert patch_in.description == "still open"
+        assert patch_in.name is None
+        assert result == {
+            "check_id": str(check_id),
+            "updated": ["description", "is_checked"],
+            "is_checked": False,
+        }
+        mock_export.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_tool_update_check_unknown_check_id(self, mcp_server):
+        """update_check raises when the check does not exist."""
+        server, _ = mcp_server
+
+        mock_check_dao = MagicMock()
+        mock_check_dao.find_check_by_id.return_value = None
+
+        with patch("recce.models.CheckDAO", return_value=mock_check_dao):
+            with pytest.raises(ValueError, match="not found"):
+                await server._tool_update_check({"check_id": "missing", "is_checked": True})
+
+        mock_check_dao.update_check_by_id.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_tool_create_check_idempotent_update(self, mcp_server):
         """create_check with same (type, params) updates instead of creating."""
         server, _ = mcp_server
