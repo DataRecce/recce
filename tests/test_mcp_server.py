@@ -661,6 +661,7 @@ class TestRecceMCPServer:
 
         mock_check_dao = MagicMock()
         mock_check_dao.find_check_by_id.return_value = existing
+        mock_check_dao.update_check_by_id.return_value = existing
 
         with (
             patch("recce.models.CheckDAO", return_value=mock_check_dao),

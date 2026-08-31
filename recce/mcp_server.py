@@ -2950,8 +2950,9 @@ class RecceMCPServer:
         if not check_dao.find_check_by_id(check_id):
             raise ValueError(f"Check with ID {check_id} not found")
 
-        check_dao.update_check_by_id(check_id, PatchCheckIn(**fields))
-        updated = check_dao.find_check_by_id(check_id)
+        updated = check_dao.update_check_by_id(check_id, PatchCheckIn(**fields))
+        if updated is None:
+            raise ValueError(f"Failed to update check {check_id}")
         await asyncio.get_event_loop().run_in_executor(None, export_persistent_state)
 
         return {
