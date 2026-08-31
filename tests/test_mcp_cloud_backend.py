@@ -239,6 +239,41 @@ async def test_create_check_approve_false_leaves_check_unapproved(cloud_requests
 
 
 @pytest.mark.asyncio
+async def test_update_check_patches_only_the_given_fields(cloud_requests):
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(200, {"check_id": "check-1", "is_checked": False}),
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    result = await backend.call_tool(
+        "update_check",
+        {"check_id": "check-1", "is_checked": False, "description": "still open"},
+    )
+
+    method, url = cloud_requests.call_args.args[:2]
+    assert method == "PATCH"
+    assert url == "https://cloud.reccehq.com/api/v2/sessions/sess-123/checks/check-1"
+    assert cloud_requests.call_args.kwargs["json"] == {"description": "still open", "is_checked": False}
+    assert result == {
+        "check_id": "check-1",
+        "updated": ["description", "is_checked"],
+        "is_checked": False,
+    }
+
+
+@pytest.mark.asyncio
+async def test_update_check_rejects_a_call_with_no_field_to_change(cloud_requests):
+    cloud_requests.side_effect = [MockResponse(204)]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    with pytest.raises(ValueError, match="At least one of"):
+        await backend.call_tool("update_check", {"check_id": "check-1"})
+
+    assert cloud_requests.call_count == 1
+
+
+@pytest.mark.asyncio
 async def test_cloud_backend_lineage_diff_view_all_truncates(monkeypatch):
     """DRC-3758: CloudBackend caps view_mode='all', keeping changed + impacted first."""
     from recce.mcp_server import CloudBackend

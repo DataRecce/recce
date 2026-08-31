@@ -93,6 +93,8 @@ SELECTOR_SYNTAX_NOTE = (
 # 25k cap (~43k chars / ~14.4k tokens for 300 long-id nodes, edges included).
 VIEW_ALL_MAX_NODES = 300
 
+UPDATABLE_CHECK_FIELDS = ("name", "description", "is_checked")
+
 
 class InstanceSpawningError(RuntimeError):
     """Raised when a Recce Cloud session instance is not ready yet."""
@@ -176,6 +178,8 @@ class CloudBackend:
             return await self._tool_run_check(arguments)
         if name == "create_check":
             return await self._tool_create_check(arguments)
+        if name == "update_check":
+            return await self._tool_update_check(arguments)
         if name == "impact_analysis":
             return await self._tool_impact_analysis(arguments)
         raise ValueError(f"Unknown tool: {name}")
@@ -322,6 +326,24 @@ class CloudBackend:
             )
         except (RecceCloudException, InstanceSpawningError) as e:
             logger.warning(f"[MCP] Auto-approve failed for check {check_id}: {e}")
+
+    async def _tool_update_check(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        check_id = arguments.get("check_id")
+        if not check_id:
+            raise ValueError("check_id is required")
+        fields = {key: arguments[key] for key in UPDATABLE_CHECK_FIELDS if key in arguments}
+        if not fields:
+            raise ValueError(f"At least one of {', '.join(UPDATABLE_CHECK_FIELDS)} is required")
+        check = await self._request(
+            "PATCH",
+            f"checks/{quote(str(check_id), safe='')}",
+            json=fields,
+        )
+        return {
+            "check_id": str(check_id),
+            "updated": sorted(fields),
+            "is_checked": check.get("is_checked"),
+        }
 
     async def _tool_lineage_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         info = await self._request("GET", "info")
@@ -1534,6 +1556,36 @@ class RecceMCPServer:
                                 "required": ["type", "params", "name"],
                             },
                         ),
+                        Tool(
+                            name="update_check",
+                            description=(
+                                "Update an existing check. Approve it (is_checked=true), unapprove it "
+                                "(is_checked=false), or edit its name or description. Only the fields "
+                                "passed are changed."
+                            ),
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "check_id": {
+                                        "type": "string",
+                                        "description": "The ID of the check to update",
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "description": "New check name",
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "description": "New check description",
+                                    },
+                                    "is_checked": {
+                                        "type": "boolean",
+                                        "description": "Approval state of the check",
+                                    },
+                                },
+                                "required": ["check_id"],
+                            },
+                        ),
                     ]
                 )
 
@@ -1633,6 +1685,7 @@ class RecceMCPServer:
                     "list_checks",
                     "run_check",
                     "create_check",
+                    "update_check",
                     "impact_analysis",
                 }
                 # Unconfigured-mode gate: when neither a local context nor a cloud
@@ -1705,6 +1758,8 @@ class RecceMCPServer:
                     result = await self._tool_run_check(arguments)
                 elif name == "create_check":
                     result = await self._tool_create_check(arguments)
+                elif name == "update_check":
+                    result = await self._tool_update_check(arguments)
                 else:
                     raise ValueError(f"Unknown tool: {name}")
 
@@ -2877,6 +2932,33 @@ class RecceMCPServer:
         if run_error:
             result["run_error"] = run_error
         return result
+
+    async def _tool_update_check(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Update a check's name, description, or approval state."""
+        from recce.apis.check_api import PatchCheckIn
+        from recce.apis.check_func import export_persistent_state
+        from recce.models import CheckDAO
+
+        check_id = arguments.get("check_id")
+        if not check_id:
+            raise ValueError("check_id is required")
+        fields = {key: arguments[key] for key in UPDATABLE_CHECK_FIELDS if key in arguments}
+        if not fields:
+            raise ValueError(f"At least one of {', '.join(UPDATABLE_CHECK_FIELDS)} is required")
+
+        check_dao = CheckDAO()
+        if not check_dao.find_check_by_id(check_id):
+            raise ValueError(f"Check with ID {check_id} not found")
+
+        check_dao.update_check_by_id(check_id, PatchCheckIn(**fields))
+        updated = check_dao.find_check_by_id(check_id)
+        await asyncio.get_event_loop().run_in_executor(None, export_persistent_state)
+
+        return {
+            "check_id": str(check_id),
+            "updated": sorted(fields),
+            "is_checked": updated.is_checked,
+        }
 
     async def run(self):
         """Run the MCP server in stdio mode"""
