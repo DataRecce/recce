@@ -296,7 +296,7 @@ class CloudBackend:
             )
             run_executed = True
             run_error = run.get("error")
-            if self._run_succeeded(run):
+            if self._run_succeeded(run) and arguments.get("approve", True):
                 await self._auto_approve(check_id)
         result = {
             "check_id": str(check_id),
@@ -1521,6 +1521,14 @@ class RecceMCPServer:
                                         "type": "string",
                                         "enum": ["user", "recce_ai"],
                                         "description": "Who triggered this run. Defaults to 'user'.",
+                                    },
+                                    "approve": {
+                                        "type": "boolean",
+                                        "description": (
+                                            "Mark the check approved when its run succeeds. "
+                                            "Defaults to true. Set false to leave the check "
+                                            "unapproved for review."
+                                        ),
                                     },
                                 },
                                 "required": ["type", "params", "name"],
@@ -2792,6 +2800,7 @@ class RecceMCPServer:
         params = arguments.get("params", {})
         name = arguments["name"]
         description = arguments.get("description", "")
+        approve = arguments.get("approve", True)
 
         # Idempotency: find existing check with same (type, params)
         check_dao = CheckDAO()
@@ -2854,7 +2863,7 @@ class RecceMCPServer:
         # Note: this differs from run_should_be_approved() in run.py, which
         # only approves ROW_COUNT_DIFF with matching counts.  Here we blanket-
         # approve any successful run — intentional per PM decision.
-        if run_executed and not run_error:
+        if run_executed and not run_error and approve:
             check_dao.update_check_by_id(check_id, PatchCheckIn(is_checked=True))
 
         # Persist state to cloud/disk (matches REST endpoint pattern)

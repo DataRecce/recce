@@ -218,6 +218,27 @@ async def test_create_check_runs_lineage_diff_via_checks_run_endpoint(cloud_requ
 
 
 @pytest.mark.asyncio
+async def test_create_check_approve_false_leaves_check_unapproved(cloud_requests):
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(200, {"check_id": "check-1"}),
+        MockResponse(200, {"run_id": "run-1", "status": "finished", "result": {"nodes": []}}),
+        # Spare: an unwanted approve must fail the assertion below, not an empty side_effect list.
+        MockResponse(200, {"check_id": "check-1", "is_checked": True}),
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    result = await backend.call_tool(
+        "create_check",
+        {"name": "lineage", "type": "lineage_diff", "params": {}, "approve": False},
+    )
+
+    methods = [call.args[0] for call in cloud_requests.call_args_list]
+    assert "PATCH" not in methods
+    assert result["run_executed"] is True
+
+
+@pytest.mark.asyncio
 async def test_cloud_backend_lineage_diff_view_all_truncates(monkeypatch):
     """DRC-3758: CloudBackend caps view_mode='all', keeping changed + impacted first."""
     from recce.mcp_server import CloudBackend

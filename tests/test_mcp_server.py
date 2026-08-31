@@ -610,6 +610,43 @@ class TestRecceMCPServer:
         assert approve_call[0][1].is_checked is True
 
     @pytest.mark.asyncio
+    async def test_tool_create_check_approve_false_leaves_check_unapproved(self, mcp_server):
+        """create_check with approve=False runs the check but does not approve it."""
+        server, _ = mcp_server
+        from uuid import uuid4
+
+        from recce.models.types import Check, RunStatus
+
+        check_id = uuid4()
+        mock_check = MagicMock(spec=Check)
+        mock_check.check_id = check_id
+
+        mock_run = MagicMock()
+        mock_run.status = RunStatus.FINISHED
+        mock_run.error = None
+
+        mock_check_dao = MagicMock()
+        mock_check_dao.list.return_value = []
+
+        with (
+            patch("recce.models.CheckDAO", return_value=mock_check_dao),
+            patch("recce.apis.check_func.create_check_without_run", return_value=mock_check),
+            patch("recce.apis.run_func.submit_run", return_value=(mock_run, asyncio.sleep(0))),
+            patch("recce.apis.check_func.export_persistent_state"),
+        ):
+            result = await server._tool_create_check(
+                {
+                    "type": "row_count_diff",
+                    "params": {"node_names": ["orders"]},
+                    "name": "Row Count Diff of orders",
+                    "approve": False,
+                }
+            )
+
+        assert result["run_executed"] is True
+        mock_check_dao.update_check_by_id.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_tool_create_check_idempotent_update(self, mcp_server):
         """create_check with same (type, params) updates instead of creating."""
         server, _ = mcp_server
