@@ -217,7 +217,7 @@ export function toSchemaDataGrid(
 
   // Only "unchecked" suppresses rows. It means we have positive evidence the
   // catalog did not describe this node, so an apparent add/remove/type-change
-  // is unverified — the DRC-3293 fix.
+  // is unverified.
   //
   // "unknown" is different: no coverage evidence exists at all (a legacy or
   // version-skewed producer that never emitted catalog_status). Suppressing

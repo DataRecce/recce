@@ -20,8 +20,8 @@ import { buildLineageGraph } from "../../../contexts/lineage/utils";
 import { theme } from "../../../theme";
 import { SchemaView } from "../SchemaView";
 
-const { flags, distribution, lineageGraph, lineageViewContext } = vi.hoisted(
-  () => ({
+const { flags, distribution, envInfo, lineageGraph, lineageViewContext } =
+  vi.hoisted(() => ({
     flags: {
       current: { new_cll_experience: true, inline_profile: true } as Record<
         string,
@@ -29,6 +29,7 @@ const { flags, distribution, lineageGraph, lineageViewContext } = vi.hoisted(
       >,
     },
     distribution: { current: {} as Record<string, unknown> },
+    envInfo: { current: undefined as { adapterType?: string } | undefined },
     lineageGraph: {
       current: {
         nodes: {},
@@ -49,8 +50,7 @@ const { flags, distribution, lineageGraph, lineageViewContext } = vi.hoisted(
         showColumnLevelLineage: vi.fn(),
       } as unknown,
     },
-  }),
-);
+  }));
 
 vi.mock("../../../contexts", () => ({
   useRecceServerFlag: () => ({ data: flags.current }),
@@ -58,6 +58,7 @@ vi.mock("../../../contexts", () => ({
   useLineageGraphContext: () => ({
     lineageGraph: lineageGraph.current,
     isActionAvailable: () => true,
+    envInfo: envInfo.current,
   }),
 }));
 
@@ -94,6 +95,7 @@ const BUTTON = { name: "Profile all columns" } as const;
 
 beforeEach(() => {
   flags.current = { new_cll_experience: true, inline_profile: true };
+  envInfo.current = undefined;
   distribution.current = {
     status: "disabled",
     columns: {},
@@ -186,12 +188,90 @@ describe("SchemaView comparison coverage", () => {
       name: "Incomplete schema comparison",
     });
     expect(warning).toHaveTextContent("current environment");
-    expect(warning).toHaveTextContent("1 node was not checked");
-    expect(warning).toHaveTextContent(nodeId);
     expect(warning).toHaveTextContent("Regenerate the current catalog");
     expect(warning).toHaveTextContent("dbt docs generate");
     expect(screen.getByText("id")).toBeInTheDocument();
     expect(screen.queryByText("legacy")).not.toBeInTheDocument();
+  });
+
+  it("keeps project-wide coverage numbers out of the node-scoped banner", () => {
+    // The bug this pins: `lineageGraph.schemaCoverage` is the whole project's
+    // coverage, sampled to the first 50 ids. On any project bigger than a
+    // handful of models the node being viewed is not in that sample, so the
+    // banner used to quote a count and a list of unrelated models to a user
+    // asking about one model.
+    const nodeId = "model.shop.zz_widgets";
+    const unrelated = Array.from(
+      { length: 50 },
+      (_, index) => `model.shop.aa_other_${String(index).padStart(2, "0")}`,
+    );
+    lineageGraph.current = {
+      nodes: {
+        [nodeId]: {
+          data: {
+            schemaComparisonStatus: "unchecked",
+            baseCatalogStatus: "covered",
+            currentCatalogStatus: "unchecked",
+          },
+        },
+      },
+      catalogMetadata: { base: {}, current: {} },
+      schemaCoverage: {
+        status: "partial",
+        unchecked_nodes: unrelated,
+        unchecked_node_count: 60,
+        more: true,
+      },
+    };
+
+    render(wrap(model(nodeId)));
+
+    const warning = screen.getByRole("alert", {
+      name: "Incomplete schema comparison",
+    });
+    // The node-relevant claim survives.
+    expect(warning).toHaveTextContent("current environment");
+    expect(warning).toHaveTextContent("Regenerate the current catalog");
+    // The project-wide claims do not.
+    expect(warning).not.toHaveTextContent("60 nodes were not checked");
+    expect(warning).not.toHaveTextContent("Unchecked nodes:");
+    expect(warning).not.toHaveTextContent("and 10 more");
+    expect(warning).not.toHaveTextContent(unrelated[0]);
+  });
+
+  it("does not tell a SQLMesh user to run a dbt command", () => {
+    // SQLMesh has no catalog.json — a snapshot's columns_to_types is its
+    // schema — so `dbt docs generate` is an instruction they cannot follow.
+    envInfo.current = { adapterType: "sqlmesh" };
+    const nodeId = "model.shop.orders";
+    lineageGraph.current = {
+      nodes: {
+        [nodeId]: {
+          data: {
+            schemaComparisonStatus: "unchecked",
+            baseCatalogStatus: "covered",
+            currentCatalogStatus: "unchecked",
+          },
+        },
+      },
+      catalogMetadata: { base: {}, current: {} },
+      schemaCoverage: {
+        status: "partial",
+        unchecked_nodes: [nodeId],
+        unchecked_node_count: 1,
+        more: false,
+      },
+    };
+
+    render(wrap(model(nodeId)));
+
+    const warning = screen.getByRole("alert", {
+      name: "Incomplete schema comparison",
+    });
+    expect(warning).not.toHaveTextContent("dbt docs generate");
+    expect(warning).not.toHaveTextContent("catalog");
+    expect(warning).toHaveTextContent("Refresh the current environment");
+    expect(warning).toHaveTextContent("rerun the comparison");
   });
 
   it("uses exact source-side evidence when bounded samples do not identify the node", () => {

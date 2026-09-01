@@ -2,9 +2,8 @@ import logging
 import os
 import sys
 import time
-from collections.abc import Mapping
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple
 
 from deepdiff import DeepDiff
 from rich import box
@@ -17,97 +16,18 @@ from recce.apis.check_func import (
     purge_preset_checks,
 )
 from recce.apis.run_func import submit_run
-from recce.artifact_health import classify_schema_coverage, schema_coverage_payload
+from recce.artifact_health import classify_schema_coverage
 from recce.config import RecceConfig
 from recce.core import default_context
 from recce.models import CheckDAO
-from recce.models.types import RunType, SchemaCoveragePayload
+from recce.models.types import RunType
 from recce.summary import generate_markdown_summary
-from recce.tasks.dataframe import DataFrame
 from recce.tasks.rowcount import (
     PERMISSION_DENIED_INDICATORS,
     TABLE_NOT_FOUND_INDICATORS,
 )
 
 logger = logging.getLogger(__name__)
-
-_SCHEMA_DIFF_COLUMNS = {
-    "node_id": "text",
-    "column": "text",
-    "change_status": "text",
-}
-
-
-def _canonical_schema_coverage(result: Mapping[str, Any] | None) -> SchemaCoveragePayload | None:
-    if not isinstance(result, Mapping):
-        return None
-    raw_coverage = result.get("schema_coverage")
-    if not isinstance(raw_coverage, Mapping):
-        return None
-    required_fields = {"status", "unchecked_nodes", "unchecked_node_count", "more"}
-    if not required_fields.issubset(raw_coverage):
-        return None
-    unchecked_nodes = raw_coverage.get("unchecked_nodes")
-    unchecked_node_count = raw_coverage.get("unchecked_node_count")
-    more = raw_coverage.get("more")
-    if (
-        not isinstance(unchecked_nodes, list)
-        or any(not isinstance(node_id, str) for node_id in unchecked_nodes)
-        or not isinstance(unchecked_node_count, int)
-        or isinstance(unchecked_node_count, bool)
-        or unchecked_node_count < len(unchecked_nodes)
-        or not isinstance(more, bool)
-    ):
-        return None
-    try:
-        coverage = SchemaCoveragePayload.model_validate(raw_coverage)
-    except (TypeError, ValueError):
-        return None
-
-    has_unchecked_nodes = coverage.unchecked_node_count > 0
-    sample_is_truncated = coverage.unchecked_node_count > len(coverage.unchecked_nodes)
-    invariants_hold = (
-        has_unchecked_nodes and coverage.more == sample_is_truncated
-        if coverage.status == "partial"
-        else not has_unchecked_nodes and not coverage.unchecked_nodes and not coverage.more
-    )
-    return coverage if invariants_hold else None
-
-
-def result_schema_coverage_status(result: Mapping[str, Any] | None) -> str:
-    coverage = _canonical_schema_coverage(result)
-    return coverage.status if coverage is not None else "unknown"
-
-
-def verified_schema_diff_is_empty(result: Mapping[str, Any] | None) -> bool:
-    if not isinstance(result, Mapping):
-        return False
-    limit = result.get("limit")
-    total_row_count = result.get("total_row_count")
-    if (
-        not isinstance(result.get("columns"), list)
-        or not isinstance(result.get("data"), list)
-        or not isinstance(limit, int)
-        or isinstance(limit, bool)
-        or limit <= 0
-        or result.get("more") is not False
-        or not isinstance(total_row_count, int)
-        or isinstance(total_row_count, bool)
-        or total_row_count != 0
-    ):
-        return False
-    try:
-        frame = DataFrame.model_validate(result)
-    except (TypeError, ValueError):
-        return False
-
-    expected_columns = [(name, name, type_name) for name, type_name in _SCHEMA_DIFF_COLUMNS.items()]
-    actual_columns = [(column.key, column.name, column.type.value) for column in frame.columns]
-    return actual_columns == expected_columns and not frame.data and frame.more is False and frame.total_row_count == 0
-
-
-def schema_result_is_approvable(result: Mapping[str, Any] | None) -> bool:
-    return result_schema_coverage_status(result) == "complete" and verified_schema_diff_is_empty(result)
 
 
 def check_github_ci_env(**kwargs):
@@ -183,16 +103,11 @@ def schema_diff_should_be_approved(check_params: dict) -> bool:
             _checked_node_columns(current_lineage_nodes),
             ignore_order=True,
         )
-        diff_frame = DataFrame.from_data(
-            columns=_SCHEMA_DIFF_COLUMNS,
-            data=[] if not diff else [("selection", "schema", "modified")],
-            limit=100,
-            more=False,
-        )
-        diff_frame.total_row_count = len(diff_frame.data)
-        result = diff_frame.model_dump(mode="json")
-        result["schema_coverage"] = schema_coverage_payload(coverage)
-        return schema_result_is_approvable(result)
+        # The same rule the serialised gate applies, stated directly: only a
+        # comparison that actually covered its whole selection can read an
+        # empty diff as "no schema changes". "complete" already excludes the
+        # vacuous case, where nothing in the selection was comparable at all.
+        return coverage.status == "complete" and not diff
     except Exception as e:
         error_msg = str(e).upper()
         if any(ind in error_msg for ind in TABLE_NOT_FOUND_INDICATORS + PERMISSION_DENIED_INDICATORS):

@@ -38,7 +38,6 @@ import {
 import { ProfileDistributionUnsupportedBanner } from "../data/ProfileDistributionUnsupportedBanner";
 import { createDataGridFromData } from "../ui/dataGrid";
 import type { SchemaDistributionData } from "../ui/dataGrid/schemaCells";
-import { formatUncheckedNodeText } from "./formatSchemaCoverage";
 import { getColumnChangeStatus } from "./getColumnChangeStatus";
 import { selectInlineProfileScope } from "./selectInlineProfileScope";
 
@@ -281,17 +280,16 @@ export function PrivateSchemaView(
       : undefined;
   }, [current, base]);
   const nodeId = current?.id ?? base?.id;
-  const { lineageGraph, isActionAvailable } = useLineageGraphContext();
+  const { lineageGraph, isActionAvailable, envInfo } = useLineageGraphContext();
   const lineageNode = nodeId ? lineageGraph?.nodes[nodeId]?.data : undefined;
   const schemaComparisonStatus = nodeId
     ? (lineageNode?.schemaComparisonStatus ?? "unknown")
     : "not_applicable";
-  const schemaCoverage = lineageGraph?.schemaCoverage ?? {
-    status: "unknown",
-    unchecked_nodes: [],
-    unchecked_node_count: 0,
-    more: false,
-  };
+  // No project-wide coverage numbers here. `lineageGraph.schemaCoverage` counts
+  // every node in the lineage and samples the first 50 by id, so on any real
+  // project the node being viewed is usually absent from its own banner. The
+  // node-scoped claim is `schemaComparisonStatus` plus the affected side below;
+  // the project-wide count belongs to SchemaSummary.
   const comparisonIncomplete =
     schemaComparisonStatus === "unchecked" ||
     schemaComparisonStatus === "unknown";
@@ -307,6 +305,11 @@ export function PrivateSchemaView(
         : affectedEnvironmentText === "base and current environments"
           ? "base and current catalogs"
           : "base/current catalogs";
+  // `dbt docs generate` and catalog.json are dbt concepts. SQLMesh has neither
+  // — a snapshot's `columns_to_types` is its schema — so telling a SQLMesh user
+  // to regenerate a catalog is an instruction they cannot follow. Anything we
+  // cannot identify keeps the dbt wording, which is the common case.
+  const usesDbtCatalog = envInfo?.adapterType !== "sqlmesh";
 
   // This node's own column names (base ∪ current), used to attribute impacted
   // ids to this node by exact `<nodeId>_<column>` membership in the scoping
@@ -554,9 +557,17 @@ export function PrivateSchemaView(
           sx={{ fontSize: "0.75rem", p: 1 }}
         >
           Schema comparison incomplete for the {affectedEnvironmentText}.{" "}
-          {formatUncheckedNodeText(schemaCoverage)} Regenerate the{" "}
-          {affectedCatalogText} with <code>dbt docs generate</code>, then rerun
-          the comparison.
+          {usesDbtCatalog ? (
+            <>
+              Regenerate the {affectedCatalogText} with{" "}
+              <code>dbt docs generate</code>, then rerun the comparison.
+            </>
+          ) : (
+            <>
+              Refresh the {affectedEnvironmentText} so this model&apos;s columns
+              are resolved, then rerun the comparison.
+            </>
+          )}
         </MuiAlert>
       ) : catalogMissingMessage ? (
         <MuiAlert severity="warning" sx={{ fontSize: "0.75rem", p: 1 }}>

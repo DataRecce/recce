@@ -710,8 +710,12 @@ class TestRecceMCPServer:
             check_id=check_id,
             triggered_by="user",
         )
-        # Successful execution without complete empty schema evidence stays unapproved.
-        mock_check_dao.update_check_by_id.assert_not_called()
+        # A non-schema check keeps the standing rule: a successful run is a
+        # reviewed check. The coverage contract binds schema comparisons only.
+        mock_check_dao.update_check_by_id.assert_called_once()
+        approve_call = mock_check_dao.update_check_by_id.call_args
+        assert approve_call[0][0] == check_id
+        assert approve_call[0][1].is_checked is True
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -841,14 +845,18 @@ class TestRecceMCPServer:
 
         assert result["check_id"] == str(check_id)
         assert result["created"] is False
-        # Only the idempotent name/description update occurs; the run carries no
-        # complete empty schema evidence for a second approval update.
-        mock_check_dao.update_check_by_id.assert_called_once()
-        update_call = mock_check_dao.update_check_by_id.call_args
-        assert update_call[0][0] == check_id
-        patch_in = update_call[0][1]
+        # Two calls: (1) name/desc update, (2) auto-approve after successful run
+        assert mock_check_dao.update_check_by_id.call_count == 2
+        first_call = mock_check_dao.update_check_by_id.call_args_list[0]
+        assert first_call[0][0] == check_id
+        patch_in = first_call[0][1]
         assert patch_in.name == "Updated name"
         assert patch_in.description == "Updated description"
+        # Second call: auto-approve (is_checked=True) after a non-schema run
+        # succeeded. Only schema comparisons owe complete coverage.
+        second_call = mock_check_dao.update_check_by_id.call_args_list[1]
+        assert second_call[0][0] == check_id
+        assert second_call[0][1].is_checked is True
 
     @pytest.mark.asyncio
     async def test_tool_create_check_metadata_run_for_schema_diff(self, mcp_server):
@@ -1078,8 +1086,12 @@ class TestRecceMCPServer:
         assert "check_id" in result
         assert result["check_id"] == str(check_id)
 
-        # A successful non-schema run has no complete schema evidence.
-        mock_check_dao.update_check_by_id.assert_not_called()
+        # Regression: a successful task-branch run must auto-approve. If this
+        # fails, the auto-approve gate has been widened to non-schema types and
+        # preset checks will silently stay Unapproved.
+        from recce.apis.check_api import PatchCheckIn
+
+        mock_check_dao.update_check_by_id.assert_called_once_with(str(check_id), PatchCheckIn(is_checked=True))
 
     @pytest.mark.asyncio
     async def test_tool_run_check_with_lineage_diff(self, mcp_server):
@@ -1125,12 +1137,21 @@ class TestRecceMCPServer:
         assert "check_id" in result
         # Verify a metadata run was persisted
         mock_run_dao.create.assert_called_once()
-        # Lineage-only results have no complete schema comparison contract.
-        mock_check_dao.update_check_by_id.assert_not_called()
+        # Regression: metadata-branch (lineage_diff) success must auto-approve.
+        # A lineage result makes no schema-coverage claim, so it is judged on
+        # the standing rule that an empty result IS evidence of zero changes.
+        from recce.apis.check_api import PatchCheckIn
+
+        mock_check_dao.update_check_by_id.assert_called_once_with(str(check_id), PatchCheckIn(is_checked=True))
 
     @pytest.mark.asyncio
     async def test_tool_run_check_with_schema_diff(self, mcp_server):
-        """Test running a schema_diff check delegates to _tool_schema_diff"""
+        """Test running a schema_diff check delegates to _tool_schema_diff.
+
+        The selector here matches no nodes, which is the vacuous case: the run
+        succeeds and the frame is empty because there was nothing to compare.
+        That is absence of evidence, so the check must NOT be auto-approved.
+        """
         server, mock_context = mcp_server
         from uuid import uuid4
 
@@ -1172,10 +1193,8 @@ class TestRecceMCPServer:
         assert "check_id" in result
         # Verify a metadata run was persisted
         mock_run_dao.create.assert_called_once()
-        # Empty schema diff with complete coverage is valid approval evidence.
-        from recce.apis.check_api import PatchCheckIn
-
-        mock_check_dao.update_check_by_id.assert_called_once_with(str(check_id), PatchCheckIn(is_checked=True))
+        # An empty diff over an empty selection is not approval evidence.
+        mock_check_dao.update_check_by_id.assert_not_called()
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -3609,6 +3628,14 @@ class TestImpactAnalysisBehavior:
 
         It reaches impact_analysis like any other model, but "no columns on
         either side" is its normal state rather than something the run skipped.
+        So it must not be named in `unchecked_nodes`, which would pin any
+        project owning one to "partial" forever.
+
+        It is the only model here, so nothing in this run was comparable and
+        the coverage as a whole is unknown — not "complete", which would be a
+        clean bill of health for a comparison that looked at nothing. That an
+        ephemeral model does not drag a real selection off "complete" is pinned
+        in tests/test_artifact_health.py.
         """
         server, mock_context = mcp_server
 
@@ -3643,8 +3670,9 @@ class TestImpactAnalysisBehavior:
 
         assert result["errors"] == []
         coverage = result["schema_coverage"]
-        assert coverage["unchecked_nodes"] == []
-        assert coverage["status"] == "complete", "an ephemeral model was counted as a coverage gap"
+        assert coverage["unchecked_nodes"] == [], "an ephemeral model was counted as a coverage gap"
+        assert coverage["unchecked_node_count"] == 0
+        assert coverage["status"] == "unknown", "a comparison that covered nothing claimed a clean result"
 
 
 class TestLocalModeRunBacked:

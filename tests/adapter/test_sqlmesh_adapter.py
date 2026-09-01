@@ -1,4 +1,4 @@
-"""SQLMesh lineage must declare its own schema coverage (DRC-3303 / AC7).
+"""SQLMesh lineage must declare its own schema coverage.
 
 SQLMesh has no `catalog.json`: a snapshot's `columns_to_types` *is* the
 authoritative schema. The canonical classifier treats a node with no

@@ -74,17 +74,10 @@ describe("ServerInfoResult schema evidence contract", () => {
     expectTypeOf<MergedLineageResponse["schema_coverage"]>().toEqualTypeOf<
       SchemaCoverage | null | undefined
     >();
-    expectTypeOf<ServerInfoResult["artifact_health"]>().toEqualTypeOf<
-      | {
-          base?: ArtifactHealth | null;
-          current?: ArtifactHealth | null;
-        }
-      | null
-      | undefined
-    >();
-    expectTypeOf<ServerInfoResult["schema_coverage"]>().toEqualTypeOf<
-      SchemaCoverage | null | undefined
-    >();
+    // The server nests both under `lineage` and nowhere else, so
+    // ServerInfoResult must not declare top-level copies of them.
+    expectTypeOf<ServerInfoResult>().not.toHaveProperty("artifact_health");
+    expectTypeOf<ServerInfoResult>().not.toHaveProperty("schema_coverage");
   });
 
   it("exports the optional per-node comparison status", () => {

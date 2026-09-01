@@ -11,7 +11,11 @@ import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { getModelInfo } from "../..";
-import type { LineageGraph, LineageGraphNode } from "../../contexts";
+import {
+  type LineageGraph,
+  type LineageGraphNode,
+  useLineageGraphContext,
+} from "../../contexts";
 import { useApiConfig } from "../../hooks";
 import { NodeTag, RowCountDiffTag } from "../lineage";
 import { SchemaView } from "../schema";
@@ -127,6 +131,11 @@ export interface SchemaSummaryProps {
 
 export function SchemaSummary({ lineageGraph }: SchemaSummaryProps) {
   const [changedNodes, setChangedNodes] = useState<LineageGraphNode[]>([]);
+  const { envInfo } = useLineageGraphContext();
+  // Same reason as SchemaView: `dbt docs generate` and catalog.json do not
+  // exist in SQLMesh, so that remediation cannot be followed there. An
+  // unidentified adapter keeps the dbt wording.
+  const usesDbtCatalog = envInfo?.adapterType !== "sqlmesh";
 
   useEffect(() => {
     setChangedNodes(listChangedNodes(lineageGraph));
@@ -162,9 +171,16 @@ export function SchemaSummary({ lineageGraph }: SchemaSummaryProps) {
             sx={{ fontSize: "0.875rem", mb: 2 }}
           >
             Schema comparison incomplete.{" "}
-            {formatUncheckedNodeText(schemaCoverage)} Regenerate the{" "}
-            {affectedCatalogs(lineageGraph)} with <code>dbt docs generate</code>
-            {", then rerun the comparison."}
+            {formatUncheckedNodeText(schemaCoverage)}{" "}
+            {usesDbtCatalog ? (
+              <>
+                Regenerate the {affectedCatalogs(lineageGraph)} with{" "}
+                <code>dbt docs generate</code>
+                {", then rerun the comparison."}
+              </>
+            ) : (
+              "Refresh your environments so model columns are resolved, then rerun the comparison."
+            )}
           </MuiAlert>
         )}
         {changedNodes.length === 0 ? (

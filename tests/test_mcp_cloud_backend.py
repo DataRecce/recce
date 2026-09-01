@@ -205,7 +205,7 @@ async def test_cloud_run_check_approves_only_complete_empty_schema_results(
 
     # The coverage the approval decision was made on must also reach the agent.
     # Withholding approval silently, while handing back an empty frame with no
-    # incompleteness marker, is the DRC-3293 read all over again.
+    # incompleteness marker, is the same misread this contract exists to stop.
     expected_coverage = schema_result.get("schema_coverage") if isinstance(schema_result, dict) else None
     if expected_coverage is not None:
         assert result["result"]["schema_coverage"] == expected_coverage
@@ -289,6 +289,7 @@ async def test_create_check_runs_lineage_diff_via_checks_run_endpoint(cloud_requ
         MockResponse(204),
         MockResponse(200, {"check_id": "check-1"}),
         MockResponse(200, {"run_id": "run-1", "status": "finished", "result": {"nodes": []}}),
+        MockResponse(200, {"check_id": "check-1", "is_checked": True}),
     ]
     backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
 
@@ -299,7 +300,9 @@ async def test_create_check_runs_lineage_diff_via_checks_run_endpoint(cloud_requ
 
     urls = [call.args[1] for call in cloud_requests.call_args_list]
     assert urls[2] == "https://cloud.reccehq.com/api/v2/sessions/sess-123/checks/check-1/run"
-    assert len(urls) == 3
+    # A lineage result makes no schema-coverage claim, so it keeps the standing
+    # rule that a successful run is a reviewed check and still auto-approves.
+    assert urls[3] == "https://cloud.reccehq.com/api/v2/sessions/sess-123/checks/check-1"
     assert result["run_executed"] is True
 
 
@@ -380,6 +383,44 @@ async def test_create_check_honours_the_callers_approve_gate(cloud_requests, arg
 
     methods = [call.args[0] for call in cloud_requests.call_args_list]
     assert ("PATCH" in methods) is expect_approved
+    assert result["run_executed"] is True
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("check_type", "run_result"),
+    [
+        ("row_count_diff", {"customers": {"base": 100, "curr": 100}}),
+        ("value_diff", {"summary": {"total": 10, "added": 0, "removed": 0}}),
+        ("lineage_diff", {"nodes": []}),
+        ("query", {"ok": True}),
+    ],
+    ids=["row-count", "value", "lineage", "query"],
+)
+async def test_cloud_non_schema_checks_still_auto_approve_on_a_successful_run(
+    cloud_requests,
+    check_type,
+    run_result,
+):
+    """The schema-coverage contract must not reach other check types.
+
+    A cloud run result for these types carries no `schema_coverage` key and
+    never will, so gating them on one would leave every non-schema check
+    permanently unapproved in cloud mode.
+    """
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(200, {"check_id": "check-1"}),
+        MockResponse(200, {"run_id": "run-1", "status": "finished", "result": run_result}),
+        MockResponse(200, {"check_id": "check-1", "is_checked": True}),
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    result = await backend.call_tool("create_check", {"name": check_type, "type": check_type, "params": {}})
+
+    patch_calls = [call for call in cloud_requests.call_args_list if call.args[0] == "PATCH"]
+    assert len(patch_calls) == 1
+    assert patch_calls[0].kwargs["json"] == {"is_checked": True}
     assert result["run_executed"] is True
 
 

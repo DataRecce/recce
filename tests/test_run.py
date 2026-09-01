@@ -1,49 +1,13 @@
 import logging
 from unittest.mock import patch
 
-import pytest
-
 from recce.models.types import Run, RunType
-from recce.run import (
-    run_should_be_approved,
-    schema_diff_should_be_approved,
-    schema_result_is_approvable,
-)
+from recce.run import run_should_be_approved, schema_diff_should_be_approved
 
 
 def _make_run(result=None, error=None, run_type=RunType.ROW_COUNT_DIFF):
     """Helper to create a Run with minimal required fields."""
     return Run(type=run_type, result=result, error=error)
-
-
-def _schema_coverage(
-    status="complete",
-    *,
-    unchecked_nodes=None,
-    unchecked_node_count=0,
-    more=False,
-):
-    return {
-        "status": status,
-        "unchecked_nodes": [] if unchecked_nodes is None else unchecked_nodes,
-        "unchecked_node_count": unchecked_node_count,
-        "more": more,
-    }
-
-
-def _schema_result(*, data=None, coverage=None, frame_more=False, total_row_count=0):
-    return {
-        "columns": [
-            {"key": "node_id", "name": "node_id", "type": "text"},
-            {"key": "column", "name": "column", "type": "text"},
-            {"key": "change_status", "name": "change_status", "type": "text"},
-        ],
-        "data": [] if data is None else data,
-        "limit": 100,
-        "more": frame_more,
-        "total_row_count": total_row_count,
-        "schema_coverage": _schema_coverage() if coverage is None else coverage,
-    }
 
 
 class TestRunShouldBeApproved:
@@ -143,6 +107,33 @@ class TestSchemaDiffShouldBeApproved:
         assert result is False
 
     @patch("recce.run.default_context")
+    def test_selector_matching_zero_nodes_is_not_auto_approved(self, mock_ctx):
+        """A selector that matched nothing compared nothing.
+
+        The columns diff is trivially empty because there was nothing to
+        difference, which is absence of evidence, not a verified clean result.
+        """
+        node = {
+            "resource_type": "model",
+            "config": {"materialized": "table"},
+            "catalog_status": "covered",
+            "columns": {"id": {"type": "INTEGER"}},
+        }
+        mock_ctx.return_value.adapter.select_nodes.return_value = set()
+        mock_ctx.return_value.get_lineage.side_effect = [
+            {"nodes": {"model.project.orders": node}},
+            {"nodes": {"model.project.orders": node}},
+        ]
+
+        assert schema_diff_should_be_approved({"select": "tag:nonexistent"}) is False
+
+    @patch("recce.run.default_context")
+    def test_explicit_empty_node_id_list_is_not_auto_approved(self, mock_ctx):
+        mock_ctx.return_value.get_lineage.return_value = {"nodes": {}}
+
+        assert schema_diff_should_be_approved({"node_id": []}) is False
+
+    @patch("recce.run.default_context")
     def test_complete_covered_explicit_node_is_auto_approved(self, mock_ctx):
         node_id = "model.project.orders"
         node = {
@@ -162,7 +153,7 @@ class TestSchemaDiffShouldBeApproved:
 
     @patch("recce.run.default_context")
     def test_two_sided_node_missing_from_one_catalog_is_not_auto_approved(self, mock_ctx):
-        """The DRC-3293 shape itself: a model in BOTH manifests that the current
+        """The core bug shape: a model in BOTH manifests that the current
         catalog does not describe. Its columns look dropped, but nothing
         verified them, so the check must not be approved as reviewed."""
         node_id = "model.project.orders"
@@ -282,7 +273,34 @@ class TestSchemaDiffShouldBeApproved:
     def test_ephemeral_model_stays_auto_approvable(self, mock_ctx):
         """A non-relation cannot carry catalog columns, so its exclusion is
         genuinely not-applicable and must not block approval the way a
-        one-sided relation does."""
+        one-sided relation does.
+
+        Selected alongside a real covered model, so approval rests on that
+        model rather than on an empty comparison: an ephemeral model on its own
+        covers nothing and is unknown, not clean.
+        """
+        ephemeral_id = "model.project.ephemeral"
+        ephemeral = {
+            "resource_type": "model",
+            "config": {"materialized": "ephemeral"},
+            "columns": {},
+        }
+        covered_id = "model.project.orders"
+        covered = {
+            "resource_type": "model",
+            "config": {"materialized": "table"},
+            "catalog_status": "covered",
+            "columns": {"id": {"type": "INTEGER"}},
+        }
+        nodes = {ephemeral_id: ephemeral, covered_id: covered}
+        mock_ctx.return_value.get_lineage.side_effect = [{"nodes": nodes}, {"nodes": nodes}]
+
+        assert schema_diff_should_be_approved({"node_id": [ephemeral_id, covered_id]}) is True
+
+    @patch("recce.run.default_context")
+    def test_selection_of_only_non_relations_is_not_auto_approved(self, mock_ctx):
+        """The other half of the rule above: with nothing comparable in the
+        selection there is no evidence to approve on."""
         node_id = "model.project.ephemeral"
         node = {
             "resource_type": "model",
@@ -294,71 +312,4 @@ class TestSchemaDiffShouldBeApproved:
             {"nodes": {node_id: node}},
         ]
 
-        assert schema_diff_should_be_approved({"node_id": node_id}) is True
-
-
-@pytest.mark.parametrize("coverage", ["partial", "unknown", None])
-def test_schema_result_is_not_approvable_without_complete_coverage(coverage):
-    result = {"data": []}
-    if coverage is not None:
-        result["schema_coverage"] = {"status": coverage}
-
-    assert schema_result_is_approvable(result) is False
-
-
-def test_schema_result_is_not_approvable_when_verified_diff_has_a_mismatch():
-    result = _schema_result(data=[["model.project.orders", "customer_id", "added"]])
-
-    assert schema_result_is_approvable(result) is False
-
-
-def test_complete_empty_schema_result_is_approvable():
-    result = _schema_result()
-
-    assert schema_result_is_approvable(result) is True
-
-
-def test_complete_schema_result_allows_additive_coverage_fields():
-    coverage = {**_schema_coverage(), "computed_at": "2026-08-28T00:00:00Z"}
-
-    assert schema_result_is_approvable(_schema_result(coverage=coverage)) is True
-
-
-@pytest.mark.parametrize(
-    "coverage",
-    [
-        {"status": "complete"},
-        _schema_coverage(
-            unchecked_nodes=["model.project.orders"],
-            unchecked_node_count=1,
-        ),
-        _schema_coverage(more=True),
-    ],
-    ids=["missing-fields", "unchecked-node", "more-marker"],
-)
-def test_complete_contradictory_schema_coverage_is_not_approvable(coverage):
-    assert schema_result_is_approvable(_schema_result(coverage=coverage)) is False
-
-
-@pytest.mark.parametrize(
-    "result",
-    [
-        {"data": [], "schema_coverage": _schema_coverage()},
-        {**_schema_result(), "columns": []},
-        _schema_result(frame_more=True),
-    ],
-    ids=["missing-columns", "wrong-schema", "more-rows"],
-)
-def test_malformed_or_incomplete_empty_dataframe_is_not_approvable(result):
-    assert schema_result_is_approvable(result) is False
-
-
-@pytest.mark.parametrize(
-    "total_row_count",
-    [1, True, "0", None],
-    ids=["nonzero", "boolean", "string", "missing"],
-)
-def test_empty_schema_result_requires_exact_zero_total_row_count(total_row_count):
-    result = _schema_result(total_row_count=total_row_count)
-
-    assert schema_result_is_approvable(result) is False
+        assert schema_diff_should_be_approved({"node_id": node_id}) is False

@@ -289,8 +289,6 @@ export interface ServerInfoResult {
    * null when the cloud session has not produced a conclusive classification.
    */
   catalog_coverage?: CatalogCoverage | null;
-  artifact_health?: ArtifactHealthPair | null;
-  schema_coverage?: SchemaCoverage | null;
 }
 
 /**

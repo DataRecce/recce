@@ -228,6 +228,14 @@ def classify_schema_coverage(
             # stays structural evidence rather than being written off.
             one_sided.add(node_id)
 
+    if not (checked or unchecked or one_sided):
+        # Nothing in the selection was comparable at all: an empty selection, or
+        # one made up entirely of nodes the catalog can never describe. That is
+        # absence of evidence, not evidence of absence, so it cannot be
+        # "complete" — "complete" means we compared at least one node and left
+        # none unchecked.
+        return _unknown_schema_coverage()
+
     return SchemaCoverage(
         status="partial" if unchecked else "complete",
         checked_node_ids=frozenset(checked),

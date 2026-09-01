@@ -60,7 +60,7 @@ class SqlmeshAdapter(BaseAdapter):
             # SQLMesh has no catalog.json — `columns_to_types` is the
             # authoritative schema. Declare that coverage explicitly, or the
             # canonical classifier reads the missing key as legacy evidence and
-            # marks every SQLMesh comparison unchecked (DRC-3303).
+            # marks every SQLMesh comparison unchecked.
             node["catalog_status"] = "covered" if columns else "unchecked"
 
             nodes[snapshot.name] = node

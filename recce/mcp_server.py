@@ -31,7 +31,7 @@ from recce.apis.run_func import submit_run as _submit_run_fn  # noqa: E402
 from recce.artifact_health import classify_schema_coverage, schema_coverage_payload
 from recce.core import RecceContext, load_context
 from recce.exceptions import RecceException
-from recce.run import schema_result_is_approvable
+from recce.schema_evidence import run_result_is_approvable
 from recce.server import RecceServerMode
 from recce.tasks.dataframe import DataFrame
 from recce.tasks.histogram import HistogramDiffTask
@@ -272,7 +272,9 @@ class CloudBackend:
             f"checks/{quote(str(check_id), safe='')}/run",
             json={"nowait": False},
         )
-        if self._run_succeeded(run) and schema_result_is_approvable(run.get("result")):
+        # A schema comparison must prove complete coverage; every other check
+        # type keeps the pre-existing "a successful run is reviewed" rule.
+        if self._run_succeeded(run) and run_result_is_approvable(run.get("result")):
             await self._auto_approve(check_id)
         return run
 
@@ -304,12 +306,12 @@ class CloudBackend:
             run_executed = True
             run_error = run.get("error")
             # Both gates apply: the caller must ask for approval, and the run
-            # must carry verified-complete evidence. Either one alone is not
-            # enough to mark the check reviewed.
+            # must carry evidence its type can stand behind — for a schema
+            # comparison that means complete coverage, not merely a clean run.
             if (
                 self._run_succeeded(run)
                 and arguments.get("approve", True)
-                and schema_result_is_approvable(run.get("result"))
+                and run_result_is_approvable(run.get("result"))
             ):
                 await self._auto_approve(check_id)
         result = {
@@ -2744,9 +2746,11 @@ class RecceMCPServer:
                 raise ValueError(str(e)) from e
 
         if run_succeeded:
-            # Auto-approve only when the run carries a verified empty schema diff
-            # with complete coverage. Successful execution alone is not evidence.
-            if schema_result_is_approvable(approval_result):
+            # A schema comparison auto-approves only on a verified empty diff
+            # with complete coverage — successful execution alone is not
+            # evidence there. Other types keep the standing PM decision that a
+            # passing run is a reviewed check.
+            if run_result_is_approvable(approval_result):
                 check_dao.update_check_by_id(check_id, PatchCheckIn(is_checked=True))
                 logger.info(f"Auto-approved check {check_id} (triggered_by={triggered_by})")
 
@@ -2832,10 +2836,10 @@ class RecceMCPServer:
                 run_error = run.error
 
         # Auto-approve only when the caller asked for approval AND the run
-        # carries complete coverage with a verified empty schema diff.
-        # `approve=False` keeps the check unapproved for human review;
-        # lineage-only and legacy results without coverage fail closed.
-        if run_executed and not run_error and approve and schema_result_is_approvable(approval_result):
+        # carries evidence its type can stand behind. `approve=False` keeps the
+        # check unapproved for human review; a schema comparison additionally
+        # needs complete coverage, so a legacy result without it fails closed.
+        if run_executed and not run_error and approve and run_result_is_approvable(approval_result):
             check_dao.update_check_by_id(check_id, PatchCheckIn(is_checked=True))
 
         # Persist state to cloud/disk (matches REST endpoint pattern)

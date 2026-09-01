@@ -108,7 +108,7 @@ def test_no_comparable_relations_is_not_applicable_even_with_a_catalog() -> None
 
 
 def test_missing_node_sample_is_bounded_and_flags_truncation() -> None:
-    """AC3: bounded samples. The DRC-3293 shape makes `missing_node_ids` the
+    """Bounded samples. An uncatalogued project makes `missing_node_ids` the
     project's entire model set, and this payload ships inside every lineage
     response."""
     health = classify_artifact_health(_manifest(models=60), _catalog(models=()))
@@ -436,8 +436,43 @@ def test_schema_coverage_excludes_models_that_cannot_carry_catalog_columns(
 ) -> None:
     coverage = classify_schema_coverage({node_id: node}, {node_id: node}, [node_id])
 
-    assert coverage.status == "complete"
+    # Excluded from BOTH buckets: a node the catalog never describes is not a
+    # coverage gap. With nothing else in the selection there is also nothing to
+    # stand behind, so the selection as a whole is unknown rather than clean.
+    assert coverage.status == "unknown"
     assert coverage.checked_node_ids == frozenset()
+    assert coverage.unchecked_node_ids == frozenset()
+
+
+@pytest.mark.parametrize(
+    ("node_id", "node"),
+    [
+        ("model.pkg.inlined", _lineage_node(materialized="ephemeral", catalog_status="not_applicable", columns=())),
+        (
+            "model.pkg.semantic",
+            _lineage_node(materialized="semantic_view", catalog_status="not_applicable", columns=()),
+        ),
+    ],
+    ids=["ephemeral", "semantic-view"],
+)
+def test_non_catalogable_models_do_not_drag_a_real_selection_off_complete(
+    node_id: str,
+    node: dict[str, Any],
+) -> None:
+    """The point of the exclusion: owning an ephemeral model must not pin a
+    project to "partial" forever. Alongside one genuinely checked node the
+    selection is still complete."""
+    checked_id = "model.pkg.orders"
+    checked = _lineage_node()
+
+    coverage = classify_schema_coverage(
+        {node_id: node, checked_id: checked},
+        {node_id: node, checked_id: checked},
+        [node_id, checked_id],
+    )
+
+    assert coverage.status == "complete"
+    assert coverage.checked_node_ids == frozenset({checked_id})
     assert coverage.unchecked_node_ids == frozenset()
 
 
@@ -466,7 +501,9 @@ def test_schema_coverage_excludes_transitions_with_a_non_catalogable_side(
         [node_id],
     )
 
-    assert coverage.status == "complete"
+    # As above: excluded from both buckets, and with nothing else selected the
+    # comparison covered nothing it could stand behind.
+    assert coverage.status == "unknown"
     assert coverage.checked_node_ids == frozenset()
     assert coverage.unchecked_node_ids == frozenset()
 
@@ -555,3 +592,57 @@ def test_schema_coverage_payload_clamps_negative_sample_limit_to_zero() -> None:
         "unchecked_node_count": 55,
         "more": True,
     }
+
+
+def test_schema_coverage_of_an_empty_selection_is_unknown_not_complete() -> None:
+    """A selector that matched nothing compared nothing.
+
+    "complete" is the one status downstream reads as affirmative evidence that
+    no schema changed, so it has to mean at least one node was compared. With
+    every bucket empty the old rule fell through to "complete" and an empty
+    diff over zero nodes was auto-approved as verified clean.
+    """
+    coverage = classify_schema_coverage(
+        {"model.pkg.orders": _lineage_node()},
+        {"model.pkg.orders": _lineage_node()},
+        [],
+    )
+
+    assert coverage.status == "unknown"
+    assert coverage.comparable_node_ids == frozenset()
+
+
+def test_schema_coverage_of_an_entirely_not_applicable_selection_is_unknown() -> None:
+    """Same vacuous case reached the long way round.
+
+    An ephemeral model is never catalogued, so it is neither checked nor a
+    coverage gap — it drops out of all three buckets. A selection made only of
+    those nodes still compared nothing.
+    """
+    ephemeral_id = "model.pkg.staging"
+    ephemeral = _lineage_node(materialized="ephemeral")
+
+    coverage = classify_schema_coverage(
+        {ephemeral_id: ephemeral},
+        {ephemeral_id: ephemeral},
+        [ephemeral_id],
+    )
+
+    assert coverage.status == "unknown"
+    assert coverage.comparable_node_ids == frozenset()
+
+
+def test_schema_coverage_stays_complete_when_one_sided_evidence_is_all_there_is() -> None:
+    """The vacuous guard must not swallow real one-sided evidence.
+
+    A removed relation is verified structural evidence, so a selection of only
+    one-sided nodes did compare something and stays "complete".
+    """
+    coverage = classify_schema_coverage(
+        {"model.pkg.removed": _lineage_node()},
+        {},
+        ["model.pkg.removed"],
+    )
+
+    assert coverage.status == "complete"
+    assert coverage.one_sided_node_ids == frozenset({"model.pkg.removed"})
