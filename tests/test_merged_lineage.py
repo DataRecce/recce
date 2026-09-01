@@ -224,6 +224,34 @@ class TestBuildMergedLineageNodes:
             "current": current_health,
         }
 
+    def test_unreadable_side_health_degrades_to_unknown_not_a_broken_response(self):
+        """AC10 version skew: a producer one version ahead emits a status this
+        build has never seen. That must degrade the badge to "unknown", not
+        take the whole lineage response down — a hard failure hides the verified
+        nodes too, which is strictly worse than an unknown health state."""
+        ld = _make_lineage_diff()
+        ld.base["artifact_health"] = {**_artifact_health("complete"), "status": "degraded_v2"}
+        ld.current["artifact_health"] = _artifact_health("partial")
+
+        merged = build_merged_lineage(ld)
+
+        assert merged.artifact_health.base.status == "unknown"
+        # The readable side is untouched, and the rest of the response survives.
+        assert merged.artifact_health.current.status == "partial"
+        assert merged.schema_coverage is not None
+
+    def test_malformed_side_health_degrades_to_unknown(self):
+        """The same fail-soft rule for a payload that is the wrong shape
+        entirely, not merely an unrecognised status."""
+        ld = _make_lineage_diff()
+        ld.base["artifact_health"] = {"status": "complete", "missing_nodes": "not-a-list"}
+        ld.current["artifact_health"] = "not-a-mapping"
+
+        merged = build_merged_lineage(ld)
+
+        assert merged.artifact_health.base.status == "unknown"
+        assert merged.artifact_health.current.status == "unknown"
+
     def test_full_merged_selection_emits_canonical_schema_coverage(self):
         checked_id = "model.pkg.checked"
         unchecked_id = "source.pkg.not_rebuilt"

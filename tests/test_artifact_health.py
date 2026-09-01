@@ -79,6 +79,49 @@ def test_classify_artifact_health(
     assert len(health.orphan_node_ids) == orphans
 
 
+def test_zero_model_coverage_is_empty_even_when_the_catalog_is_full() -> None:
+    """AC1: "Do not use raw catalog totals."
+
+    A catalog can be large and still describe none of the project's relations
+    — entries from a different project, or `store_failures` test relations.
+    Coverage is set intersection, so this is empty, not partial.
+    """
+    catalog = _catalog(models=("model.other_project.a", "test.pkg.store_failure"))
+
+    health = classify_artifact_health(_manifest(models=2), catalog)
+
+    assert health.status == "empty"
+    assert health.catalog_node_ids  # the catalog is not empty
+    assert health.covered_node_ids == frozenset()
+    assert len(health.orphan_node_ids) == 2
+
+
+def test_no_comparable_relations_is_not_applicable_even_with_a_catalog() -> None:
+    """AC4: "A project with no comparable relations is not applicable, not
+    empty." Pinned on the catalog-present path, not just the early return for a
+    missing catalog — an all-ephemeral project that uploads a catalog must not
+    be reported as a coverage failure."""
+    health = classify_artifact_health(_manifest(ephemeral=2), _catalog(models=("model.pkg.other",)))
+
+    assert health.status == "not_applicable"
+    assert health.expected_node_ids == frozenset()
+
+
+def test_missing_node_sample_is_bounded_and_flags_truncation() -> None:
+    """AC3: bounded samples. The DRC-3293 shape makes `missing_node_ids` the
+    project's entire model set, and this payload ships inside every lineage
+    response."""
+    health = classify_artifact_health(_manifest(models=60), _catalog(models=()))
+
+    payload = artifact_health_payload(health)
+
+    assert health.status == "empty"
+    assert payload["missing_node_count"] == 60
+    assert len(payload["missing_nodes"]) == 50
+    assert payload["missing_more"] is True
+    assert payload["missing_nodes"] == sorted(payload["missing_nodes"])
+
+
 def test_sources_only_catalog_does_not_cover_expected_nodes() -> None:
     health = classify_artifact_health(_manifest(models=1), _catalog(sources=("source.pkg.raw",)))
 

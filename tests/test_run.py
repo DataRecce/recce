@@ -160,6 +160,64 @@ class TestSchemaDiffShouldBeApproved:
 
         assert result is True
 
+    @patch("recce.run.default_context")
+    def test_dropped_model_is_not_auto_approved_as_unchanged(self, mock_ctx):
+        """AC5: a model present only on the base side is a real removal.
+
+        The node is not two-sided, so it carries no column-level comparison —
+        but its absence is verified structural evidence, not an unchecked node.
+        Approving it would tell the reviewer a dropped model has no schema
+        differences.
+        """
+        node_id = "model.project.dropped"
+        base_node = {
+            "resource_type": "model",
+            "config": {"materialized": "table"},
+            "catalog_status": "covered",
+            "columns": {"id": {"type": "INTEGER"}, "gone": {"type": "TEXT"}},
+        }
+        mock_ctx.return_value.get_lineage.side_effect = [
+            {"nodes": {node_id: base_node}},
+            {"nodes": {}},
+        ]
+
+        assert schema_diff_should_be_approved({"node_id": node_id}) is False
+
+    @patch("recce.run.default_context")
+    def test_added_model_is_not_auto_approved_as_unchanged(self, mock_ctx):
+        """AC5: the mirror case — a model that exists only on the current side."""
+        node_id = "model.project.added"
+        current_node = {
+            "resource_type": "model",
+            "config": {"materialized": "table"},
+            "catalog_status": "covered",
+            "columns": {"id": {"type": "INTEGER"}},
+        }
+        mock_ctx.return_value.get_lineage.side_effect = [
+            {"nodes": {}},
+            {"nodes": {node_id: current_node}},
+        ]
+
+        assert schema_diff_should_be_approved({"node_id": node_id}) is False
+
+    @patch("recce.run.default_context")
+    def test_ephemeral_model_stays_auto_approvable(self, mock_ctx):
+        """A non-relation cannot carry catalog columns, so its exclusion is
+        genuinely not-applicable and must not block approval the way a
+        one-sided relation does."""
+        node_id = "model.project.ephemeral"
+        node = {
+            "resource_type": "model",
+            "config": {"materialized": "ephemeral"},
+            "columns": {},
+        }
+        mock_ctx.return_value.get_lineage.side_effect = [
+            {"nodes": {node_id: node}},
+            {"nodes": {node_id: node}},
+        ]
+
+        assert schema_diff_should_be_approved({"node_id": node_id}) is True
+
 
 @pytest.mark.parametrize("coverage", ["partial", "unknown", None])
 def test_schema_result_is_not_approvable_without_complete_coverage(coverage):

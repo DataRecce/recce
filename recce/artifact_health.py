@@ -22,6 +22,18 @@ class SchemaCoverage:
     status: SchemaCoverageStatus
     checked_node_ids: frozenset[str]
     unchecked_node_ids: frozenset[str]
+    #: Selected nodes present on exactly one manifest side. They carry no
+    #: column-level comparison, but their one-sidedness is *verified* evidence
+    #: of an added or removed relation — not an unchecked node. Consumers must
+    #: report them as differences; dropping them turns a real removal into an
+    #: affirmative "no schema changes".
+    one_sided_node_ids: frozenset[str] = frozenset()
+
+    @property
+    def comparable_node_ids(self) -> frozenset[str]:
+        """Every node this comparison can stand behind: column-checked pairs
+        plus one-sided structural evidence."""
+        return self.checked_node_ids | self.one_sided_node_ids
 
 
 _ELIGIBLE_RESOURCE_TYPES = frozenset({"model", "seed", "snapshot"})
@@ -146,6 +158,7 @@ def _unknown_schema_coverage() -> SchemaCoverage:
         status="unknown",
         checked_node_ids=frozenset(),
         unchecked_node_ids=frozenset(),
+        one_sided_node_ids=frozenset(),
     )
 
 
@@ -196,6 +209,7 @@ def classify_schema_coverage(
 
     checked: set[str] = set()
     unchecked: set[str] = set()
+    one_sided: set[str] = set()
     for node_id in selected_node_ids:
         base_node = base_nodes.get(node_id)
         current_node = current_nodes.get(node_id)
@@ -208,11 +222,17 @@ def classify_schema_coverage(
             checked.add(node_id)
         elif comparison_status == "unchecked":
             unchecked.add(node_id)
+        elif (node_id in base_nodes) != (node_id in current_nodes):
+            # Same precedence as classify_node_schema_comparison: one-sidedness
+            # is decided before catalog applicability, so a one-sided relation
+            # stays structural evidence rather than being written off.
+            one_sided.add(node_id)
 
     return SchemaCoverage(
         status="partial" if unchecked else "complete",
         checked_node_ids=frozenset(checked),
         unchecked_node_ids=frozenset(unchecked),
+        one_sided_node_ids=frozenset(one_sided),
     )
 
 

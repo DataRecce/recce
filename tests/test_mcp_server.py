@@ -346,6 +346,57 @@ class TestRecceMCPServer:
         assert coverage["unchecked_node_count"] == 1
 
     @pytest.mark.asyncio
+    async def test_tool_schema_diff_reports_a_dropped_model_as_removed_columns(self, mcp_server):
+        """AC5: a model present on only one manifest side is a real removal.
+
+        It carries no two-sided column comparison, so it is neither `checked`
+        nor `unchecked` — and if the tool reports only checked nodes, the agent
+        is handed `data: []` with `status: "complete"`, an affirmative "no
+        schema changes" for a model that was dropped.
+        """
+        server, mock_context = mcp_server
+        mock_context.adapter.select_nodes.return_value = {
+            "model.project.dropped",
+            "model.project.kept",
+        }
+
+        def node(name, columns):
+            return {
+                "name": name,
+                "resource_type": "model",
+                "config": {"materialized": "table"},
+                "catalog_status": "covered",
+                "columns": {c: {"name": c, "type": "text"} for c in columns},
+            }
+
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {
+                "nodes": {
+                    "model.project.dropped": node("dropped", ["id", "gone"]),
+                    "model.project.kept": node("kept", ["id"]),
+                },
+            },
+            "current": {
+                "nodes": {
+                    "model.project.kept": node("kept", ["id"]),
+                },
+            },
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+
+        result = await server._tool_schema_diff({"select": "state:modified"})
+
+        assert ["model.project.dropped", "id", "removed"] in result["data"]
+        assert ["model.project.dropped", "gone", "removed"] in result["data"]
+
+        # The removal is verified structural evidence, not an unchecked node:
+        # coverage stays complete and the dropped model is not listed as a gap.
+        coverage = result["schema_coverage"]
+        assert coverage["status"] == "complete"
+        assert coverage["unchecked_nodes"] == []
+
+    @pytest.mark.asyncio
     async def test_tool_schema_diff_coverage_ignores_nodes_the_catalog_never_describes(self, mcp_server):
         """A node dbt never catalogues is not a coverage gap.
 

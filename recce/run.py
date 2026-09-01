@@ -171,7 +171,12 @@ def schema_diff_should_be_approved(check_params: dict) -> bool:
         coverage = classify_schema_coverage(base_lineage_nodes, current_lineage_nodes, selected_node_ids)
 
         def _checked_node_columns(lineage_nodes):
-            return {node_id: lineage_nodes[node_id].get("columns", {}) for node_id in coverage.checked_node_ids}
+            # `comparable_node_ids`, not `checked_node_ids`: a one-sided node is
+            # absent from one map, so its columns diff against {} and the check
+            # stays unapproved instead of reading as "no schema differences".
+            return {
+                node_id: lineage_nodes.get(node_id, {}).get("columns", {}) for node_id in coverage.comparable_node_ids
+            }
 
         diff = DeepDiff(
             _checked_node_columns(base_lineage_nodes),

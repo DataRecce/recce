@@ -252,6 +252,56 @@ describe("SchemaView comparison coverage", () => {
     expect(warning).not.toHaveTextContent("base/current environments");
   });
 
+  it("still renders a verified removal when the comparison is complete", () => {
+    // AC5: "Genuine covered column removals ... remain visible." Without this,
+    // the unchecked test above is satisfied by a component that hides every
+    // removed row unconditionally, and the fix for a false-removal bug becomes
+    // a false-absence bug.
+    const nodeId = "model.shop.orders";
+    const base = {
+      ...model(nodeId),
+      columns: {
+        id: { name: "id", type: "INT" },
+        legacy: { name: "legacy", type: "VARCHAR" },
+      },
+    };
+    const current = {
+      ...model(nodeId),
+      columns: { id: { name: "id", type: "INT" } },
+    };
+    lineageGraph.current = {
+      nodes: {
+        [nodeId]: {
+          data: {
+            schemaComparisonStatus: "complete",
+            baseCatalogStatus: "covered",
+            currentCatalogStatus: "covered",
+          },
+        },
+      },
+      catalogMetadata: { base: {}, current: {} },
+      schemaCoverage: {
+        status: "complete",
+        unchecked_nodes: [],
+        unchecked_node_count: 0,
+        more: false,
+      },
+    };
+
+    render(
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <SchemaView base={base as NodeData} current={current as NodeData} />
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByText("id")).toBeInTheDocument();
+    expect(screen.getByText("legacy")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("alert", { name: "Incomplete schema comparison" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders no comparison warning for complete healthy evidence", () => {
     const nodeId = "model.shop.orders";
     lineageGraph.current = {

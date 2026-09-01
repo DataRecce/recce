@@ -57,6 +57,11 @@ class SqlmeshAdapter(BaseAdapter):
             for column, type in model.columns_to_types.items():
                 columns[column] = {"name": column, "type": str(type)}
             node["columns"] = columns
+            # SQLMesh has no catalog.json — `columns_to_types` is the
+            # authoritative schema. Declare that coverage explicitly, or the
+            # canonical classifier reads the missing key as legacy evidence and
+            # marks every SQLMesh comparison unchecked (DRC-3303).
+            node["catalog_status"] = "covered" if columns else "unchecked"
 
             nodes[snapshot.name] = node
             parents = [snapshotId.name for snapshotId in snapshot.parents]

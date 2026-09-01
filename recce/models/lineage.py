@@ -5,12 +5,15 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from pydantic import ValidationError
+
 from recce.artifact_health import (
     classify_node_schema_comparison,
     classify_schema_coverage,
     schema_coverage_payload,
 )
 from recce.models.types import (
+    ArtifactHealthPayload,
     LineageDiff,
     MergedEdge,
     MergedLineage,
@@ -25,6 +28,36 @@ def _catalog_status(node: Mapping[str, Any] | None) -> str | None:
         return None
     status = node.get("catalog_status")
     return status if status in _CATALOG_STATUSES else None
+
+
+_UNREADABLE_SIDE_HEALTH = {
+    "status": "unknown",
+    "expected_count": 0,
+    "covered_count": 0,
+    "catalog_entry_count": 0,
+    "missing_node_count": 0,
+    "missing_nodes": [],
+    "missing_more": False,
+    "orphan_node_count": 0,
+    "orphan_nodes": [],
+    "orphan_more": False,
+}
+
+
+def _readable_side_health(raw: Any) -> dict | None:
+    """Degrade one side's health to "unknown" rather than failing the response.
+
+    A producer on a different version can emit a status literal or field shape
+    this build cannot parse. Raising here would take the whole merged-lineage
+    response down — hiding every verified node along with the badge — which is
+    strictly worse than reporting that side's health as unknown.
+    """
+    if raw is None:
+        return None
+    try:
+        return ArtifactHealthPayload.model_validate(raw).model_dump()
+    except ValidationError:
+        return dict(_UNREADABLE_SIDE_HEALTH)
 
 
 def build_merged_lineage(lineage_diff: LineageDiff) -> MergedLineage:
@@ -127,8 +160,8 @@ def build_merged_lineage(lineage_diff: LineageDiff) -> MergedLineage:
         },
     }
 
-    base_artifact_health = base.get("artifact_health")
-    current_artifact_health = current.get("artifact_health")
+    base_artifact_health = _readable_side_health(base.get("artifact_health"))
+    current_artifact_health = _readable_side_health(current.get("artifact_health"))
     artifact_health = None
     if base_artifact_health is not None or current_artifact_health is not None:
         artifact_health = {

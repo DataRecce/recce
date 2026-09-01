@@ -1903,7 +1903,9 @@ class RecceMCPServer:
         # Build schema changes
         schema_changes = []
 
-        for node_id in coverage.checked_node_ids:
+        # One-sided nodes are included: an added or removed relation is verified
+        # structural evidence, and its columns are genuine additions/removals.
+        for node_id in coverage.comparable_node_ids:
             base_node = base_nodes.get(node_id, {})
             current_node = current_nodes.get(node_id, {})
 

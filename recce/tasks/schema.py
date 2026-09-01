@@ -39,7 +39,9 @@ class SchemaDiffResultDiffer:
         if self.schema_coverage.status == "unknown":
             return None
 
-        for node_id in self.schema_coverage.checked_node_ids:
+        # Includes one-sided nodes so an added or removed model still reaches
+        # the PR summary as a change rather than vanishing from it.
+        for node_id in self.schema_coverage.comparable_node_ids:
             node = curr_nodes.get(node_id) or base_nodes.get(node_id)
             if not node:
                 continue
