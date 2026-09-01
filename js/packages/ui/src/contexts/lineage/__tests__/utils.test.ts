@@ -2,6 +2,57 @@ import type { MergedLineageResponse } from "../../../api/info";
 import { buildLineageGraph } from "../utils";
 
 describe("buildLineageGraph", () => {
+  test.each(["complete", "unchecked", "not_applicable"] as const)(
+    "carries the %s comparison status through to the node",
+    (status) => {
+      // "not_applicable" is what the classifier returns for every added-only
+      // and removed-only model, plus ephemerals. If it collapsed to "unknown"
+      // a genuine removal would show a false incomplete-comparison warning,
+      // so each literal has to survive normalization intact.
+      const lineage: MergedLineageResponse = {
+        nodes: {
+          "model.proj.orders": {
+            name: "orders",
+            resource_type: "model",
+            package_name: "proj",
+            schema_comparison_status: status,
+          },
+        },
+        edges: [],
+        metadata: { base: {}, current: {} },
+      };
+
+      const graph = buildLineageGraph(lineage);
+
+      expect(graph.nodes["model.proj.orders"].data.schemaComparisonStatus).toBe(
+        status,
+      );
+    },
+  );
+
+  test("treats an unrecognised comparison status as unknown", () => {
+    // AC10 version skew: a producer one version ahead must not have its
+    // literal passed through as though this build understood it.
+    const lineage: MergedLineageResponse = {
+      nodes: {
+        "model.proj.orders": {
+          name: "orders",
+          resource_type: "model",
+          package_name: "proj",
+          schema_comparison_status: "partially_verified_v2",
+        },
+      },
+      edges: [],
+      metadata: { base: {}, current: {} },
+    } as unknown as MergedLineageResponse;
+
+    const graph = buildLineageGraph(lineage);
+
+    expect(graph.nodes["model.proj.orders"].data.schemaComparisonStatus).toBe(
+      "unknown",
+    );
+  });
+
   test("treats legacy lineage evidence as unknown", () => {
     const lineage: MergedLineageResponse = {
       nodes: {

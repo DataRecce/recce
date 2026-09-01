@@ -321,6 +321,45 @@ class TestBuildMergedLineageNodes:
 
         assert merged.schema_comparison_status == "unchecked"
 
+    def test_unchecked_node_keeps_its_verified_manifest_change(self):
+        """ "Preserve verified changes while marking unchecked nodes incomplete."
+
+        Only the marking half is pinned elsewhere: every unchecked node in this
+        file has no diff entry, so a plausible "don't render unverified
+        changes" tightening would strip change_status and change from a model
+        whose SQL genuinely changed, for as long as its catalog is stale.
+        /api/info and info.json are what consumers read, so assert the wire too.
+        """
+        node_id = "model.pkg.stale_catalog"
+        base_node = {
+            "name": "stale_catalog",
+            "resource_type": "model",
+            "package_name": "pkg",
+            "catalog_status": "covered",
+        }
+        current_node = {**base_node, "catalog_status": "unchecked"}
+        ld = _make_lineage_diff(
+            base_nodes={node_id: base_node},
+            current_nodes={node_id: current_node},
+            diff={
+                node_id: NodeDiff(
+                    change_status="modified",
+                    change=NodeChange(category="breaking", columns={"col_a": "removed"}),
+                )
+            },
+        )
+
+        merged = build_merged_lineage(ld).nodes[node_id]
+
+        assert merged.schema_comparison_status == "unchecked"
+        assert merged.current_catalog_status == "unchecked"
+        assert merged.change_status == "modified"
+        assert merged.change.columns == {"col_a": "removed"}
+
+        wire = merged.model_dump(exclude_none=True, by_alias=True)
+        assert wire["change_status"] == "modified"
+        assert wire["change"]["columns"] == {"col_a": "removed"}
+
     def test_excluded_materialization_schema_comparison_status_is_not_applicable(self):
         node = {
             "name": "ephemeral_model",

@@ -714,41 +714,44 @@ class TestRecceMCPServer:
         mock_check_dao.update_check_by_id.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_tool_create_check_approve_false_leaves_check_unapproved(self, mcp_server):
-        """create_check with approve=False runs the check but does not approve it."""
-        server, _ = mcp_server
-        from uuid import uuid4
+    @pytest.mark.parametrize(
+        ("arguments", "expected_checked"),
+        [
+            ({}, True),
+            ({"approve": True}, True),
+            ({"approve": False}, False),
+        ],
+        ids=["default", "approve-true", "approve-false"],
+    )
+    async def test_tool_create_check_honours_the_callers_approve_gate(self, mcp_server, arguments, expected_checked):
+        """The caller's gate must be load-bearing on its own.
 
-        from recce.models.types import Check, RunStatus
-
-        check_id = uuid4()
-        mock_check = MagicMock(spec=Check)
-        mock_check.check_id = check_id
-
-        mock_run = MagicMock()
-        mock_run.status = RunStatus.FINISHED
-        mock_run.error = None
-
-        mock_check_dao = MagicMock()
-        mock_check_dao.list.return_value = []
+        The evidence here is approvable — complete coverage, verified empty
+        diff — so `approve` is the only thing standing between the call and an
+        approved check. A fixture that is unapprovable anyway would pass with
+        the gate deleted.
+        """
+        server, context = mcp_server
+        context.checks = []
+        context.runs = []
+        context.state_loader = None
 
         with (
-            patch("recce.models.CheckDAO", return_value=mock_check_dao),
-            patch("recce.apis.check_func.create_check_without_run", return_value=mock_check),
-            patch("recce.apis.run_func.submit_run", return_value=(mock_run, asyncio.sleep(0))),
+            patch("recce.core.default_context", return_value=context),
+            patch.object(server, "_tool_schema_diff", new=AsyncMock(return_value=_schema_result("complete"))),
             patch("recce.apis.check_func.export_persistent_state"),
         ):
-            result = await server._tool_create_check(
+            await server._tool_create_check(
                 {
-                    "type": "row_count_diff",
-                    "params": {"node_names": ["orders"]},
-                    "name": "Row Count Diff of orders",
-                    "approve": False,
+                    "type": "schema_diff",
+                    "params": {"select": "orders"},
+                    "name": "Schema Diff of orders",
+                    **arguments,
                 }
             )
 
-        assert result["run_executed"] is True
-        mock_check_dao.update_check_by_id.assert_not_called()
+        assert len(context.checks) == 1
+        assert context.checks[0].is_checked is expected_checked
 
     @pytest.mark.asyncio
     async def test_tool_update_check_unapproves_and_persists(self, mcp_server):
@@ -1231,11 +1234,104 @@ class TestRecceMCPServer:
             patch.object(server, "_tool_schema_diff", new=AsyncMock(return_value=_schema_result("partial"))),
             patch("recce.apis.check_func.export_persistent_state") as mock_export,
         ):
-            await server._tool_run_check({"check_id": str(check.check_id)})
+            result = await server._tool_run_check({"check_id": str(check.check_id)})
 
         assert check.is_checked is False
         assert len(context.runs) == 1
         mock_export.assert_called_once_with()
+        # The agent calling the tool must be able to tell the answer is
+        # incomplete. Approving-side state is not enough: without coverage in
+        # the returned payload, an empty frame reads as "no schema changes".
+        assert result["result"]["schema_coverage"] == {
+            "status": "partial",
+            "unchecked_nodes": ["model.project.unchecked"],
+            "unchecked_node_count": 1,
+            "more": False,
+        }
+
+    @pytest.mark.asyncio
+    async def test_tool_run_check_reports_a_real_producers_coverage_and_row_count(self, mcp_server):
+        """The producer -> gate contract, with no mocked schema_diff.
+
+        Both approval suites hand the gate a hand-built dict, and the one
+        real-producer test selects zero nodes — so nothing pins what
+        _tool_schema_diff actually computes for a covered, unchanged project.
+        total_row_count is the load-bearing assertion: if it counted compared
+        nodes instead of changes, no clean schema check could ever approve.
+        """
+        server, context = mcp_server
+        check = Check(name="Schema Check", type=RunType.SCHEMA_DIFF, params={})
+        context.checks = [check]
+        context.runs = []
+        context.state_loader = None
+
+        def node(name, columns):
+            return {
+                "name": name,
+                "resource_type": "model",
+                "config": {"materialized": "table"},
+                "catalog_status": "covered",
+                "columns": {c: {"name": c, "type": "text"} for c in columns},
+            }
+
+        nodes = {
+            "model.project.orders": node("orders", ["id", "amount"]),
+            "model.project.customers": node("customers", ["id"]),
+        }
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {"nodes": nodes},
+            "current": {"nodes": nodes},
+        }
+        context.get_lineage_diff.return_value = mock_lineage_diff
+
+        with (
+            patch("recce.core.default_context", return_value=context),
+            patch("recce.apis.check_func.export_persistent_state"),
+        ):
+            result = await server._tool_run_check({"check_id": str(check.check_id)})
+
+        assert result["result"]["schema_coverage"]["status"] == "complete"
+        assert result["result"]["total_row_count"] == 0
+        assert result["result"]["data"] == []
+        assert check.is_checked is True
+
+    @pytest.mark.asyncio
+    async def test_tool_run_check_keeps_a_covered_removal_and_withholds_approval(self, mcp_server):
+        """The mirror half: the same real producer, one genuinely dropped
+        column. Complete coverage is necessary for approval, never sufficient."""
+        server, context = mcp_server
+        check = Check(name="Schema Check", type=RunType.SCHEMA_DIFF, params={})
+        context.checks = [check]
+        context.runs = []
+        context.state_loader = None
+
+        def node(name, columns):
+            return {
+                "name": name,
+                "resource_type": "model",
+                "config": {"materialized": "table"},
+                "catalog_status": "covered",
+                "columns": {c: {"name": c, "type": "text"} for c in columns},
+            }
+
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {"nodes": {"model.project.orders": node("orders", ["id", "amount"])}},
+            "current": {"nodes": {"model.project.orders": node("orders", ["id"])}},
+        }
+        context.get_lineage_diff.return_value = mock_lineage_diff
+
+        with (
+            patch("recce.core.default_context", return_value=context),
+            patch("recce.apis.check_func.export_persistent_state"),
+        ):
+            result = await server._tool_run_check({"check_id": str(check.check_id)})
+
+        assert ["model.project.orders", "amount", "removed"] in result["result"]["data"]
+        assert result["result"]["total_row_count"] == 1
+        assert result["result"]["schema_coverage"]["status"] == "complete"
+        assert check.is_checked is False
 
     @pytest.mark.asyncio
     async def test_tool_run_check_metadata_branch_recce_exception_no_auto_approve(self, mcp_server):

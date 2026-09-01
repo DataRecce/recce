@@ -188,6 +188,90 @@ def test_payload_caps_samples_at_fifty_even_when_limit_is_larger() -> None:
     assert payload["orphan_more"] is True
 
 
+@pytest.mark.parametrize("sample_limit", [50, 2])
+def test_sample_at_the_cap_is_complete_and_not_flagged_as_truncated(sample_limit: int) -> None:
+    """Boundary: exactly at the limit every id is listed and nothing is hidden.
+
+    Every other bounded-sample case is strictly over the cap, so `>` vs `>=`
+    is invisible. At the boundary the wrong operator claims further unchecked
+    nodes that do not exist, and downstream that breaks the
+    `more == (count > len(sample))` invariant recce/run.py enforces, silently
+    degrading coverage from "partial" to "unknown".
+    """
+    health = classify_artifact_health(_manifest(models=sample_limit), _catalog(models=()))
+
+    payload = artifact_health_payload(health, sample_limit=sample_limit)
+
+    assert payload["missing_node_count"] == sample_limit
+    assert len(payload["missing_nodes"]) == sample_limit
+    assert payload["missing_more"] is False
+
+
+def test_orphan_sample_at_the_cap_is_not_flagged_as_truncated() -> None:
+    orphans = tuple(f"model.other.o{index}" for index in range(2))
+    health = classify_artifact_health(_manifest(models=1), _catalog(models=("model.pkg.m0", *orphans)))
+
+    payload = artifact_health_payload(health, sample_limit=2)
+
+    assert payload["orphan_node_count"] == 2
+    assert len(payload["orphan_nodes"]) == 2
+    assert payload["orphan_more"] is False
+
+
+def test_schema_coverage_sample_at_the_cap_is_not_flagged_as_truncated() -> None:
+    base = {f"model.pkg.m{index}": {"resource_type": "model", "catalog_status": "covered"} for index in range(2)}
+    current = {f"model.pkg.m{index}": {"resource_type": "model", "catalog_status": "unchecked"} for index in range(2)}
+
+    payload = schema_coverage_payload(classify_schema_coverage(base, current, base), sample_limit=2)
+
+    assert payload == {
+        "status": "partial",
+        "unchecked_nodes": sorted(base),
+        "unchecked_node_count": 2,
+        "more": False,
+    }
+
+
+@pytest.mark.parametrize(
+    "catalog",
+    [
+        {"nodes": []},
+        {"nodes": {"model.pkg.m0": "oops"}},
+        {"nodes": {5: {}}},
+    ],
+    ids=["nodes-not-a-mapping", "entry-not-a-mapping", "key-not-a-string"],
+)
+def test_unreadable_catalog_entries_are_unknown_not_evidence(catalog: dict[str, Any]) -> None:
+    """AC8: a catalog Recce cannot read is not evidence of coverage.
+
+    The whole-mapping guard alone lets both per-entry guards be deleted: a
+    string-valued entry would then read as "complete" and an int key as
+    "empty", so a half-parsed catalog becomes an affirmative answer.
+    """
+    health = classify_artifact_health(_manifest(models=1), catalog)
+
+    assert health.status == "unknown"
+    assert health.covered_node_ids == frozenset()
+    assert health.catalog_node_ids == frozenset()
+    assert health.missing_node_ids == frozenset()
+    assert health.orphan_node_ids == frozenset()
+    assert health.expected_node_ids == frozenset({"model.pkg.m0"})
+
+
+def test_unreadable_manifest_entry_shrinks_nothing_and_stays_unknown() -> None:
+    """The manifest twin. The catalog deliberately covers the readable model,
+    so a per-entry guard downgraded to `continue` would report "complete" off a
+    partially parsed expected set — quietly breaking the set-intersection rule
+    the whole design rests on."""
+    manifest = {**_manifest(models=1)}
+    manifest["nodes"] = {**manifest["nodes"], "model.pkg.bad": "oops"}
+
+    health = classify_artifact_health(manifest, _catalog(models=("model.pkg.m0",)))
+
+    assert health.status == "unknown"
+    assert health.expected_node_ids == frozenset()
+
+
 def test_malformed_non_dict_manifest_nodes_are_unknown() -> None:
     health = classify_artifact_health({"nodes": []}, _catalog(models=()))
 

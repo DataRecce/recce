@@ -221,4 +221,35 @@ describe("SchemaSummary comparison coverage", () => {
       ).toHaveTextContent(expected);
     },
   );
+
+  it.each([
+    ["an absent coverage block", undefined],
+    [
+      "an explicit unknown status",
+      {
+        status: "unknown" as const,
+        unchecked_nodes: [],
+        unchecked_node_count: 0,
+        more: false,
+      },
+    ],
+  ])("warns rather than claiming no changes for %s", (_case, coverage) => {
+    // AC8: unknown must never read as healthy. A legacy server sends no
+    // schema_coverage at all, which normalizes to "unknown" — the gate has to
+    // treat that like partial, not like complete.
+    render(
+      <SchemaSummary
+        lineageGraph={graphWithCoverage(
+          coverage as LineageGraph["schemaCoverage"],
+        )}
+      />,
+    );
+
+    expect(
+      screen.getByRole("alert", { name: "Incomplete schema comparison" }),
+    ).toHaveTextContent("The number of unchecked nodes is unknown.");
+    expect(
+      screen.queryByText("No schema changes detected."),
+    ).not.toBeInTheDocument();
+  });
 });

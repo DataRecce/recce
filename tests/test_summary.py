@@ -482,6 +482,47 @@ def test_partial_schema_coverage_preserves_verified_removal_before_incomplete_sc
     assert "dbt docs generate" in incomplete_section
 
 
+@pytest.mark.parametrize("dropped", [True, False], ids=["removed-model", "added-model"])
+def test_one_sided_model_is_a_mismatch_not_a_coverage_gap(dropped: bool):
+    """AC5 at the surface that renders the PR summary.
+
+    A model on only one manifest side is a verified structural change. The
+    summary must report it as a mismatch and must NOT report a coverage gap —
+    nothing here needs a regenerated catalog. Only two-sided nodes are tested
+    elsewhere, so a refactor that treats one-sided nodes as out of scope would
+    delete the removal from the summary entirely.
+    """
+    one_sided_id = "model.project.dropped_orders"
+    healthy_id = "model.project.healthy"
+    columns = {"id": {"type": "integer"}, "amount": {"type": "numeric"}}
+    one_sided = {one_sided_id: _catalogued_schema_node("dropped_orders", columns)}
+    healthy = {healthy_id: _catalogued_schema_node("healthy", {"id": {"type": "integer"}})}
+
+    base_lineage = {"nodes": {**healthy, **(one_sided if dropped else {})}}
+    current_lineage = {"nodes": {**healthy, **({} if dropped else one_sided)}}
+
+    checks, statistics = _generate_schema_check_summary(
+        base_lineage,
+        current_lineage,
+        [one_sided_id, healthy_id],
+    )
+
+    assert statistics == {"total": 1, "mismatch": 1, "failed": 0, "incomplete": 0}
+    assert len(checks) == 1
+    assert checks[0].changed_nodes == ["dropped_orders"]
+    assert checks[0].schema_coverage.model_dump() == {
+        "status": "complete",
+        "unchecked_nodes": [],
+        "unchecked_node_count": 0,
+        "more": False,
+    }
+
+    markdown = _render_check_summary(checks, statistics)
+    assert "Checks of Data Mismatch Detected" in markdown
+    assert "dropped_orders" in markdown
+    assert ":warning: **Schema comparison incomplete" not in markdown
+
+
 def test_incomplete_schema_coverage_without_verified_change_is_not_a_clean_pass():
     checked_id = "model.project.checked"
     unchecked_id = "model.project.not_rebuilt"

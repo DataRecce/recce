@@ -67,8 +67,38 @@ def test_get_lineage_catalog_status_marks_missing_current_model_unchecked(dbt_te
     lineage = dbt_test_helper.adapter.get_lineage()
 
     assert lineage["nodes"][node_id]["catalog_status"] == "unchecked"
-    assert lineage["artifact_health"]["missing_node_count"] >= 1
     assert "covered_node_ids" not in lineage["artifact_health"]
+
+    # Assert the STATUS, not just a count: passing catalog=None to the
+    # classifier also produces a non-zero missing count, but it yields "empty"
+    # here only when a real catalog was consulted and covered nothing. That
+    # distinction drives which catalog the UI tells the user to regenerate.
+    health = lineage["artifact_health"]
+    assert health["status"] == "empty"
+    assert health["covered_count"] == 0
+    assert node_id in health["missing_nodes"]
+
+
+def test_get_lineage_artifact_health_is_complete_when_every_model_is_catalogued(dbt_test_helper):
+    """The still-healthy half: a covered project reports no coverage gap."""
+    node_id = "model.recce_test.cataloged"
+    dbt_test_helper.create_model(
+        "cataloged",
+        base_sql="select 1 as id",
+        curr_sql="select 1 as id",
+        unique_id=node_id,
+        base_columns={"id": "integer"},
+        curr_columns={"id": "integer"},
+    )
+
+    lineage = dbt_test_helper.adapter.get_lineage()
+
+    health = lineage["artifact_health"]
+    assert lineage["nodes"][node_id]["catalog_status"] == "covered"
+    assert health["status"] == "complete"
+    assert health["missing_node_count"] == 0
+    assert health["missing_nodes"] == []
+    assert health["covered_count"] == health["expected_count"]
 
 
 @pytest.mark.parametrize("materialized", ["ephemeral", "semantic_view"])

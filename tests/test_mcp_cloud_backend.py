@@ -196,12 +196,19 @@ async def test_cloud_run_check_approves_only_complete_empty_schema_results(
     cloud_requests.side_effect = responses
     backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
 
-    await backend.call_tool("run_check", {"check_id": "check-1"})
+    result = await backend.call_tool("run_check", {"check_id": "check-1"})
 
     patch_calls = [call for call in cloud_requests.call_args_list if call.args[0] == "PATCH"]
     assert bool(patch_calls) is expected_approval
     if patch_calls:
         assert patch_calls[0].kwargs["json"] == {"is_checked": True}
+
+    # The coverage the approval decision was made on must also reach the agent.
+    # Withholding approval silently, while handing back an empty frame with no
+    # incompleteness marker, is the DRC-3293 read all over again.
+    expected_coverage = schema_result.get("schema_coverage") if isinstance(schema_result, dict) else None
+    if expected_coverage is not None:
+        assert result["result"]["schema_coverage"] == expected_coverage
 
 
 @pytest.mark.asyncio
@@ -345,11 +352,22 @@ async def test_cloud_create_schema_check_approves_only_complete_empty_results(
 
 
 @pytest.mark.asyncio
-async def test_create_check_approve_false_leaves_check_unapproved(cloud_requests):
+@pytest.mark.parametrize(
+    ("arguments", "expect_approved"),
+    [({}, True), ({"approve": True}, True), ({"approve": False}, False)],
+    ids=["default", "approve-true", "approve-false"],
+)
+async def test_create_check_honours_the_callers_approve_gate(cloud_requests, arguments, expect_approved):
+    """The caller's gate must be load-bearing on its own.
+
+    The run result here is approvable — complete coverage, verified empty diff
+    — so `approve` alone decides. An unapprovable fixture would pass with the
+    gate deleted.
+    """
     cloud_requests.side_effect = [
         MockResponse(204),
         MockResponse(200, {"check_id": "check-1"}),
-        MockResponse(200, {"run_id": "run-1", "status": "finished", "result": {"nodes": []}}),
+        MockResponse(200, {"run_id": "run-1", "status": "finished", "result": _schema_result("complete")}),
         # Spare: an unwanted approve must fail the assertion below, not an empty side_effect list.
         MockResponse(200, {"check_id": "check-1", "is_checked": True}),
     ]
@@ -357,11 +375,11 @@ async def test_create_check_approve_false_leaves_check_unapproved(cloud_requests
 
     result = await backend.call_tool(
         "create_check",
-        {"name": "lineage", "type": "lineage_diff", "params": {}, "approve": False},
+        {"name": "schema", "type": "schema_diff", "params": {}, **arguments},
     )
 
     methods = [call.args[0] for call in cloud_requests.call_args_list]
-    assert "PATCH" not in methods
+    assert ("PATCH" in methods) is expect_approved
     assert result["run_executed"] is True
 
 

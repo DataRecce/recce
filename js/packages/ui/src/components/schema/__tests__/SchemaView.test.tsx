@@ -252,6 +252,117 @@ describe("SchemaView comparison coverage", () => {
     expect(warning).not.toHaveTextContent("base/current environments");
   });
 
+  // AC2: base-only, current-only and both-side degradation each get their own
+  // remediation. This ladder reads per-node catalog statuses and is a DIFFERENT
+  // implementation from SchemaSummary's, which keys off artifactHealth[side] —
+  // the summary tests cannot protect it.
+  it.each([
+    ["unchecked", "covered", "base environment", "Regenerate the base catalog"],
+    [
+      "covered",
+      "unchecked",
+      "current environment",
+      "Regenerate the current catalog",
+    ],
+    [
+      "unchecked",
+      "unchecked",
+      "base and current environments",
+      "Regenerate the base and current catalogs",
+    ],
+    [
+      undefined,
+      undefined,
+      "base/current environments",
+      "Regenerate the base/current catalogs",
+    ],
+  ] as const)(
+    "names the affected side for base=%s current=%s",
+    (baseCatalogStatus, currentCatalogStatus, environment, remediation) => {
+      const nodeId = "model.shop.orders";
+      lineageGraph.current = {
+        nodes: {
+          [nodeId]: {
+            data: {
+              schemaComparisonStatus: "unchecked",
+              baseCatalogStatus,
+              currentCatalogStatus,
+            },
+          },
+        },
+        catalogMetadata: { base: {}, current: {} },
+        schemaCoverage: {
+          status: "partial",
+          unchecked_nodes: [nodeId],
+          unchecked_node_count: 1,
+          more: false,
+        },
+      };
+
+      render(wrap(model(nodeId)));
+
+      const warning = screen.getByRole("alert", {
+        name: "Incomplete schema comparison",
+      });
+      // Whole sentences, not fragments: "current environment" is a substring
+      // of "base and current environments", so a partial match would let a
+      // collapsed ladder pass.
+      expect(warning).toHaveTextContent(
+        `Schema comparison incomplete for the ${environment}.`,
+      );
+      expect(warning).toHaveTextContent(
+        `${remediation} with dbt docs generate`,
+      );
+    },
+  );
+
+  it("judges this node on its own status, not the project-wide coverage", () => {
+    // AC6/AC9: another node being unchecked (or an orphan entry existing) must
+    // not put an incomplete banner over a node this comparison did verify.
+    const nodeId = "model.shop.orders";
+    const base = {
+      ...model(nodeId),
+      columns: {
+        id: { name: "id", type: "INT" },
+        legacy: { name: "legacy", type: "VARCHAR" },
+      },
+    };
+    const current = {
+      ...model(nodeId),
+      columns: { id: { name: "id", type: "INT" } },
+    };
+    lineageGraph.current = {
+      nodes: {
+        [nodeId]: {
+          data: {
+            schemaComparisonStatus: "complete",
+            baseCatalogStatus: "covered",
+            currentCatalogStatus: "covered",
+          },
+        },
+      },
+      catalogMetadata: { base: {}, current: {} },
+      schemaCoverage: {
+        status: "partial",
+        unchecked_nodes: ["model.shop.someone_else"],
+        unchecked_node_count: 1,
+        more: false,
+      },
+    };
+
+    render(
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <SchemaView base={base as NodeData} current={current as NodeData} />
+      </ThemeProvider>,
+    );
+
+    expect(
+      screen.queryByRole("alert", { name: "Incomplete schema comparison" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("legacy")).toBeInTheDocument();
+  });
+
   it("still renders a verified removal when the comparison is complete", () => {
     // AC5: "Genuine covered column removals ... remain visible." Without this,
     // the unchecked test above is satisfied by a component that hides every

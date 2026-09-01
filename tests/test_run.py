@@ -161,6 +161,84 @@ class TestSchemaDiffShouldBeApproved:
         assert result is True
 
     @patch("recce.run.default_context")
+    def test_two_sided_node_missing_from_one_catalog_is_not_auto_approved(self, mock_ctx):
+        """The DRC-3293 shape itself: a model in BOTH manifests that the current
+        catalog does not describe. Its columns look dropped, but nothing
+        verified them, so the check must not be approved as reviewed."""
+        node_id = "model.project.orders"
+        base_node = {
+            "resource_type": "model",
+            "config": {"materialized": "table"},
+            "catalog_status": "covered",
+            "columns": {"id": {"type": "INTEGER"}, "gone": {"type": "TEXT"}},
+        }
+        # The real adapter shape for a model absent from catalog.json: no
+        # "columns" key at all.
+        current_node = {
+            "resource_type": "model",
+            "config": {"materialized": "table"},
+            "catalog_status": "unchecked",
+        }
+        mock_ctx.return_value.get_lineage.side_effect = [
+            {"nodes": {node_id: base_node}},
+            {"nodes": {node_id: current_node}},
+        ]
+
+        assert schema_diff_should_be_approved({"node_id": node_id}) is False
+
+    @patch("recce.run.default_context")
+    def test_one_uncovered_node_blocks_approval_of_a_clean_sibling(self, mock_ctx):
+        """AC3 + AC8: partial coverage blocks approval even when every node the
+        comparison could verify came back diff-free. A clean verified half is
+        not evidence about the unverified half."""
+        covered_id = "model.project.covered"
+        uncovered_id = "model.project.uncovered"
+        covered = {
+            "resource_type": "model",
+            "config": {"materialized": "table"},
+            "catalog_status": "covered",
+            "columns": {"id": {"type": "INTEGER"}},
+        }
+        mock_ctx.return_value.adapter.select_nodes.return_value = {covered_id, uncovered_id}
+        mock_ctx.return_value.get_lineage.side_effect = [
+            {
+                "nodes": {
+                    covered_id: covered,
+                    uncovered_id: {**covered, "columns": {"id": {"type": "INTEGER"}}},
+                }
+            },
+            {
+                "nodes": {
+                    covered_id: covered,
+                    uncovered_id: {
+                        "resource_type": "model",
+                        "config": {"materialized": "table"},
+                        "catalog_status": "unchecked",
+                    },
+                }
+            },
+        ]
+
+        assert schema_diff_should_be_approved({"select": "state:modified"}) is False
+
+    @patch("recce.run.default_context")
+    def test_covered_column_drop_is_not_auto_approved(self, mock_ctx):
+        """AC5: a removal both catalogs describe is a real difference. Complete
+        coverage is necessary for approval, never sufficient."""
+        node_id = "model.project.orders"
+        node = {
+            "resource_type": "model",
+            "config": {"materialized": "table"},
+            "catalog_status": "covered",
+        }
+        mock_ctx.return_value.get_lineage.side_effect = [
+            {"nodes": {node_id: {**node, "columns": {"id": {"type": "INTEGER"}, "gone": {"type": "TEXT"}}}}},
+            {"nodes": {node_id: {**node, "columns": {"id": {"type": "INTEGER"}}}}},
+        ]
+
+        assert schema_diff_should_be_approved({"node_id": node_id}) is False
+
+    @patch("recce.run.default_context")
     def test_dropped_model_is_not_auto_approved_as_unchanged(self, mock_ctx):
         """AC5: a model present only on the base side is a real removal.
 
