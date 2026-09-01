@@ -66,6 +66,8 @@ export interface SQLMeshInfo {
 
 export type CatalogMetadata = ArtifactMetadata;
 
+export type NodeCatalogStatus = "covered" | "unchecked" | "not_applicable";
+
 /**
  * Merged node from server-side lineage merge (DRC-3258).
  * Contains unified metadata from base+current with baked-in diff.
@@ -89,6 +91,9 @@ export interface MergedNodeData {
     category: "breaking" | "non_breaking" | "partial_breaking" | "unknown";
     columns?: Record<string, "added" | "removed" | "modified" | "unknown">;
   };
+  schema_comparison_status?: "complete" | "unchecked" | "not_applicable";
+  base_catalog_status?: NodeCatalogStatus;
+  current_catalog_status?: NodeCatalogStatus;
 }
 
 /**
@@ -108,6 +113,37 @@ export interface MergedLineageEnvMetadata {
   catalog_metadata?: CatalogMetadata;
 }
 
+export interface ArtifactHealth {
+  status:
+    | "complete"
+    | "partial"
+    | "empty"
+    | "absent"
+    | "not_applicable"
+    | "unknown";
+  expected_count: number;
+  covered_count: number;
+  catalog_entry_count: number;
+  missing_node_count: number;
+  missing_nodes: string[];
+  missing_more: boolean;
+  orphan_node_count: number;
+  orphan_nodes: string[];
+  orphan_more: boolean;
+}
+
+export interface ArtifactHealthPair {
+  base?: ArtifactHealth | null;
+  current?: ArtifactHealth | null;
+}
+
+export interface SchemaCoverage {
+  status: "complete" | "partial" | "unknown";
+  unchecked_nodes: string[];
+  unchecked_node_count: number;
+  more: boolean;
+}
+
 /**
  * Server-side merged lineage response from /api/info.
  * Replaces the old {base, current, diff} triple.
@@ -119,6 +155,8 @@ export interface MergedLineageResponse {
     base: MergedLineageEnvMetadata;
     current: MergedLineageEnvMetadata;
   };
+  artifact_health?: ArtifactHealthPair | null;
+  schema_coverage?: SchemaCoverage | null;
 }
 
 /**

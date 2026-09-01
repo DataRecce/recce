@@ -2,14 +2,62 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
+from pydantic import ValidationError
+
+from recce.artifact_health import (
+    classify_node_schema_comparison,
+    classify_schema_coverage,
+    schema_coverage_payload,
+)
 from recce.models.types import (
+    ArtifactHealthPayload,
     LineageDiff,
     MergedEdge,
     MergedLineage,
     MergedNode,
 )
+
+_CATALOG_STATUSES = frozenset({"covered", "unchecked", "not_applicable"})
+
+
+def _catalog_status(node: Mapping[str, Any] | None) -> str | None:
+    if not isinstance(node, Mapping):
+        return None
+    status = node.get("catalog_status")
+    return status if status in _CATALOG_STATUSES else None
+
+
+_UNREADABLE_SIDE_HEALTH = {
+    "status": "unknown",
+    "expected_count": 0,
+    "covered_count": 0,
+    "catalog_entry_count": 0,
+    "missing_node_count": 0,
+    "missing_nodes": [],
+    "missing_more": False,
+    "orphan_node_count": 0,
+    "orphan_nodes": [],
+    "orphan_more": False,
+}
+
+
+def _readable_side_health(raw: Any) -> dict | None:
+    """Degrade one side's health to "unknown" rather than failing the response.
+
+    A producer on a different version can emit a status literal or field shape
+    this build cannot parse. Raising here would take the whole merged-lineage
+    response down — hiding every verified node along with the badge — which is
+    strictly worse than reporting that side's health as unknown.
+    """
+    if raw is None:
+        return None
+    try:
+        return ArtifactHealthPayload.model_validate(raw).model_dump()
+    except ValidationError:
+        return dict(_UNREADABLE_SIDE_HEALTH)
 
 
 def build_merged_lineage(lineage_diff: LineageDiff) -> MergedLineage:
@@ -21,13 +69,17 @@ def build_merged_lineage(lineage_diff: LineageDiff) -> MergedLineage:
     base = lineage_diff.base
     current = lineage_diff.current
     diff = lineage_diff.diff
+    base_nodes = base.get("nodes")
+    current_nodes = current.get("nodes")
+    base_node_map = base_nodes if isinstance(base_nodes, Mapping) else {}
+    current_node_map = current_nodes if isinstance(current_nodes, Mapping) else {}
 
     # 1. Merge nodes — prefer current metadata, fall back to base for removed
     nodes: dict[str, MergedNode] = {}
-    all_ids = set(base.get("nodes", {})) | set(current.get("nodes", {}))
+    all_ids = set(base_node_map) | set(current_node_map)
     for node_id in sorted(all_ids):
-        base_node = base.get("nodes", {}).get(node_id)
-        current_node = current.get("nodes", {}).get(node_id)
+        base_node = base_node_map.get(node_id)
+        current_node = current_node_map.get(node_id)
 
         source = current_node if current_node is not None else base_node
         merged = MergedNode(**source)  # extra="ignore" handles unknown keys
@@ -55,6 +107,14 @@ def build_merged_lineage(lineage_diff: LineageDiff) -> MergedLineage:
         if node_diff:
             merged.change_status = node_diff.change_status
             merged.change = node_diff.change
+
+        merged.base_catalog_status = _catalog_status(base_node)
+        merged.current_catalog_status = _catalog_status(current_node)
+        merged.schema_comparison_status = classify_node_schema_comparison(
+            base_node_map,
+            current_node_map,
+            node_id,
+        )
 
         nodes[node_id] = merged
 
@@ -100,4 +160,21 @@ def build_merged_lineage(lineage_diff: LineageDiff) -> MergedLineage:
         },
     }
 
-    return MergedLineage(nodes=nodes, edges=edges, metadata=metadata)
+    base_artifact_health = _readable_side_health(base.get("artifact_health"))
+    current_artifact_health = _readable_side_health(current.get("artifact_health"))
+    artifact_health = None
+    if base_artifact_health is not None or current_artifact_health is not None:
+        artifact_health = {
+            "base": base_artifact_health,
+            "current": current_artifact_health,
+        }
+
+    schema_coverage = schema_coverage_payload(classify_schema_coverage(base_nodes, current_nodes, all_ids))
+
+    return MergedLineage(
+        nodes=nodes,
+        edges=edges,
+        metadata=metadata,
+        artifact_health=artifact_health,
+        schema_coverage=schema_coverage,
+    )

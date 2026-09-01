@@ -282,6 +282,36 @@ describe("toSchemaDataGrid - Column Structure", () => {
 // ============================================================================
 
 describe("toSchemaDataGrid - Row Generation", () => {
+  // One fixture, every status: this pins the suppression set AND its
+  // complement, so neither narrowing nor widening the gate can slip through.
+  //
+  // Only "unchecked" carries positive evidence that the catalog did not
+  // describe the node, so it is the only status that may hide a difference.
+  // "unknown" means no coverage evidence at all (legacy / version-skewed
+  // producer) — hiding rows there deletes real removals, the inverse of the
+  // bug this guard exists to fix.
+  test.each([
+    ["complete", ["stable", "removed", "changed", "added"]],
+    ["unchecked", ["stable"]],
+    ["unknown", ["stable", "removed", "changed", "added"]],
+    ["not_applicable", ["stable", "removed", "changed", "added"]],
+    [undefined, ["stable", "removed", "changed", "added"]],
+  ] as const)(
+    "schemaComparisonStatus %s keeps rows %j",
+    (schemaComparisonStatus, expected) => {
+      const schemaDiff = mergeColumns(
+        createColumns({ stable: "INT", removed: "VARCHAR", changed: "INT" }),
+        createColumns({ stable: "INT", changed: "DECIMAL", added: "VARCHAR" }),
+      );
+
+      const { rows } = toSchemaDataGrid(schemaDiff, {
+        schemaComparisonStatus,
+      });
+
+      expect(rows.map((row) => row.name).sort()).toEqual([...expected].sort());
+    },
+  );
+
   test("returns rows from schemaDiff", () => {
     const schemaDiff = mergeColumns(
       createColumns({ id: "INT", name: "VARCHAR" }),

@@ -2,6 +2,201 @@ import type { MergedLineageResponse } from "../../../api/info";
 import { buildLineageGraph } from "../utils";
 
 describe("buildLineageGraph", () => {
+  test.each(["complete", "unchecked", "not_applicable"] as const)(
+    "carries the %s comparison status through to the node",
+    (status) => {
+      // "not_applicable" is what the classifier returns for every added-only
+      // and removed-only model, plus ephemerals. If it collapsed to "unknown"
+      // a genuine removal would show a false incomplete-comparison warning,
+      // so each literal has to survive normalization intact.
+      const lineage: MergedLineageResponse = {
+        nodes: {
+          "model.proj.orders": {
+            name: "orders",
+            resource_type: "model",
+            package_name: "proj",
+            schema_comparison_status: status,
+          },
+        },
+        edges: [],
+        metadata: { base: {}, current: {} },
+      };
+
+      const graph = buildLineageGraph(lineage);
+
+      expect(graph.nodes["model.proj.orders"].data.schemaComparisonStatus).toBe(
+        status,
+      );
+    },
+  );
+
+  test("treats an unrecognised comparison status as unknown", () => {
+    // AC10 version skew: a producer one version ahead must not have its
+    // literal passed through as though this build understood it.
+    const lineage: MergedLineageResponse = {
+      nodes: {
+        "model.proj.orders": {
+          name: "orders",
+          resource_type: "model",
+          package_name: "proj",
+          schema_comparison_status: "partially_verified_v2",
+        },
+      },
+      edges: [],
+      metadata: { base: {}, current: {} },
+    } as unknown as MergedLineageResponse;
+
+    const graph = buildLineageGraph(lineage);
+
+    expect(graph.nodes["model.proj.orders"].data.schemaComparisonStatus).toBe(
+      "unknown",
+    );
+  });
+
+  test("treats legacy lineage evidence as unknown", () => {
+    const lineage: MergedLineageResponse = {
+      nodes: {
+        "model.proj.orders": {
+          name: "orders",
+          resource_type: "model",
+          package_name: "proj",
+        },
+      },
+      edges: [],
+      metadata: { base: {}, current: {} },
+    };
+
+    const graph = buildLineageGraph(lineage);
+
+    expect(graph.schemaCoverage).toEqual({
+      status: "unknown",
+      unchecked_nodes: [],
+      unchecked_node_count: 0,
+      more: false,
+    });
+    expect(graph.nodes["model.proj.orders"].data.schemaComparisonStatus).toBe(
+      "unknown",
+    );
+  });
+
+  test("keeps verified nodes when another model is unchecked", () => {
+    const lineage: MergedLineageResponse = {
+      nodes: {
+        "model.proj.orders": {
+          name: "orders",
+          resource_type: "model",
+          package_name: "proj",
+          schema_comparison_status: "complete",
+        },
+        "model.proj.customers": {
+          name: "customers",
+          resource_type: "model",
+          package_name: "proj",
+          schema_comparison_status: "unchecked",
+          base_catalog_status: "covered",
+          current_catalog_status: "unchecked",
+        },
+      },
+      edges: [],
+      metadata: { base: {}, current: {} },
+      schema_coverage: {
+        status: "partial",
+        unchecked_nodes: ["model.proj.customers"],
+        unchecked_node_count: 1,
+        more: false,
+      },
+    };
+
+    const graph = buildLineageGraph(lineage);
+
+    expect(graph.schemaCoverage?.status).toBe("partial");
+    expect(graph.nodes["model.proj.orders"].data.schemaComparisonStatus).toBe(
+      "complete",
+    );
+    expect(
+      graph.nodes["model.proj.customers"].data.schemaComparisonStatus,
+    ).toBe("unchecked");
+    expect(graph.nodes["model.proj.customers"].data.baseCatalogStatus).toBe(
+      "covered",
+    );
+    expect(graph.nodes["model.proj.customers"].data.currentCatalogStatus).toBe(
+      "unchecked",
+    );
+  });
+
+  test("treats malformed coverage as unknown", () => {
+    const lineage = {
+      nodes: {},
+      edges: [],
+      metadata: { base: {}, current: {} },
+      schema_coverage: { status: "complete" },
+    } as unknown as MergedLineageResponse;
+
+    expect(buildLineageGraph(lineage).schemaCoverage?.status).toBe("unknown");
+  });
+
+  test.each([
+    {
+      name: "complete status with unchecked nodes",
+      coverage: {
+        status: "complete",
+        unchecked_nodes: ["model.proj.orders"],
+        unchecked_node_count: 1,
+        more: false,
+      },
+    },
+    {
+      name: "partial status with no unchecked nodes",
+      coverage: {
+        status: "partial",
+        unchecked_nodes: [],
+        unchecked_node_count: 0,
+        more: false,
+      },
+    },
+    {
+      name: "truncated sample without the more marker",
+      coverage: {
+        status: "partial",
+        unchecked_nodes: ["model.proj.orders"],
+        unchecked_node_count: 2,
+        more: false,
+      },
+    },
+    {
+      name: "complete sample with the more marker",
+      coverage: {
+        status: "partial",
+        unchecked_nodes: ["model.proj.orders"],
+        unchecked_node_count: 1,
+        more: true,
+      },
+    },
+    {
+      name: "unknown status with unchecked nodes",
+      coverage: {
+        status: "unknown",
+        unchecked_nodes: ["model.proj.orders"],
+        unchecked_node_count: 1,
+        more: false,
+      },
+    },
+  ])("treats contradictory coverage as unknown: $name", ({ coverage }) => {
+    const lineage = {
+      nodes: {},
+      edges: [],
+      metadata: { base: {}, current: {} },
+      schema_coverage: coverage,
+    } as unknown as MergedLineageResponse;
+
+    expect(buildLineageGraph(lineage).schemaCoverage).toEqual({
+      status: "unknown",
+      unchecked_nodes: [],
+      unchecked_node_count: 0,
+      more: false,
+    });
+  });
+
   test("builds graph with correct node and edge counts", () => {
     const lineage: MergedLineageResponse = {
       nodes: {

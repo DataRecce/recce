@@ -11,6 +11,7 @@ import logging
 import os
 import textwrap
 import time
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -27,8 +28,10 @@ from mcp.types import CallToolResult, ListToolsResult, TextContent, Tool
 # persist Runs to the in-process RecceContext so the state exported to S3
 # at MCP-server shutdown carries the analysis runs.
 from recce.apis.run_func import submit_run as _submit_run_fn  # noqa: E402
+from recce.artifact_health import classify_schema_coverage, schema_coverage_payload
 from recce.core import RecceContext, load_context
 from recce.exceptions import RecceException
+from recce.schema_evidence import run_result_is_approvable
 from recce.server import RecceServerMode
 from recce.tasks.dataframe import DataFrame
 from recce.tasks.histogram import HistogramDiffTask
@@ -269,7 +272,9 @@ class CloudBackend:
             f"checks/{quote(str(check_id), safe='')}/run",
             json={"nowait": False},
         )
-        if self._run_succeeded(run):
+        # A schema comparison must prove complete coverage; every other check
+        # type keeps the pre-existing "a successful run is reviewed" rule.
+        if self._run_succeeded(run) and run_result_is_approvable(run.get("result")):
             await self._auto_approve(check_id)
         return run
 
@@ -300,7 +305,14 @@ class CloudBackend:
             )
             run_executed = True
             run_error = run.get("error")
-            if self._run_succeeded(run) and arguments.get("approve", True):
+            # Both gates apply: the caller must ask for approval, and the run
+            # must carry evidence its type can stand behind — for a schema
+            # comparison that means complete coverage, not merely a clean run.
+            if (
+                self._run_succeeded(run)
+                and arguments.get("approve", True)
+                and run_result_is_approvable(run.get("result"))
+            ):
                 await self._auto_approve(check_id)
         result = {
             "check_id": str(check_id),
@@ -312,7 +324,7 @@ class CloudBackend:
         return result
 
     async def _auto_approve(self, check_id) -> None:
-        """Best-effort auto-approve on successful run.
+        """Best-effort auto-approve after evidence satisfies the caller's gate.
 
         The run already succeeded; an approve-side failure must not blow up the
         tool response. Mirrors the local-mode invariant that auto-approve is a
@@ -430,11 +442,12 @@ class CloudBackend:
             limit=limit,
             more=len(changes) > limit,
         ).model_dump(mode="json")
+        result["total_row_count"] = len(changes)
         # The cloud session hands us the column changes it already computed but
         # says nothing about which nodes it could not describe, so coverage is
         # unassessed rather than complete. Emitted under the same key as the
         # local path so the one shared tool description holds for both backends.
-        result["schema_coverage"] = _schema_coverage(None)
+        result["schema_coverage"] = schema_coverage_payload(classify_schema_coverage(None, None, ()))
         return result
 
     async def _tool_impact_analysis(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
@@ -486,8 +499,8 @@ class CloudBackend:
             "confirmed_not_impacted_models": not_impacted_models,
             # Metadata-only triage: the session reports the column changes it
             # found but not what it failed to describe, so coverage is
-            # unassessed. Same key as the local path (see _schema_coverage).
-            "schema_coverage": _schema_coverage(None),
+            # unassessed. Same key as the local path.
+            "schema_coverage": schema_coverage_payload(classify_schema_coverage(None, None, ())),
             "errors": [],
         }
 
@@ -601,84 +614,6 @@ class MCPLogger:
             log_entry["response"] = _truncate_strings(response)
 
         self._write_log(log_entry)
-
-
-# Bounds the node names schema_diff names as unverifiable. Independent of the
-# row cap so an under-catalogued project cannot crowd out the changes it did find.
-_UNCHECKED_NODE_LIMIT = 50
-
-
-def _columns_comparable(base_node: dict, current_node: dict) -> bool:
-    """Whether the two sides carry enough column data to be compared at all.
-
-    Nodes come from the manifest but their columns come from the catalog, so a
-    model a selective build did not rebuild arrives with no column data on the
-    current side. Differencing the two sets anyway turns "we never looked" into
-    a full sweep of added or removed columns.
-
-    Emptiness counts as absence: a relation with no columns cannot exist, so an
-    empty map means the catalog never described the model rather than that it
-    lost everything.
-
-    What this observes is the absence, not its cause. A selective build is the
-    commonest reason but not the only one, so callers must not turn a False here
-    into a claim about what the user's pipeline did.
-    """
-    return bool(base_node.get("columns")) and bool(current_node.get("columns"))
-
-
-# Resource types dbt never describes in catalog.json, because the catalog
-# describes warehouse relations and these are not relations. See
-# `recce/adapter/dbt_adapter/__init__.py`, which builds them with no `columns`
-# key at all.
-_NON_RELATION_RESOURCE_TYPES = frozenset({"exposure", "metric", "semantic_model", "saved_query"})
-
-
-def _can_carry_catalog_columns(node: dict) -> bool:
-    """Whether the catalog could ever have described this node's columns.
-
-    Missing columns on a node dbt never catalogues are the normal state, not a
-    gap in what we checked. Exposures, metrics and semantic models are not
-    relations, and an ephemeral model is inlined as a CTE rather than
-    materialized, so none of them ever get a catalog entry. Counting them as
-    unchecked would pin `status` to "partial" on any project that owns one — a
-    genuinely clean schema_diff could then never be reported as verified — and
-    would spend the capped `unchecked_nodes` slots on nodes that were never
-    comparable to begin with.
-
-    A denylist, not an allowlist: a resource type we have not met, or a node
-    carrying no `resource_type` at all, still counts as a coverage gap. The
-    trade-off is deliberate. Skipping every node with no columns on *either*
-    side would also have covered these cases, but it would silently drop a model
-    that neither environment built — precisely the absence `unchecked_nodes`
-    exists to name — so we over-report a gap rather than hide one.
-    """
-    if node.get("resource_type") in _NON_RELATION_RESOURCE_TYPES:
-        return False
-    return (node.get("config") or {}).get("materialized") != "ephemeral"
-
-
-def _schema_coverage(unchecked_node_ids: Optional[List[str]]) -> Dict[str, Any]:
-    """Build the schema_coverage block shared by schema_diff and impact_analysis.
-
-    `None` means the comparison never ran — it raised, or the backend does not
-    report coverage. That is distinct from an empty list, which means the
-    comparison ran and found nothing it could not check.
-    """
-    if unchecked_node_ids is None:
-        return {
-            "status": "unknown",
-            "unchecked_nodes": [],
-            "unchecked_node_count": 0,
-            "more": False,
-        }
-    ordered = sorted(unchecked_node_ids)
-    return {
-        "status": "partial" if ordered else "complete",
-        "unchecked_nodes": ordered[:_UNCHECKED_NODE_LIMIT],
-        "unchecked_node_count": len(ordered),
-        "more": len(ordered) > _UNCHECKED_NODE_LIMIT,
-    }
 
 
 class RecceMCPServer:
@@ -1945,14 +1880,11 @@ class RecceMCPServer:
         # Get lineage diff from adapter
         lineage_diff = self.context.get_lineage_diff().model_dump(mode="json")
 
-        # Get all nodes from current environment
-        current_nodes = {}
-        if "current" in lineage_diff and "nodes" in lineage_diff["current"]:
-            current_nodes = lineage_diff["current"]["nodes"]
-
-        # Filter to only nodes that exist in both base and current (exclude added nodes)
-        base_nodes = lineage_diff.get("base", {}).get("nodes", {})
-        nodes_to_compare = set(current_nodes.keys()) & set(base_nodes.keys())
+        base_nodes = lineage_diff.get("base", {}).get("nodes")
+        current_nodes = lineage_diff.get("current", {}).get("nodes")
+        nodes_to_compare = set(base_nodes) if isinstance(base_nodes, Mapping) else set()
+        if isinstance(current_nodes, Mapping):
+            nodes_to_compare.update(current_nodes)
 
         # Apply filtering if arguments provided
         if select or exclude or packages:
@@ -1961,28 +1893,26 @@ class RecceMCPServer:
                 exclude=exclude,
                 packages=packages,
             )
-            nodes_to_compare = nodes_to_compare & selected_node_ids
+            # Preserve the exact selected scope. The canonical classifier must
+            # see stale IDs absent from both manifests so they fail closed; XOR
+            # one-sided nodes remain valid structural evidence.
+            nodes_to_compare = {
+                node_id for node_id in selected_node_ids if isinstance(node_id, str) and not node_id.startswith("test.")
+            }
+
+        coverage = classify_schema_coverage(base_nodes, current_nodes, nodes_to_compare)
 
         # Build schema changes
         schema_changes = []
-        unchecked_nodes = []
 
-        for node_id in nodes_to_compare:
+        # One-sided nodes are included: an added or removed relation is verified
+        # structural evidence, and its columns are genuine additions/removals.
+        for node_id in coverage.comparable_node_ids:
             base_node = base_nodes.get(node_id, {})
             current_node = current_nodes.get(node_id, {})
 
             base_columns = base_node.get("columns") or {}
             current_columns = current_node.get("columns") or {}
-
-            # Skipped before the row cap so unverifiable rows can neither
-            # displace real changes nor inflate `more`. A node the catalog never
-            # describes is skipped without being named: it is not a gap in what
-            # we checked, and naming it would make `status` permanently
-            # "partial" on any project that owns one.
-            if not _columns_comparable(base_node, current_node):
-                if _can_carry_catalog_columns(current_node):
-                    unchecked_nodes.append(node_id)
-                continue
 
             # Get column names in base and current
             base_col_names = set(base_columns.keys())
@@ -2020,13 +1950,14 @@ class RecceMCPServer:
             more=has_more,
         )
         result = diff_df.model_dump(mode="json")
+        result["total_row_count"] = len(schema_changes)
 
         # Carried alongside the frame rather than inside it: `DataFrame` backs
         # every tool's payload, and coverage only means something here. Consumers
         # that ignore it still see the unchanged shape, minus rows we cannot
         # stand behind. `data == []` means "no column changes" only when
         # `status` is "complete".
-        result["schema_coverage"] = _schema_coverage(unchecked_nodes)
+        result["schema_coverage"] = schema_coverage_payload(coverage)
         return result
 
     async def _tool_row_count_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
@@ -2210,39 +2141,27 @@ class RecceMCPServer:
         # Step 2b: Schema diff (compare columns between base and current)
         # Unknown until the step runs, so a failure below leaves it unknown
         # rather than claiming complete coverage.
-        schema_coverage = _schema_coverage(None)
+        schema_coverage = schema_coverage_payload(classify_schema_coverage(None, None, ()))
         try:
-            base_nodes = lineage_diff.get("base", {}).get("nodes", {})
-            current_nodes = lineage_diff.get("current", {}).get("nodes", {})
+            base_nodes = lineage_diff.get("base", {}).get("nodes")
+            current_nodes = lineage_diff.get("current", {}).get("nodes")
+            selected_schema_node_ids = [
+                node_id_by_name[model["name"]] for model in impacted_models if model["name"] in node_id_by_name
+            ]
+            coverage = classify_schema_coverage(base_nodes, current_nodes, selected_schema_node_ids)
+            schema_coverage = schema_coverage_payload(coverage)
 
-            schema_unchecked = []
             for model in impacted_models:
                 node_id = node_id_by_name.get(model["name"])
                 if not node_id:
                     continue
 
+                if coverage.status == "unknown" or node_id in coverage.unchecked_node_ids:
+                    model["schema_changes"] = None
+                    continue
+
                 base_node = base_nodes.get(node_id, {})
                 current_node = current_nodes.get(node_id, {})
-
-                # The same absence guard as the schema_diff tool, but that tool
-                # compares only nodes present in BOTH lineages. Added and removed
-                # models reach this loop too, and a one-sided node is an
-                # observation, not an absence: a new model's columns really are
-                # all added, and a deleted model's really are all removed. Nodes
-                # the catalog never describes fall through as well — comparing
-                # two empty maps yields the honest empty result without claiming
-                # a coverage gap.
-                # `None` rather than `[]` for a real gap: an empty list reads as
-                # "checked, nothing changed", which is the claim we cannot make.
-                exists_in_both = bool(base_node) and bool(current_node)
-                if (
-                    exists_in_both
-                    and not _columns_comparable(base_node, current_node)
-                    and _can_carry_catalog_columns(current_node)
-                ):
-                    model["schema_changes"] = None
-                    schema_unchecked.append(node_id)
-                    continue
 
                 base_columns = base_node.get("columns") or {}
                 current_columns = current_node.get("columns") or {}
@@ -2261,8 +2180,6 @@ class RecceMCPServer:
                         changes.append({"column": col, "change_status": "modified"})
 
                 model["schema_changes"] = changes
-
-            schema_coverage = _schema_coverage(schema_unchecked)
         except Exception as e:
             errors.append({"step": "schema_diff", "message": str(e)})
 
@@ -2793,6 +2710,7 @@ class RecceMCPServer:
 
         triggered_by = arguments.get("triggered_by", "user")
         run_succeeded = False
+        approval_result = None
 
         if check.type in (RunType.LINEAGE_DIFF, RunType.SCHEMA_DIFF):
             try:
@@ -2808,6 +2726,7 @@ class RecceMCPServer:
                     triggered_by=triggered_by,
                 )
                 run_succeeded = True
+                approval_result = result
                 run_dump = run.model_dump(mode="json")
             except RecceException as e:
                 raise ValueError(str(e)) from e
@@ -2821,21 +2740,22 @@ class RecceMCPServer:
                 )
                 run.result = await future
                 run_succeeded = run.status == RunStatus.FINISHED and not run.error
+                approval_result = run.result
                 run_dump = run.model_dump(mode="json")
             except RecceException as e:
                 raise ValueError(str(e)) from e
 
-        # Auto-approve on successful run — same gate as _tool_create_check (line 1832:
-        # run_executed and not run_error). PM decision: Passed = Approved (See: DRC-3307).
-        # For metadata-only types (lineage_diff/schema_diff), an empty result IS valid
-        # evidence: zero changes confirms the upstream PR did not affect lineage/schema.
-        # The auto-approve runs OUTSIDE the RecceException try blocks so a cloud-side
-        # failure (RecceCloudException, which is NOT a RecceException subclass) is not
-        # silently absorbed by the wrapper above. Same persistence policy as
-        # _tool_create_check: state is exported to disk/cloud after the approval.
         if run_succeeded:
-            check_dao.update_check_by_id(check_id, PatchCheckIn(is_checked=True))
-            logger.info(f"Auto-approved check {check_id} (triggered_by={triggered_by})")
+            # A schema comparison auto-approves only on a verified empty diff
+            # with complete coverage — successful execution alone is not
+            # evidence there. Other types keep the standing PM decision that a
+            # passing run is a reviewed check.
+            if run_result_is_approvable(approval_result):
+                check_dao.update_check_by_id(check_id, PatchCheckIn(is_checked=True))
+                logger.info(f"Auto-approved check {check_id} (triggered_by={triggered_by})")
+
+            # Every successful run is durable, including unapproved partial,
+            # unknown, mismatching, lineage-only, and non-schema evidence.
             await asyncio.get_event_loop().run_in_executor(None, export_persistent_state)
 
         return run_dump
@@ -2885,6 +2805,7 @@ class RecceMCPServer:
         # Auto-run for evidence
         run_executed = False
         run_error = None
+        approval_result = None
         triggered_by = arguments.get("triggered_by", "user")
         if check_type in (RunType.LINEAGE_DIFF, RunType.SCHEMA_DIFF):
             # Metadata-only: read from manifest, create Run record for Activity
@@ -2901,6 +2822,7 @@ class RecceMCPServer:
                     triggered_by=triggered_by,
                 )
                 run_executed = True
+                approval_result = result
             except Exception as e:
                 run_error = str(e)
         else:
@@ -2909,16 +2831,15 @@ class RecceMCPServer:
             # submit_run's future always resolves (errors caught internally).
             # Check run.status, not the return value.
             run_executed = run.status == RunStatus.FINISHED
+            approval_result = run.result
             if run.status == RunStatus.FAILED:
                 run_error = run.error
 
-        # Auto-approve check when run succeeded without errors.
-        # In the PR summary, Passed = Approved (PM decision): a check that
-        # ran successfully is considered reviewed by the agent.
-        # Note: this differs from run_should_be_approved() in run.py, which
-        # only approves ROW_COUNT_DIFF with matching counts.  Here we blanket-
-        # approve any successful run — intentional per PM decision.
-        if run_executed and not run_error and approve:
+        # Auto-approve only when the caller asked for approval AND the run
+        # carries evidence its type can stand behind. `approve=False` keeps the
+        # check unapproved for human review; a schema comparison additionally
+        # needs complete coverage, so a legacy result without it fails closed.
+        if run_executed and not run_error and approve and run_result_is_approvable(approval_result):
             check_dao.update_check_by_id(check_id, PatchCheckIn(is_checked=True))
 
         # Persist state to cloud/disk (matches REST endpoint pattern)

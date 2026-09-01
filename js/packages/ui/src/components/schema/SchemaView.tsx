@@ -18,7 +18,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import type { NodeData } from "../../api";
+import type { MergedNodeData, NodeData } from "../../api";
 import {
   useLineageGraphContext,
   useLineageViewContext,
@@ -87,6 +87,19 @@ interface SchemaViewProps {
   onViewCode?: () => void;
   /** Optional action element rendered next to the legend (e.g. add-to-checklist button) */
   headerAction?: ReactNode;
+}
+
+function affectedEnvironment(
+  baseCatalogStatus: MergedNodeData["base_catalog_status"],
+  currentCatalogStatus: MergedNodeData["current_catalog_status"],
+): string {
+  const baseAffected = baseCatalogStatus === "unchecked";
+  const currentAffected = currentCatalogStatus === "unchecked";
+  if (baseAffected && currentAffected) return "base and current environments";
+  if (baseAffected) return "base environment";
+  if (currentAffected) return "current environment";
+
+  return "base/current environments";
 }
 
 function PrivateSingleEnvSchemaView(
@@ -184,11 +197,11 @@ function PrivateSingleEnvSchemaView(
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {catalogMissingMessage ? (
-        <MuiAlert severity="warning" sx={{ fontSize: "12px", p: 1 }}>
+        <MuiAlert severity="warning" sx={{ fontSize: "0.75rem", p: 1 }}>
           {catalogMissingMessage}
         </MuiAlert>
       ) : schemaMissingMessage ? (
-        <MuiAlert severity="warning" sx={{ fontSize: "12px", p: 1 }}>
+        <MuiAlert severity="warning" sx={{ fontSize: "0.75rem", p: 1 }}>
           {schemaMissingMessage}
         </MuiAlert>
       ) : (
@@ -201,7 +214,7 @@ function PrivateSingleEnvSchemaView(
             blockSize: "auto",
             maxHeight: "100%",
             overflow: "auto",
-            fontSize: "10pt",
+            fontSize: "0.833rem",
             borderWidth: 1,
           }}
           columns={columns}
@@ -267,6 +280,36 @@ export function PrivateSchemaView(
       : undefined;
   }, [current, base]);
   const nodeId = current?.id ?? base?.id;
+  const { lineageGraph, isActionAvailable, envInfo } = useLineageGraphContext();
+  const lineageNode = nodeId ? lineageGraph?.nodes[nodeId]?.data : undefined;
+  const schemaComparisonStatus = nodeId
+    ? (lineageNode?.schemaComparisonStatus ?? "unknown")
+    : "not_applicable";
+  // No project-wide coverage numbers here. `lineageGraph.schemaCoverage` counts
+  // every node in the lineage and samples the first 50 by id, so on any real
+  // project the node being viewed is usually absent from its own banner. The
+  // node-scoped claim is `schemaComparisonStatus` plus the affected side below;
+  // the project-wide count belongs to SchemaSummary.
+  const comparisonIncomplete =
+    schemaComparisonStatus === "unchecked" ||
+    schemaComparisonStatus === "unknown";
+  const affectedEnvironmentText = affectedEnvironment(
+    lineageNode?.baseCatalogStatus,
+    lineageNode?.currentCatalogStatus,
+  );
+  const affectedCatalogText =
+    affectedEnvironmentText === "base environment"
+      ? "base catalog"
+      : affectedEnvironmentText === "current environment"
+        ? "current catalog"
+        : affectedEnvironmentText === "base and current environments"
+          ? "base and current catalogs"
+          : "base/current catalogs";
+  // `dbt docs generate` and catalog.json are dbt concepts. SQLMesh has neither
+  // — a snapshot's `columns_to_types` is its schema — so telling a SQLMesh user
+  // to regenerate a catalog is an instruction they cannot follow. Anything we
+  // cannot identify keeps the dbt wording, which is the common case.
+  const usesDbtCatalog = envInfo?.adapterType !== "sqlmesh";
 
   // This node's own column names (base ∪ current), used to attribute impacted
   // ids to this node by exact `<nodeId>_<column>` membership in the scoping
@@ -370,6 +413,7 @@ export function PrivateSchemaView(
         impactedColumns,
         nodeId,
         distribution: distributionData,
+        schemaComparisonStatus,
       },
     );
   }, [
@@ -383,9 +427,9 @@ export function PrivateSchemaView(
     onViewCode,
     impactedColumns,
     distributionData,
+    schemaComparisonStatus,
   ]);
 
-  const { lineageGraph, isActionAvailable } = useLineageGraphContext();
   const changeAnalysisAvailable = isActionAvailable("change_analysis");
   const noCatalogBase = !lineageGraph?.catalogMetadata.base;
   const noCatalogCurrent = !lineageGraph?.catalogMetadata.current;
@@ -506,12 +550,31 @@ export function PrivateSchemaView(
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      {catalogMissingMessage ? (
-        <MuiAlert severity="warning" sx={{ fontSize: "12px", p: 1 }}>
+      {comparisonIncomplete ? (
+        <MuiAlert
+          severity="warning"
+          aria-label="Incomplete schema comparison"
+          sx={{ fontSize: "0.75rem", p: 1 }}
+        >
+          Schema comparison incomplete for the {affectedEnvironmentText}.{" "}
+          {usesDbtCatalog ? (
+            <>
+              Regenerate the {affectedCatalogText} with{" "}
+              <code>dbt docs generate</code>, then rerun the comparison.
+            </>
+          ) : (
+            <>
+              Refresh the {affectedEnvironmentText} so this model&apos;s columns
+              are resolved, then rerun the comparison.
+            </>
+          )}
+        </MuiAlert>
+      ) : catalogMissingMessage ? (
+        <MuiAlert severity="warning" sx={{ fontSize: "0.75rem", p: 1 }}>
           {catalogMissingMessage}
         </MuiAlert>
       ) : schemaMissingMessage ? (
-        <MuiAlert severity="warning" sx={{ fontSize: "12px", p: 1 }}>
+        <MuiAlert severity="warning" sx={{ fontSize: "0.75rem", p: 1 }}>
           {schemaMissingMessage}
         </MuiAlert>
       ) : (

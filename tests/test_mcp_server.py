@@ -7,12 +7,8 @@ import pytest
 pytest.importorskip("mcp")
 
 from recce.core import RecceContext  # noqa: E402
-from recce.mcp_server import (  # noqa: E402
-    _UNCHECKED_NODE_LIMIT,
-    RecceMCPServer,
-    run_mcp_server,
-)
-from recce.models.types import LineageDiff  # noqa: E402
+from recce.mcp_server import RecceMCPServer, run_mcp_server  # noqa: E402
+from recce.models.types import Check, LineageDiff, RunType  # noqa: E402
 from recce.server import RecceServerMode  # noqa: E402
 from recce.tasks.histogram import HistogramDiffTask  # noqa: E402
 from recce.tasks.profile import ProfileDiffTask  # noqa: E402
@@ -32,6 +28,41 @@ def mcp_server():
     """Fixture to create a RecceMCPServer instance for testing"""
     mock_context = MagicMock(spec=RecceContext)
     return RecceMCPServer(mock_context), mock_context
+
+
+def _schema_result(
+    coverage_status=None,
+    data=None,
+    *,
+    unchecked_nodes=None,
+    unchecked_node_count=None,
+    coverage_more=False,
+    frame_more=False,
+    total_row_count=0,
+):
+    result = {
+        "columns": [
+            {"key": "node_id", "name": "node_id", "type": "text"},
+            {"key": "column", "name": "column", "type": "text"},
+            {"key": "change_status", "name": "change_status", "type": "text"},
+        ],
+        "data": [] if data is None else data,
+        "limit": 100,
+        "more": frame_more,
+        "total_row_count": total_row_count,
+    }
+    if coverage_status is not None:
+        if unchecked_nodes is None:
+            unchecked_nodes = ["model.project.unchecked"] if coverage_status == "partial" else []
+        if unchecked_node_count is None:
+            unchecked_node_count = len(unchecked_nodes)
+        result["schema_coverage"] = {
+            "status": coverage_status,
+            "unchecked_nodes": unchecked_nodes,
+            "unchecked_node_count": unchecked_node_count,
+            "more": coverage_more,
+        }
+    return result
 
 
 class TestRecceMCPServer:
@@ -199,6 +230,7 @@ class TestRecceMCPServer:
                     "model.project.model_a": {
                         "name": "model_a",
                         "resource_type": "model",
+                        "catalog_status": "covered",
                         "columns": {
                             "id": {"name": "id", "type": "integer"},
                             "name": {"name": "name", "type": "text"},
@@ -211,6 +243,7 @@ class TestRecceMCPServer:
                     "model.project.model_a": {
                         "name": "model_a",
                         "resource_type": "model",
+                        "catalog_status": "covered",
                         "columns": {
                             "id": {"name": "id", "type": "integer"},
                             "name": {"name": "name", "type": "text"},
@@ -245,14 +278,10 @@ class TestRecceMCPServer:
     async def test_tool_schema_diff_does_not_report_an_unbuilt_model_as_removed(self, mcp_server):
         """A model the run did not rebuild must not read as a column drop.
 
-        `_build_lineage` in the dbt adapter builds every node from the manifest
-        but assigns `columns` only when the catalog holds that node, so a
-        selective build leaves an unrebuilt model present on both sides with no
-        `columns` key on the current side. Comparing the two column sets then
-        turns "we never looked" into "every column was dropped".
-
-        Node keys below mirror what that builder emits, so the absent-`columns`
-        shape is the producer's, not the test's invention.
+        `_build_lineage` marks exact catalog membership with `catalog_status`.
+        Retained columns can still be present after state merging, so column-map
+        truthiness must not overrule an unchecked evidence marker and turn "we
+        never looked" into "columns were dropped".
         """
         server, mock_context = mcp_server
 
@@ -277,22 +306,25 @@ class TestRecceMCPServer:
                 "nodes": {
                     "model.project.not_rebuilt": node("not_rebuilt", columns=["a", "b", "c"]),
                     "model.project.rebuilt": node("rebuilt", columns=["kept", "dropped"]),
-                    "model.project.empty_entry": node("empty_entry", columns=["x", "y"]),
                 },
             },
             "current": {
                 "nodes": {
                     # Absent from this run's catalog, so the builder never set
-                    # the key at all.
-                    "model.project.not_rebuilt": node("not_rebuilt"),
+                    # the status to covered. Retained columns are deliberately
+                    # present to prove exact catalog membership, rather than a
+                    # truthiness check, decides whether comparison is safe.
+                    "model.project.not_rebuilt": {
+                        **node("not_rebuilt", columns=["a"]),
+                        "catalog_status": "unchecked",
+                    },
                     "model.project.rebuilt": node("rebuilt", columns=["kept"]),
-                    # Catalogued but described nothing. A relation with no
-                    # columns cannot exist, so this is the same gap wearing a
-                    # different shape and must not read as a wholesale drop.
-                    "model.project.empty_entry": node("empty_entry", columns=[]),
                 },
             },
         }
+        for side in ("base", "current"):
+            for node_data in mock_lineage_diff.model_dump.return_value[side]["nodes"].values():
+                node_data.setdefault("catalog_status", "covered")
         mock_context.get_lineage_diff.return_value = mock_lineage_diff
 
         result = await server._tool_schema_diff({})
@@ -302,10 +334,6 @@ class TestRecceMCPServer:
         assert not [
             row for row in removed if row[0] == "model.project.not_rebuilt"
         ], "columns of a model that was not rebuilt were reported as removed"
-        assert not [
-            row for row in removed if row[0] == "model.project.empty_entry"
-        ], "columns of a model with an empty catalog entry were reported as removed"
-
         # A real drop on a model that WAS rebuilt still reports, so the guard
         # cannot be satisfied by suppressing everything.
         assert ["model.project.rebuilt", "dropped", "removed"] in result["data"]
@@ -315,8 +343,58 @@ class TestRecceMCPServer:
         coverage = result["schema_coverage"]
         assert coverage["status"] == "partial"
         assert "model.project.not_rebuilt" in coverage["unchecked_nodes"]
-        assert "model.project.empty_entry" in coverage["unchecked_nodes"]
-        assert coverage["unchecked_node_count"] == 2
+        assert coverage["unchecked_node_count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_tool_schema_diff_reports_a_dropped_model_as_removed_columns(self, mcp_server):
+        """AC5: a model present on only one manifest side is a real removal.
+
+        It carries no two-sided column comparison, so it is neither `checked`
+        nor `unchecked` — and if the tool reports only checked nodes, the agent
+        is handed `data: []` with `status: "complete"`, an affirmative "no
+        schema changes" for a model that was dropped.
+        """
+        server, mock_context = mcp_server
+        mock_context.adapter.select_nodes.return_value = {
+            "model.project.dropped",
+            "model.project.kept",
+        }
+
+        def node(name, columns):
+            return {
+                "name": name,
+                "resource_type": "model",
+                "config": {"materialized": "table"},
+                "catalog_status": "covered",
+                "columns": {c: {"name": c, "type": "text"} for c in columns},
+            }
+
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {
+                "nodes": {
+                    "model.project.dropped": node("dropped", ["id", "gone"]),
+                    "model.project.kept": node("kept", ["id"]),
+                },
+            },
+            "current": {
+                "nodes": {
+                    "model.project.kept": node("kept", ["id"]),
+                },
+            },
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+
+        result = await server._tool_schema_diff({"select": "state:modified"})
+
+        assert ["model.project.dropped", "id", "removed"] in result["data"]
+        assert ["model.project.dropped", "gone", "removed"] in result["data"]
+
+        # The removal is verified structural evidence, not an unchecked node:
+        # coverage stays complete and the dropped model is not listed as a gap.
+        coverage = result["schema_coverage"]
+        assert coverage["status"] == "complete"
+        assert coverage["unchecked_nodes"] == []
 
     @pytest.mark.asyncio
     async def test_tool_schema_diff_coverage_ignores_nodes_the_catalog_never_describes(self, mcp_server):
@@ -338,6 +416,7 @@ class TestRecceMCPServer:
                 "name": "clean",
                 "resource_type": "model",
                 "config": {"materialized": "table"},
+                "catalog_status": "covered",
                 "columns": {"id": {"name": "id", "type": "text"}},
             },
             "exposure.project.dash": {
@@ -345,24 +424,28 @@ class TestRecceMCPServer:
                 "name": "dash",
                 "resource_type": "exposure",
                 "config": {},
+                "catalog_status": "not_applicable",
             },
             "metric.project.revenue": {
                 "id": "metric.project.revenue",
                 "name": "revenue",
                 "resource_type": "metric",
                 "config": {},
+                "catalog_status": "not_applicable",
             },
             "semantic_model.project.orders_sm": {
                 "id": "semantic_model.project.orders_sm",
                 "name": "orders_sm",
                 "resource_type": "semantic_model",
                 "config": {},
+                "catalog_status": "not_applicable",
             },
             "model.project.inlined": {
                 "id": "model.project.inlined",
                 "name": "inlined",
                 "resource_type": "model",
                 "config": {"materialized": "ephemeral"},
+                "catalog_status": "not_applicable",
             },
         }
 
@@ -390,7 +473,8 @@ class TestRecceMCPServer:
         """
         server, mock_context = mcp_server
 
-        node_ids = [f"model.project.m{i:03d}" for i in range(_UNCHECKED_NODE_LIMIT + 5)]
+        unchecked_node_limit = 50
+        node_ids = [f"model.project.m{i:03d}" for i in range(unchecked_node_limit + 5)]
 
         def node(node_id, *, catalogued):
             n = {
@@ -398,6 +482,7 @@ class TestRecceMCPServer:
                 "name": node_id.rsplit(".", 1)[-1],
                 "resource_type": "model",
                 "config": {"materialized": "table"},
+                "catalog_status": "covered" if catalogued else "unchecked",
             }
             if catalogued:
                 n["columns"] = {"id": {"name": "id", "type": "text"}}
@@ -416,10 +501,32 @@ class TestRecceMCPServer:
         coverage = result["schema_coverage"]
         assert coverage["status"] == "partial"
         assert coverage["unchecked_node_count"] == len(node_ids)
-        assert len(coverage["unchecked_nodes"]) == _UNCHECKED_NODE_LIMIT
+        assert len(coverage["unchecked_nodes"]) == unchecked_node_limit
         assert coverage["more"] is True
         # Sorted, so the truncation is a stable prefix rather than dict order.
-        assert coverage["unchecked_nodes"] == sorted(node_ids)[:_UNCHECKED_NODE_LIMIT]
+        assert coverage["unchecked_nodes"] == sorted(node_ids)[:unchecked_node_limit]
+
+    @pytest.mark.asyncio
+    async def test_tool_schema_diff_fails_closed_for_stale_selected_id(self, mcp_server):
+        server, mock_context = mcp_server
+        stale_id = "model.project.misspelled_orders"
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {"nodes": {}},
+            "current": {"nodes": {}},
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+        mock_context.adapter.select_nodes.return_value = {stale_id}
+
+        result = await server._tool_schema_diff({"select": "misspelled_orders"})
+
+        assert result["data"] == []
+        assert result["schema_coverage"] == {
+            "status": "partial",
+            "unchecked_nodes": [stale_id],
+            "unchecked_node_count": 1,
+            "more": False,
+        }
 
     @pytest.mark.asyncio
     async def test_tool_query(self, mcp_server):
@@ -603,48 +710,52 @@ class TestRecceMCPServer:
             check_id=check_id,
             triggered_by="user",
         )
-        # Auto-approve: successful run → is_checked=True
+        # A non-schema check keeps the standing rule: a successful run is a
+        # reviewed check. The coverage contract binds schema comparisons only.
         mock_check_dao.update_check_by_id.assert_called_once()
         approve_call = mock_check_dao.update_check_by_id.call_args
         assert approve_call[0][0] == check_id
         assert approve_call[0][1].is_checked is True
 
     @pytest.mark.asyncio
-    async def test_tool_create_check_approve_false_leaves_check_unapproved(self, mcp_server):
-        """create_check with approve=False runs the check but does not approve it."""
-        server, _ = mcp_server
-        from uuid import uuid4
+    @pytest.mark.parametrize(
+        ("arguments", "expected_checked"),
+        [
+            ({}, True),
+            ({"approve": True}, True),
+            ({"approve": False}, False),
+        ],
+        ids=["default", "approve-true", "approve-false"],
+    )
+    async def test_tool_create_check_honours_the_callers_approve_gate(self, mcp_server, arguments, expected_checked):
+        """The caller's gate must be load-bearing on its own.
 
-        from recce.models.types import Check, RunStatus
-
-        check_id = uuid4()
-        mock_check = MagicMock(spec=Check)
-        mock_check.check_id = check_id
-
-        mock_run = MagicMock()
-        mock_run.status = RunStatus.FINISHED
-        mock_run.error = None
-
-        mock_check_dao = MagicMock()
-        mock_check_dao.list.return_value = []
+        The evidence here is approvable — complete coverage, verified empty
+        diff — so `approve` is the only thing standing between the call and an
+        approved check. A fixture that is unapprovable anyway would pass with
+        the gate deleted.
+        """
+        server, context = mcp_server
+        context.checks = []
+        context.runs = []
+        context.state_loader = None
 
         with (
-            patch("recce.models.CheckDAO", return_value=mock_check_dao),
-            patch("recce.apis.check_func.create_check_without_run", return_value=mock_check),
-            patch("recce.apis.run_func.submit_run", return_value=(mock_run, asyncio.sleep(0))),
+            patch("recce.core.default_context", return_value=context),
+            patch.object(server, "_tool_schema_diff", new=AsyncMock(return_value=_schema_result("complete"))),
             patch("recce.apis.check_func.export_persistent_state"),
         ):
-            result = await server._tool_create_check(
+            await server._tool_create_check(
                 {
-                    "type": "row_count_diff",
-                    "params": {"node_names": ["orders"]},
-                    "name": "Row Count Diff of orders",
-                    "approve": False,
+                    "type": "schema_diff",
+                    "params": {"select": "orders"},
+                    "name": "Schema Diff of orders",
+                    **arguments,
                 }
             )
 
-        assert result["run_executed"] is True
-        mock_check_dao.update_check_by_id.assert_not_called()
+        assert len(context.checks) == 1
+        assert context.checks[0].is_checked is expected_checked
 
     @pytest.mark.asyncio
     async def test_tool_update_check_unapproves_and_persists(self, mcp_server):
@@ -741,7 +852,8 @@ class TestRecceMCPServer:
         patch_in = first_call[0][1]
         assert patch_in.name == "Updated name"
         assert patch_in.description == "Updated description"
-        # Second call: auto-approve (is_checked=True) after run succeeded
+        # Second call: auto-approve (is_checked=True) after a non-schema run
+        # succeeded. Only schema comparisons owe complete coverage.
         second_call = mock_check_dao.update_check_by_id.call_args_list[1]
         assert second_call[0][0] == check_id
         assert second_call[0][1].is_checked is True
@@ -790,11 +902,57 @@ class TestRecceMCPServer:
         mock_submit.assert_not_called()
         # Verify a metadata run was created via RunDAO
         mock_run_dao.create.assert_called_once()
-        # Auto-approve: metadata run succeeded → is_checked=True
-        mock_check_dao.update_check_by_id.assert_called_once()
-        approve_call = mock_check_dao.update_check_by_id.call_args
-        assert approve_call[0][0] == check_id
-        assert approve_call[0][1].is_checked is True
+        # Approval behavior is covered against real check state below.
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("schema_result", "expected_checked"),
+        [
+            (_schema_result("partial"), False),
+            (_schema_result("unknown"), False),
+            (_schema_result(), False),
+            (_schema_result("complete", [["model.project.orders", "customer_id", "added"]]), False),
+            ({**_schema_result("complete"), "schema_coverage": {"status": "complete"}}, False),
+            (
+                _schema_result(
+                    "complete",
+                    unchecked_nodes=["model.project.orders"],
+                    unchecked_node_count=1,
+                ),
+                False,
+            ),
+            (_schema_result("complete", coverage_more=True), False),
+            (_schema_result("complete", total_row_count=1), False),
+            ({"data": [], "schema_coverage": _schema_result("complete")["schema_coverage"]}, False),
+            (_schema_result("complete"), True),
+        ],
+    )
+    async def test_tool_create_schema_check_approves_only_complete_empty_results(
+        self,
+        mcp_server,
+        schema_result,
+        expected_checked,
+    ):
+        server, context = mcp_server
+        context.checks = []
+        context.runs = []
+        context.state_loader = None
+
+        with (
+            patch("recce.core.default_context", return_value=context),
+            patch.object(server, "_tool_schema_diff", new=AsyncMock(return_value=schema_result)),
+            patch("recce.apis.check_func.export_persistent_state"),
+        ):
+            await server._tool_create_check(
+                {
+                    "type": "schema_diff",
+                    "params": {"select": "orders"},
+                    "name": "Schema Diff of orders",
+                }
+            )
+
+        assert len(context.checks) == 1
+        assert context.checks[0].is_checked is expected_checked
 
     @pytest.mark.asyncio
     async def test_tool_create_check_run_failure(self, mcp_server):
@@ -828,6 +986,7 @@ class TestRecceMCPServer:
 
         assert result["run_executed"] is False
         assert result["run_error"] == "Table not found: orders"
+        mock_check_dao.update_check_by_id.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_tool_create_check_idempotent_update_with_run_failure(self, mcp_server):
@@ -866,6 +1025,10 @@ class TestRecceMCPServer:
         assert result["created"] is False
         assert result["run_executed"] is False
         assert result["run_error"] == "Permission denied"
+        assert all(
+            update_call.args[1].is_checked is not True
+            for update_call in mock_check_dao.update_check_by_id.call_args_list
+        )
 
     @pytest.mark.asyncio
     async def test_tool_run_check_row_count_diff(self, mcp_server):
@@ -885,7 +1048,7 @@ class TestRecceMCPServer:
         mock_check.type = RunType.ROW_COUNT_DIFF
         mock_check.params = {"node_names": ["model_a"]}
 
-        # Create mock run — status must be FINISHED for auto-approve to trigger
+        # Create a successful run without schema evidence; it must not approve.
         from recce.models.types import RunStatus
 
         mock_run = MagicMock()
@@ -923,9 +1086,9 @@ class TestRecceMCPServer:
         assert "check_id" in result
         assert result["check_id"] == str(check_id)
 
-        # Regression: successful task-branch run must auto-approve (DRC-3307 root cause).
-        # If this fails, the auto-approve gate (run.status == FINISHED and not run.error)
-        # has been changed and preset checks will silently stay Unapproved.
+        # Regression: a successful task-branch run must auto-approve. If this
+        # fails, the auto-approve gate has been widened to non-schema types and
+        # preset checks will silently stay Unapproved.
         from recce.apis.check_api import PatchCheckIn
 
         mock_check_dao.update_check_by_id.assert_called_once_with(str(check_id), PatchCheckIn(is_checked=True))
@@ -975,14 +1138,20 @@ class TestRecceMCPServer:
         # Verify a metadata run was persisted
         mock_run_dao.create.assert_called_once()
         # Regression: metadata-branch (lineage_diff) success must auto-approve.
-        # An empty result IS valid evidence (zero changes confirms no lineage shift).
+        # A lineage result makes no schema-coverage claim, so it is judged on
+        # the standing rule that an empty result IS evidence of zero changes.
         from recce.apis.check_api import PatchCheckIn
 
         mock_check_dao.update_check_by_id.assert_called_once_with(str(check_id), PatchCheckIn(is_checked=True))
 
     @pytest.mark.asyncio
     async def test_tool_run_check_with_schema_diff(self, mcp_server):
-        """Test running a schema_diff check delegates to _tool_schema_diff"""
+        """Test running a schema_diff check delegates to _tool_schema_diff.
+
+        The selector here matches no nodes, which is the vacuous case: the run
+        succeeds and the frame is empty because there was nothing to compare.
+        That is absence of evidence, so the check must NOT be auto-approved.
+        """
         server, mock_context = mcp_server
         from uuid import uuid4
 
@@ -1024,11 +1193,164 @@ class TestRecceMCPServer:
         assert "check_id" in result
         # Verify a metadata run was persisted
         mock_run_dao.create.assert_called_once()
-        # Regression: metadata-branch (schema_diff) success must auto-approve.
-        # An empty result IS valid evidence (zero schema changes is a meaningful signal).
-        from recce.apis.check_api import PatchCheckIn
+        # An empty diff over an empty selection is not approval evidence.
+        mock_check_dao.update_check_by_id.assert_not_called()
 
-        mock_check_dao.update_check_by_id.assert_called_once_with(str(check_id), PatchCheckIn(is_checked=True))
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("schema_result", "expected_checked"),
+        [
+            (_schema_result("partial"), False),
+            (_schema_result("unknown"), False),
+            (_schema_result(), False),
+            (_schema_result("complete", [["model.project.orders", "customer_id", "added"]]), False),
+            ({**_schema_result("complete"), "schema_coverage": {"status": "complete"}}, False),
+            (
+                _schema_result(
+                    "complete",
+                    unchecked_nodes=["model.project.orders"],
+                    unchecked_node_count=1,
+                ),
+                False,
+            ),
+            (_schema_result("complete", coverage_more=True), False),
+            (_schema_result("complete", total_row_count=1), False),
+            ({"data": [], "schema_coverage": _schema_result("complete")["schema_coverage"]}, False),
+            (_schema_result("complete"), True),
+        ],
+    )
+    async def test_tool_run_schema_check_approves_only_complete_empty_results(
+        self,
+        mcp_server,
+        schema_result,
+        expected_checked,
+    ):
+        server, context = mcp_server
+        check = Check(name="Schema Check", type=RunType.SCHEMA_DIFF, params={"select": "orders"})
+        context.checks = [check]
+        context.runs = []
+        context.state_loader = None
+
+        with (
+            patch("recce.core.default_context", return_value=context),
+            patch.object(server, "_tool_schema_diff", new=AsyncMock(return_value=schema_result)),
+            patch("recce.apis.check_func.export_persistent_state"),
+        ):
+            await server._tool_run_check({"check_id": str(check.check_id)})
+
+        assert check.is_checked is expected_checked
+
+    @pytest.mark.asyncio
+    async def test_tool_run_check_persists_successful_unapproved_run(self, mcp_server):
+        server, context = mcp_server
+        check = Check(name="Partial Schema Check", type=RunType.SCHEMA_DIFF, params={"select": "orders"})
+        context.checks = [check]
+        context.runs = []
+        context.state_loader = None
+
+        with (
+            patch("recce.core.default_context", return_value=context),
+            patch.object(server, "_tool_schema_diff", new=AsyncMock(return_value=_schema_result("partial"))),
+            patch("recce.apis.check_func.export_persistent_state") as mock_export,
+        ):
+            result = await server._tool_run_check({"check_id": str(check.check_id)})
+
+        assert check.is_checked is False
+        assert len(context.runs) == 1
+        mock_export.assert_called_once_with()
+        # The agent calling the tool must be able to tell the answer is
+        # incomplete. Approving-side state is not enough: without coverage in
+        # the returned payload, an empty frame reads as "no schema changes".
+        assert result["result"]["schema_coverage"] == {
+            "status": "partial",
+            "unchecked_nodes": ["model.project.unchecked"],
+            "unchecked_node_count": 1,
+            "more": False,
+        }
+
+    @pytest.mark.asyncio
+    async def test_tool_run_check_reports_a_real_producers_coverage_and_row_count(self, mcp_server):
+        """The producer -> gate contract, with no mocked schema_diff.
+
+        Both approval suites hand the gate a hand-built dict, and the one
+        real-producer test selects zero nodes — so nothing pins what
+        _tool_schema_diff actually computes for a covered, unchanged project.
+        total_row_count is the load-bearing assertion: if it counted compared
+        nodes instead of changes, no clean schema check could ever approve.
+        """
+        server, context = mcp_server
+        check = Check(name="Schema Check", type=RunType.SCHEMA_DIFF, params={})
+        context.checks = [check]
+        context.runs = []
+        context.state_loader = None
+
+        def node(name, columns):
+            return {
+                "name": name,
+                "resource_type": "model",
+                "config": {"materialized": "table"},
+                "catalog_status": "covered",
+                "columns": {c: {"name": c, "type": "text"} for c in columns},
+            }
+
+        nodes = {
+            "model.project.orders": node("orders", ["id", "amount"]),
+            "model.project.customers": node("customers", ["id"]),
+        }
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {"nodes": nodes},
+            "current": {"nodes": nodes},
+        }
+        context.get_lineage_diff.return_value = mock_lineage_diff
+
+        with (
+            patch("recce.core.default_context", return_value=context),
+            patch("recce.apis.check_func.export_persistent_state"),
+        ):
+            result = await server._tool_run_check({"check_id": str(check.check_id)})
+
+        assert result["result"]["schema_coverage"]["status"] == "complete"
+        assert result["result"]["total_row_count"] == 0
+        assert result["result"]["data"] == []
+        assert check.is_checked is True
+
+    @pytest.mark.asyncio
+    async def test_tool_run_check_keeps_a_covered_removal_and_withholds_approval(self, mcp_server):
+        """The mirror half: the same real producer, one genuinely dropped
+        column. Complete coverage is necessary for approval, never sufficient."""
+        server, context = mcp_server
+        check = Check(name="Schema Check", type=RunType.SCHEMA_DIFF, params={})
+        context.checks = [check]
+        context.runs = []
+        context.state_loader = None
+
+        def node(name, columns):
+            return {
+                "name": name,
+                "resource_type": "model",
+                "config": {"materialized": "table"},
+                "catalog_status": "covered",
+                "columns": {c: {"name": c, "type": "text"} for c in columns},
+            }
+
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {"nodes": {"model.project.orders": node("orders", ["id", "amount"])}},
+            "current": {"nodes": {"model.project.orders": node("orders", ["id"])}},
+        }
+        context.get_lineage_diff.return_value = mock_lineage_diff
+
+        with (
+            patch("recce.core.default_context", return_value=context),
+            patch("recce.apis.check_func.export_persistent_state"),
+        ):
+            result = await server._tool_run_check({"check_id": str(check.check_id)})
+
+        assert ["model.project.orders", "amount", "removed"] in result["result"]["data"]
+        assert result["result"]["total_row_count"] == 1
+        assert result["result"]["schema_coverage"]["status"] == "complete"
+        assert check.is_checked is False
 
     @pytest.mark.asyncio
     async def test_tool_run_check_metadata_branch_recce_exception_no_auto_approve(self, mcp_server):
@@ -2544,6 +2866,9 @@ class TestSchemaDiffEdgeCases:
                 "nodes": {
                     "model.project.model_a": {
                         "name": "model_a",
+                        "resource_type": "model",
+                        "config": {"materialized": "table"},
+                        "catalog_status": "covered",
                         "columns": {
                             "id": {"name": "id", "type": "integer"},
                             "legacy_col": {"name": "legacy_col", "type": "text"},
@@ -2555,6 +2880,9 @@ class TestSchemaDiffEdgeCases:
                 "nodes": {
                     "model.project.model_a": {
                         "name": "model_a",
+                        "resource_type": "model",
+                        "config": {"materialized": "table"},
+                        "catalog_status": "covered",
                         "columns": {
                             "id": {"name": "id", "type": "integer"},
                         },
@@ -2582,6 +2910,9 @@ class TestSchemaDiffEdgeCases:
                 "nodes": {
                     "model.project.model_a": {
                         "name": "model_a",
+                        "resource_type": "model",
+                        "config": {"materialized": "table"},
+                        "catalog_status": "covered",
                         "columns": {
                             "id": {"name": "id", "type": "integer"},
                             "amount": {"name": "amount", "type": "integer"},
@@ -2593,6 +2924,9 @@ class TestSchemaDiffEdgeCases:
                 "nodes": {
                     "model.project.model_a": {
                         "name": "model_a",
+                        "resource_type": "model",
+                        "config": {"materialized": "table"},
+                        "catalog_status": "covered",
                         "columns": {
                             "id": {"name": "id", "type": "integer"},
                             "amount": {"name": "amount", "type": "float"},
@@ -3144,6 +3478,7 @@ class TestImpactAnalysisBehavior:
                     "name": "deleted_model",
                     "resource_type": "model",
                     "config": {"materialized": "table"},
+                    "catalog_status": "covered",
                     "columns": {
                         "id": {"type": "INTEGER"},
                         "gone": {"type": "TEXT"},
@@ -3158,6 +3493,7 @@ class TestImpactAnalysisBehavior:
                     "name": "new_model",
                     "resource_type": "model",
                     "config": {"materialized": "table"},
+                    "catalog_status": "covered",
                     "columns": {
                         "id": {"type": "INTEGER"},
                         "new_col": {"type": "TEXT"},
@@ -3225,11 +3561,81 @@ class TestImpactAnalysisBehavior:
         assert coverage["status"] == "complete", "one-sided models were counted as a coverage gap"
 
     @pytest.mark.asyncio
+    async def test_impact_analysis_keeps_verified_schema_changes_and_nulls_unchecked_models(self, mcp_server):
+        server, mock_context = mcp_server
+        verified_id = "model.project.verified"
+        unchecked_id = "model.project.not_rebuilt"
+
+        def node(name, status, columns):
+            return {
+                "name": name,
+                "resource_type": "model",
+                "config": {"materialized": "table"},
+                "catalog_status": status,
+                "columns": {column: {"type": "TEXT"} for column in columns},
+            }
+
+        mock_context.get_lineage_diff.return_value = MagicMock(
+            model_dump=MagicMock(
+                return_value={
+                    "base": {
+                        "nodes": {
+                            verified_id: node("verified", "covered", ["id", "removed"]),
+                            unchecked_id: node("not_rebuilt", "covered", ["id", "not_removed"]),
+                        },
+                        "parent_map": {},
+                    },
+                    "current": {
+                        "nodes": {
+                            verified_id: node("verified", "covered", ["id"]),
+                            unchecked_id: node("not_rebuilt", "unchecked", ["id"]),
+                        },
+                        "parent_map": {},
+                    },
+                    "diff": {
+                        verified_id: {"change_status": "modified"},
+                        unchecked_id: {"change_status": "modified"},
+                    },
+                }
+            )
+        )
+
+        adapter = MagicMock()
+        adapter.select_nodes.return_value = {verified_id, unchecked_id}
+        adapter.get_model.return_value = {}
+        mock_context.adapter = adapter
+
+        with (
+            patch("recce.mcp_server.sentry_metrics", None),
+            patch.object(RowCountDiffTask, "execute", return_value={}),
+        ):
+            result = await server._tool_impact_analysis({"skip_value_diff": True})
+
+        assert result["errors"] == []
+        by_name = {model["name"]: model for model in result["confirmed_impacted_models"]}
+        assert by_name["verified"]["schema_changes"] == [{"column": "removed", "change_status": "removed"}]
+        assert by_name["not_rebuilt"]["schema_changes"] is None
+        assert result["schema_coverage"] == {
+            "status": "partial",
+            "unchecked_nodes": [unchecked_id],
+            "unchecked_node_count": 1,
+            "more": False,
+        }
+
+    @pytest.mark.asyncio
     async def test_ephemeral_model_is_not_a_coverage_gap(self, mcp_server):
         """An ephemeral model is inlined as a CTE, so it never enters the catalog.
 
         It reaches impact_analysis like any other model, but "no columns on
         either side" is its normal state rather than something the run skipped.
+        So it must not be named in `unchecked_nodes`, which would pin any
+        project owning one to "partial" forever.
+
+        It is the only model here, so nothing in this run was comparable and
+        the coverage as a whole is unknown — not "complete", which would be a
+        clean bill of health for a comparison that looked at nothing. That an
+        ephemeral model does not drag a real selection off "complete" is pinned
+        in tests/test_artifact_health.py.
         """
         server, mock_context = mcp_server
 
@@ -3237,6 +3643,7 @@ class TestImpactAnalysisBehavior:
             "name": "inlined",
             "resource_type": "model",
             "config": {"materialized": "ephemeral"},
+            "catalog_status": "not_applicable",
         }
         mock_context.get_lineage_diff.return_value = MagicMock(
             model_dump=MagicMock(
@@ -3263,8 +3670,9 @@ class TestImpactAnalysisBehavior:
 
         assert result["errors"] == []
         coverage = result["schema_coverage"]
-        assert coverage["unchecked_nodes"] == []
-        assert coverage["status"] == "complete", "an ephemeral model was counted as a coverage gap"
+        assert coverage["unchecked_nodes"] == [], "an ephemeral model was counted as a coverage gap"
+        assert coverage["unchecked_node_count"] == 0
+        assert coverage["status"] == "unknown", "a comparison that covered nothing claimed a clean result"
 
 
 class TestLocalModeRunBacked:
