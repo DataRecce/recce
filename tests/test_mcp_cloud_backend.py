@@ -89,6 +89,7 @@ async def test_cloud_backend_uses_session_proxy_paths_without_inner_api_segment(
         MockResponse(200, {"current": {"nodes": {}}}),
         MockResponse(200, {"run_id": "run-1", "result": {"ok": True}}),
         MockResponse(200, [{"check_id": "check-1", "name": "check", "type": "query", "is_checked": False}]),
+        MockResponse(200, {"check_id": "check-1", "type": "query", "params": {}}),
         MockResponse(200, {"run_id": "run-2", "status": "finished", "result": _schema_result("complete")}),
         MockResponse(200, {"check_id": "check-1", "is_checked": True}),
     ]
@@ -111,6 +112,7 @@ async def test_cloud_backend_uses_session_proxy_paths_without_inner_api_segment(
         "https://cloud.reccehq.com/api/v2/sessions/sess-123/cll",
         "https://cloud.reccehq.com/api/v2/sessions/sess-123/runs",
         "https://cloud.reccehq.com/api/v2/sessions/sess-123/checks",
+        "https://cloud.reccehq.com/api/v2/sessions/sess-123/checks/check-1",
         "https://cloud.reccehq.com/api/v2/sessions/sess-123/checks/check-1/run",
         "https://cloud.reccehq.com/api/v2/sessions/sess-123/checks/check-1",
     ]
@@ -148,6 +150,7 @@ async def test_cloud_backend_raises_cloud_exception_for_non_2xx(cloud_requests):
 async def test_run_check_auto_approve_failure_does_not_mask_run_result(cloud_requests):
     cloud_requests.side_effect = [
         MockResponse(204),
+        MockResponse(200, {"check_id": "check-1", "type": "row_count_diff", "params": {}}),
         MockResponse(200, {"run_id": "run-1", "status": "finished", "result": _schema_result("complete")}),
         MockResponse(500, {"detail": "approve failed"}, '{"detail":"approve failed"}'),
     ]
@@ -157,58 +160,6 @@ async def test_run_check_auto_approve_failure_does_not_mask_run_result(cloud_req
 
     assert result["status"] == "finished"
     assert result["result"] == _schema_result("complete")
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("schema_result", "expected_approval"),
-    [
-        (_schema_result("partial"), False),
-        (_schema_result("unknown"), False),
-        (_schema_result(), False),
-        (_schema_result("complete", [["model.project.orders", "customer_id", "added"]]), False),
-        ({**_schema_result("complete"), "schema_coverage": {"status": "complete"}}, False),
-        (
-            _schema_result(
-                "complete",
-                unchecked_nodes=["model.project.orders"],
-                unchecked_node_count=1,
-            ),
-            False,
-        ),
-        (_schema_result("complete", coverage_more=True), False),
-        (_schema_result("complete", total_row_count=1), False),
-        ({"data": [], "schema_coverage": _schema_result("complete")["schema_coverage"]}, False),
-        (_schema_result("complete"), True),
-    ],
-)
-async def test_cloud_run_check_approves_only_complete_empty_schema_results(
-    cloud_requests,
-    schema_result,
-    expected_approval,
-):
-    responses = [
-        MockResponse(204),
-        MockResponse(200, {"run_id": "run-1", "status": "finished", "result": schema_result}),
-    ]
-    if expected_approval:
-        responses.append(MockResponse(200, {"check_id": "check-1", "is_checked": True}))
-    cloud_requests.side_effect = responses
-    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
-
-    result = await backend.call_tool("run_check", {"check_id": "check-1"})
-
-    patch_calls = [call for call in cloud_requests.call_args_list if call.args[0] == "PATCH"]
-    assert bool(patch_calls) is expected_approval
-    if patch_calls:
-        assert patch_calls[0].kwargs["json"] == {"is_checked": True}
-
-    # The coverage the approval decision was made on must also reach the agent.
-    # Withholding approval silently, while handing back an empty frame with no
-    # incompleteness marker, is the same misread this contract exists to stop.
-    expected_coverage = schema_result.get("schema_coverage") if isinstance(schema_result, dict) else None
-    if expected_coverage is not None:
-        assert result["result"]["schema_coverage"] == expected_coverage
 
 
 @pytest.mark.asyncio
@@ -284,7 +235,74 @@ async def test_run_backed_tool_preserves_existing_run_id_key(cloud_requests):
 
 
 @pytest.mark.asyncio
-async def test_create_check_runs_lineage_diff_via_checks_run_endpoint(cloud_requests):
+@pytest.mark.parametrize("check_type", ["schema_diff", "lineage_diff"])
+async def test_run_check_does_not_post_a_run_for_schema_or_lineage_diff(cloud_requests, check_type):
+    # Same 400 as create_check, on a check that run_check did not create.
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(200, {"check_id": "check-1", "type": check_type, "params": {"node_id": "model.pkg.orders"}}),
+        # Spare: an unwanted approve must fail the assertion below, not an empty side_effect list.
+        MockResponse(200, {"check_id": "check-1", "is_checked": True}),
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    result = await backend.call_tool("run_check", {"check_id": "check-1"})
+
+    methods = [call.args[0] for call in cloud_requests.call_args_list]
+    urls = [call.args[1] for call in cloud_requests.call_args_list]
+    assert not [url for url in urls if url.endswith("/run")]
+    assert (methods[1], urls[1]) == ("GET", "https://cloud.reccehq.com/api/v2/sessions/sess-123/checks/check-1")
+    assert result == {"check_id": "check-1", "type": check_type, "run_executed": False}
+    assert "PATCH" not in methods
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("check_type", ["schema_diff", "lineage_diff"])
+async def test_create_check_skips_the_run_for_schema_or_lineage_diff(cloud_requests, check_type):
+    # POST /checks/{id}/run answers 400 for these types, so none is posted.
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(200, {"check_id": "check-1"}),
+        MockResponse(200, {"check_id": "check-1", "is_checked": True}),
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    result = await backend.call_tool(
+        "create_check",
+        {"name": "no-run check", "type": check_type, "params": {}},
+    )
+
+    methods = [call.args[0] for call in cloud_requests.call_args_list]
+    urls = [call.args[1] for call in cloud_requests.call_args_list]
+    assert not [url for url in urls if url.endswith("/run")]
+    assert result == {"check_id": "check-1", "created": True, "run_executed": False}
+    assert methods[-1] == "PATCH"
+    assert urls[-1] == "https://cloud.reccehq.com/api/v2/sessions/sess-123/checks/check-1"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("check_type", ["schema_diff", "lineage_diff"])
+async def test_create_check_approve_false_leaves_a_no_run_check_unapproved(cloud_requests, check_type):
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(200, {"check_id": "check-1"}),
+        # Spare: an unwanted approve must fail the assertion below, not an empty side_effect list.
+        MockResponse(200, {"check_id": "check-1", "is_checked": True}),
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    result = await backend.call_tool(
+        "create_check",
+        {"name": "no-run check", "type": check_type, "params": {}, "approve": False},
+    )
+
+    methods = [call.args[0] for call in cloud_requests.call_args_list]
+    assert "PATCH" not in methods
+    assert result["run_executed"] is False
+
+
+@pytest.mark.asyncio
+async def test_create_check_runs_a_run_backed_type_via_checks_run_endpoint(cloud_requests):
     cloud_requests.side_effect = [
         MockResponse(204),
         MockResponse(200, {"check_id": "check-1"}),
@@ -295,62 +313,12 @@ async def test_create_check_runs_lineage_diff_via_checks_run_endpoint(cloud_requ
 
     result = await backend.call_tool(
         "create_check",
-        {"name": "lineage", "type": "lineage_diff", "params": {}},
+        {"name": "row count", "type": "row_count_diff", "params": {"node_names": ["orders"]}},
     )
 
     urls = [call.args[1] for call in cloud_requests.call_args_list]
     assert urls[2] == "https://cloud.reccehq.com/api/v2/sessions/sess-123/checks/check-1/run"
-    # A lineage result makes no schema-coverage claim, so it keeps the standing
-    # rule that a successful run is a reviewed check and still auto-approves.
     assert urls[3] == "https://cloud.reccehq.com/api/v2/sessions/sess-123/checks/check-1"
-    assert result["run_executed"] is True
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("schema_result", "expected_approval"),
-    [
-        (_schema_result("partial"), False),
-        (_schema_result("unknown"), False),
-        (_schema_result(), False),
-        (_schema_result("complete", [["model.project.orders", "customer_id", "added"]]), False),
-        ({**_schema_result("complete"), "schema_coverage": {"status": "complete"}}, False),
-        (
-            _schema_result(
-                "complete",
-                unchecked_nodes=["model.project.orders"],
-                unchecked_node_count=1,
-            ),
-            False,
-        ),
-        (_schema_result("complete", coverage_more=True), False),
-        (_schema_result("complete", total_row_count=1), False),
-        ({"data": [], "schema_coverage": _schema_result("complete")["schema_coverage"]}, False),
-        (_schema_result("complete"), True),
-    ],
-)
-async def test_cloud_create_schema_check_approves_only_complete_empty_results(
-    cloud_requests,
-    schema_result,
-    expected_approval,
-):
-    responses = [
-        MockResponse(204),
-        MockResponse(200, {"check_id": "check-1"}),
-        MockResponse(200, {"run_id": "run-1", "status": "finished", "result": schema_result}),
-    ]
-    if expected_approval:
-        responses.append(MockResponse(200, {"check_id": "check-1", "is_checked": True}))
-    cloud_requests.side_effect = responses
-    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
-
-    result = await backend.call_tool(
-        "create_check",
-        {"name": "schema", "type": "schema_diff", "params": {}},
-    )
-
-    patch_calls = [call for call in cloud_requests.call_args_list if call.args[0] == "PATCH"]
-    assert bool(patch_calls) is expected_approval
     assert result["run_executed"] is True
 
 
@@ -363,9 +331,8 @@ async def test_cloud_create_schema_check_approves_only_complete_empty_results(
 async def test_create_check_honours_the_callers_approve_gate(cloud_requests, arguments, expect_approved):
     """The caller's gate must be load-bearing on its own.
 
-    The run result here is approvable — complete coverage, verified empty diff
-    — so `approve` alone decides. An unapprovable fixture would pass with the
-    gate deleted.
+    The run result here is approvable, so `approve` alone decides. An
+    unapprovable fixture would pass with the gate deleted.
     """
     cloud_requests.side_effect = [
         MockResponse(204),
@@ -378,7 +345,7 @@ async def test_create_check_honours_the_callers_approve_gate(cloud_requests, arg
 
     result = await backend.call_tool(
         "create_check",
-        {"name": "schema", "type": "schema_diff", "params": {}, **arguments},
+        {"name": "row count", "type": "row_count_diff", "params": {"node_names": ["orders"]}, **arguments},
     )
 
     methods = [call.args[0] for call in cloud_requests.call_args_list]
@@ -392,10 +359,9 @@ async def test_create_check_honours_the_callers_approve_gate(cloud_requests, arg
     [
         ("row_count_diff", {"customers": {"base": 100, "curr": 100}}),
         ("value_diff", {"summary": {"total": 10, "added": 0, "removed": 0}}),
-        ("lineage_diff", {"nodes": []}),
         ("query", {"ok": True}),
     ],
-    ids=["row-count", "value", "lineage", "query"],
+    ids=["row-count", "value", "query"],
 )
 async def test_cloud_non_schema_checks_still_auto_approve_on_a_successful_run(
     cloud_requests,
@@ -422,6 +388,28 @@ async def test_cloud_non_schema_checks_still_auto_approve_on_a_successful_run(
     assert len(patch_calls) == 1
     assert patch_calls[0].kwargs["json"] == {"is_checked": True}
     assert result["run_executed"] is True
+
+
+@pytest.mark.asyncio
+async def test_create_check_reports_a_failed_run_with_the_check_id(cloud_requests):
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(200, {"check_id": "check-1"}),
+        MockResponse(400, text="Run type 'row_count_diff' not supported"),
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    result = await backend.call_tool(
+        "create_check",
+        {"name": "row count", "type": "row_count_diff", "params": {"node_names": ["orders"]}},
+    )
+
+    methods = [call.args[0] for call in cloud_requests.call_args_list]
+    assert "PATCH" not in methods
+    assert result["check_id"] == "check-1"
+    assert result["created"] is True
+    assert result["run_executed"] is False
+    assert "not supported" in result["run_error"]
 
 
 @pytest.mark.asyncio

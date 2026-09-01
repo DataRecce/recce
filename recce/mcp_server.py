@@ -119,6 +119,10 @@ class CloudBackend:
         "histogram_diff": "histogram_diff",
     }
 
+    # Both read the dbt manifests, so neither has a Task in dbt_supported_registry:
+    # a run request for them answers 400 "Run type '<type>' not supported".
+    CHECK_TYPES_WITHOUT_RUN = {"lineage_diff", "schema_diff"}
+
     def __init__(self, session_id: str, api_token: str, cloud_host: str = RECCE_CLOUD_API_HOST):
         self.session_id = session_id
         self.api_token = api_token
@@ -267,6 +271,16 @@ class CloudBackend:
         check_id = arguments.get("check_id")
         if not check_id:
             raise ValueError("check_id is required")
+        # Only the session knows the check type, and the type decides if a run is possible.
+        check = await self._request("GET", f"checks/{quote(str(check_id), safe='')}")
+        check_type = check.get("type")
+        if check_type in self.CHECK_TYPES_WITHOUT_RUN:
+            # Nothing runs, so the successful-run gate below never applies.
+            return {
+                "check_id": str(check_id),
+                "type": check_type,
+                "run_executed": False,
+            }
         run = await self._request(
             "POST",
             f"checks/{quote(str(check_id), safe='')}/run",
@@ -294,25 +308,35 @@ class CloudBackend:
         check_id = check.get("check_id")
         run_executed = False
         run_error = None
-        # Match local: execute a run for every type except `simple` (which has no
-        # executable run). lineage_diff/schema_diff are recorded server-side via
-        # POST /checks/{id}/run, mirroring local _create_metadata_run.
-        if check_id and check_type != "simple":
-            run = await self._request(
-                "POST",
-                f"checks/{quote(str(check_id), safe='')}/run",
-                json={"nowait": False},
-            )
-            run_executed = True
-            run_error = run.get("error")
-            # Both gates apply: the caller must ask for approval, and the run
-            # must carry evidence its type can stand behind — for a schema
-            # comparison that means complete coverage, not merely a clean run.
-            if (
-                self._run_succeeded(run)
-                and arguments.get("approve", True)
-                and run_result_is_approvable(run.get("result"))
-            ):
+        # The session API has no equivalent of local mode's _create_metadata_run, so a
+        # lineage_diff or schema_diff check is created without a Run.
+        if check_id and check_type != "simple" and check_type not in self.CHECK_TYPES_WITHOUT_RUN:
+            try:
+                run = await self._request(
+                    "POST",
+                    f"checks/{quote(str(check_id), safe='')}/run",
+                    json={"nowait": False},
+                )
+            except (RecceCloudException, InstanceSpawningError) as e:
+                # The check already exists. Raising would hide its check_id, leaving a
+                # check the caller cannot find.
+                run_error = str(e)
+            else:
+                run_executed = True
+                run_error = run.get("error")
+                # Both gates apply: the caller must ask for approval, and the run
+                # must carry evidence its type can stand behind — for a schema
+                # comparison that means complete coverage, not merely a clean run.
+                if (
+                    self._run_succeeded(run)
+                    and arguments.get("approve", True)
+                    and run_result_is_approvable(run.get("result"))
+                ):
+                    await self._auto_approve(check_id)
+        elif check_id and check_type in self.CHECK_TYPES_WITHOUT_RUN:
+            # No run means no result for the evidence gate to read, so the caller's
+            # flag decides alone. `simple` keeps its existing never-approved path.
+            if arguments.get("approve", True):
                 await self._auto_approve(check_id)
         result = {
             "check_id": str(check_id),
@@ -1417,7 +1441,14 @@ class RecceMCPServer:
                         ),
                         Tool(
                             name="run_check",
-                            description="Run a single check by ID and wait for completion. Returns a Run object with fields: run_id, type, check_id, status, result, error, run_at, triggered_by.",
+                            description=(
+                                "Run a single check by ID and wait for completion. Returns a Run "
+                                "object with fields: run_id, type, check_id, status, result, "
+                                "error, run_at, triggered_by.\n\n"
+                                "On a Recce Cloud session a schema_diff or lineage_diff check has "
+                                "no run: the response is {check_id, type, run_executed: false} and "
+                                "the check's approval is unchanged."
+                            ),
                             inputSchema={
                                 "type": "object",
                                 "properties": {
@@ -1443,7 +1474,11 @@ class RecceMCPServer:
                                 "to persist important findings as reviewable checklist items.\n\n"
                                 "Idempotent: if a check with the same (type, params) already exists "
                                 "in this session, its name and description are updated instead of "
-                                "creating a duplicate."
+                                "creating a duplicate.\n\n"
+                                "On a Recce Cloud session a schema_diff check executes no run: it "
+                                "reports run_executed=false, and `approve` alone decides approval.\n\n"
+                                "A failed run still returns check_id with run_error, so a caller can "
+                                "find the check it created."
                             ),
                             inputSchema={
                                 "type": "object",
