@@ -1475,9 +1475,8 @@ class RecceMCPServer:
                                 "Idempotent: if a check with the same (type, params) already exists "
                                 "in this session, its name and description are updated instead of "
                                 "creating a duplicate.\n\n"
-                                "On a Recce Cloud session a schema_diff or lineage_diff check "
-                                "executes no run: it reports run_executed=false, and `approve` "
-                                "alone decides approval.\n\n"
+                                "On a Recce Cloud session a schema_diff check executes no run: it "
+                                "reports run_executed=false, and `approve` alone decides approval.\n\n"
                                 "A failed run still returns check_id with run_error, so a caller can "
                                 "find the check it created."
                             ),
