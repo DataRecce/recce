@@ -10,6 +10,11 @@ import {
   CHANGE_CATEGORY_DETAILS,
   CHANGE_CATEGORY_LABELS,
 } from "../changeCategory";
+import {
+  COLUMN_TRANSFORMATION_DETAILS,
+  COLUMN_TRANSFORMATION_ORDER,
+  type ColumnTransformationType,
+} from "../columnTransformation";
 import { cllImpactedAccent } from "../styles";
 import { TreatmentChip } from "../TreatmentChip";
 import { getGraphBadgeLegendEntries } from "../wholeModelTreatment";
@@ -27,7 +32,7 @@ export interface ChangeStatusLegendItem {
  * Legend item for transformation type
  */
 export interface TransformationLegendItem {
-  type: "passthrough" | "renamed" | "derived" | "source" | "unknown";
+  type: ColumnTransformationType;
   label: string;
   description?: string;
 }
@@ -65,6 +70,12 @@ export interface LineageLegendProps {
    * @default false
    */
   newCllExperience?: boolean;
+
+  /**
+   * Transformation types represented by chips in the displayed column chain.
+   * When omitted, all transformation types are shown.
+   */
+  transformationTypes?: readonly ColumnTransformationType[];
 }
 
 /**
@@ -84,47 +95,16 @@ const defaultChangeStatusItems: ChangeStatusLegendItem[] = [
 /**
  * Default transformation items
  */
-const defaultTransformationItems: TransformationLegendItem[] = [
-  {
-    type: "passthrough",
-    label: "Passthrough",
-    description: "Column passes through unchanged",
-  },
-  {
-    type: "renamed",
-    label: "Renamed",
-    description: "Column was renamed from source",
-  },
-  {
-    type: "derived",
-    label: "Derived",
-    description: "Column is derived from other columns",
-  },
-  { type: "source", label: "Source", description: "Original source column" },
-  {
-    type: "unknown",
-    label: "Unknown",
-    description: "Transformation type could not be determined",
-  },
-];
+const defaultTransformationItems: TransformationLegendItem[] =
+  COLUMN_TRANSFORMATION_ORDER.map((type) => ({
+    type,
+    label: COLUMN_TRANSFORMATION_DETAILS[type].label,
+    description: COLUMN_TRANSFORMATION_DETAILS[type].description,
+  }));
 
 /**
  * Colors and symbols for change status indicators (default Tailwind palette).
  */
-/**
- * Colors for transformation type chips
- */
-const transformationStyles: Record<
-  string,
-  { letter: string; color: "default" | "warning" | "info" | "error" }
-> = {
-  passthrough: { letter: "P", color: "default" },
-  renamed: { letter: "R", color: "warning" },
-  derived: { letter: "D", color: "warning" },
-  source: { letter: "S", color: "info" },
-  unknown: { letter: "U", color: "error" },
-};
-
 /**
  * ChangeStatusIcon - Renders a change status indicator
  */
@@ -168,17 +148,14 @@ function ChangeStatusIcon({
 /**
  * TransformationChip - Renders a transformation type chip
  */
-function TransformationChip({
-  type,
-}: {
-  type: "passthrough" | "renamed" | "derived" | "source" | "unknown";
-}) {
-  const style = transformationStyles[type];
+function TransformationChip({ type }: { type: ColumnTransformationType }) {
+  const details = COLUMN_TRANSFORMATION_DETAILS[type];
   return (
     <Chip
-      label={style.letter}
+      aria-label={`${details.label} transformation: ${details.description}`}
+      label={details.letter}
       size="small"
-      color={style.color}
+      color={details.color}
       sx={{
         fontSize: "0.6667rem",
         height: 18,
@@ -237,13 +214,26 @@ export function LineageLegend({
   title,
   className,
   newCllExperience = false,
+  transformationTypes,
 }: LineageLegendProps) {
   const isDark = useIsDark();
   const changeStatusItems = newCllExperience
     ? defaultChangeStatusItems
     : defaultChangeStatusItems.filter((item) => item.status !== "impacted");
+  const displayedTransformationTypes = transformationTypes
+    ? new Set(transformationTypes)
+    : undefined;
+  const transformationItems = displayedTransformationTypes
+    ? defaultTransformationItems.filter((item) =>
+        displayedTransformationTypes.has(item.type),
+      )
+    : defaultTransformationItems;
   const items =
-    variant === "changeStatus" ? changeStatusItems : defaultTransformationItems;
+    variant === "changeStatus" ? changeStatusItems : transformationItems;
+
+  if (variant === "transformation" && transformationItems.length === 0) {
+    return null;
+  }
 
   return (
     <Box

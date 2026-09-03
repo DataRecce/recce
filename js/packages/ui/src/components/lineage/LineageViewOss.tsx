@@ -90,6 +90,7 @@ import {
   nextChangeAnalysisMode,
   resolveResetCllInput,
 } from "./changeAnalysisState";
+import { getDisplayedColumnTransformationTypes } from "./columnTransformation";
 import { computeColumnLineage } from "./computeColumnLineage";
 import { computeImpactedColumns } from "./computeImpactedColumns";
 import { computeIsImpacted } from "./computeIsImpacted";
@@ -323,6 +324,19 @@ export function PrivateLineageView(
   const isModelsChanged = useMemo(() => {
     return !!(lineageGraph && lineageGraph.modifiedSet.length > 0);
   }, [lineageGraph]);
+
+  const displayedColumnTransformationTypes = useMemo(
+    () =>
+      getDisplayedColumnTransformationTypes(nodes, (nodeId) =>
+        isNodeShowingChangeAnalysis({
+          nodeId,
+          changeAnalysisMode,
+          cllInput: viewOptions.column_level_lineage,
+          lineageGraph,
+        }),
+      ),
+    [nodes, changeAnalysisMode, viewOptions.column_level_lineage, lineageGraph],
+  );
 
   /**
    * View mode
@@ -1671,8 +1685,12 @@ export function PrivateLineageView(
                     newCllExperience={newCllExperience}
                   />
                 )}
-                {viewOptions.column_level_lineage && (
-                  <LineageLegend variant="transformation" />
+                {displayedColumnTransformationTypes.length > 0 && (
+                  <LineageLegend
+                    variant="transformation"
+                    title="Column transformations"
+                    transformationTypes={displayedColumnTransformationTypes}
+                  />
                 )}
               </Stack>
             </Panel>

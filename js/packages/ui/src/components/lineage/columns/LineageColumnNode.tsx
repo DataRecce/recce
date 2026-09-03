@@ -2,24 +2,24 @@
 
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
+import Tooltip from "@mui/material/Tooltip";
 import { Handle, Position } from "@xyflow/react";
 import type { MouseEvent } from "react";
 import { memo, useState } from "react";
 import { getSemanticColorTheme } from "../../../theme";
 import { DataTypeIcon } from "../../ui/DataTypeIcon";
 import { StructuralChangeIndicator } from "../../ui/StructuralChangeIndicator";
+import {
+  COLUMN_TRANSFORMATION_DETAILS,
+  type ColumnTransformationType,
+} from "../columnTransformation";
 import { DIM_FILTER } from "../config/zoomConstants";
 import { getStyleForImpacted } from "../styles";
 
 /**
  * Transformation type for column-level lineage
  */
-export type ColumnTransformationType =
-  | "passthrough"
-  | "renamed"
-  | "derived"
-  | "source"
-  | "unknown";
+export type { ColumnTransformationType } from "../columnTransformation";
 
 /**
  * Column change status for diff views
@@ -120,20 +120,6 @@ export const COLUMN_NODE_HEIGHT = 24;
 export const COLUMN_NODE_WIDTH = 280;
 
 /**
- * Colors for transformation type chips
- */
-const transformationColors: Record<
-  ColumnTransformationType,
-  { letter: string; color: "default" | "warning" | "info" | "error" }
-> = {
-  passthrough: { letter: "P", color: "default" },
-  renamed: { letter: "R", color: "warning" },
-  derived: { letter: "D", color: "warning" },
-  source: { letter: "S", color: "info" },
-  unknown: { letter: "U", color: "error" },
-};
-
-/**
  * KebabMenuIcon - Inline SVG to avoid react-icons dependency
  */
 function KebabMenuIcon({ size = 14 }: { size?: number }) {
@@ -185,22 +171,26 @@ function TransformationIndicator({
     return null;
   }
 
-  const config = transformationColors[transformationType];
+  const config = COLUMN_TRANSFORMATION_DETAILS[transformationType];
+  const accessibleName = `${config.label} transformation: ${config.description}`;
 
   return (
-    <Chip
-      label={config.letter}
-      size="small"
-      color={config.color}
-      sx={{
-        fontSize: "0.6667rem",
-        height: 18,
-        minWidth: 18,
-        "& .MuiChip-label": {
-          px: 0.5,
-        },
-      }}
-    />
+    <Tooltip title={`${config.label}: ${config.description}`} placement="top">
+      <Chip
+        aria-label={accessibleName}
+        label={config.letter}
+        size="small"
+        color={config.color}
+        sx={{
+          fontSize: "0.6667rem",
+          height: 18,
+          minWidth: 18,
+          "& .MuiChip-label": {
+            px: 0.5,
+          },
+        }}
+      />
+    </Tooltip>
   );
 }
 

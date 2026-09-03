@@ -47,6 +47,7 @@ vi.mock("@xyflow/react", () => ({
 // ============================================================================
 
 import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {
   type ColumnTransformationType,
   LineageColumnNode,
@@ -260,17 +261,39 @@ describe("LineageColumnNode", () => {
   // ==========================================================================
 
   describe("transformation type indicator", () => {
-    const transformationLetters: Record<ColumnTransformationType, string> = {
-      passthrough: "P",
-      renamed: "R",
-      derived: "D",
-      source: "S",
-      unknown: "U",
+    const transformationDetails: Record<
+      ColumnTransformationType,
+      { letter: string; accessibleName: string }
+    > = {
+      passthrough: {
+        letter: "P",
+        accessibleName:
+          "Passthrough transformation: Same-name reference to an upstream column",
+      },
+      renamed: {
+        letter: "R",
+        accessibleName:
+          "Renamed transformation: Direct upstream column reference with a different output name",
+      },
+      derived: {
+        letter: "D",
+        accessibleName:
+          "Derived transformation: Expression derived from one or more upstream columns",
+      },
+      source: {
+        letter: "S",
+        accessibleName: "Source transformation: No upstream column dependency",
+      },
+      unknown: {
+        letter: "U",
+        accessibleName:
+          "Unknown transformation: Transformation could not be determined",
+      },
     };
 
-    it.each(Object.entries(transformationLetters))(
+    it.each(Object.entries(transformationDetails))(
       "shows %s chip for %s transformation",
-      (type, letter) => {
+      (type, { letter, accessibleName }) => {
         const props = createMockColumnNodeProps(
           {},
           {
@@ -282,8 +305,28 @@ describe("LineageColumnNode", () => {
         render(<LineageColumnNode {...props} />);
 
         expect(screen.getByText(letter)).toBeInTheDocument();
+        expect(screen.getByLabelText(accessibleName)).toBeInTheDocument();
       },
     );
+
+    it("shows the full transformation meaning on the chip tooltip", async () => {
+      const user = userEvent.setup();
+      const props = createMockColumnNodeProps(
+        {},
+        { transformationType: "derived" },
+      );
+
+      render(<LineageColumnNode {...props} />);
+      await user.hover(
+        screen.getByLabelText(
+          "Derived transformation: Expression derived from one or more upstream columns",
+        ),
+      );
+
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "Derived: Expression derived from one or more upstream columns",
+      );
+    });
 
     it("shows transformation type by default even when change status is present", () => {
       const props = createMockColumnNodeProps(
