@@ -99,6 +99,23 @@ describe("LineageLegend", () => {
     );
   });
 
+  it("uses the visible transformation label without nested accessible labels", () => {
+    render(
+      <LineageLegend
+        variant="transformation"
+        transformationTypes={["passthrough"]}
+      />,
+    );
+
+    const label = screen.getByText("Passthrough");
+    const row = label.parentElement;
+    const swatch = screen.getByText("P").closest(".MuiChip-root");
+
+    expect(row).not.toHaveAttribute("aria-label");
+    expect(swatch).toHaveAttribute("aria-hidden", "true");
+    expect(swatch).not.toHaveAttribute("aria-label");
+  });
+
   it("leaves category treatment to the new CLL experience", () => {
     render(<LineageLegend variant="changeStatus" newCllExperience />);
 

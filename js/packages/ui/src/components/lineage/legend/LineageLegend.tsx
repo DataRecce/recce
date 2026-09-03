@@ -152,7 +152,7 @@ function TransformationChip({ type }: { type: ColumnTransformationType }) {
   const details = COLUMN_TRANSFORMATION_DETAILS[type];
   return (
     <Chip
-      aria-label={`${details.label} transformation: ${details.description}`}
+      aria-hidden="true"
       label={details.letter}
       size="small"
       color={details.color}
@@ -383,6 +383,7 @@ export function LineageLegend({
           const content = (
             <Box
               key={item.type}
+              tabIndex={showTooltips && item.description ? 0 : undefined}
               sx={{
                 display: "flex",
                 alignItems: "center",
@@ -397,7 +398,12 @@ export function LineageLegend({
           );
 
           return showTooltips && item.description ? (
-            <Tooltip key={item.type} title={item.description} placement="right">
+            <Tooltip
+              describeChild
+              key={item.type}
+              title={item.description}
+              placement="right"
+            >
               {content}
             </Tooltip>
           ) : (

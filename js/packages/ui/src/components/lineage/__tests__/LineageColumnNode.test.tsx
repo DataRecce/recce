@@ -267,27 +267,23 @@ describe("LineageColumnNode", () => {
     > = {
       passthrough: {
         letter: "P",
-        accessibleName:
-          "Passthrough transformation: Same-name reference to an upstream column",
+        accessibleName: "Passthrough transformation",
       },
       renamed: {
         letter: "R",
-        accessibleName:
-          "Renamed transformation: Direct upstream column reference with a different output name",
+        accessibleName: "Renamed transformation",
       },
       derived: {
         letter: "D",
-        accessibleName:
-          "Derived transformation: Expression derived from one or more upstream columns",
+        accessibleName: "Derived transformation",
       },
       source: {
         letter: "S",
-        accessibleName: "Source transformation: No upstream column dependency",
+        accessibleName: "Source transformation",
       },
       unknown: {
         letter: "U",
-        accessibleName:
-          "Unknown transformation: Transformation could not be determined",
+        accessibleName: "Unknown transformation",
       },
     };
 
@@ -318,11 +314,29 @@ describe("LineageColumnNode", () => {
 
       render(<LineageColumnNode {...props} />);
       await user.hover(
-        screen.getByLabelText(
-          "Derived transformation: Expression derived from one or more upstream columns",
-        ),
+        screen.getByRole("img", { name: "Derived transformation" }),
       );
 
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "Derived: Expression derived from one or more upstream columns",
+      );
+    });
+
+    it("opens the transformation tooltip from the keyboard focus target", async () => {
+      const user = userEvent.setup();
+      const props = createMockColumnNodeProps(
+        {},
+        { transformationType: "derived" },
+      );
+
+      render(<LineageColumnNode {...props} />);
+
+      const indicator = screen.getByRole("img", {
+        name: "Derived transformation",
+      });
+      await user.tab();
+
+      expect(indicator).toHaveFocus();
       expect(await screen.findByRole("tooltip")).toHaveTextContent(
         "Derived: Expression derived from one or more upstream columns",
       );

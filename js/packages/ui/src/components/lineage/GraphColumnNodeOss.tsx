@@ -18,6 +18,7 @@ import type { LineageGraphColumnNode } from "../..";
 import { useLineageViewContextSafe } from "../../contexts";
 import { useThemeColors } from "../../hooks";
 import { LineageColumnNode, type LineageColumnNodeData } from "./columns";
+import { CONTENT_VISIBILITY_MIN_ZOOM } from "./config/zoomConstants";
 
 // =============================================================================
 // TYPES
@@ -49,7 +50,9 @@ function GraphColumnNodeComponent(nodeProps: GraphColumnNodeProps) {
   } = data;
 
   // Get zoom level for content visibility
-  const showContent = useStore((s) => s.transform[2] > 0.3);
+  const showContent = useStore(
+    (s) => s.transform[2] > CONTENT_VISIBILITY_MIN_ZOOM,
+  );
 
   // Get theme colors
   const { isDark } = useThemeColors();

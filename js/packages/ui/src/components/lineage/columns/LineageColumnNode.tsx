@@ -172,24 +172,36 @@ function TransformationIndicator({
   }
 
   const config = COLUMN_TRANSFORMATION_DETAILS[transformationType];
-  const accessibleName = `${config.label} transformation: ${config.description}`;
+  const accessibleName = `${config.label} transformation`;
 
   return (
-    <Tooltip title={`${config.label}: ${config.description}`} placement="top">
-      <Chip
+    <Tooltip
+      describeChild
+      title={`${config.label}: ${config.description}`}
+      placement="top"
+    >
+      <Box
+        component="span"
+        role="img"
         aria-label={accessibleName}
-        label={config.letter}
-        size="small"
-        color={config.color}
-        sx={{
-          fontSize: "0.6667rem",
-          height: 18,
-          minWidth: 18,
-          "& .MuiChip-label": {
-            px: 0.5,
-          },
-        }}
-      />
+        tabIndex={0}
+        sx={{ display: "inline-flex" }}
+      >
+        <Chip
+          aria-hidden="true"
+          label={config.letter}
+          size="small"
+          color={config.color}
+          sx={{
+            fontSize: "0.6667rem",
+            height: 18,
+            minWidth: 18,
+            "& .MuiChip-label": {
+              px: 0.5,
+            },
+          }}
+        />
+      </Box>
     </Tooltip>
   );
 }
@@ -277,7 +289,7 @@ function HiddenLineageIndicator({
  * // In change analysis mode, shows change status instead of transformation type
  * <LineageColumnNode
  *   showChangeAnalysis={true}
- *   showContent={zoomLevel > 0.3}
+ *   showContent={zoomLevel > CONTENT_VISIBILITY_MIN_ZOOM}
  *   onContextMenu={(e, columnId) => showMenu(e, columnId)}
  * />
  * ```
