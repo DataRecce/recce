@@ -26,6 +26,8 @@ import {
   type LineageGraphNode,
   type LineageGraphNodes,
   type LineageViewContextType,
+  type NodeDetailsOpenRequest,
+  type NodeDetailsView,
 } from "../../contexts/lineage/types";
 import {
   type NodeColumnSetMap,
@@ -142,6 +144,14 @@ export function nextFocusedNodeId(
   clickedNodeId: string,
 ): string | undefined {
   return currentNodeId === clickedNodeId ? undefined : clickedNodeId;
+}
+
+export function createNodeDetailsOpenRequest(
+  currentToken: number,
+  nodeId: string,
+  view: NodeDetailsView,
+): NodeDetailsOpenRequest {
+  return { nodeId, view, requestToken: currentToken + 1 };
 }
 
 /**
@@ -374,6 +384,9 @@ export function PrivateLineageView(
    * Focused node: the node that is currently focused. Show the NodeView when a node is focused
    */
   const [focusedNodeId, setFocusedNodeId] = useState<string>();
+  const [nodeDetailsOpenRequest, setNodeDetailsOpenRequest] =
+    useState<NodeDetailsOpenRequest>();
+  const nodeDetailsRequestTokenRef = useRef(0);
   const focusedNode = focusedNodeId
     ? lineageGraph?.nodes[focusedNodeId]
     : undefined;
@@ -732,6 +745,21 @@ export function PrivateLineageView(
   const onNodeViewClosed = () => {
     supersedeCllInteraction();
     setFocusedNodeId(undefined);
+    setNodeDetailsOpenRequest(undefined);
+    setFocusedHistory([]);
+  };
+
+  const openNodeDetails = (nodeId: string, view: NodeDetailsView) => {
+    if (!lineageGraph?.nodes[nodeId]) return;
+    supersedeCllInteraction();
+    const request = createNodeDetailsOpenRequest(
+      nodeDetailsRequestTokenRef.current,
+      nodeId,
+      view,
+    );
+    nodeDetailsRequestTokenRef.current = request.requestToken;
+    setNodeDetailsOpenRequest(request);
+    setFocusedNodeId(nodeId);
     setFocusedHistory([]);
   };
 
@@ -744,6 +772,7 @@ export function PrivateLineageView(
   const navigateToNode = (nodeId: string) => {
     if (!lineageGraph?.nodes[nodeId]) return;
     supersedeCllInteraction();
+    setNodeDetailsOpenRequest(undefined);
     if (focusedNodeId === nodeId) return;
     if (focusedNodeId && focusedNodeId !== nodeId) {
       setFocusedHistory((h) => [...h, focusedNodeId]);
@@ -756,6 +785,7 @@ export function PrivateLineageView(
     const previous = focusedHistory[focusedHistory.length - 1];
     if (!lineageGraph?.nodes[previous]) return;
     supersedeCllInteraction();
+    setNodeDetailsOpenRequest(undefined);
     setFocusedNodeId(previous);
     setFocusedHistory((h) => h.slice(0, -1));
   };
@@ -769,6 +799,7 @@ export function PrivateLineageView(
     const target = focusedHistory[index];
     if (!lineageGraph?.nodes[target]) return;
     supersedeCllInteraction();
+    setNodeDetailsOpenRequest(undefined);
     setFocusedNodeId(target);
     setFocusedHistory((h) => h.slice(0, index));
   };
@@ -912,6 +943,7 @@ export function PrivateLineageView(
 
     closeContextMenu();
     supersedeCllInteraction();
+    setNodeDetailsOpenRequest(undefined);
     if (!selectMode) {
       setFocusedNodeId(nextFocusedNodeId(focusedNodeId, node.id));
       setFocusedHistory([]);
@@ -1402,6 +1434,7 @@ export function PrivateLineageView(
     onViewOptionsChanged: handleViewOptionsChanged,
     selectMode,
     selectNode,
+    openNodeDetails,
     selectParentNodes,
     selectChildNodes,
     deselect,
@@ -1767,6 +1800,7 @@ export function PrivateLineageView(
             <NodeView
               node={focusedNode}
               onCloseNode={onNodeViewClosed}
+              openRequest={nodeDetailsOpenRequest}
               onNavigateToNode={navigateToNode}
               onBack={focusedHistory.length > 0 ? navigateBack : undefined}
               onCenterFocused={centerFocusedNode}

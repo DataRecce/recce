@@ -584,6 +584,32 @@ describe("LineageNode", () => {
       expect(screen.getByTestId("runs-tag")).toBeInTheDocument();
     });
 
+    it("keeps the change label and aggregate evidence in the same fixed 300x60 card", () => {
+      const props = createMockNodeProps(
+        {
+          showChangeAnalysis: true,
+          changeCategory: "non_breaking", // wire-enum-ok
+          runsAggregatedTag: (
+            <span data-testid="runs-tag">
+              1,234,567 results · 765,432 diffs
+            </span>
+          ),
+        },
+        { label: "coexistence" },
+      );
+
+      render(<LineageNode {...props} />);
+
+      expect(screen.getByText("Additive Change")).toBeInTheDocument();
+      expect(screen.getByTestId("runs-tag")).toBeInTheDocument();
+      expect(screen.getByTestId("lineage-node-card")).toHaveStyle({
+        height: "60px",
+      });
+      expect(screen.getByTestId("lineage-node-card").parentElement).toHaveStyle(
+        { width: "300px" },
+      );
+    });
+
     it("does not render runsAggregatedTag in action_result mode", () => {
       const props = createMockNodeProps(
         {
