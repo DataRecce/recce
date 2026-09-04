@@ -9,8 +9,10 @@
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { afterEach, beforeEach, vi } from "vitest";
 import type { NodeColumnData } from "../../../api";
+import type { NodeDetailsOpenRequest } from "../../../contexts";
 import type { NodeViewNodeData } from "../NodeView";
 import { NodeView } from "../NodeView";
 
@@ -300,6 +302,83 @@ describe("NodeView", () => {
         />,
       );
 
+      expect(screen.getByRole("tab", { name: "Analysis" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+    });
+
+    test("consumes an Analysis request so remounting cannot replay it while later activations still work", () => {
+      const node = createNode("model", testColumns);
+
+      function RequestHarness() {
+        const [mounted, setMounted] = useState(true);
+        const [nextToken, setNextToken] = useState(1);
+        const [request, setRequest] = useState<
+          NodeDetailsOpenRequest | undefined
+        >({ nodeId: node.id, view: "analysis", requestToken: 1 });
+
+        return (
+          <>
+            <button type="button" onClick={() => setMounted((value) => !value)}>
+              {mounted ? "Unmount details" : "Remount details"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const requestToken = nextToken + 1;
+                setNextToken(requestToken);
+                setRequest({
+                  nodeId: node.id,
+                  view: "analysis",
+                  requestToken,
+                });
+              }}
+            >
+              Request Analysis
+            </button>
+            {mounted && (
+              <NodeView
+                node={node}
+                modelDetail={createModelDetail(testColumns)}
+                onCloseNode={vi.fn()}
+                isSingleEnv={false}
+                SchemaView={MockSchemaView}
+                openRequest={request}
+                onOpenRequestConsumed={(requestToken) =>
+                  setRequest((current) =>
+                    current?.requestToken === requestToken
+                      ? undefined
+                      : current,
+                  )
+                }
+              />
+            )}
+          </>
+        );
+      }
+
+      render(<RequestHarness />);
+      expect(screen.getByRole("tab", { name: "Analysis" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      fireEvent.click(screen.getByRole("tab", { name: "Columns" }));
+      fireEvent.click(screen.getByRole("button", { name: "Unmount details" }));
+      fireEvent.click(screen.getByRole("button", { name: "Remount details" }));
+
+      expect(screen.getByRole("tab", { name: "Columns" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Request Analysis" }));
+      expect(screen.getByRole("tab", { name: "Analysis" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      fireEvent.click(screen.getByRole("tab", { name: "Columns" }));
+      fireEvent.click(screen.getByRole("button", { name: "Request Analysis" }));
       expect(screen.getByRole("tab", { name: "Analysis" })).toHaveAttribute(
         "aria-selected",
         "true",

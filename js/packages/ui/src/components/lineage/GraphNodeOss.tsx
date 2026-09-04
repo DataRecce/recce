@@ -228,13 +228,24 @@ function ValidationSummaryChip({
 
   useEffect(() => cancelClose, [cancelClose]);
 
-  const handleEscape = (event: React.KeyboardEvent) => {
-    if (event.key !== "Escape") return;
-    event.preventDefault();
+  const handleTriggerKeyDown = (event: React.KeyboardEvent) => {
     event.stopPropagation();
-    closePopover();
-    buttonRef.current?.focus();
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closePopover();
+      buttonRef.current?.focus();
+    }
   };
+  const handlePopoverKeyDown = (event: React.KeyboardEvent) => {
+    event.stopPropagation();
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closePopover();
+      buttonRef.current?.focus();
+    }
+  };
+  const stopPropagation = (event: React.SyntheticEvent) =>
+    event.stopPropagation();
 
   return (
     <>
@@ -246,6 +257,7 @@ function ValidationSummaryChip({
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label={`Open validation analysis for ${nodeName}: ${label}`}
+        className="nodrag nopan nokey"
         onBlur={closePopover}
         onClick={(event) => {
           event.stopPropagation();
@@ -254,7 +266,8 @@ function ValidationSummaryChip({
         }}
         onDoubleClick={(event) => event.stopPropagation()}
         onFocus={showPopover}
-        onKeyDown={handleEscape}
+        onKeyDown={handleTriggerKeyDown}
+        onKeyUp={stopPropagation}
         onMouseEnter={showPopover}
         onMouseLeave={scheduleCloseUnlessFocused}
         onPointerDown={(event) => event.stopPropagation()}
@@ -298,9 +311,15 @@ function ValidationSummaryChip({
             id={popoverId}
             role="dialog"
             aria-label={`${nodeName} validation details`}
-            onKeyDown={handleEscape}
+            className="nodrag nopan nokey"
+            onClick={stopPropagation}
+            onDoubleClick={stopPropagation}
+            onKeyDown={handlePopoverKeyDown}
+            onKeyUp={stopPropagation}
+            onMouseDown={stopPropagation}
             onMouseEnter={cancelClose}
             onMouseLeave={scheduleCloseUnlessFocused}
+            onPointerDown={stopPropagation}
             sx={{ minWidth: 160, p: 1.25 }}
           >
             <ValidationSummaryDetails summary={summary} />

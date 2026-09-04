@@ -762,6 +762,11 @@ export function PrivateLineageView(
     setFocusedNodeId(nodeId);
     setFocusedHistory([]);
   };
+  const consumeNodeDetailsOpenRequest = useCallback((requestToken: number) => {
+    setNodeDetailsOpenRequest((current) =>
+      current?.requestToken === requestToken ? undefined : current,
+    );
+  }, []);
 
   /**
    * Navigate the Model Detail panel to a different node without touching the
@@ -1801,6 +1806,7 @@ export function PrivateLineageView(
               node={focusedNode}
               onCloseNode={onNodeViewClosed}
               openRequest={nodeDetailsOpenRequest}
+              onOpenRequestConsumed={consumeNodeDetailsOpenRequest}
               onNavigateToNode={navigateToNode}
               onBack={focusedHistory.length > 0 ? navigateBack : undefined}
               onCenterFocused={centerFocusedNode}
