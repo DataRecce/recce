@@ -69,7 +69,19 @@ export const ChangeStatusCllDark: Story = {
 export const Transformation: Story = {
   args: {
     variant: "transformation",
-    title: "Transformations",
+    title: "Column transformations",
+    showTooltips: true,
+  },
+};
+
+/**
+ * A displayed chain containing only passthrough and derived columns.
+ */
+export const FilteredTransformation: Story = {
+  args: {
+    variant: "transformation",
+    title: "Column transformations",
+    transformationTypes: ["passthrough", "derived"],
     showTooltips: true,
   },
 };

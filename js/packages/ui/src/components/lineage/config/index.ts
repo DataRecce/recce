@@ -8,6 +8,7 @@ export {
 } from "./nodeTypes";
 
 export {
+  CONTENT_VISIBILITY_MIN_ZOOM,
   DIM_FILTER,
   EXPLORE_MIN_ZOOM,
   FIT_VIEW_PADDING,

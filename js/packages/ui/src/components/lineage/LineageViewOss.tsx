@@ -63,6 +63,7 @@ import {
   useEdgesState,
   useNodesState,
   useReactFlow,
+  useStore,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import React, {
@@ -90,11 +91,13 @@ import {
   nextChangeAnalysisMode,
   resolveResetCllInput,
 } from "./changeAnalysisState";
+import { getDisplayedColumnTransformationTypes } from "./columnTransformation";
 import { computeColumnLineage } from "./computeColumnLineage";
 import { computeImpactedColumns } from "./computeImpactedColumns";
 import { computeIsImpacted } from "./computeIsImpacted";
 import { computeWholeModelImpact } from "./computeWholeModelImpact";
 import {
+  CONTENT_VISIBILITY_MIN_ZOOM,
   EXPLORE_MIN_ZOOM,
   edgeTypes,
   FIT_VIEW_PADDING,
@@ -226,6 +229,9 @@ export function PrivateLineageView(
   const { apiClient } = useApiConfig();
   const queryClient = useQueryClient();
   const reactFlow = useReactFlow();
+  const isNodeContentVisible = useStore(
+    (state) => state.transform[2] > CONTENT_VISIBILITY_MIN_ZOOM,
+  );
   const refResize = useRef<HTMLDivElement>(null);
   const {
     copyToClipboard,
@@ -323,6 +329,27 @@ export function PrivateLineageView(
   const isModelsChanged = useMemo(() => {
     return !!(lineageGraph && lineageGraph.modifiedSet.length > 0);
   }, [lineageGraph]);
+
+  const displayedColumnTransformationTypes = useMemo(() => {
+    if (!isNodeContentVisible) {
+      return [];
+    }
+
+    return getDisplayedColumnTransformationTypes(nodes, (nodeId) =>
+      isNodeShowingChangeAnalysis({
+        nodeId,
+        changeAnalysisMode,
+        cllInput: viewOptions.column_level_lineage,
+        lineageGraph,
+      }),
+    );
+  }, [
+    nodes,
+    isNodeContentVisible,
+    changeAnalysisMode,
+    viewOptions.column_level_lineage,
+    lineageGraph,
+  ]);
 
   /**
    * View mode
@@ -1671,8 +1698,12 @@ export function PrivateLineageView(
                     newCllExperience={newCllExperience}
                   />
                 )}
-                {viewOptions.column_level_lineage && (
-                  <LineageLegend variant="transformation" />
+                {displayedColumnTransformationTypes.length > 0 && (
+                  <LineageLegend
+                    variant="transformation"
+                    title="Column transformations"
+                    transformationTypes={displayedColumnTransformationTypes}
+                  />
                 )}
               </Stack>
             </Panel>

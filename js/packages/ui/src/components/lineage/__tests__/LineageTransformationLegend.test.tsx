@@ -1,44 +1,36 @@
-/**
- * MiniMap auto-disable tests.
- *
- * The lineage view drops the MiniMap once a graph gets large enough that its
- * extra DOM costs more than it helps. This drives the real view with a mocked
- * graph boundary (`toReactFlow`) so the 500/501 boundary is observed the way a
- * user would see it — MiniMap present or absent — instead of restating the
- * threshold arithmetic.
- */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import type { Node } from "@xyflow/react";
 import React from "react";
-import { vi } from "vitest";
-import type { LineageGraph } from "../../../contexts/lineage/types";
+import { beforeEach, vi } from "vitest";
+import type {
+  LineageGraph,
+  LineageGraphNodes,
+} from "../../../contexts/lineage/types";
 import { LineageViewOss } from "../LineageViewOss";
 
-const MODIFIED_NODE = "model.test.orders";
+const MODEL_ID = "model.test.orders";
 
 const mockToReactFlow = vi.fn();
+let mockZoom = 1;
 
-// Graph boundary: hand the view an exact node count without laying anything out.
 vi.mock("../lineage", () => ({
   toReactFlow: (...args: unknown[]) => mockToReactFlow(...args),
 }));
 
-// React Flow renders nothing meaningful in happy-dom; keep the pieces the view
-// mounts as identifiable stubs so MiniMap presence is observable.
 vi.mock("@xyflow/react", () => ({
   ReactFlow: ({ children }: { children?: React.ReactNode }) => (
     <div data-testid="reactflow">{children}</div>
   ),
-  Background: () => <div data-testid="background" />,
+  Background: () => null,
   BackgroundVariant: { Dots: "dots" },
   Controls: ({ children }: { children?: React.ReactNode }) => (
-    <div data-testid="controls">{children}</div>
+    <div>{children}</div>
   ),
   ControlButton: ({ children }: { children?: React.ReactNode }) => (
     <button type="button">{children}</button>
   ),
-  MiniMap: () => <div data-testid="minimap" />,
+  MiniMap: () => null,
   Panel: ({ children }: { children?: React.ReactNode }) => (
     <div>{children}</div>
   ),
@@ -55,10 +47,10 @@ vi.mock("@xyflow/react", () => ({
     fitView: vi.fn(async () => true),
     setCenter: vi.fn(async () => undefined),
     getNodes: () => [],
-    getZoom: () => 1,
+    getZoom: () => mockZoom,
   }),
   useStore: (selector: (state: { transform: number[] }) => unknown) =>
-    selector({ transform: [0, 0, 1] }),
+    selector({ transform: [0, 0, mockZoom] }),
 }));
 
 vi.mock("../../../lib/api/track", () => ({
@@ -104,65 +96,98 @@ vi.mock("../../../hooks", async (importOriginal) => ({
   useThemeColors: () => ({ isDark: false }),
 }));
 
+const modelData = {
+  id: MODEL_ID,
+  name: "orders",
+  resourceType: "model",
+  packageName: "test",
+  changeStatus: "modified",
+  parents: {},
+  children: {},
+};
+
 const lineageGraph = {
   nodes: {
-    [MODIFIED_NODE]: {
-      id: MODIFIED_NODE,
+    [MODEL_ID]: {
+      id: MODEL_ID,
       type: "lineageGraphNode",
       position: { x: 0, y: 0 },
-      data: {
-        id: MODIFIED_NODE,
-        name: "orders",
-        resourceType: "model",
-        packageName: "test",
-        changeStatus: "modified",
-        parents: {},
-        children: {},
-      },
+      data: modelData,
     },
   },
   edges: {},
-  modifiedSet: [MODIFIED_NODE],
+  modifiedSet: [MODEL_ID],
   manifestMetadata: { base: undefined, current: undefined },
   catalogMetadata: { base: undefined, current: undefined },
 } as unknown as LineageGraph;
 
-function makeNodes(count: number): Node[] {
-  return Array.from({ length: count }, (_, i) => ({
-    id: `node-${i}`,
-    type: "lineageGraphNode",
-    position: { x: i * 400, y: 0 },
-    data: { id: `node-${i}`, name: `model ${i}` },
-  }));
-}
+const modelNode = lineageGraph.nodes[MODEL_ID] as unknown as LineageGraphNodes;
+const derivedColumnNode = {
+  id: `${MODEL_ID}_total`,
+  type: "lineageGraphColumnNode",
+  parentId: MODEL_ID,
+  position: { x: 0, y: 70 },
+  data: {
+    node: modelData,
+    column: "total",
+    type: "INTEGER",
+    transformationType: "derived",
+  },
+} as LineageGraphNodes;
 
-/** Render the lineage view over a graph that lays out `nodeCount` nodes. */
-async function renderWithNodeCount(nodeCount: number) {
-  mockToReactFlow.mockResolvedValue([makeNodes(nodeCount), [], {}]);
+function renderView(nodes: Node[]) {
+  mockToReactFlow.mockResolvedValue([nodes, [], {}]);
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  render(
+  return render(
     <QueryClientProvider client={queryClient}>
-      <LineageViewOss viewOptions={{ node_ids: [MODIFIED_NODE] }} />
+      <LineageViewOss viewOptions={{ node_ids: [MODEL_ID] }} />
     </QueryClientProvider>,
   );
-  await screen.findByTestId("reactflow");
 }
 
-// The boundary is stated here as literals on purpose: 500 nodes still get a
-// MiniMap, 501 do not. Deriving these from the production constant would let
-// the threshold move without a test noticing.
-describe("MiniMap auto-disable for large graphs", () => {
-  it("shows the MiniMap on a 500-node graph", async () => {
-    await renderWithNodeCount(500);
-
-    expect(screen.getByTestId("minimap")).toBeInTheDocument();
+describe("LineageViewOss transformation legend", () => {
+  beforeEach(() => {
+    mockZoom = 1;
+    mockToReactFlow.mockReset();
   });
 
-  it("hides the MiniMap on a 501-node graph", async () => {
-    await renderWithNodeCount(501);
+  it("omits the legend for a model-only impact-radius graph", async () => {
+    renderView([modelNode]);
 
-    expect(screen.queryByTestId("minimap")).not.toBeInTheDocument();
+    await screen.findByTestId("reactflow");
+    expect(
+      screen.queryByText("Column transformations"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the transformation types rendered by column nodes", async () => {
+    renderView([modelNode, derivedColumnNode]);
+
+    expect(await screen.findByText("Column transformations")).toBeVisible();
+    expect(screen.getByText("Derived")).toBeVisible();
+    expect(screen.queryByText("Passthrough")).not.toBeInTheDocument();
+  });
+
+  it("hides the legend at the same zoom boundary as column content", async () => {
+    mockZoom = 0.31;
+    const { rerender } = renderView([modelNode, derivedColumnNode]);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    expect(await screen.findByText("Column transformations")).toBeVisible();
+
+    mockZoom = 0.3;
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <LineageViewOss viewOptions={{ node_ids: [MODEL_ID] }} />
+      </QueryClientProvider>,
+    );
+
+    expect(
+      screen.queryByText("Column transformations"),
+    ).not.toBeInTheDocument();
   });
 });

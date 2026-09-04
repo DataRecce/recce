@@ -33,6 +33,7 @@ import { getSemanticColorTheme } from "../../theme";
 import { deltaPercentageString, getRowCountChangeDirection } from "../../utils";
 import { findByRunType } from "../run";
 import { resolveChangeCategory } from "./changeCategory";
+import { CONTENT_VISIBILITY_MIN_ZOOM } from "./config/zoomConstants";
 import {
   ActionTag,
   LineageNode,
@@ -299,7 +300,9 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
   const { id, resourceType, changeStatus, name } = data;
 
   // Get zoom level for content visibility
-  const showContent = useStore((s) => s.transform[2] > 0.3);
+  const showContent = useStore(
+    (s) => s.transform[2] > CONTENT_VISIBILITY_MIN_ZOOM,
+  );
 
   // Get theme colors
   const { isDark } = useThemeColors();
