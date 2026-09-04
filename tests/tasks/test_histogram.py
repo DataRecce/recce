@@ -1,5 +1,6 @@
 import json
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
@@ -9,6 +10,11 @@ from recce.tasks.histogram import (
     HistogramDiffTask,
     _is_histogram_supported,
 )
+
+HISTOGRAM_TYPE_POLICY = json.loads(
+    (Path(__file__).parents[1] / "fixtures" / "histogram_type_policy.json").read_text(encoding="utf-8")
+)
+UNSUPPORTED_TIME_TYPES = [case["type"] for case in HISTOGRAM_TYPE_POLICY if not case["backend_supported"]]
 
 
 @pytest.mark.parametrize(
@@ -464,13 +470,53 @@ def test_is_column_type_supported_by_histogram():
     assert _is_histogram_supported("TIMESTAMPTZ") is True
 
 
+@pytest.mark.parametrize("case", HISTOGRAM_TYPE_POLICY, ids=lambda case: case["type"].strip())
+def test_histogram_backend_matches_shared_type_policy(case):
+    """Catch backend policy drift for time-only, temporal, and unknown adapter types."""
+    assert _is_histogram_supported(case["type"]) is case["backend_supported"]
+
+
+@pytest.mark.parametrize("column_type", UNSUPPORTED_TIME_TYPES)
+def test_histogram_task_rejects_every_time_alias_before_context_or_sql(column_type, monkeypatch):
+    """Catch time-only aliases reaching adapter setup or a warehouse query."""
+
+    def fail_if_context_is_opened():
+        raise AssertionError("unsupported histogram type reached adapter setup")
+
+    monkeypatch.setattr(histogram, "default_context", fail_if_context_is_opened)
+
+    with pytest.raises(ValueError, match="not supported for histogram analysis"):
+        HistogramDiffTask(
+            {
+                "model": "customers",
+                "column_name": "time_col",
+                "column_type": column_type,
+            }
+        )
+
+
+@pytest.mark.parametrize("column_type", UNSUPPORTED_TIME_TYPES)
+def test_histogram_check_validator_rejects_every_time_alias(column_type):
+    """Catch saved checks accepting an alias that direct histogram tasks reject."""
+    with pytest.raises(ValueError, match="not supported for histogram analysis"):
+        HistogramDiffCheckValidator().validate(
+            {
+                "name": "time histogram",
+                "type": "histogram_diff",
+                "params": {
+                    "model": "customers",
+                    "column_name": "time_col",
+                    "column_type": column_type,
+                },
+            }
+        )
+
+
 def test_histogram_rejects_time_columns_before_sql(dbt_test_helper):
     params_time = {"model": "customers", "column_name": "log_time", "column_type": "TIME"}
-    task = HistogramDiffTask(params_time)
     with pytest.raises(ValueError, match="Column type TIME is not supported for histogram analysis"):
-        task.execute()
+        HistogramDiffTask(params_time)
 
     params_timetz = {"model": "customers", "column_name": "log_time_tz", "column_type": "TIMETZ"}
-    task_tz = HistogramDiffTask(params_timetz)
     with pytest.raises(ValueError, match="Column type TIMETZ is not supported for histogram analysis"):
-        task_tz.execute()
+        HistogramDiffTask(params_timetz)

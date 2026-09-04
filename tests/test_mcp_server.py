@@ -1489,6 +1489,90 @@ class TestRecceMCPServer:
             await server._tool_histogram_diff({"model": "my_model", "column_name": "unknown"})
 
     @pytest.mark.asyncio
+    async def test_tool_histogram_diff_rejects_time_alias_before_sql(self, mcp_server):
+        """Catch MCP direct histogram analysis sending a time-only alias to SQL."""
+        server, mock_context = mcp_server
+        mock_context.build_name_to_unique_id_index.return_value = {"my_model": "model.project.my_model"}
+        mock_context.get_model.return_value = {
+            "columns": {"event_time": {"name": "event_time", "type": "TIME(6) WITH TIME ZONE"}},
+        }
+
+        task_context = MagicMock()
+        task_context.adapter = MagicMock()
+        with (
+            patch("recce.tasks.histogram.default_context", return_value=task_context),
+            patch.object(
+                HistogramDiffTask,
+                "execute_sql",
+                side_effect=AssertionError("time-only type reached SQL"),
+            ),
+        ):
+            with pytest.raises(ValueError, match="not supported for histogram analysis"):
+                await server._tool_histogram_diff({"model": "my_model", "column_name": "event_time"})
+
+    @pytest.mark.asyncio
+    async def test_tool_create_check_rejects_time_histogram_before_persistence(self, mcp_server):
+        """Catch MCP create_check persisting or running a time-only histogram."""
+        server, _ = mcp_server
+        check_dao = MagicMock()
+        check_dao.list.return_value = []
+        check_dao.create.return_value = Check(
+            name="time histogram",
+            type=RunType.HISTOGRAM_DIFF,
+            params={
+                "model": "my_model",
+                "column_name": "event_time",
+                "column_type": "TIME(6) WITH TIME ZONE",
+            },
+        )
+
+        with (
+            patch("recce.models.CheckDAO", return_value=check_dao),
+            patch("recce.apis.check_func.CheckDAO", return_value=check_dao),
+        ):
+            with pytest.raises(ValueError, match="not supported for histogram analysis"):
+                await server._tool_create_check(
+                    {
+                        "type": "histogram_diff",
+                        "name": "time histogram",
+                        "params": {
+                            "model": "my_model",
+                            "column_name": "event_time",
+                            "column_type": "TIME(6) WITH TIME ZONE",
+                        },
+                    }
+                )
+
+        check_dao.create.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_tool_run_check_rejects_time_histogram_before_submission(self, mcp_server):
+        """Catch MCP run_check queuing a legacy time-only histogram."""
+        server, _ = mcp_server
+        check = Check(
+            name="time histogram",
+            type=RunType.HISTOGRAM_DIFF,
+            params={
+                "model": "my_model",
+                "column_name": "event_time",
+                "column_type": "TIME(6) WITH TIME ZONE",
+            },
+        )
+        check_dao = MagicMock()
+        check_dao.find_check_by_id.return_value = check
+
+        run_context = MagicMock()
+        run_context.adapter_type = "dbt"
+        run_context.review_mode = False
+        with (
+            patch("recce.models.CheckDAO", return_value=check_dao),
+            patch("recce.apis.run_func.default_context", return_value=run_context),
+            patch("recce.apis.run_func.RunDAO", return_value=MagicMock()),
+        ):
+            with pytest.raises(ValueError, match="not supported for histogram analysis"):
+                await server._tool_run_check({"check_id": str(check.check_id)})
+
+    @pytest.mark.asyncio
     async def test_tool_get_model(self, mcp_server):
         """Test the get_model tool"""
         server, mock_context = mcp_server
@@ -3883,7 +3967,7 @@ class TestLocalModeRunBacked:
             patch.object(
                 RecceContext,
                 "get_model",
-                return_value={"columns": {"status": {"name": "status", "type": "VARCHAR"}}},
+                return_value={"columns": {"status": {"name": "status", "type": "INTEGER"}}},
             ),
         ):
             result = await getattr(server, tool_method)(args)

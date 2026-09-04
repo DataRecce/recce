@@ -81,13 +81,27 @@ sql_not_supported_types_pattern = [
     r"^(CHAR|VARCHAR|NCHAR|NVARCHAR|VARCHAR2|NVARCHAR2)\(\d+\)$",  # String types with lengths
 ]
 
+sql_time_only_type_pattern = re.compile(
+    r"(?:TIMETZ\s*(?:\(\s*\d+\s*\))?"
+    r"|TIME\s*(?:\(\s*\d+\s*\))?"
+    r"(?:\s+(?:WITH|WITHOUT)\s+TIME\s+ZONE\s*(?:\(\s*\d+\s*\))?)?)"
+)
+
+
+def _normalize_column_type(column_type: str) -> str:
+    return " ".join(column_type.strip().upper().split())
+
 
 def _is_histogram_supported(column_type):
-    if column_type.upper() in sql_not_supported_types:
+    normalized_type = _normalize_column_type(column_type)
+    if sql_time_only_type_pattern.fullmatch(normalized_type):
+        return False
+
+    if normalized_type in sql_not_supported_types:
         return False
 
     for pattern in sql_not_supported_types_pattern:
-        if re.match(pattern, column_type.upper()):
+        if re.match(pattern, normalized_type):
             return False
     return True
 
@@ -276,6 +290,11 @@ class HistogramDiffParams(BaseModel):
     num_bins: Optional[int] = 50
 
 
+def _validate_histogram_column_type(column_type: str) -> None:
+    if _is_histogram_supported(column_type) is False:
+        raise ValueError(f"Column type {column_type} is not supported for histogram analysis")
+
+
 def query_numeric_histogram(task, node, column, column_type, min_value, max_value, num_bins=50):
     is_integer = is_integral_histogram_type(column_type)
     geometry = numeric_histogram_geometry(min_value, max_value, num_bins, is_integer=is_integer)
@@ -441,6 +460,7 @@ class HistogramDiffTask(Task, QueryMixin):
     def __init__(self, params):
         super().__init__()
         self.params = HistogramDiffParams(**params)
+        _validate_histogram_column_type(self.params.column_type)
         self.connection = None
 
     def execute(self):
@@ -454,8 +474,7 @@ class HistogramDiffTask(Task, QueryMixin):
         num_bins = self.params.num_bins or 50
         column_type = self.params.column_type
 
-        if _is_histogram_supported(column_type) is False:
-            raise ValueError(f"Column type {column_type} is not supported for histogram analysis")
+        _validate_histogram_column_type(column_type)
 
         with dbt_adapter.connection_named("query"):
             self.connection = dbt_adapter.get_thread_connection()
@@ -539,5 +558,4 @@ class HistogramDiffCheckValidator(CheckValidator):
         except Exception as e:
             raise ValueError(f"Invalid check: {str(e)}")
 
-        if _is_histogram_supported(params.column_type) is False:
-            raise ValueError(f"Column type {params.column_type} is not supported for histogram analysis")
+        _validate_histogram_column_type(params.column_type)

@@ -28,7 +28,16 @@ def get_node_name_by_id(node_id):
 def _validate_check(check_type, params):
     if check_type == RunType.SCHEMA_DIFF:
         validate_schema_diff_check(params)
-    pass
+    elif check_type == RunType.HISTOGRAM_DIFF:
+        from recce.tasks.histogram import HistogramDiffCheckValidator
+
+        HistogramDiffCheckValidator().validate(
+            {
+                "name": "Histogram diff",
+                "type": check_type,
+                "params": params,
+            }
+        )
 
 
 def _get_ref_model(sql_template: str) -> Optional[str]:
@@ -102,6 +111,8 @@ def create_check_from_run(
 def create_check_without_run(
     check_name, check_description, check_type, params, check_view_options, is_preset=False, is_checked=False
 ):
+    if check_type == RunType.HISTOGRAM_DIFF:
+        _validate_check(check_type, params)
     name = check_name if check_name is not None else _generate_check_name(check_type, params, check_view_options)
 
     # Get cloud user context for attribution if available
