@@ -11,6 +11,7 @@ from fastapi.encoders import jsonable_encoder
 import recce.tasks.histogram as histogram
 from recce.tasks.histogram import (
     HistogramDiffCheckValidator,
+    HistogramDiffParams,
     HistogramDiffTask,
     _is_histogram_supported,
 )
@@ -22,6 +23,12 @@ UNSUPPORTED_TIME_TYPES = [case["type"] for case in HISTOGRAM_TYPE_POLICY if not 
 SUPPORTED_TEMPORAL_TYPES = [
     case["type"] for case in HISTOGRAM_TYPE_POLICY if case["backend_supported"] and not case["picker_supported"]
 ]
+
+
+@pytest.fixture(autouse=True)
+def isolate_histogram_telemetry(monkeypatch):
+    """Keep unit/integration tests from scheduling the process-wide event collector."""
+    monkeypatch.setattr(histogram, "log_performance", MagicMock())
 
 
 @pytest.mark.parametrize(
@@ -91,6 +98,83 @@ def test_numeric_histogram_geometry_covers_literal_domains(
         assert geometry.width >= Decimal("1")
 
 
+@pytest.mark.parametrize(
+    ("params_update", "stored_value", "execution_request", "effective_bins"),
+    [
+        ({}, 50, 50, 50),
+        ({"num_bins": None}, None, 50, 50),
+        ({"num_bins": 0}, 0, 50, 50),
+        ({"num_bins": False}, 0, 50, 50),
+        ({"num_bins": -3}, -3, -3, 1),
+        ({"num_bins": "-3"}, -3, -3, 1),
+        ({"num_bins": " 7 "}, 7, 7, 7),
+        ({"num_bins": 1.0}, 1, 1, 1),
+        ({"num_bins": "1.0"}, 1, 1, 1),
+        ({"num_bins": True}, 1, 1, 1),
+        ({"num_bins": 10000}, 10000, 10000, 10000),
+    ],
+)
+def test_histogram_num_bins_accepted_compatibility_matrix(
+    params_update, stored_value, execution_request, effective_bins
+):
+    """Freeze accepted coercions/defaults while compact SQL removes the growth cost."""
+    params = HistogramDiffParams(
+        model="numbers",
+        column_name="amount",
+        column_type="INTEGER",
+        **params_update,
+    )
+
+    assert params.num_bins == stored_value
+    if params.num_bins is not None:
+        assert type(params.num_bins) is int
+    requested = params.num_bins or 50
+    assert requested == execution_request
+    geometry = histogram.numeric_histogram_geometry(
+        Decimal("0"),
+        Decimal(str(effective_bins)),
+        requested,
+        is_integer=True,
+    )
+    assert geometry.num_bins == effective_bins
+
+
+@pytest.mark.parametrize("num_bins", [2.5, "2.5"])
+def test_histogram_num_bins_still_rejects_fractional_inputs(num_bins):
+    """Catch optimization work broadening the request contract by accident."""
+    with pytest.raises(ValueError):
+        HistogramDiffParams(
+            model="numbers",
+            column_name="amount",
+            column_type="INTEGER",
+            num_bins=num_bins,
+        )
+
+
+def test_histogram_num_bins_has_no_new_model_or_strategy_cap():
+    """Catch either request parsing or compact dispatch imposing a hidden ceiling."""
+    params = HistogramDiffParams(
+        model="numbers",
+        column_name="amount",
+        column_type="INTEGER",
+        num_bins=1_000_000,
+    )
+    plan = histogram.select_histogram_bucketing(
+        adapter_type="duckdb",
+        column_sql="amount",
+        column_type="INTEGER",
+        minimum=Decimal("0"),
+        maximum=Decimal("1000000"),
+        width=Decimal("1"),
+        num_bins=params.num_bins,
+    )
+
+    assert params.num_bins == 1_000_000
+    assert plan.strategy == "duckdb_scaled_integer"
+    assert plan.bin_expression is not None
+    assert len(plan.bin_expression) < 1500
+
+
 def test_histogram_sql_uses_plain_decimal_literals_and_terminal_rule():
     """Catch SQL that leaks exponent literals or lets a terminal maximum escape."""
     sql, _ = histogram.generate_histogram_sql_numeric(
@@ -107,6 +191,62 @@ def test_histogram_sql_uses_plain_decimal_literals_and_terminal_rule():
     assert "WHEN amount = (SELECT max_value FROM bin_parameters) THEN 1" in sql
 
 
+@pytest.mark.parametrize(
+    ("adapter_type", "column_type"),
+    [
+        ("sqlite", "DECIMAL(18, 6)"),
+        ("postgres", "INTEGER"),
+        ("duckdb", "DOUBLE"),
+        ("duckdb", "NUMERIC"),
+        ("duckdb", "DECIMAL(38, 0)"),
+        ("duckdb", "HUGEINT"),
+    ],
+)
+def test_unproven_histogram_strategies_preserve_the_literal_ladder(adapter_type, column_type):
+    """Catch fallback dispatch changing exact ordered-comparison SQL."""
+    generated = histogram._generate_histogram_sql_for_adapter(
+        "customers",
+        "amount",
+        Decimal("0"),
+        Decimal("1"),
+        5,
+        Decimal("0.2"),
+        adapter_type=adapter_type,
+        column_type=column_type,
+    )
+    existing_sql, existing_width = histogram.generate_histogram_sql_numeric(
+        "customers",
+        "amount",
+        Decimal("0"),
+        Decimal("1"),
+        5,
+        Decimal("0.2"),
+    )
+
+    assert generated.strategy == "literal_ordered_comparison"
+    assert generated.sql == existing_sql
+    assert generated.bin_size == existing_width
+    assert generated.sql.count("WHEN amount <") == 5
+
+
+def test_duckdb_compact_generator_is_bounded_at_ten_thousand_bins():
+    """Catch compact dispatch retaining a hidden per-bin SQL fragment."""
+    generated = histogram._generate_histogram_sql_for_adapter(
+        "customers",
+        "amount",
+        Decimal("0"),
+        Decimal("10000"),
+        10000,
+        Decimal("1"),
+        adapter_type="duckdb",
+        column_type="INTEGER",
+    )
+
+    assert generated.strategy == "duckdb_scaled_integer"
+    assert len(generated.sql) < 5000
+    assert generated.sql.count("WHEN amount <") == 0
+
+
 class HistogramRows:
     def __init__(self, rows):
         self.rows = rows
@@ -116,8 +256,10 @@ class NumericHistogramQueryTask:
     def __init__(self, base_rows, current_rows):
         self.base_rows = HistogramRows(base_rows)
         self.current_rows = HistogramRows(current_rows)
+        self.executed_sql = []
 
-    def execute_sql(self, _sql, *, base):
+    def execute_sql(self, sql, *, base):
+        self.executed_sql.append(sql)
         return self.base_rows if base else self.current_rows
 
     def check_cancel(self):
@@ -138,6 +280,48 @@ class DatetimeHistogramQueryTask:
 
     def check_cancel(self):
         return None
+
+
+def create_typed_histogram_model(
+    dbt_test_helper,
+    model_name,
+    column_type,
+    values,
+    *,
+    current_column_type=None,
+    current_values=None,
+):
+    """Create matching real DuckDB relations plus dbt manifest/catalog entries."""
+    current_column_type = current_column_type or column_type
+    current_values = values if current_values is None else current_values
+    adapter = dbt_test_helper.adapter
+    with adapter.connection_named("create typed histogram model"):
+        for schema, physical_type, environment_values in (
+            (dbt_test_helper.base_schema, column_type, values),
+            (dbt_test_helper.curr_schema, current_column_type, current_values),
+        ):
+            value_rows = ", ".join("(NULL)" if value is None else f"({value})" for value in environment_values)
+            adapter.execute(f"CREATE TABLE {schema}.{model_name} (amount {physical_type})")
+            adapter.execute(f"INSERT INTO {schema}.{model_name} VALUES {value_rows}")
+
+    model_sql = f"select cast(amount as {column_type}) as amount from source_values"
+    current_model_sql = f"select cast(amount as {current_column_type}) as amount from source_values"
+    dbt_test_helper.create_model(
+        model_name,
+        base_sql=model_sql,
+        curr_sql=current_model_sql,
+        base_columns={"amount": column_type},
+        curr_columns={"amount": current_column_type},
+    )
+
+
+def execute_histogram_template(dbt_test_helper, sql_template):
+    """Compile and execute a histogram template through Recce's real dbt adapter."""
+    adapter = dbt_test_helper.adapter
+    with adapter.connection_named("execute histogram strategy"):
+        sql = adapter.generate_sql(sql_template, base=True)
+        _, result = adapter.execute(sql, fetch=True, auto_begin=True)
+    return [(row[0], row[1]) for row in result.rows]
 
 
 def test_daily_datetime_histogram_edges_cross_months_monotonically():
@@ -331,6 +515,401 @@ class DecimalExtremaHistogramTask(HistogramDiffTask):
 def test_histogram_integral_type_detection_respects_precision_and_scale(column_type, expected):
     """Catch fractional adapter types being routed through the integer width safeguard."""
     assert histogram.is_integral_histogram_type(column_type) is expected
+
+
+def test_duckdb_compact_decimal_execution_owns_exact_internal_and_terminal_boundaries(dbt_test_helper, monkeypatch):
+    """Catch fixed DECIMAL bucketing drifting at 0.6 or either side of a boundary."""
+    create_typed_histogram_model(
+        dbt_test_helper,
+        "compact_decimal_boundaries",
+        "DECIMAL(18, 6)",
+        [
+            None,
+            "0",
+            "0.199999",
+            "0.2",
+            "0.200001",
+            "0.399999",
+            "0.4",
+            "0.400001",
+            "0.599999",
+            "0.6",
+            "0.600001",
+            "0.799999",
+            "0.8",
+            "0.800001",
+            "1",
+        ],
+    )
+    telemetry = MagicMock()
+    monkeypatch.setattr(histogram, "log_performance", telemetry, raising=False)
+
+    result = HistogramDiffTask(
+        {
+            "model": "compact_decimal_boundaries",
+            "column_name": "amount",
+            "column_type": "DECIMAL(18, 6)",
+            "num_bins": 5,
+        }
+    ).execute()
+
+    assert result["bin_edges"] == [0, 0.2, 0.4, 0.6, 0.8, 1]
+    assert result["base"] == {"counts": [2, 3, 3, 3, 3], "total": 14}
+    assert result["current"] == result["base"]
+    telemetry.assert_called_once()
+    feature_name, metrics = telemetry.call_args.args
+    assert feature_name == "histogram_sql"
+    assert metrics["adapter_type"] == "duckdb"
+    assert metrics["strategy"] == "duckdb_scaled_integer"
+    assert metrics["effective_bin_count"] == 5
+    assert metrics["sql_length"] < 5000
+
+
+def test_duckdb_compact_decimal_execution_expands_beyond_the_declared_scale(dbt_test_helper, monkeypatch):
+    """Catch a generated width with extra decimal places being rounded before bucketing."""
+    create_typed_histogram_model(
+        dbt_test_helper,
+        "compact_decimal_scale_expansion",
+        "DECIMAL(12, 2)",
+        ["0", "0.01", "0.02"],
+    )
+    telemetry = MagicMock()
+    monkeypatch.setattr(histogram, "log_performance", telemetry, raising=False)
+
+    result = HistogramDiffTask(
+        {
+            "model": "compact_decimal_scale_expansion",
+            "column_name": "amount",
+            "column_type": "DECIMAL(12, 2)",
+            "num_bins": 10,
+        }
+    ).execute()
+
+    assert result["bin_edges"] == [0, 0.002, 0.004, 0.006, 0.008, 0.01, 0.012, 0.014, 0.016, 0.018, 0.02]
+    assert {index: count for index, count in enumerate(result["base"]["counts"]) if count} == {
+        0: 1,
+        5: 1,
+        9: 1,
+    }
+    assert telemetry.call_args.args[1]["strategy"] == "duckdb_scaled_integer"
+
+
+def test_duckdb_compact_decimal_executes_at_the_proven_precision_boundary(dbt_test_helper, monkeypatch):
+    """Catch the widest enabled DECIMAL multiply overflowing before its HUGEINT cast."""
+    create_typed_histogram_model(
+        dbt_test_helper,
+        "compact_decimal_precision_boundary",
+        "DECIMAL(37, 1)",
+        ["0", "500000000000000000000000000000000000.0"],
+    )
+    telemetry = MagicMock()
+    monkeypatch.setattr(histogram, "log_performance", telemetry)
+
+    result = HistogramDiffTask(
+        {
+            "model": "compact_decimal_precision_boundary",
+            "column_name": "amount",
+            "column_type": "DECIMAL(37, 1)",
+            "num_bins": 1,
+        }
+    ).execute()
+
+    assert result["base"] == {"counts": [2], "total": 2}
+    assert telemetry.call_args.args[1]["strategy"] == "duckdb_scaled_integer"
+
+
+def test_duckdb_compact_scale_zero_decimal_executes_through_the_integer_cast_path(dbt_test_helper, monkeypatch):
+    """Catch DECIMAL(..., 0) being cast or multiplied with lossy semantics."""
+    create_typed_histogram_model(
+        dbt_test_helper,
+        "compact_scale_zero_decimal",
+        "DECIMAL(18, 0)",
+        ["0", "2", "3", "5", "10"],
+    )
+    telemetry = MagicMock()
+    monkeypatch.setattr(histogram, "log_performance", telemetry, raising=False)
+
+    result = HistogramDiffTask(
+        {
+            "model": "compact_scale_zero_decimal",
+            "column_name": "amount",
+            "column_type": "DECIMAL(18, 0)",
+            "num_bins": 4,
+        }
+    ).execute()
+
+    assert result["bin_edges"] == [0, 2.5, 5, 7.5, 10]
+    assert result["base"] == {"counts": [2, 1, 1, 1], "total": 5}
+    assert telemetry.call_args.args[1]["strategy"] == "duckdb_scaled_integer"
+
+
+def test_duckdb_compact_large_decimal_geometry_executes_without_context_rounding(dbt_test_helper):
+    """Catch a 37-digit minimum being rounded up to the next boundary."""
+    minimum = Decimal("1234567890123456789012345678900000000")
+    maximum = Decimal("1234567890123456789012345679900000000")
+    create_typed_histogram_model(
+        dbt_test_helper,
+        "compact_large_decimal_geometry",
+        "DECIMAL(37, 0)",
+        [
+            "1234567890123456789012345678900000000",
+            "1234567890123456789012345679000000000",
+            "1234567890123456789012345679900000000",
+        ],
+    )
+    generated = histogram._generate_histogram_sql_for_adapter(
+        "compact_large_decimal_geometry",
+        "amount",
+        minimum,
+        maximum,
+        10,
+        Decimal("100000000"),
+        adapter_type="duckdb",
+        column_type="DECIMAL(37, 0)",
+    )
+
+    compiled = dbt_test_helper.adapter.generate_sql(generated.sql, base=True)
+    with dbt_test_helper.adapter.connection_named("execute compact large-decimal histogram"):
+        _, table = dbt_test_helper.adapter.execute(compiled, fetch=True, auto_begin=True)
+
+    assert generated.strategy == "duckdb_scaled_integer"
+    assert {row[0]: row[1] for row in table.rows} == {0: 1, 1: 1, 9: 1}
+
+
+def test_duckdb_falls_back_when_base_and_current_physical_types_differ(dbt_test_helper, monkeypatch):
+    """Catch one environment's integer type authorizing a lossy cast in the other."""
+    create_typed_histogram_model(
+        dbt_test_helper,
+        "mixed_physical_histogram_types",
+        "INTEGER",
+        ["0", "2", "10"],
+        current_column_type="DOUBLE",
+        current_values=["0", "1.9", "2", "10"],
+    )
+    telemetry = MagicMock()
+    monkeypatch.setattr(histogram, "log_performance", telemetry)
+
+    result = HistogramDiffTask(
+        {
+            "model": "mixed_physical_histogram_types",
+            "column_name": "amount",
+            "column_type": "INTEGER",
+            "num_bins": 5,
+        }
+    ).execute()
+
+    assert result["base"] == {"counts": [1, 1, 0, 0, 1], "total": 3}
+    assert result["current"] == {"counts": [2, 1, 0, 0, 1], "total": 4}
+    assert telemetry.call_args.args[1]["strategy"] == "literal_ordered_comparison"
+
+
+def test_duckdb_falls_back_when_saved_type_is_stale_for_both_relations(dbt_test_helper, monkeypatch):
+    """Catch stale saved INTEGER metadata compact-casting two physical DOUBLE columns."""
+    create_typed_histogram_model(
+        dbt_test_helper,
+        "stale_saved_histogram_type",
+        "DOUBLE",
+        ["0", "1.9", "2", "10"],
+    )
+    telemetry = MagicMock()
+    monkeypatch.setattr(histogram, "log_performance", telemetry)
+
+    result = HistogramDiffTask(
+        {
+            "model": "stale_saved_histogram_type",
+            "column_name": "amount",
+            "column_type": "INTEGER",
+            "num_bins": 5,
+        }
+    ).execute()
+
+    assert result["base"] == {"counts": [2, 1, 0, 0, 1], "total": 4}
+    assert result["current"] == result["base"]
+    assert telemetry.call_args.args[1]["strategy"] == "literal_ordered_comparison"
+
+
+def test_duckdb_decimal_38_executes_with_the_exact_literal_fallback(dbt_test_helper, monkeypatch):
+    """Catch overflow-risk DECIMAL input being compacted instead of executing the safe ladder."""
+    create_typed_histogram_model(
+        dbt_test_helper,
+        "fallback_decimal_38",
+        "DECIMAL(38, 0)",
+        ["0", "2", "5"],
+    )
+    telemetry = MagicMock()
+    monkeypatch.setattr(histogram, "log_performance", telemetry)
+
+    result = HistogramDiffTask(
+        {
+            "model": "fallback_decimal_38",
+            "column_name": "amount",
+            "column_type": "DECIMAL(38, 0)",
+            "num_bins": 5,
+        }
+    ).execute()
+
+    assert result["base"] == {"counts": [1, 0, 1, 0, 1], "total": 3}
+    assert telemetry.call_args.args[1]["strategy"] == "literal_ordered_comparison"
+
+
+def test_duckdb_compact_integer_execution_preserves_negative_domain_boundaries(dbt_test_helper, monkeypatch):
+    """Catch negative values being bucketed with truncation rather than exact edge ownership."""
+    create_typed_histogram_model(
+        dbt_test_helper,
+        "compact_negative_integer",
+        "INTEGER",
+        ["-10", "-9", "-8", "-7", "0", "9", "10"],
+    )
+    telemetry = MagicMock()
+    monkeypatch.setattr(histogram, "log_performance", telemetry, raising=False)
+
+    result = HistogramDiffTask(
+        {
+            "model": "compact_negative_integer",
+            "column_name": "amount",
+            "column_type": "INTEGER",
+            "num_bins": 10,
+        }
+    ).execute()
+
+    assert result["bin_edges"] == [-10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10]
+    assert {index: count for index, count in enumerate(result["base"]["counts"]) if count} == {
+        0: 2,
+        1: 2,
+        5: 1,
+        9: 2,
+    }
+    assert telemetry.call_args.args[1]["strategy"] == "duckdb_scaled_integer"
+
+
+def test_duckdb_compact_sql_leaves_concurrent_out_of_domain_values_out_of_range(dbt_test_helper):
+    """Catch compact arithmetic clamping below/above-domain rows into edge bins."""
+    create_typed_histogram_model(
+        dbt_test_helper,
+        "compact_out_of_domain",
+        "DECIMAL(18, 6)",
+        [None, "-0.000001", "0", "0.199999", "0.2", "0.6", "1", "1.000001"],
+    )
+    generated = histogram._generate_histogram_sql_for_adapter(
+        "compact_out_of_domain",
+        "amount",
+        Decimal("0"),
+        Decimal("1"),
+        5,
+        Decimal("0.2"),
+        adapter_type="duckdb",
+        column_type="DECIMAL(18, 6)",
+    )
+
+    compiled = dbt_test_helper.adapter.generate_sql(generated.sql, base=True)
+    with dbt_test_helper.adapter.connection_named("execute compact out-of-domain histogram"):
+        _, table = dbt_test_helper.adapter.execute(compiled, fetch=True, auto_begin=True)
+    counts_by_bin = {row[0]: row[1] for row in table.rows}
+
+    assert generated.strategy == "duckdb_scaled_integer"
+    assert counts_by_bin == {-1: 1, 0: 2, 1: 1, 3: 1, 4: 1, 5: 1, None: 1}
+
+
+def test_duckdb_compact_ten_thousand_bin_request_executes_without_sql_growth(dbt_test_helper, monkeypatch):
+    """Catch application orchestration accepting 10,000 bins but emitting a 10,000-branch query."""
+    create_typed_histogram_model(
+        dbt_test_helper,
+        "compact_ten_thousand_bins",
+        "INTEGER",
+        ["0", "1", "9999", "10000"],
+    )
+    telemetry = MagicMock()
+    monkeypatch.setattr(histogram, "log_performance", telemetry, raising=False)
+
+    task = HistogramDiffTask(
+        {
+            "model": "compact_ten_thousand_bins",
+            "column_name": "amount",
+            "column_type": "INTEGER",
+            "num_bins": 10000,
+        }
+    )
+    result = task.execute()
+
+    assert task.params.num_bins == 10000
+    assert len(result["bin_edges"]) == 10001
+    assert len(result["base"]["counts"]) == 10000
+    assert {index: count for index, count in enumerate(result["base"]["counts"]) if count} == {
+        0: 1,
+        1: 1,
+        9999: 2,
+    }
+    metrics = telemetry.call_args.args[1]
+    assert metrics["effective_bin_count"] == 10000
+    assert metrics["strategy"] == "duckdb_scaled_integer"
+    assert metrics["sql_length"] < 5000
+
+
+def test_histogram_sql_telemetry_failure_does_not_change_results(monkeypatch):
+    """Catch optional telemetry turning a successful warehouse result into a failed run."""
+    telemetry = MagicMock(side_effect=RuntimeError("telemetry unavailable"))
+    monkeypatch.setattr(histogram, "log_performance", telemetry, raising=False)
+    task = NumericHistogramQueryTask([(0, 2)], [(0, 3)])
+
+    base, current, bin_edges, labels = histogram.query_numeric_histogram(
+        task,
+        "numbers",
+        "amount",
+        "INTEGER",
+        Decimal("0"),
+        Decimal("1"),
+        1,
+        adapter_type="duckdb",
+    )
+
+    assert base == {"counts": [2]}
+    assert current == {"counts": [3]}
+    assert bin_edges == [0, 1]
+    assert labels
+    telemetry.assert_called_once()
+
+
+def test_literal_fallback_reports_its_actual_sql_length(monkeypatch):
+    """Catch fallback telemetry claiming a compact strategy or synthetic query size."""
+    telemetry = MagicMock()
+    monkeypatch.setattr(histogram, "log_performance", telemetry)
+    task = NumericHistogramQueryTask([(0, 2)], [(0, 3)])
+
+    histogram.query_numeric_histogram(
+        task,
+        "numbers",
+        "amount",
+        "DOUBLE",
+        Decimal("0"),
+        Decimal("1"),
+        5,
+        adapter_type="duckdb",
+    )
+
+    metrics = telemetry.call_args.args[1]
+    assert metrics["adapter_type"] == "duckdb"
+    assert metrics["strategy"] == "literal_ordered_comparison"
+    assert metrics["effective_bin_count"] == 5
+    assert metrics["sql_length"] == len(task.executed_sql[0])
+    assert task.executed_sql[0] == task.executed_sql[1]
+
+
+def test_compact_out_of_domain_bucket_still_reaches_the_existing_python_guard(monkeypatch):
+    """Catch telemetry or compact dispatch swallowing the established range error."""
+    monkeypatch.setattr(histogram, "log_performance", MagicMock(), raising=False)
+    task = NumericHistogramQueryTask([(-1, 1)], [(0, 1)])
+
+    with pytest.raises(ValueError, match="outside the computed edge domain"):
+        histogram.query_numeric_histogram(
+            task,
+            "numbers",
+            "amount",
+            "INTEGER",
+            Decimal("0"),
+            Decimal("1"),
+            1,
+            adapter_type="duckdb",
+        )
 
 
 def test_fractional_histogram_uses_decimal_edges_for_labels_and_real_sql_boundaries(dbt_test_helper):
@@ -614,6 +1193,7 @@ def test_validator():
             "model": "customers",
             "column_name": "age",
             "column_type": "int",
+            "num_bins": 1_000_000,
         }
     )
 

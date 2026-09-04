@@ -1,3 +1,4 @@
+import logging
 import math
 import re
 from bisect import bisect_right
@@ -9,11 +10,15 @@ from typing import Optional
 from dateutil.relativedelta import relativedelta
 from pydantic import BaseModel
 
+from recce.adapter.histogram_bucketing import select_histogram_bucketing
 from recce.core import default_context
+from recce.event import log_performance
 from recce.models import Check
 from recce.tasks import Task
 from recce.tasks.core import CheckValidator, TaskResultDiffer
 from recce.tasks.query import QueryMixin
+
+logger = logging.getLogger("uvicorn")
 
 sql_datetime_types = [
     "DATE",
@@ -279,6 +284,81 @@ def _generate_histogram_sql(node, column, min_value, max_value, num_bins, bin_si
     return sql, bin_size
 
 
+@dataclass(frozen=True)
+class _GeneratedHistogramSql:
+    sql: str
+    bin_size: Decimal
+    strategy: str
+
+
+def _generate_histogram_sql_for_adapter(
+    node,
+    column,
+    min_value,
+    max_value,
+    num_bins,
+    bin_size,
+    *,
+    adapter_type,
+    column_type,
+):
+    plan = select_histogram_bucketing(
+        adapter_type=adapter_type,
+        column_sql=column,
+        column_type=column_type,
+        minimum=min_value,
+        maximum=max_value,
+        width=bin_size,
+        num_bins=num_bins,
+    )
+    if plan.bin_expression is None:
+        sql, exact_bin_size = _generate_histogram_sql(
+            node,
+            column,
+            min_value,
+            max_value,
+            num_bins,
+            bin_size,
+        )
+        return _GeneratedHistogramSql(sql=sql, bin_size=exact_bin_size, strategy=plan.strategy)
+
+    min_literal = _decimal_sql_literal(min_value)
+    max_literal = _decimal_sql_literal(max_value)
+    bin_size_literal = _decimal_sql_literal(bin_size)
+    sql = f"""
+    WITH value_ranges AS (
+        SELECT
+            {min_literal} as min_value,
+            {max_literal} as max_value
+    ),
+    bin_parameters AS (
+        SELECT
+            min_value,
+            max_value,
+            {bin_size_literal} AS bin_size
+        FROM value_ranges
+    ),
+    binned_values AS (
+        SELECT
+            {column} as column_value,
+            {plan.bin_expression} AS bin
+        FROM {{{{ ref("{node}") }}}},
+        bin_parameters
+    ),
+    bin_edges AS (
+        SELECT
+            bin,
+            COUNT(*) AS count
+        FROM binned_values, bin_parameters
+        GROUP BY bin
+        ORDER BY bin
+    )
+
+    SELECT bin, count FROM bin_edges
+    """
+    return _GeneratedHistogramSql(sql=sql, bin_size=_decimal_value(bin_size), strategy=plan.strategy)
+
+
 def generate_histogram_sql_integer(node, column, min_value, max_value, num_bins=50, bin_size=None):
     if bin_size is None:
         bin_size = Decimal(max(math.ceil((max_value - min_value) / num_bins), 1))
@@ -303,16 +383,97 @@ def _validate_histogram_column_type(column_type: str) -> None:
         raise ValueError(f"Column type {column_type} is not supported for histogram analysis")
 
 
-def query_numeric_histogram(task, node, column, column_type, min_value, max_value, num_bins=50):
+def _emit_histogram_sql_telemetry(adapter_type, strategy, effective_bin_count, sql_length):
+    try:
+        normalized_adapter_type = adapter_type.strip().lower() if isinstance(adapter_type, str) else "unknown"
+        log_performance(
+            "histogram_sql",
+            {
+                "adapter_type": normalized_adapter_type,
+                "strategy": strategy,
+                "effective_bin_count": effective_bin_count,
+                "sql_length": sql_length,
+            },
+        )
+    except Exception:
+        logger.debug("histogram SQL telemetry emit failed", exc_info=True)
+
+
+def _normalize_physical_column_type(column_type):
+    return " ".join(column_type.strip().upper().split()) if isinstance(column_type, str) else ""
+
+
+def _shared_compact_column_type(base_column_type, current_column_type):
+    base_normalized = _normalize_physical_column_type(base_column_type)
+    current_normalized = _normalize_physical_column_type(current_column_type)
+    if not base_normalized or base_normalized != current_normalized:
+        return None
+    return base_normalized
+
+
+def _get_physical_histogram_column_types(dbt_adapter, node, column):
+    """Resolve both runtime relation types, returning unknowns on any uncertainty."""
+    get_columns = getattr(dbt_adapter, "get_columns", None)
+    if not callable(get_columns):
+        return None, None
+
+    physical_types = []
+    for base in (True, False):
+        try:
+            columns = get_columns(node, base=base)
+            matches = [
+                candidate
+                for candidate in columns
+                if str(getattr(candidate, "column", "")).casefold() == str(column).casefold()
+            ]
+            if len(matches) != 1:
+                return None, None
+            column_type = getattr(matches[0], "dtype", None)
+            if not _normalize_physical_column_type(column_type):
+                return None, None
+            physical_types.append(column_type)
+        except Exception:
+            logger.debug("histogram physical column type lookup failed", exc_info=True)
+            return None, None
+    return physical_types[0], physical_types[1]
+
+
+def query_numeric_histogram(
+    task,
+    node,
+    column,
+    column_type,
+    min_value,
+    max_value,
+    num_bins=50,
+    *,
+    adapter_type=None,
+    base_column_type=None,
+    current_column_type=None,
+):
     is_integer = is_integral_histogram_type(column_type)
     geometry = numeric_histogram_geometry(min_value, max_value, num_bins, is_integer=is_integer)
     min_edge = geometry.bin_edges[0]
     max_edge = geometry.bin_edges[-1]
     num_bins = geometry.num_bins
-    if is_integer:
-        histogram_sql, _ = generate_histogram_sql_integer(node, column, min_edge, max_edge, num_bins, geometry.width)
-    else:
-        histogram_sql, _ = generate_histogram_sql_numeric(node, column, min_edge, max_edge, num_bins, geometry.width)
+    compact_column_type = _shared_compact_column_type(base_column_type, current_column_type)
+    generated_sql = _generate_histogram_sql_for_adapter(
+        node,
+        column,
+        min_edge,
+        max_edge,
+        num_bins,
+        geometry.width,
+        adapter_type=adapter_type,
+        column_type=compact_column_type,
+    )
+    histogram_sql = generated_sql.sql
+    _emit_histogram_sql_telemetry(
+        adapter_type,
+        generated_sql.strategy,
+        num_bins,
+        len(histogram_sql),
+    )
 
     base = None
     try:
@@ -498,6 +659,7 @@ class HistogramDiffTask(Task, QueryMixin):
         result = {}
 
         dbt_adapter: DbtAdapter = default_context().adapter
+        adapter_type = dbt_adapter.adapter.type()
         node = self.params.model
         column = self.params.column_name
         num_bins = self.params.num_bins or 50
@@ -550,8 +712,25 @@ class HistogramDiffTask(Task, QueryMixin):
                     self, node, column, min_value, max_value
                 )
             else:
+                base_column_type = None
+                current_column_type = None
+                if isinstance(adapter_type, str) and adapter_type.strip().lower() == "duckdb":
+                    base_column_type, current_column_type = _get_physical_histogram_column_types(
+                        dbt_adapter,
+                        node,
+                        column,
+                    )
                 base_result, current_result, bin_edges, labels = query_numeric_histogram(
-                    self, node, column, column_type, min_value, max_value, num_bins
+                    self,
+                    node,
+                    column,
+                    column_type,
+                    min_value,
+                    max_value,
+                    num_bins,
+                    adapter_type=adapter_type,
+                    base_column_type=base_column_type,
+                    current_column_type=current_column_type,
                 )
             if base_result:
                 base_result["total"] = base_total

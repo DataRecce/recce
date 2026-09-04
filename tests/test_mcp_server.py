@@ -1465,6 +1465,36 @@ class TestRecceMCPServer:
         mock_context.get_model.assert_called_once_with("model.project.my_model", base=False)
 
     @pytest.mark.asyncio
+    async def test_tool_histogram_diff_forwards_unbounded_num_bins(self, mcp_server):
+        """Catch the MCP surface imposing a cap absent from direct histogram requests."""
+        server, mock_context = mcp_server
+        mock_context.build_name_to_unique_id_index.return_value = {"my_model": "model.project.my_model"}
+        mock_context.get_model.return_value = {
+            "columns": {"age": {"name": "age", "type": "INTEGER"}},
+        }
+        mock_result = {
+            "base": {"counts": [], "total": 0},
+            "current": {"counts": [], "total": 0},
+            "min": None,
+            "max": None,
+            "bin_edges": [],
+            "labels": [],
+        }
+
+        with patch("recce.mcp_server.HistogramDiffTask") as task_type:
+            task_type.return_value.execute.return_value = mock_result
+            await server._tool_histogram_diff({"model": "my_model", "column_name": "age", "num_bins": 1_000_000})
+
+        task_type.assert_called_once_with(
+            params={
+                "model": "my_model",
+                "column_name": "age",
+                "num_bins": 1_000_000,
+                "column_type": "INTEGER",
+            }
+        )
+
+    @pytest.mark.asyncio
     async def test_tool_histogram_diff_missing_model(self, mcp_server):
         """Test histogram_diff raises when model is missing"""
         server, _ = mcp_server
