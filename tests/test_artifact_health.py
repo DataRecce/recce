@@ -272,6 +272,71 @@ def test_unreadable_manifest_entry_shrinks_nothing_and_stays_unknown() -> None:
     assert health.expected_node_ids == frozenset()
 
 
+@pytest.mark.parametrize("catalog", [None, _catalog(models=("model.pkg.orders",))], ids=["no-catalog", "with-catalog"])
+def test_catalog_in_manifest_slot_is_unknown(catalog: dict[str, Any] | None) -> None:
+    catalog_shaped_manifest = _catalog(models=("model.pkg.orders",))
+
+    health = classify_artifact_health(catalog_shaped_manifest, catalog)
+
+    assert health.status == "unknown"
+    assert health.expected_node_ids == frozenset()
+    assert health.covered_node_ids == frozenset()
+    assert health.catalog_node_ids == frozenset()
+
+
+@pytest.mark.parametrize(
+    "invalid_resource_type",
+    [None, "", 42],
+    ids=["missing", "empty", "not-a-string"],
+)
+def test_manifest_rejects_any_node_without_a_nonempty_string_resource_type(
+    invalid_resource_type: object,
+) -> None:
+    manifest = _manifest(models=1)
+    malformed_node: dict[str, Any] = {"config": {"materialized": "table"}}
+    if invalid_resource_type is not None:
+        malformed_node["resource_type"] = invalid_resource_type
+    manifest["nodes"]["model.pkg.malformed"] = malformed_node
+
+    health = classify_artifact_health(manifest, _catalog(models=("model.pkg.m0",)))
+
+    assert health.status == "unknown"
+    assert health.expected_node_ids == frozenset()
+
+
+def test_recognized_non_relation_manifest_nodes_remain_not_applicable() -> None:
+    manifest = {
+        "nodes": {
+            "test.pkg.unique_orders": {
+                "resource_type": "test",
+                "config": {"materialized": "test"},
+            }
+        }
+    }
+
+    health = classify_artifact_health(manifest, _catalog(models=()))
+
+    assert health.status == "not_applicable"
+    assert health.expected_node_ids == frozenset()
+
+
+def test_canonical_artifact_health_payload_has_exactly_ten_keys() -> None:
+    payload = artifact_health_payload(classify_artifact_health(_manifest(models=1), _catalog(models=())))
+
+    assert set(payload) == {
+        "status",
+        "expected_count",
+        "covered_count",
+        "catalog_entry_count",
+        "missing_node_count",
+        "missing_nodes",
+        "missing_more",
+        "orphan_node_count",
+        "orphan_nodes",
+        "orphan_more",
+    }
+
+
 def test_malformed_non_dict_manifest_nodes_are_unknown() -> None:
     health = classify_artifact_health({"nodes": []}, _catalog(models=()))
 

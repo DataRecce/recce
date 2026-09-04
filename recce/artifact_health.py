@@ -61,7 +61,10 @@ def _manifest_expected_node_ids(manifest: Mapping[str, Any]) -> frozenset[str] |
     for node_id, node in nodes.items():
         if not isinstance(node_id, str) or not isinstance(node, Mapping):
             return None
-        if node.get("resource_type") not in _ELIGIBLE_RESOURCE_TYPES:
+        resource_type = node.get("resource_type")
+        if not isinstance(resource_type, str) or not resource_type:
+            return None
+        if resource_type not in _ELIGIBLE_RESOURCE_TYPES:
             continue
         config = node.get("config")
         materialized = config.get("materialized") if isinstance(config, Mapping) else None
