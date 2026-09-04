@@ -117,6 +117,7 @@ export type {
   HistogramDiffParams,
   HistogramDiffResult,
   HistogramResult,
+  HistogramWireValue,
   ProfileDiffParams,
   ProfileDiffResult,
   ProfileDiffViewOptions,

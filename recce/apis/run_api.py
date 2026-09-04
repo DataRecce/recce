@@ -70,7 +70,7 @@ async def create_run_handler(input: CreateRunIn):
     )
     try:
         run, future = submit_run(input.type, input.params, check_id=input.check_id, triggered_by="user")
-    except RecceException as e:
+    except (RecceException, ValueError) as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     if input.nowait:

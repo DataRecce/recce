@@ -97,6 +97,7 @@ vi.mock("@datarecce/ui/hooks", () => ({
 // ============================================================================
 
 import { HistogramDiffResultView } from "@datarecce/ui/components/histogram";
+import { findByRunType } from "@datarecce/ui/components/run";
 import { screen } from "@testing-library/react";
 import React from "react";
 import {
@@ -468,6 +469,41 @@ describe("HistogramDiffResultView", () => {
       expect(mockHistogramChart).toHaveBeenCalledWith(
         expect.objectContaining({
           dataType: "datetime",
+        }),
+      );
+    });
+
+    it("normalizes a serialized saved run through the OSS run registry", () => {
+      const run = createHistogramDiffRun();
+      run.params = {
+        model: "orders",
+        column_name: "created_at",
+        column_type: " year ( 4 ) ",
+      };
+      run.result = {
+        base: { counts: [2, 3], total: 5 },
+        current: { counts: [5, 7], total: 12 },
+        min: "2026-01-01T00:00:00",
+        max: "2026-01-02T16:00:00-08:00",
+        bin_edges: ["2026-01-01", "2026-01-02", "2026-01-03"],
+      };
+      const savedRun = JSON.parse(JSON.stringify(run)) as typeof run;
+      const SavedResultView = findByRunType(savedRun.type).RunResultView;
+      if (!SavedResultView)
+        throw new Error("Histogram result view is not registered");
+
+      renderWithProviders(<SavedResultView run={savedRun} />);
+
+      expect(mockHistogramChart).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dataType: "datetime",
+          min: Date.UTC(2026, 0, 1),
+          max: Date.UTC(2026, 0, 3),
+          binEdges: [
+            Date.UTC(2026, 0, 1),
+            Date.UTC(2026, 0, 2),
+            Date.UTC(2026, 0, 3),
+          ],
         }),
       );
     });

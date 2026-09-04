@@ -144,7 +144,7 @@ const CATEGORY_MAP: Record<string, TypeCategory> = {
  * - Special case: TINYINT(1) maps to "boolean", plain TINYINT maps to "integer"
  */
 export function classifyType(rawType: string): TypeCategory {
-  const trimmed = rawType.trim().toUpperCase();
+  const trimmed = rawType.trim().toUpperCase().replace(/\s+/g, " ");
 
   if (!trimmed) {
     return "unknown";

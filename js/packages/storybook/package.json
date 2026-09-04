@@ -27,7 +27,6 @@
     "@vitejs/plugin-react": "^6.0.5",
     "@vitest/browser-playwright": "^4.1.10",
     "@vitest/coverage-v8": "^4.1.10",
-    "chartjs-adapter-date-fns": "^3.0.0",
     "msw": "^2.15.0",
     "playwright": "^1.62.1",
     "storybook": "^10.5.7",

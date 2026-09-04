@@ -1465,6 +1465,36 @@ class TestRecceMCPServer:
         mock_context.get_model.assert_called_once_with("model.project.my_model", base=False)
 
     @pytest.mark.asyncio
+    async def test_tool_histogram_diff_forwards_unbounded_num_bins(self, mcp_server):
+        """Catch the MCP surface imposing a cap absent from direct histogram requests."""
+        server, mock_context = mcp_server
+        mock_context.build_name_to_unique_id_index.return_value = {"my_model": "model.project.my_model"}
+        mock_context.get_model.return_value = {
+            "columns": {"age": {"name": "age", "type": "INTEGER"}},
+        }
+        mock_result = {
+            "base": {"counts": [], "total": 0},
+            "current": {"counts": [], "total": 0},
+            "min": None,
+            "max": None,
+            "bin_edges": [],
+            "labels": [],
+        }
+
+        with patch("recce.mcp_server.HistogramDiffTask") as task_type:
+            task_type.return_value.execute.return_value = mock_result
+            await server._tool_histogram_diff({"model": "my_model", "column_name": "age", "num_bins": 1_000_000})
+
+        task_type.assert_called_once_with(
+            params={
+                "model": "my_model",
+                "column_name": "age",
+                "num_bins": 1_000_000,
+                "column_type": "INTEGER",
+            }
+        )
+
+    @pytest.mark.asyncio
     async def test_tool_histogram_diff_missing_model(self, mcp_server):
         """Test histogram_diff raises when model is missing"""
         server, _ = mcp_server
@@ -1487,6 +1517,121 @@ class TestRecceMCPServer:
 
         with pytest.raises(ValueError, match="Cannot determine column type"):
             await server._tool_histogram_diff({"model": "my_model", "column_name": "unknown"})
+
+    @pytest.mark.asyncio
+    async def test_tool_histogram_diff_rejects_time_alias_before_sql(self, mcp_server):
+        """Catch MCP direct histogram analysis sending a time-only alias to SQL."""
+        server, mock_context = mcp_server
+        mock_context.build_name_to_unique_id_index.return_value = {"my_model": "model.project.my_model"}
+        mock_context.get_model.return_value = {
+            "columns": {"event_time": {"name": "event_time", "type": "TIME(6) WITH TIME ZONE"}},
+        }
+
+        task_context = MagicMock()
+        task_context.adapter = MagicMock()
+        with (
+            patch("recce.tasks.histogram.default_context", return_value=task_context),
+            patch.object(
+                HistogramDiffTask,
+                "execute_sql",
+                side_effect=AssertionError("time-only type reached SQL"),
+            ),
+        ):
+            with pytest.raises(ValueError, match="not supported for histogram analysis"):
+                await server._tool_histogram_diff({"model": "my_model", "column_name": "event_time"})
+
+    @pytest.mark.asyncio
+    async def test_tool_create_check_rejects_time_histogram_before_persistence(self, mcp_server):
+        """Catch MCP create_check persisting or running a time-only histogram."""
+        server, _ = mcp_server
+        check_dao = MagicMock()
+        check_dao.list.return_value = []
+        check_dao.create.return_value = Check(
+            name="time histogram",
+            type=RunType.HISTOGRAM_DIFF,
+            params={
+                "model": "my_model",
+                "column_name": "event_time",
+                "column_type": "TIME(6) WITH TIME ZONE",
+            },
+        )
+
+        with (
+            patch("recce.models.CheckDAO", return_value=check_dao),
+            patch("recce.apis.check_func.CheckDAO", return_value=check_dao),
+        ):
+            with pytest.raises(ValueError, match="not supported for histogram analysis"):
+                await server._tool_create_check(
+                    {
+                        "type": "histogram_diff",
+                        "name": "time histogram",
+                        "params": {
+                            "model": "my_model",
+                            "column_name": "event_time",
+                            "column_type": "TIME(6) WITH TIME ZONE",
+                        },
+                    }
+                )
+
+        check_dao.create.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_tool_create_check_validates_existing_time_histogram_before_update(self, mcp_server):
+        """Catch idempotent MCP create mutating metadata before legacy params are rejected."""
+        server, _ = mcp_server
+        params = {
+            "model": "my_model",
+            "column_name": "event_time",
+            "column_type": "TIME(6) WITH TIME ZONE",
+        }
+        existing_check = Check(
+            name="original name",
+            description="original description",
+            type=RunType.HISTOGRAM_DIFF,
+            params=params,
+        )
+        check_dao = MagicMock()
+        check_dao.list.return_value = [existing_check]
+
+        with patch("recce.models.CheckDAO", return_value=check_dao):
+            with pytest.raises(ValueError, match="not supported for histogram analysis"):
+                await server._tool_create_check(
+                    {
+                        "type": "histogram_diff",
+                        "name": "mutated name",
+                        "description": "mutated description",
+                        "params": params,
+                    }
+                )
+
+        check_dao.update_check_by_id.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_tool_run_check_rejects_time_histogram_before_submission(self, mcp_server):
+        """Catch MCP run_check queuing a legacy time-only histogram."""
+        server, _ = mcp_server
+        check = Check(
+            name="time histogram",
+            type=RunType.HISTOGRAM_DIFF,
+            params={
+                "model": "my_model",
+                "column_name": "event_time",
+                "column_type": "TIME(6) WITH TIME ZONE",
+            },
+        )
+        check_dao = MagicMock()
+        check_dao.find_check_by_id.return_value = check
+
+        run_context = MagicMock()
+        run_context.adapter_type = "dbt"
+        run_context.review_mode = False
+        with (
+            patch("recce.models.CheckDAO", return_value=check_dao),
+            patch("recce.apis.run_func.default_context", return_value=run_context),
+            patch("recce.apis.run_func.RunDAO", return_value=MagicMock()),
+        ):
+            with pytest.raises(ValueError, match="not supported for histogram analysis"):
+                await server._tool_run_check({"check_id": str(check.check_id)})
 
     @pytest.mark.asyncio
     async def test_tool_get_model(self, mcp_server):
@@ -3883,7 +4028,7 @@ class TestLocalModeRunBacked:
             patch.object(
                 RecceContext,
                 "get_model",
-                return_value={"columns": {"status": {"name": "status", "type": "VARCHAR"}}},
+                return_value={"columns": {"status": {"name": "status", "type": "INTEGER"}}},
             ),
         ):
             result = await getattr(server, tool_method)(args)

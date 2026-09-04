@@ -17,12 +17,15 @@ import type { ForwardRefExoticComponent, RefAttributes } from "react";
 import {
   type HistogramDiffParams,
   type HistogramDiffResult,
+  type HistogramWireValue,
   isHistogramDiffRun,
   type Run,
 } from "../../api";
 import { HistogramChart, type HistogramDataType } from "../../primitives";
 import { createResultView } from "../result/createResultView";
 import type { CreatedResultViewProps, ResultViewData } from "../result/types";
+import { isDatetimeHistogramType } from "./histogramType";
+import { parseHistogramTimestamp } from "./histogramWire";
 
 // ============================================================================
 // Type Definitions
@@ -51,6 +54,12 @@ export interface HistogramResultViewProps
 
 function isHistogramDiffRunGuard(run: unknown): run is HistogramDiffRun {
   return isHistogramDiffRun(run as Run);
+}
+
+function toOptionalEpochMilliseconds(
+  value: HistogramWireValue | null | undefined,
+): number | undefined {
+  return value == null ? undefined : parseHistogramTimestamp(value);
 }
 
 // ============================================================================
@@ -100,12 +109,35 @@ export const HistogramDiffResultView = createResultView<
 
     // Map column_type to HistogramDataType
     const columnType = (run.params?.column_type ?? "numeric") as string;
-    const dataType: HistogramDataType =
-      columnType === "datetime"
-        ? "datetime"
-        : columnType === "string"
-          ? "string"
-          : "numeric";
+    const dataType: HistogramDataType = isDatetimeHistogramType(columnType)
+      ? "datetime"
+      : columnType === "string"
+        ? "string"
+        : "numeric";
+    let chartMin: number | undefined;
+    let chartMax: number | undefined;
+    let chartBinEdges: number[];
+    try {
+      chartMin =
+        dataType === "datetime"
+          ? toOptionalEpochMilliseconds(min)
+          : (min as number | undefined);
+      chartMax =
+        dataType === "datetime"
+          ? toOptionalEpochMilliseconds(max)
+          : (max as number | undefined);
+      chartBinEdges =
+        dataType === "datetime"
+          ? binEdges.map(parseHistogramTimestamp)
+          : (binEdges as number[]);
+    } catch {
+      return {
+        content: <div>Invalid histogram data</div>,
+      };
+    }
+
+    const baseCounts = Array.isArray(base.counts) ? base.counts : [];
+    const currentCounts = Array.isArray(current.counts) ? current.counts : [];
 
     return {
       content: (
@@ -115,12 +147,12 @@ export const HistogramDiffResultView = createResultView<
             <HistogramChart
               title={`Model ${params.model}.${params.column_name}`}
               dataType={dataType}
-              baseData={{ counts: base.counts }}
-              currentData={{ counts: current.counts }}
-              min={min}
-              max={max}
-              samples={base.total}
-              binEdges={binEdges}
+              baseData={{ counts: baseCounts }}
+              currentData={{ counts: currentCounts }}
+              min={chartMin}
+              max={chartMax}
+              samples={base.total ?? 0}
+              binEdges={chartBinEdges}
               theme={isDark ? "dark" : "light"}
             />
           </Box>

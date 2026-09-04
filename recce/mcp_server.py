@@ -2799,6 +2799,7 @@ class RecceMCPServer:
         """Create a persistent check from analysis findings."""
         from recce.apis.check_api import PatchCheckIn
         from recce.apis.check_func import (
+            _validate_check,
             create_check_without_run,
             export_persistent_state,
         )
@@ -2811,6 +2812,9 @@ class RecceMCPServer:
         name = arguments["name"]
         description = arguments.get("description", "")
         approve = arguments.get("approve", True)
+
+        if check_type == RunType.HISTOGRAM_DIFF:
+            _validate_check(check_type, params)
 
         # Idempotency: find existing check with same (type, params)
         check_dao = CheckDAO()
