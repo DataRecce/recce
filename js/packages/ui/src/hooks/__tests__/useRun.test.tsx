@@ -9,7 +9,7 @@
  * - New run submission (resets isRunning and completedRunIdRef)
  * - RunResultView component resolution
  * - Cancel functionality
- * - Aggregated runs refetch for row_count types
+ * - Aggregated runs refetch for lineage aggregate run types
  */
 
 import { vi } from "vitest";
@@ -596,13 +596,33 @@ describe("useRun", () => {
       });
     });
 
-    it("does not refetch aggregated runs for other run types", async () => {
-      const valueDiffRun = createMockRun({
-        type: "value_diff",
-        result: { diff: [] },
+    it.each(["value_diff", "profile_diff", "top_k_diff", "histogram_diff"])(
+      "refetches aggregated runs when %s completes",
+      async (runType) => {
+        const validationRun = createMockRun({
+          type: runType,
+          result: { available: true },
+          status: "Finished",
+        });
+        mockWaitRun.mockResolvedValue(validationRun);
+
+        renderHook(() => useRun("test-run-id"), {
+          wrapper: createWrapper(),
+        });
+
+        await waitFor(() => {
+          expect(mockRefetchRunsAggregated).toHaveBeenCalled();
+        });
+      },
+    );
+
+    it("does not refetch aggregated runs for an unrelated run type", async () => {
+      const queryRun = createMockRun({
+        type: "query",
+        result: { data: [] },
         status: "Finished",
       });
-      mockWaitRun.mockResolvedValue(valueDiffRun);
+      mockWaitRun.mockResolvedValue(queryRun);
 
       const { result } = renderHook(() => useRun("test-run-id"), {
         wrapper: createWrapper(),
