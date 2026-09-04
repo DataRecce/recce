@@ -133,6 +133,17 @@ function validationSummaryLabel(summary: ValidationSummary) {
   return `${resultLabel} · ${countLabel(summary.types.value_diff.difference_count, "diff")}`;
 }
 
+function hasPositiveValidationResultCount(
+  summary: ValidationSummary | undefined,
+) {
+  const resultCount = summary?.result_count;
+  return (
+    typeof resultCount === "number" &&
+    Number.isFinite(resultCount) &&
+    resultCount > 0
+  );
+}
+
 function ValidationSummaryDetails({ summary }: { summary: ValidationSummary }) {
   const { value_diff, profile_diff, top_k_diff, histogram_diff } =
     summary.types;
@@ -313,6 +324,7 @@ function ValidationSummaryChip({
             aria-label={`${nodeName} validation details`}
             className="nodrag nopan nokey"
             onClick={stopPropagation}
+            onContextMenu={stopPropagation}
             onDoubleClick={stopPropagation}
             onKeyDown={handlePopoverKeyDown}
             onKeyUp={stopPropagation}
@@ -340,6 +352,7 @@ function NodeRunsAggregatedDisplay({
   nodeName,
   runs,
   schemaChanged,
+  showValidationSummary,
   onOpenAnalysis,
 }: {
   inverted: boolean;
@@ -347,6 +360,7 @@ function NodeRunsAggregatedDisplay({
   nodeName: string;
   runs: NodeRunsAggregated | undefined;
   schemaChanged: boolean | undefined;
+  showValidationSummary: boolean;
   onOpenAnalysis: (nodeId: string) => void;
 }) {
   const { text, isDark } = useThemeColors();
@@ -397,7 +411,7 @@ function NodeRunsAggregatedDisplay({
         </MuiTooltip>
       )}
       <Box sx={{ flexGrow: 1 }} />
-      {runs?.validation_summary && (
+      {showValidationSummary && runs?.validation_summary && (
         <ValidationSummaryChip
           nodeId={nodeId}
           nodeName={nodeName}
@@ -600,10 +614,13 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
     data.change?.columns == null
       ? undefined
       : Object.keys(data.change.columns).length > 0;
+  const showValidationSummary = hasPositiveValidationResultCount(
+    nodeRuns?.validation_summary,
+  );
   const hasVisibleRunsAggregatedData =
     schemaChanged !== undefined ||
     nodeRuns?.row_count_diff !== undefined ||
-    nodeRuns?.validation_summary !== undefined;
+    showValidationSummary;
   const runsAggregatedTag =
     selectMode !== "action_result" &&
     data.resourceType === "model" &&
@@ -615,6 +632,7 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
         onOpenAnalysis={(nodeId) => openNodeDetails(nodeId, "analysis")}
         runs={nodeRuns}
         schemaChanged={schemaChanged}
+        showValidationSummary={showValidationSummary}
       />
     ) : undefined;
 

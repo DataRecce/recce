@@ -250,6 +250,64 @@ describe("GraphNode", () => {
   });
 
   it.each([
+    ["zero", 0],
+    ["negative", -1],
+    ["NaN", Number.NaN],
+    ["infinite", Number.POSITIVE_INFINITY],
+  ])(
+    "does not mount an otherwise-empty aggregate display for a %s validation result count",
+    (_label, resultCount) => {
+      mockViewContext.current = createViewContext();
+      mockGraphContext.current = {
+        runsAggregated: {
+          "model.test.orders": {
+            validation_summary: validationSummary(resultCount, 0, {}),
+          },
+        },
+      };
+
+      render(<GraphNode {...createNodeProps()} />);
+
+      expect(mockLineageNode).toHaveBeenLastCalledWith(
+        expect.objectContaining({ runsAggregatedTag: undefined }),
+      );
+      expect(
+        screen.queryByTestId("node-runs-aggregated-display"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId("validation-summary-chip")).toBeNull();
+    },
+  );
+
+  it("preserves schema and row-count evidence while hiding a zero-result validation summary", () => {
+    const props = createNodeProps();
+    props.data.change = {
+      category: "non_breaking", // wire-enum-ok
+      columns: { id: "modified" },
+    };
+    mockViewContext.current = createViewContext();
+    mockGraphContext.current = {
+      runsAggregated: {
+        "model.test.orders": {
+          row_count_diff: {
+            run_id: "row-count-1",
+            result: { base: 100, curr: 150 },
+          },
+          validation_summary: validationSummary(0, 0, {}),
+        },
+      },
+    };
+
+    render(<GraphNode {...props} />);
+
+    expect(
+      screen.getByTestId("node-runs-aggregated-display"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Schema (changed)")).toBeInTheDocument();
+    expect(screen.getByText("↑ +50.0% Rows")).toBeInTheDocument();
+    expect(screen.queryByTestId("validation-summary-chip")).toBeNull();
+  });
+
+  it.each([
     {
       name: "value diff",
       summary: validationSummary(1, 1, {
