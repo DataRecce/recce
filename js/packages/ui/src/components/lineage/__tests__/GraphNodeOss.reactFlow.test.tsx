@@ -74,6 +74,7 @@ function renderInReactFlow(selectMode: SelectMode = undefined) {
   const node = createNode();
   const onNodeClick = vi.fn();
   const onNodeDoubleClick = vi.fn();
+  const onNodeContextMenu = vi.fn();
   const onNodeDragStart = vi.fn();
   const onNodesChange = vi.fn();
   const openNodeDetails = vi.fn();
@@ -107,6 +108,7 @@ function renderInReactFlow(selectMode: SelectMode = undefined) {
             nodeTypes={nodeTypes}
             onNodeClick={onNodeClick}
             onNodeDoubleClick={onNodeDoubleClick}
+            onNodeContextMenu={onNodeContextMenu}
             onNodeDragStart={onNodeDragStart}
             onNodesChange={onNodesChange}
             elementsSelectable
@@ -121,6 +123,7 @@ function renderInReactFlow(selectMode: SelectMode = undefined) {
   return {
     onNodeClick,
     onNodeDoubleClick,
+    onNodeContextMenu,
     onNodeDragStart,
     onNodesChange,
     openNodeDetails,
@@ -174,11 +177,19 @@ describe("GraphNode React Flow interaction isolation", () => {
       fireEvent.mouseDown(dialog, { button: 0 });
       fireEvent.click(dialog);
       fireEvent.doubleClick(dialog);
+      const contextMenuEvent = new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+      });
+      fireEvent(dialog, contextMenuEvent);
 
       expect(callbacks.onNodeClick).not.toHaveBeenCalled();
       expect(callbacks.onNodeDoubleClick).not.toHaveBeenCalled();
+      expect(callbacks.onNodeContextMenu).not.toHaveBeenCalled();
       expect(callbacks.onNodeDragStart).not.toHaveBeenCalled();
       expect(callbacks.onNodesChange).not.toHaveBeenCalled();
+      expect(contextMenuEvent.defaultPrevented).toBe(false);
+      expect(dialog).toBeInTheDocument();
     },
   );
 });
