@@ -1,15 +1,18 @@
 import asyncio
 import logging
+from collections.abc import Mapping
 from datetime import timezone
 from typing import List, Optional, Tuple
 
 import dateutil.parser
+from pydantic import BaseModel
 
 from recce.core import default_context
 from recce.exceptions import DuckDBExternalAccessBlocked, RecceException
 from recce.models import Run, RunDAO, RunType
 from recce.models.types import RunStatus
 from recce.tasks.core import Task
+from recce.util.pydantic_model import pydantic_model_dump
 
 running_tasks = {}
 logger = logging.getLogger("uvicorn")
@@ -352,18 +355,42 @@ def _run_recency_key(run: Run):
     return timestamp, str(run.run_id)
 
 
-def _value_diff_difference_count(result: dict) -> int:
-    """Count value-diff columns whose matched proportion is below one."""
-    rows = result.get("data", {}).get("data", [])
+def _result_mapping(value):
+    """Normalize persisted mappings and live Pydantic task results."""
+    if isinstance(value, Mapping):
+        return value
+    if isinstance(value, BaseModel):
+        try:
+            dumped = pydantic_model_dump(value)
+        except Exception:
+            return None
+        return dumped if isinstance(dumped, Mapping) else None
+    return None
+
+
+def _value_diff_difference_count(result) -> Optional[int]:
+    """Count mismatched columns, or reject an unusable imported result."""
+    result_mapping = _result_mapping(result)
+    if result_mapping is None:
+        return None
+    dataframe = _result_mapping(result_mapping.get("data"))
+    if dataframe is None:
+        return None
+    rows = dataframe.get("data")
+    if not isinstance(rows, (list, tuple)):
+        return None
+
     difference_count = 0
     for row in rows:
-        if not isinstance(row, (list, tuple)) or len(row) < 3 or row[2] is None:
+        if not isinstance(row, (list, tuple)) or len(row) < 3:
+            return None
+        if row[2] is None:
             continue
         try:
             if float(row[2]) < 1:
                 difference_count += 1
         except (TypeError, ValueError):
-            continue
+            return None
     return difference_count
 
 
@@ -416,15 +443,20 @@ def materialize_run_results(runs: List[Run], nodes: List[str] = None):
             if not isinstance(model_name, str) or not model_name:
                 continue
 
+            column_name = None
+            if run.type in _COLUMN_VALIDATION_RUN_TYPES:
+                column_name = params.get("column_name")
+                if not isinstance(column_name, str) or not column_name:
+                    continue
+            elif run.type == RunType.VALUE_DIFF and _value_diff_difference_count(run.result) is None:
+                continue
+
             key = name_to_unique_id.get(model_name, model_name)
             if nodes and key not in nodes:
                 continue
 
             node_runs = latest_validation_runs.setdefault(key, {})
             if run.type in _COLUMN_VALIDATION_RUN_TYPES:
-                column_name = params.get("column_name")
-                if not isinstance(column_name, str) or not column_name:
-                    continue
                 column_runs = node_runs.setdefault(run.type, {})
                 previous = column_runs.get(column_name)
                 if previous is None or _run_recency_key(run) > _run_recency_key(previous):
@@ -441,13 +473,15 @@ def materialize_run_results(runs: List[Run], nodes: List[str] = None):
 
         value_diff_run = node_runs.get(RunType.VALUE_DIFF)
         if value_diff_run is not None:
-            difference_count = _value_diff_difference_count(value_diff_run.result)
-            validation_types[RunType.VALUE_DIFF.value] = {
-                "latest_run_id": value_diff_run.run_id,
-                "difference_count": difference_count,
-                "result_available": True,
-            }
-            result_count += 1
+            value_difference_count = _value_diff_difference_count(value_diff_run.result)
+            if value_difference_count is not None:
+                difference_count = value_difference_count
+                validation_types[RunType.VALUE_DIFF.value] = {
+                    "latest_run_id": value_diff_run.run_id,
+                    "difference_count": difference_count,
+                    "result_available": True,
+                }
+                result_count += 1
 
         profile_diff_run = node_runs.get(RunType.PROFILE_DIFF)
         if profile_diff_run is not None:
@@ -473,6 +507,8 @@ def materialize_run_results(runs: List[Run], nodes: List[str] = None):
             }
             result_count += column_count
 
+        if not validation_types:
+            continue
         result.setdefault(key, {})["validation_summary"] = {
             "result_count": result_count,
             "difference_count": difference_count,

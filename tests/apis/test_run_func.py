@@ -24,6 +24,7 @@ from pydantic import BaseModel
 from recce.apis.run_func import materialize_run_results
 from recce.models.types import Run, RunStatus, RunType
 from recce.state import FileStateLoader, RecceState
+from recce.tasks.valuediff import ValueDiffResult
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -378,6 +379,70 @@ def test_materialize_validation_summary_from_file_state_loader(tmp_path):
             }
         },
     }
+
+
+def test_materialize_value_diff_accepts_live_pydantic_task_result():
+    """submit_run assigns ValueDiffResult after Run construction without coercing it to dict."""
+    run_id = "00000000-0000-4000-8000-000000000041"
+    run = _aggregate_run(
+        RunType.VALUE_DIFF,
+        run_id=run_id,
+        run_at="2026-09-04T08:00:00Z",
+        params={"model": "orders"},
+        result=_value_diff_result(1.0),
+    )
+    run.result = ValueDiffResult(**_value_diff_result(1.0, 0.5, 0.25))
+
+    aggregated = materialize_run_results([run])
+
+    assert aggregated["orders"]["validation_summary"] == {
+        "result_count": 1,
+        "difference_count": 2,
+        "types": {
+            "value_diff": {
+                "latest_run_id": UUID(run_id),
+                "difference_count": 2,
+                "result_available": True,
+            }
+        },
+    }
+
+
+@pytest.mark.parametrize(
+    "malformed_result",
+    [
+        pytest.param(["not", "a", "mapping"], id="list"),
+        pytest.param("not-a-result", id="string"),
+        pytest.param({"data": None}, id="null-dataframe"),
+        pytest.param({"data": {"data": "not-rows"}}, id="invalid-rows"),
+    ],
+)
+def test_materialize_value_diff_ignores_malformed_imported_results(malformed_result):
+    """A corrupt imported run cannot crash or claim usable lineage evidence."""
+    run = _aggregate_run(
+        RunType.VALUE_DIFF,
+        run_id="00000000-0000-4000-8000-000000000042",
+        run_at="2026-09-04T08:00:00Z",
+        params={"model": "orders"},
+        result=_value_diff_result(1.0),
+    )
+    run.result = malformed_result
+
+    assert materialize_run_results([run]) == {}
+
+
+@pytest.mark.parametrize("run_type", [RunType.TOP_K_DIFF, RunType.HISTOGRAM_DIFF])
+def test_materialize_column_validation_without_column_name_emits_no_empty_summary(run_type):
+    """Malformed column-scoped imports must not create zero-result node summaries."""
+    run = _aggregate_run(
+        run_type,
+        run_id="00000000-0000-4000-8000-000000000043",
+        run_at="2026-09-04T08:00:00Z",
+        params={"model": "orders"},
+        result={"base": {}, "current": {}},
+    )
+
+    assert materialize_run_results([run]) == {}
 
 
 # =============================================================================
