@@ -18,12 +18,21 @@
 
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
+import Paper from "@mui/material/Paper";
+import Popper from "@mui/material/Popper";
+import Stack from "@mui/material/Stack";
 import MuiTooltip from "@mui/material/Tooltip";
+import Typography from "@mui/material/Typography";
 import { type NodeProps, useStore } from "@xyflow/react";
-import { memo } from "react";
+import { memo, useCallback, useEffect, useId, useRef, useState } from "react";
 import type { LineageGraphNode } from "../..";
 import { COLUMN_HEIGHT } from "../..";
-import { isRowCountDiffRun, type RowCountDiff } from "../../api";
+import {
+  isRowCountDiffRun,
+  type NodeRunsAggregated,
+  type RowCountDiff,
+  type ValidationSummary,
+} from "../../api";
 import {
   useLineageGraphContext,
   useLineageViewContextSafe,
@@ -101,6 +110,7 @@ function RowCountDiffTag({
       sx={{
         height: 20,
         fontSize: "0.7rem",
+        maxWidth: "100%",
         ...(directionStyle && {
           bgcolor: directionStyle.background,
           border: `1px solid ${directionStyle.border}`,
@@ -111,30 +121,216 @@ function RowCountDiffTag({
   );
 }
 
+function countLabel(count: number, singular: string, plural = `${singular}s`) {
+  return `${count.toLocaleString()} ${count === 1 ? singular : plural}`;
+}
+
+function validationSummaryLabel(summary: ValidationSummary) {
+  const resultLabel = countLabel(summary.result_count, "result");
+  if (!summary.types.value_diff) {
+    return resultLabel;
+  }
+  return `${resultLabel} · ${countLabel(summary.types.value_diff.difference_count, "diff")}`;
+}
+
+function ValidationSummaryDetails({ summary }: { summary: ValidationSummary }) {
+  const { value_diff, profile_diff, top_k_diff, histogram_diff } =
+    summary.types;
+
+  return (
+    <Stack component="dl" spacing={0.75} sx={{ m: 0 }}>
+      {value_diff && (
+        <Box>
+          <Typography component="dt" variant="caption" sx={{ fontWeight: 600 }}>
+            Value diff
+          </Typography>
+          <Typography component="dd" variant="caption" sx={{ m: 0 }}>
+            {countLabel(1, "result")} ·{" "}
+            {countLabel(value_diff.difference_count, "diff")}
+          </Typography>
+        </Box>
+      )}
+      {profile_diff && (
+        <Box>
+          <Typography component="dt" variant="caption" sx={{ fontWeight: 600 }}>
+            Profile diff
+          </Typography>
+          <Typography component="dd" variant="caption" sx={{ m: 0 }}>
+            {countLabel(profile_diff.result_count, "result")}
+          </Typography>
+        </Box>
+      )}
+      {top_k_diff && (
+        <Box>
+          <Typography component="dt" variant="caption" sx={{ fontWeight: 600 }}>
+            Top-k diff
+          </Typography>
+          <Typography component="dd" variant="caption" sx={{ m: 0 }}>
+            {countLabel(top_k_diff.column_count, "column")}
+          </Typography>
+        </Box>
+      )}
+      {histogram_diff && (
+        <Box>
+          <Typography component="dt" variant="caption" sx={{ fontWeight: 600 }}>
+            Histogram diff
+          </Typography>
+          <Typography component="dd" variant="caption" sx={{ m: 0 }}>
+            {countLabel(histogram_diff.column_count, "column")}
+          </Typography>
+        </Box>
+      )}
+    </Stack>
+  );
+}
+
+function ValidationSummaryChip({
+  nodeId,
+  nodeName,
+  summary,
+  onOpenAnalysis,
+}: {
+  nodeId: string;
+  nodeName: string;
+  summary: ValidationSummary;
+  onOpenAnalysis: (nodeId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  const popoverId = useId();
+  const label = validationSummaryLabel(summary);
+
+  const cancelClose = useCallback(() => {
+    if (closeTimerRef.current !== undefined) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = undefined;
+    }
+  }, []);
+  const showPopover = useCallback(() => {
+    cancelClose();
+    setOpen(true);
+  }, [cancelClose]);
+  const closePopover = useCallback(() => {
+    cancelClose();
+    setOpen(false);
+  }, [cancelClose]);
+  const scheduleClose = useCallback(() => {
+    cancelClose();
+    closeTimerRef.current = setTimeout(() => setOpen(false), 100);
+  }, [cancelClose]);
+  const scheduleCloseUnlessFocused = useCallback(() => {
+    if (document.activeElement === buttonRef.current) return;
+    scheduleClose();
+  }, [scheduleClose]);
+
+  useEffect(() => cancelClose, [cancelClose]);
+
+  const handleEscape = (event: React.KeyboardEvent) => {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    event.stopPropagation();
+    closePopover();
+    buttonRef.current?.focus();
+  };
+
+  return (
+    <>
+      <Box
+        ref={buttonRef}
+        component="button"
+        type="button"
+        aria-controls={open ? popoverId : undefined}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        aria-label={`Open validation analysis for ${nodeName}: ${label}`}
+        onBlur={closePopover}
+        onClick={(event) => {
+          event.stopPropagation();
+          showPopover();
+          onOpenAnalysis(nodeId);
+        }}
+        onDoubleClick={(event) => event.stopPropagation()}
+        onFocus={showPopover}
+        onKeyDown={handleEscape}
+        onMouseEnter={showPopover}
+        onMouseLeave={scheduleCloseUnlessFocused}
+        onPointerDown={(event) => event.stopPropagation()}
+        sx={{
+          alignItems: "center",
+          appearance: "none",
+          background: "transparent",
+          border: 0,
+          color: "inherit",
+          cursor: "pointer",
+          display: "flex",
+          flex: "0 1 auto",
+          margin: 0,
+          maxWidth: 150,
+          minHeight: 24,
+          minWidth: 0,
+          padding: "2px 0",
+        }}
+      >
+        <Chip
+          data-testid="validation-summary-chip"
+          label={label}
+          size="small"
+          variant="outlined"
+          sx={{
+            height: 20,
+            fontSize: "0.7rem",
+            maxWidth: "100%",
+            pointerEvents: "none",
+          }}
+        />
+      </Box>
+      {open && (
+        <Popper
+          open
+          anchorEl={buttonRef.current}
+          placement="bottom-start"
+          sx={{ zIndex: 1500 }}
+        >
+          <Paper
+            id={popoverId}
+            role="dialog"
+            aria-label={`${nodeName} validation details`}
+            onKeyDown={handleEscape}
+            onMouseEnter={cancelClose}
+            onMouseLeave={scheduleCloseUnlessFocused}
+            sx={{ minWidth: 160, p: 1.25 }}
+          >
+            <ValidationSummaryDetails summary={summary} />
+          </Paper>
+        </Popper>
+      )}
+    </>
+  );
+}
+
 /**
  * Node runs aggregated display component with OSS-specific icons
  * Shows schema diff indicator and row count diff for models
  */
 function NodeRunsAggregatedDisplay({
-  id,
   inverted,
+  nodeId,
+  nodeName,
+  runs,
+  schemaChanged,
+  onOpenAnalysis,
 }: {
-  id: string;
   inverted: boolean;
+  nodeId: string;
+  nodeName: string;
+  runs: NodeRunsAggregated | undefined;
+  schemaChanged: boolean | undefined;
+  onOpenAnalysis: (nodeId: string) => void;
 }) {
-  const { lineageGraph, runsAggregated } = useLineageGraphContext();
   const { text, isDark } = useThemeColors();
-  const runs = runsAggregated?.[id];
-  const node = lineageGraph?.nodes[id];
-
-  if (!runs && !node) {
-    return null;
-  }
-
-  let schemaChanged: boolean | undefined;
-  if (node?.data.change?.columns) {
-    schemaChanged = Object.keys(node.data.change.columns).length > 0;
-  }
 
   let rowCountChanged: boolean | undefined;
   if (runs?.row_count_diff) {
@@ -155,7 +351,17 @@ function NodeRunsAggregatedDisplay({
   const SchemaDiffIcon = findByRunType("schema_diff").icon;
 
   return (
-    <Box sx={{ display: "flex", flex: 1, alignItems: "center" }}>
+    <Box
+      data-testid="node-runs-aggregated-display"
+      sx={{
+        alignItems: "center",
+        display: "flex",
+        flex: 1,
+        gap: 0.5,
+        minWidth: 0,
+        overflow: "hidden",
+      }}
+    >
       {schemaChanged !== undefined && (
         <MuiTooltip
           title={`Schema (${schemaChanged ? "changed" : "no change"})`}
@@ -172,12 +378,20 @@ function NodeRunsAggregatedDisplay({
         </MuiTooltip>
       )}
       <Box sx={{ flexGrow: 1 }} />
+      {runs?.validation_summary && (
+        <ValidationSummaryChip
+          nodeId={nodeId}
+          nodeName={nodeName}
+          summary={runs.validation_summary}
+          onOpenAnalysis={onOpenAnalysis}
+        />
+      )}
       {runs?.row_count_diff && rowCountChanged !== undefined && (
         <MuiTooltip
           title={`Row count (${rowCountChanged ? "changed" : "="})`}
           enterDelay={500}
         >
-          <Box>
+          <Box sx={{ maxWidth: 120, minWidth: 0, overflow: "hidden" }}>
             <RowCountDiffTag
               rowCount={runs.row_count_diff.result as RowCountDiff}
               isDark={isDark}
@@ -309,8 +523,10 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
 
   // Get context values
   const lineageViewCtx = useLineageViewContextSafe();
+  const { runsAggregated } = useLineageGraphContext();
   const {
     interactive,
+    openNodeDetails,
     selectNode,
     selectMode,
     focusedNode,
@@ -360,11 +576,26 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
     ) : undefined;
 
   // Create runs aggregated tag if model and not in action_result mode
+  const nodeRuns = runsAggregated?.[id];
+  const schemaChanged =
+    data.change?.columns == null
+      ? undefined
+      : Object.keys(data.change.columns).length > 0;
+  const hasVisibleRunsAggregatedData =
+    schemaChanged !== undefined ||
+    nodeRuns?.row_count_diff !== undefined ||
+    nodeRuns?.validation_summary !== undefined;
   const runsAggregatedTag =
-    selectMode !== "action_result" && data.resourceType === "model" ? (
+    selectMode !== "action_result" &&
+    data.resourceType === "model" &&
+    hasVisibleRunsAggregatedData ? (
       <NodeRunsAggregatedDisplay
-        id={data.id}
         inverted={selectMode === "selecting" && isSelected}
+        nodeId={id}
+        nodeName={name}
+        onOpenAnalysis={(nodeId) => openNodeDetails(nodeId, "analysis")}
+        runs={nodeRuns}
+        schemaChanged={schemaChanged}
       />
     ) : undefined;
 

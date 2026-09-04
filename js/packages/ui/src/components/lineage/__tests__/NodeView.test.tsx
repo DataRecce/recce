@@ -259,6 +259,69 @@ describe("NodeView", () => {
       );
     });
 
+    test("honors repeated explicit Analysis requests for the same focused node", () => {
+      const node = createNode("model", testColumns);
+      const sharedProps = {
+        node,
+        modelDetail: createModelDetail(testColumns),
+        onCloseNode: vi.fn(),
+        isSingleEnv: false,
+        SchemaView: MockSchemaView,
+      };
+      const { rerender } = render(
+        <NodeView
+          {...sharedProps}
+          openRequest={{
+            nodeId: node.id,
+            view: "analysis",
+            requestToken: 1,
+          }}
+        />,
+      );
+
+      expect(screen.getByRole("tab", { name: "Analysis" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      fireEvent.click(screen.getByRole("tab", { name: "Columns" }));
+      expect(screen.getByRole("tab", { name: "Columns" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+
+      rerender(
+        <NodeView
+          {...sharedProps}
+          openRequest={{
+            nodeId: node.id,
+            view: "analysis",
+            requestToken: 2,
+          }}
+        />,
+      );
+
+      expect(screen.getByRole("tab", { name: "Analysis" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+    });
+
+    test("ignores an Analysis request addressed to a different node", () => {
+      const node = createNode("model", testColumns);
+      renderNodeView(node, testColumns, {
+        openRequest: {
+          nodeId: "model.test.somewhere_else",
+          view: "analysis",
+          requestToken: 1,
+        },
+      });
+
+      expect(screen.getByRole("tab", { name: "Columns" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+    });
+
     test.each(["Analysis", "Lineage"])(
       "resets to Columns when focus moves from the %s tab to a source node",
       (selectedTab) => {

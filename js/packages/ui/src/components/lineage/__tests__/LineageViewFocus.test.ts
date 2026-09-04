@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { nextFocusedNodeId } from "../LineageViewOss";
+import {
+  createNodeDetailsOpenRequest,
+  nextFocusedNodeId,
+} from "../LineageViewOss";
 
 describe("nextFocusedNodeId", () => {
   it("focuses a newly clicked node", () => {
@@ -18,5 +21,24 @@ describe("nextFocusedNodeId", () => {
     expect(nextFocusedNodeId("model.test.orders", "model.test.customers")).toBe(
       "model.test.customers",
     );
+  });
+});
+
+describe("createNodeDetailsOpenRequest", () => {
+  it("issues a new token for repeated requests to the same node and view", () => {
+    expect(
+      createNodeDetailsOpenRequest(40, "model.test.orders", "analysis"),
+    ).toEqual({
+      nodeId: "model.test.orders",
+      view: "analysis",
+      requestToken: 41,
+    });
+    expect(
+      createNodeDetailsOpenRequest(41, "model.test.orders", "analysis"),
+    ).toEqual({
+      nodeId: "model.test.orders",
+      view: "analysis",
+      requestToken: 42,
+    });
   });
 });

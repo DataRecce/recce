@@ -31,6 +31,7 @@ import {
   useRecceInstanceContext,
   useRouteConfig,
 } from "../../contexts";
+import type { NodeDetailsOpenRequest } from "../../contexts/lineage/types";
 import {
   useApiConfig,
   useModelColumns,
@@ -67,6 +68,8 @@ import { pickWholeModelFlags } from "./wholeModelTreatment";
 interface NodeViewProps {
   node: LineageGraphNode;
   onCloseNode: () => void;
+  /** Explicit, repeatable request to select a detail-panel view. */
+  openRequest?: NodeDetailsOpenRequest;
   /** Navigate to another node: refocus the panel (canvas is not re-centered). */
   onNavigateToNode?: (nodeId: string) => void;
   /** Return to the previously focused node. Omit to hide the back button. */
@@ -137,6 +140,7 @@ function OssNotificationComponent({ onClose }: { onClose: () => void }) {
 export function NodeViewOss({
   node,
   onCloseNode,
+  openRequest,
   onNavigateToNode,
   onBack,
   onCenterFocused,
@@ -399,6 +403,7 @@ export function NodeViewOss({
     <BaseNodeView
       node={node}
       onCloseNode={onCloseNode}
+      openRequest={openRequest}
       isSingleEnv={isSingleEnv}
       featureToggles={featureToggles}
       isWholeModelChanged={wholeModelFlags.isWholeModelChanged}
