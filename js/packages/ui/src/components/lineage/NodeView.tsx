@@ -215,6 +215,8 @@ export interface NodeViewProps<
   onViewAnalysisRun?: (runId: string) => void;
   /** Explicit, repeatable request to select a detail-panel view. */
   openRequest?: NodeDetailsOpenRequest;
+  /** Acknowledge that an explicit detail-panel request was applied. */
+  onOpenRequestConsumed?: (requestToken: number) => void;
 
   // =========================================================================
   // DEPENDENCY INJECTION: Icons
@@ -686,6 +688,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
   recentAnalysisRuns = [],
   onViewAnalysisRun,
   openRequest,
+  onOpenRequestConsumed,
 }: NodeViewProps<TNode>) {
   const withColumns =
     node.data.resourceType === "model" ||
@@ -736,8 +739,9 @@ export function NodeView<TNode extends NodeViewNodeData>({
     ) {
       appliedRequestTokenRef.current = openRequest.requestToken;
       setTabState({ nodeId: node.id, value: "analysis" });
+      onOpenRequestConsumed?.(openRequest.requestToken);
     }
-  }, [node.id, openRequest, showAnalysisTab]);
+  }, [node.id, onOpenRequestConsumed, openRequest, showAnalysisTab]);
 
   const showAddSchemaDiff =
     !isSingleEnv &&

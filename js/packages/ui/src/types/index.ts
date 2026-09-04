@@ -149,6 +149,8 @@ export type { InstanceInfoType } from "../contexts/instance";
 export type {
   LineageGraphContextType,
   LineageGraphProviderProps,
+  NodeDetailsOpenRequest,
+  NodeDetailsView,
 } from "../contexts/lineage";
 // Lineage graph types
 export type {
