@@ -1546,6 +1546,37 @@ class TestRecceMCPServer:
         check_dao.create.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_tool_create_check_validates_existing_time_histogram_before_update(self, mcp_server):
+        """Catch idempotent MCP create mutating metadata before legacy params are rejected."""
+        server, _ = mcp_server
+        params = {
+            "model": "my_model",
+            "column_name": "event_time",
+            "column_type": "TIME(6) WITH TIME ZONE",
+        }
+        existing_check = Check(
+            name="original name",
+            description="original description",
+            type=RunType.HISTOGRAM_DIFF,
+            params=params,
+        )
+        check_dao = MagicMock()
+        check_dao.list.return_value = [existing_check]
+
+        with patch("recce.models.CheckDAO", return_value=check_dao):
+            with pytest.raises(ValueError, match="not supported for histogram analysis"):
+                await server._tool_create_check(
+                    {
+                        "type": "histogram_diff",
+                        "name": "mutated name",
+                        "description": "mutated description",
+                        "params": params,
+                    }
+                )
+
+        check_dao.update_check_by_id.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_tool_run_check_rejects_time_histogram_before_submission(self, mcp_server):
         """Catch MCP run_check queuing a legacy time-only histogram."""
         server, _ = mcp_server

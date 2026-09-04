@@ -1,6 +1,9 @@
 import json
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -15,6 +18,9 @@ HISTOGRAM_TYPE_POLICY = json.loads(
     (Path(__file__).parents[1] / "fixtures" / "histogram_type_policy.json").read_text(encoding="utf-8")
 )
 UNSUPPORTED_TIME_TYPES = [case["type"] for case in HISTOGRAM_TYPE_POLICY if not case["backend_supported"]]
+SUPPORTED_TEMPORAL_TYPES = [
+    case["type"] for case in HISTOGRAM_TYPE_POLICY if case["backend_supported"] and not case["picker_supported"]
+]
 
 
 @pytest.mark.parametrize(
@@ -474,6 +480,48 @@ def test_is_column_type_supported_by_histogram():
 def test_histogram_backend_matches_shared_type_policy(case):
     """Catch backend policy drift for time-only, temporal, and unknown adapter types."""
     assert _is_histogram_supported(case["type"]) is case["backend_supported"]
+
+
+@pytest.mark.parametrize("column_type", SUPPORTED_TEMPORAL_TYPES)
+def test_supported_temporal_aliases_use_datetime_execution_and_result_shape(column_type, monkeypatch):
+    """Catch supported temporal aliases falling through to numeric SQL or numeric result conversion."""
+    minimum = date(2026, 1, 1)
+    maximum = date(2026, 1, 2)
+    task = HistogramDiffTask(
+        {
+            "model": "customers",
+            "column_name": "created_at",
+            "column_type": column_type,
+        }
+    )
+    task.execute_sql = MagicMock(return_value=[(minimum, maximum, 1)])
+    adapter = MagicMock()
+    monkeypatch.setattr(histogram, "default_context", lambda: SimpleNamespace(adapter=adapter))
+    monkeypatch.setattr(
+        histogram,
+        "query_datetime_histogram",
+        MagicMock(
+            return_value=(
+                {"counts": [1]},
+                {"counts": [1]},
+                [minimum, maximum],
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        histogram,
+        "query_numeric_histogram",
+        MagicMock(side_effect=AssertionError("temporal alias entered numeric histogram execution")),
+    )
+
+    assert task.execute() == {
+        "base": {"counts": [1], "total": 1},
+        "current": {"counts": [1], "total": 1},
+        "min": minimum,
+        "max": maximum,
+        "bin_edges": [minimum, maximum],
+        "labels": None,
+    }
 
 
 @pytest.mark.parametrize("column_type", UNSUPPORTED_TIME_TYPES)

@@ -25,6 +25,7 @@ sql_datetime_types = [
     "INTERVAL",  # Common in PostgreSQL and Oracle
     "TIMESTAMPTZ",
     "TIMESTAMP WITH TIME ZONE",
+    "TIMESTAMP WITHOUT TIME ZONE",
     "TIMESTAMP WITH LOCAL TIME ZONE",  # Oracle
     "TIMESTAMP_LTZ",
     "TIMESTAMP_NTZ",
@@ -86,10 +87,16 @@ sql_time_only_type_pattern = re.compile(
     r"|TIME\s*(?:\(\s*\d+\s*\))?"
     r"(?:\s+(?:WITH|WITHOUT)\s+TIME\s+ZONE\s*(?:\(\s*\d+\s*\))?)?)"
 )
+sql_type_precision_pattern = re.compile(r"\s*\(\s*\d+\s*\)")
 
 
 def _normalize_column_type(column_type: str) -> str:
     return " ".join(column_type.strip().upper().split())
+
+
+def _is_datetime_histogram_type(column_type: str) -> bool:
+    normalized_type = sql_type_precision_pattern.sub("", _normalize_column_type(column_type), count=1)
+    return normalized_type in sql_datetime_types
 
 
 def _is_histogram_supported(column_type):
@@ -475,6 +482,7 @@ class HistogramDiffTask(Task, QueryMixin):
         column_type = self.params.column_type
 
         _validate_histogram_column_type(column_type)
+        is_datetime_type = _is_datetime_histogram_type(column_type)
 
         with dbt_adapter.connection_named("query"):
             self.connection = dbt_adapter.get_thread_connection()
@@ -515,7 +523,7 @@ class HistogramDiffTask(Task, QueryMixin):
                 }
                 bin_edges = []
                 labels = []
-            elif column_type.upper() in sql_datetime_types:
+            elif is_datetime_type:
                 base_result, current_result, bin_edges = query_datetime_histogram(
                     self, node, column, min_value, max_value
                 )
@@ -529,7 +537,7 @@ class HistogramDiffTask(Task, QueryMixin):
                 current_result["total"] = curr_total
             result["base"] = base_result
             result["current"] = current_result
-            if column_type.upper() in sql_datetime_types or min_value is None:
+            if is_datetime_type or min_value is None:
                 result["min"] = min_value
                 result["max"] = max_value
             else:

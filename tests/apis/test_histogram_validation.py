@@ -19,6 +19,11 @@ INVALID_HISTOGRAM_PARAMS = {
     "column_name": "created_time",
     "column_type": "TIME(6) WITH TIME ZONE",
 }
+VALID_HISTOGRAM_PARAMS = {
+    "model": "customers",
+    "column_name": "customer_id",
+    "column_type": "INTEGER",
+}
 
 
 def _histogram_check() -> Check:
@@ -57,7 +62,11 @@ async def test_saved_check_create_rejects_time_alias_before_persistence():
 @pytest.mark.asyncio
 async def test_saved_check_patch_rejects_time_alias_before_persistence():
     """Catch PATCH /checks replacing valid params with a time-only histogram."""
-    check = _histogram_check()
+    check = Check(
+        name="numeric histogram",
+        type=RunType.HISTOGRAM_DIFF,
+        params=VALID_HISTOGRAM_PARAMS,
+    )
     check_dao = MagicMock()
     check_dao.find_check_by_id.return_value = check
     check_dao.update_check_by_id.return_value = check
