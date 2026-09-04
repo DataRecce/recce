@@ -101,6 +101,8 @@ vi.mock("chart.js", () => ({
   Tooltip: {},
 }));
 
+vi.mock("chartjs-adapter-date-fns", () => ({}));
+
 function getLastChartProps(): MockChartProps {
   const props = chartSpy.mock.lastCall?.[0] as MockChartProps | undefined;
   if (!props) throw new Error("Chart was not rendered");
@@ -377,7 +379,7 @@ describe("HistogramChart", () => {
       expect(options?.scales?.x?.type).toBe("category");
     });
 
-    it("keeps datetime labels, tuples, scale, and hidden axis unchanged", () => {
+    it("emits datetime points as objects on the timeseries scale", () => {
       render(
         <HistogramChart
           {...defaultProps}
@@ -395,18 +397,18 @@ describe("HistogramChart", () => {
         "80 - 100",
       ]);
       expect(data.datasets[0].data).toEqual([
-        [0, 15],
-        [20, 25],
-        [40, 35],
-        [60, 45],
-        [80, 55],
+        { x: 0, y: 15 },
+        { x: 20, y: 25 },
+        { x: 40, y: 35 },
+        { x: 60, y: 45 },
+        { x: 80, y: 55 },
       ]);
       expect(data.datasets[1].data).toEqual([
-        [0, 10],
-        [20, 20],
-        [40, 30],
-        [60, 40],
-        [80, 50],
+        { x: 0, y: 10 },
+        { x: 20, y: 20 },
+        { x: 40, y: 30 },
+        { x: 60, y: 40 },
+        { x: 80, y: 50 },
       ]);
       expect(options?.scales?.x).toMatchObject({
         display: false,
@@ -685,7 +687,7 @@ describe("HistogramChart", () => {
   });
 
   describe("data transformation", () => {
-    it("creates [timestamp, count] tuples for datetime type", () => {
+    it("creates timestamp/count objects for datetime type", () => {
       const datetimeBinEdges = [
         1704067200000, 1704672000000, 1705276800000, 1705881600000,
         1706486400000, 1706745600000,
@@ -704,10 +706,8 @@ describe("HistogramChart", () => {
       const chart = getByTestId("mock-chart");
       const data = JSON.parse(chart.getAttribute("data-data") || "{}");
 
-      // For datetime, data should be arrays of [x, y] tuples
       const currentData = data.datasets[0].data;
-      expect(Array.isArray(currentData[0])).toBe(true);
-      expect(currentData[0]).toHaveLength(2);
+      expect(currentData[0]).toEqual({ x: 1704067200000, y: 15 });
     });
 
     it("uses midpoint coordinate objects for numeric type", () => {

@@ -12,7 +12,7 @@ import { vi } from "vitest";
 import { HistogramChart } from "../HistogramChart";
 
 interface CapturedChartProps {
-  data: ChartData<"bar">;
+  data: ChartData<"bar", (number | { x: number; y: number })[]>;
   options: ChartOptions<"bar">;
   plugins?: Plugin<"bar">[];
 }
@@ -82,7 +82,53 @@ function createCanvas() {
   };
 }
 
-describe("HistogramChart numeric geometry", () => {
+describe("HistogramChart real Chart.js configuration", () => {
+  it("constructs the emitted timeseries configuration with real Chart.js", () => {
+    const binEdges = [
+      Date.UTC(2026, 0, 1),
+      Date.UTC(2026, 0, 2),
+      Date.UTC(2026, 0, 3),
+    ];
+    render(
+      <HistogramChart
+        title="Temporal histogram"
+        dataType="datetime"
+        min={binEdges[0]}
+        max={binEdges[2]}
+        binEdges={binEdges}
+        baseData={{ counts: [2, 3] }}
+        currentData={{ counts: [5, 7] }}
+      />,
+    );
+
+    const { data, options } = getLastChartProps();
+    const chart = new ChartJS(createCanvas() as never, {
+      type: "bar",
+      data,
+      options: {
+        ...options,
+        animation: false,
+        plugins: {
+          ...options.plugins,
+          legend: { display: false },
+          title: { ...options.plugins?.title, display: false },
+        },
+        responsive: false,
+      },
+      platform: BasicPlatform,
+    });
+
+    try {
+      expect(chart.scales.x.type).toBe("timeseries");
+      expect(chart.scales.x.min).toBe(binEdges[0]);
+      expect(chart.scales.x.max).toBe(binEdges[2]);
+      expect(chart.getDatasetMeta(0).data).toHaveLength(2);
+      expect(chart.scales.x.getLabelForValue(binEdges[0])).toContain("2026");
+    } finally {
+      chart.destroy();
+    }
+  });
+
   it.each([
     { binEdges: [0, 20], counts: [5] },
     { binEdges: [0, 20, 40, 60, 80, 100], counts: [1, 2, 3, 4, 5] },

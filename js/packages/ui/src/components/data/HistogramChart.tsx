@@ -1,5 +1,6 @@
 "use client";
 
+import "chartjs-adapter-date-fns";
 import {
   BarElement,
   CategoryScale,
@@ -100,6 +101,7 @@ function formatBinRange(
 }
 
 const MAX_EDGE_TICK_LABELS = 8;
+type HistogramChartValue = number | { x: number; y: number };
 
 /**
  * HistogramChart Component
@@ -181,7 +183,7 @@ function HistogramChartComponent({
   );
 
   // Build chart data
-  const chartData = useMemo<ChartData<"bar">>(() => {
+  const chartData = useMemo<ChartData<"bar", HistogramChartValue[]>>(() => {
     const labels = binEdges
       .slice(0, -1)
       .map((_, i) =>
@@ -195,7 +197,7 @@ function HistogramChartComponent({
     ) => {
       const counts = data.counts ?? [];
       const chartValues = isDatetime
-        ? counts.map((v, i) => [binEdges[i], v] as [number, number])
+        ? counts.map((v, i) => ({ x: binEdges[i], y: v }))
         : isNumeric
           ? counts.map((v, i) => ({
               x: (binEdges[i] + binEdges[i + 1]) / 2,
@@ -205,7 +207,7 @@ function HistogramChartComponent({
 
       return {
         label,
-        data: chartValues as number[],
+        data: chartValues,
         backgroundColor: colors.chartFill,
         borderColor: colors.border,
         hoverBackgroundColor: colors.chartFill,

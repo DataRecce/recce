@@ -93,6 +93,7 @@ export interface HistogramDiffParams {
   model: string;
   column_name: string;
   column_type: string;
+  num_bins?: number;
 }
 
 export interface HistogramResult {
@@ -100,11 +101,13 @@ export interface HistogramResult {
   total: number;
 }
 
+export type HistogramWireValue = number | string;
+
 export interface HistogramDiffResult {
   base: HistogramResult;
   current: HistogramResult;
-  min: number;
-  max: number;
-  bin_edges: number[];
+  min: HistogramWireValue | null;
+  max: HistogramWireValue | null;
+  bin_edges: HistogramWireValue[];
   labels?: string[];
 }

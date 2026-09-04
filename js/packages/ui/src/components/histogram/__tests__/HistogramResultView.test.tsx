@@ -6,7 +6,7 @@ import type { HistogramDiffRun } from "../HistogramResultView";
 import { HistogramDiffResultView } from "../HistogramResultView";
 
 interface MockChartProps {
-  data: { labels?: number[]; datasets: { data: number[] }[] };
+  data: { labels?: unknown[]; datasets: { data: unknown[] }[] };
   options?: {
     scales?: {
       x?: {
@@ -44,6 +44,8 @@ vi.mock("chart.js", () => ({
   Title: {},
   Tooltip: {},
 }));
+
+vi.mock("chartjs-adapter-date-fns", () => ({}));
 
 vi.mock("../../../hooks", () => ({
   useIsDark: () => false,
@@ -104,5 +106,64 @@ describe("HistogramDiffResultView", () => {
       type: "linear",
     });
     expect(tickCallback?.(100, 5, [])).toBe("100");
+  });
+
+  it.each([
+    "DATE",
+    "date",
+    "DATETIME",
+    "DATETIME(6)",
+    "TIMESTAMP",
+    "TIMESTAMP(6)",
+    "YEAR",
+    "DATETIME2",
+    "SMALLDATETIME",
+    "DATETIMEOFFSET",
+    "INTERVAL",
+    "TIMESTAMPTZ",
+    "TIMESTAMPTZ(6)",
+    "TIMESTAMP WITH TIME ZONE",
+    "timestamp without time zone",
+    " timestamp ( 6 ) with time zone ",
+    "TIMESTAMP WITH LOCAL TIME ZONE",
+    "TIMESTAMP_LTZ",
+    "TIMESTAMP_NTZ",
+    "TIMESTAMP_TZ",
+  ])("normalizes %s ISO wire values at the chart boundary", (columnType) => {
+    const run: HistogramDiffRun = {
+      type: "histogram_diff",
+      run_id: "temporal-histogram-run",
+      run_at: "2026-08-25T00:00:00Z",
+      status: "Finished",
+      params: {
+        model: "orders",
+        column_name: "created_at",
+        column_type: columnType,
+      },
+      result: {
+        base: { counts: [2, 3], total: 5 },
+        current: { counts: [5, 7], total: 12 },
+        min: "2026-01-01T00:00:00.000Z",
+        max: "2026-01-03T00:00:00.000Z",
+        bin_edges: ["2026-01-01", "2026-01-02", "2026-01-03"],
+      },
+    };
+
+    render(
+      <ThemeProvider theme={theme}>
+        <HistogramDiffResultView run={run} />
+      </ThemeProvider>,
+    );
+
+    const { data, options } = getLastChartProps();
+    expect(options?.scales?.x).toMatchObject({
+      min: Date.UTC(2026, 0, 1),
+      max: Date.UTC(2026, 0, 3),
+      type: "timeseries",
+    });
+    expect(data.datasets[0].data).toEqual([
+      { x: Date.UTC(2026, 0, 1), y: 5 },
+      { x: Date.UTC(2026, 0, 2), y: 7 },
+    ]);
   });
 });

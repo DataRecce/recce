@@ -2,7 +2,6 @@ import { theme } from "@datarecce/ui/theme";
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 import type { Preview } from "@storybook/react-vite";
-import "chartjs-adapter-date-fns";
 import { useEffect } from "react";
 
 // Import styles from @datarecce/ui

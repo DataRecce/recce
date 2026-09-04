@@ -1,11 +1,12 @@
 import json
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from fastapi.encoders import jsonable_encoder
 
 import recce.tasks.histogram as histogram
 from recce.tasks.histogram import (
@@ -121,6 +122,97 @@ class NumericHistogramQueryTask:
 
     def check_cancel(self):
         return None
+
+
+class DatetimeHistogramQueryTask:
+    def __init__(self, base_rows=(), current_rows=(), *, fail_base=False, fail_current=False):
+        self.base_rows = HistogramRows(base_rows)
+        self.current_rows = HistogramRows(current_rows)
+        self.fail_base = fail_base
+        self.fail_current = fail_current
+
+    def execute_sql(self, _sql, *, base):
+        if (base and self.fail_base) or (not base and self.fail_current):
+            raise RuntimeError("warehouse query failed")
+        return self.base_rows if base else self.current_rows
+
+    def check_cancel(self):
+        return None
+
+
+def test_daily_datetime_histogram_edges_cross_months_monotonically():
+    """Catch absolute ``relativedelta(day=...)`` fields resetting edges within a month."""
+    task = DatetimeHistogramQueryTask(
+        base_rows=[(datetime(2026, 1, 30), 2), (date(2026, 1, 31), 3)],
+        current_rows=[(date(2026, 2, 1), 5), (datetime(2026, 2, 2), 7)],
+    )
+
+    base, current, bin_edges = histogram.query_datetime_histogram(
+        task,
+        "orders",
+        "created_at",
+        date(2026, 1, 30),
+        date(2026, 2, 2),
+    )
+
+    assert bin_edges == [
+        date(2026, 1, 30),
+        date(2026, 1, 31),
+        date(2026, 2, 1),
+        date(2026, 2, 2),
+        date(2026, 2, 3),
+    ]
+    assert all(left < right for left, right in zip(bin_edges, bin_edges[1:]))
+    serialized_edges = jsonable_encoder(bin_edges)
+    assert serialized_edges == ["2026-01-30", "2026-01-31", "2026-02-01", "2026-02-02", "2026-02-03"]
+    assert serialized_edges == sorted(serialized_edges)
+    assert base == {"counts": [2, 3, 0, 0]}
+    assert current == {"counts": [0, 0, 5, 7]}
+
+
+def test_yearly_datetime_histogram_uses_additive_interval_spacing():
+    """Catch absolute years and one-year SQL rows escaping a multi-year bucket."""
+    task = DatetimeHistogramQueryTask(
+        base_rows=[(date(1875, 1, 1), 2), (date(1878, 1, 1), 3), (date(1879, 1, 1), 5)],
+        current_rows=[(date(2026, 1, 1), 7)],
+    )
+
+    base, current, bin_edges = histogram.query_datetime_histogram(
+        task,
+        "orders",
+        "created_at",
+        date(1875, 6, 1),
+        date(2026, 8, 1),
+    )
+
+    assert bin_edges[0] == date(1875, 1, 1)
+    assert bin_edges[-1] == date(2027, 1, 1)
+    assert all(right.year - left.year == 4 for left, right in zip(bin_edges, bin_edges[1:]))
+    serialized_edges = jsonable_encoder(bin_edges)
+    assert serialized_edges == sorted(serialized_edges)
+    assert base["counts"][:2] == [5, 5]
+    assert sum(base["counts"]) == 10
+    assert current["counts"][-1] == 7
+
+
+def test_datetime_histogram_preserves_the_successful_side_when_one_query_fails():
+    """Catch a handled warehouse failure becoming a secondary ``None.rows`` exception."""
+    task = DatetimeHistogramQueryTask(
+        current_rows=[(date(2026, 1, 1), 4)],
+        fail_base=True,
+    )
+
+    base, current, bin_edges = histogram.query_datetime_histogram(
+        task,
+        "orders",
+        "created_at",
+        date(2026, 1, 1),
+        date(2026, 1, 1),
+    )
+
+    assert bin_edges == [date(2026, 1, 1), date(2026, 1, 2)]
+    assert base == {}
+    assert current == {"counts": [4]}
 
 
 class DecimalExtremaHistogramTask(HistogramDiffTask):

@@ -472,6 +472,58 @@ describe("HistogramDiffResultView", () => {
       );
     });
 
+    it.each([
+      { checkId: undefined, columnType: "DATE", source: "direct" },
+      { checkId: "saved-date", columnType: "DATE", source: "saved" },
+      { checkId: undefined, columnType: "TIMESTAMP", source: "direct" },
+      {
+        checkId: "saved-timestamp",
+        columnType: "TIMESTAMP",
+        source: "saved",
+      },
+      { checkId: undefined, columnType: "TIMESTAMPTZ", source: "direct" },
+      {
+        checkId: "saved-timestamptz",
+        columnType: "TIMESTAMPTZ",
+        source: "saved",
+      },
+    ])(
+      "normalizes $source $columnType histogram wire dates for the OSS chart",
+      ({ checkId, columnType }) => {
+        const run = createHistogramDiffRun();
+        run.check_id = checkId;
+        run.params = {
+          model: "orders",
+          column_name: "created_at",
+          column_type: columnType,
+        };
+        // Deliberately mirror saved-state/API JSON rather than constructing Date
+        // objects, so both OSS loading paths exercise the public wire contract.
+        run.result = {
+          base: { counts: [2, 3], total: 5 },
+          current: { counts: [5, 7], total: 12 },
+          min: "2026-01-01T00:00:00Z",
+          max: "2026-01-03T00:00:00Z",
+          bin_edges: ["2026-01-01", "2026-01-02", "2026-01-03"],
+        };
+
+        renderWithProviders(<HistogramDiffResultView run={run} />);
+
+        expect(mockHistogramChart).toHaveBeenCalledWith(
+          expect.objectContaining({
+            dataType: "datetime",
+            min: Date.UTC(2026, 0, 1),
+            max: Date.UTC(2026, 0, 3),
+            binEdges: [
+              Date.UTC(2026, 0, 1),
+              Date.UTC(2026, 0, 2),
+              Date.UTC(2026, 0, 3),
+            ],
+          }),
+        );
+      },
+    );
+
     it("maps string column_type to string dataType", () => {
       const run = createHistogramDiffRun();
       // Preserve required params and override column_type

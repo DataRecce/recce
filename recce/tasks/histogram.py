@@ -379,7 +379,7 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
         interval_years = math.ceil((dmax.year - dmin.year) / 50)
         interval = relativedelta(years=+interval_years)
         num_buckets = math.ceil((dmax.year - dmin.year) / interval.years)
-        bin_edges = [dmin + relativedelta(year=i) for i in range(num_buckets + 1)]
+        bin_edges = [dmin + interval * i for i in range(num_buckets + 1)]
         sql = f"""
         SELECT
             {{{{ date_trunc("year", "{column}") }}}} as year,
@@ -418,7 +418,7 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
         else:
             dmax = date(3000, 1, 1)
         num_buckets = (dmax - dmin).days
-        bin_edges = [dmin + relativedelta(day=i) for i in range(num_buckets + 1)]
+        bin_edges = [dmin + interval * i for i in range(num_buckets + 1)]
         sql = f"""
         SELECT
             {{{{ date_trunc("day", "{column}") }}}} as day,
@@ -444,21 +444,26 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
     finally:
         task.check_cancel()
 
-    base_counts = [0] * num_buckets
     print(_type)
-    for d, v in base.rows:
-        i = bin_edges.index(d.date()) if isinstance(d, datetime) else bin_edges.index(d)
-        base_counts[i] = v
-    curr_counts = [0] * num_buckets
-    for d, v in curr.rows:
-        i = bin_edges.index(d.date()) if isinstance(d, datetime) else bin_edges.index(d)
-        curr_counts[i] = v
-    base_result = {
-        "counts": base_counts,
-    }
-    curr_result = {
-        "counts": curr_counts,
-    }
+
+    def build_result(query_result):
+        if query_result is None:
+            return {}
+
+        counts = [0] * num_buckets
+        for value, count in query_result.rows:
+            edge_value = value.date() if isinstance(value, datetime) else value
+            if _type == "yearly":
+                index = (edge_value.year - dmin.year) // interval.years
+            else:
+                index = bin_edges.index(edge_value)
+            if index < 0 or index >= num_buckets:
+                raise ValueError(f"Histogram date {edge_value} is outside the computed edge domain")
+            counts[index] += count
+        return {"counts": counts}
+
+    base_result = build_result(base)
+    curr_result = build_result(curr)
 
     return base_result, curr_result, bin_edges
 
