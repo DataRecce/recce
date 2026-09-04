@@ -23,23 +23,21 @@ jobs:
         with:
           node-version-file: 'js/.nvmrc'
 
-      - uses: pnpm/action-setup@v6
+      - name: Set up pnpm
+        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
         with:
-          version: 11.1.1
-          run_install: false
+          package-json-file: js/package.json
+          install: false
+          cache: true
+          cache-dependency-path: js/pnpm-lock.yaml
 
-      - name: Get pnpm store directory
-        shell: bash
+      - name: Verify pnpm version
+        working-directory: ./js
         run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - uses: actions/cache@v4
-        name: Setup pnpm cache
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+          expected=$(node -p "require('./package.json').packageManager.match(/^pnpm@([^+]+)/)[1]")
+          actual=$(pnpm --version)
+          echo "pnpm version: $actual"
+          test "$actual" = "$expected"
 
       - name: Install dependencies
         working-directory: ./js
@@ -60,23 +58,21 @@ jobs:
         with:
           node-version-file: 'js/.nvmrc'
 
-      - uses: pnpm/action-setup@v6
+      - name: Set up pnpm
+        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
         with:
-          version: 11.1.1
-          run_install: false
+          package-json-file: js/package.json
+          install: false
+          cache: true
+          cache-dependency-path: js/pnpm-lock.yaml
 
-      - name: Get pnpm store directory
-        shell: bash
+      - name: Verify pnpm version
+        working-directory: ./js
         run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - uses: actions/cache@v4
-        name: Setup pnpm cache
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+          expected=$(node -p "require('./package.json').packageManager.match(/^pnpm@([^+]+)/)[1]")
+          actual=$(pnpm --version)
+          echo "pnpm version: $actual"
+          test "$actual" = "$expected"
 
       - name: Install dependencies
         working-directory: ./js

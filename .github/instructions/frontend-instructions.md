@@ -4,7 +4,7 @@ applyTo: "js/**/*.ts,js/**/*.tsx,js/**/*.js,js/**/*.jsx,js/**/*.json,js/**/*.mjs
 
 # Frontend Build Instructions (js/ Directory)
 
-> This file is the **Copilot-targeted** frontend guide (scoped via `applyTo:` frontmatter). Claude Code and other agents using `CLAUDE.md` should consult **[`js/CLAUDE.md`](../../js/CLAUDE.md)** for the equivalent guidance — both should stay in sync on tooling specifics (pnpm v11, Biome, `@datarecce/ui` publishing, style conventions).
+> This file is the **Copilot-targeted** frontend guide (scoped via `applyTo:` frontmatter). Claude Code and other agents using `CLAUDE.md` should consult **[`js/CLAUDE.md`](../../js/CLAUDE.md)** for the equivalent guidance — both should stay in sync on tooling specifics (pnpm v12, Biome, `@datarecce/ui` publishing, style conventions).
 
 ## Critical Frontend Build Requirements
 
@@ -27,7 +27,7 @@ pnpm run build
 ## Package Manager - MUST use pnpm
 
 ```bash
-# CORRECT - Always use pnpm (version 11)
+# CORRECT - Always use pnpm (version 12)
 pnpm install
 pnpm dev
 pnpm run build
@@ -87,7 +87,7 @@ pnpm run clean
 ## Tech Stack
 
 - **Node.js >=26.5.0** - JavaScript runtime (required)
-- **pnpm 11** - Package manager (NOT npm or yarn)
+- **pnpm 12** - Package manager (NOT npm or yarn)
 - **Next.js 16** - React framework with App Router
 - **React 19.2** - UI library with new JSX transform
 - **React DOM 19.2** - React renderer
@@ -130,7 +130,7 @@ js/
 
 **package.json:**
 - Requires Node.js >=26.5.0
-- Uses pnpm@11.1.1 as package manager (pinned via Corepack)
+- Uses pnpm@12.0.0 as package manager (pinned via Corepack)
 - Key scripts:
   - `dev`: Start development server with Turbopack
   - `build`: Clean, build Next.js, move to ../recce/data
@@ -225,7 +225,7 @@ pnpm test  # Watch mode
 
 **What it checks:**
 1. Node.js 26.5.0 setup from `js/.nvmrc`
-2. pnpm 11 installation
+2. pnpm 12 installation
 3. Dependency install with frozen lockfile
 4. Biome linting (`pnpm lint`)
 5. Production build (`pnpm run build`)

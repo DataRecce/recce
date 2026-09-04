@@ -44,17 +44,27 @@ jobs:
           # For workflow_run, checkout the same ref that triggered the parent workflow
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 11.1.1
-
       - name: Setup Node.js 26
         uses: actions/setup-node@v7
         with:
           node-version-file: 'js/.nvmrc' # Node 26 includes npm 11+ with OIDC support
-          cache: 'pnpm'
-          cache-dependency-path: js/pnpm-lock.yaml
           registry-url: 'https://registry.npmjs.org'
+
+      - name: Set up pnpm
+        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+        with:
+          package-json-file: js/package.json
+          install: false
+          cache: true
+          cache-dependency-path: js/pnpm-lock.yaml
+
+      - name: Verify pnpm version
+        working-directory: ./js
+        run: |
+          expected=$(node -p "require('./package.json').packageManager.match(/^pnpm@([^+]+)/)[1]")
+          actual=$(pnpm --version)
+          echo "pnpm version: $actual"
+          test "$actual" = "$expected"
 
       - name: Verify npm version
         run: |

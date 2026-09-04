@@ -5,7 +5,7 @@
    nave install "$(cat .nvmrc)"
    nave use "$(cat .nvmrc)"
    ```
-2. pnpm
+2. pnpm 12 (the exact version is pinned in `package.json`)
 
    ```
    npm install -g corepack@latest
