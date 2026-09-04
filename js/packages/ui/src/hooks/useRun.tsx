@@ -8,6 +8,15 @@ import { useRunsAggregated } from "../contexts";
 import { useApiConfig } from "./useApiConfig";
 import { useCanceledRuns } from "./useCanceledRuns";
 
+const AGGREGATED_RUN_TYPES = new Set<Run["type"]>([
+  "row_count_diff",
+  "row_count",
+  "value_diff",
+  "profile_diff",
+  "top_k_diff",
+  "histogram_diff",
+]);
+
 export interface UseRunResult {
   run?: Run;
   isRunning: boolean;
@@ -68,7 +77,8 @@ export const useRun = (runId?: string): UseRunResult => {
   useEffect(() => {
     if (
       (error || run?.result || run?.error) &&
-      (run?.type === "row_count_diff" || run?.type === "row_count")
+      run &&
+      AGGREGATED_RUN_TYPES.has(run.type)
     ) {
       refetchRunsAggregated?.();
     }

@@ -229,7 +229,7 @@ export function RowCountDiffTag({
   const { featureToggles } = useRecceInstanceContext();
   const { runsAggregated } = useLineageGraphContext();
   const lastRowCount: RowCountDiff | undefined = runsAggregated?.[node.id]
-    ?.row_count_diff.result as RowCountDiff | undefined;
+    ?.row_count_diff?.result as RowCountDiff | undefined;
   const RunTypeIcon = findByRunType("row_count_diff").icon;
 
   // Calculate during render instead of effect
@@ -302,7 +302,7 @@ export function RowCountTag({
   const isDark = useIsDark();
   const { runsAggregated } = useLineageGraphContext();
   const lastRowCount: RowCountDiff | undefined = runsAggregated?.[node.id]
-    ?.row_count.result as RowCountDiff | undefined;
+    ?.row_count?.result as RowCountDiff | undefined;
 
   const RunTypeIcon = findByRunType("row_count").icon;
 
