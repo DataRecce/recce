@@ -124,6 +124,8 @@ export type {
   LineageViewContextType,
   NodeAction,
   NodeColumnSetMap,
+  NodeDetailsOpenRequest,
+  NodeDetailsView,
   RecceActionContextType,
   RecceActionOptions,
   RecceActionProviderProps,

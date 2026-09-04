@@ -65,6 +65,8 @@ export type {
   LineageViewContextType,
   NodeAction,
   NodeColumnSetMap,
+  NodeDetailsOpenRequest,
+  NodeDetailsView,
   SelectMode,
 } from "./lineage";
 export {
