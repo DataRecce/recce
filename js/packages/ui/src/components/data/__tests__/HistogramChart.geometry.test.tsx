@@ -26,6 +26,7 @@ interface RenderedBar {
     y?: { active(): boolean };
   };
   hidden: boolean;
+  skip?: boolean;
   width: number;
   x: number;
   y: number;
@@ -83,18 +84,18 @@ function createCanvas() {
 }
 
 describe("HistogramChart real Chart.js configuration", () => {
-  it("constructs the emitted timeseries configuration with real Chart.js", () => {
+  it("keeps every temporal interval inside edge-derived bounds with real Chart.js", () => {
     const binEdges = [
       Date.UTC(2026, 0, 1),
       Date.UTC(2026, 0, 2),
-      Date.UTC(2026, 0, 3),
+      Date.UTC(2026, 0, 4),
     ];
     render(
       <HistogramChart
         title="Temporal histogram"
         dataType="datetime"
-        min={binEdges[0]}
-        max={binEdges[2]}
+        min={binEdges[0] + 6 * 60 * 60 * 1000}
+        max={binEdges[2] - 6 * 60 * 60 * 1000}
         binEdges={binEdges}
         baseData={{ counts: [2, 3] }}
         currentData={{ counts: [5, 7] }}
@@ -122,8 +123,21 @@ describe("HistogramChart real Chart.js configuration", () => {
       expect(chart.scales.x.type).toBe("timeseries");
       expect(chart.scales.x.min).toBe(binEdges[0]);
       expect(chart.scales.x.max).toBe(binEdges[2]);
-      expect(chart.getDatasetMeta(0).data).toHaveLength(2);
-      expect(chart.scales.x.getLabelForValue(binEdges[0])).toContain("2026");
+      expect(data.datasets[0].data).toEqual([
+        { x: Date.UTC(2026, 0, 1, 12), y: 5 },
+        { x: Date.UTC(2026, 0, 3), y: 7 },
+      ]);
+      const bars = chart.getDatasetMeta(0).data as unknown as RenderedBar[];
+      expect(bars).toHaveLength(2);
+      for (const bar of bars) {
+        expect(bar.skip).not.toBe(true);
+        expect(bar.x - bar.width / 2).toBeGreaterThanOrEqual(
+          chart.chartArea.left,
+        );
+        expect(bar.x + bar.width / 2).toBeLessThanOrEqual(
+          chart.chartArea.right,
+        );
+      }
     } finally {
       chart.destroy();
     }

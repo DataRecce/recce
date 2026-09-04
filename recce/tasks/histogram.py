@@ -1,5 +1,6 @@
 import math
 import re
+from bisect import bisect_right
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import ROUND_CEILING, ROUND_FLOOR, Decimal, localcontext
@@ -366,20 +367,33 @@ def query_numeric_histogram(task, node, column, column_type, min_value, max_valu
 
 
 def query_datetime_histogram(task, node, column, min_value, max_value):
+    def bounded_edges(start, terminal, interval):
+        # Each branch limits its bucket count before reaching this helper
+        # (daily <= 61, monthly <= 49, yearly <= 51). Iteration avoids an
+        # overflowing final relativedelta at date.max without a large range.
+        edges = [start]
+        while edges[-1] < terminal:
+            try:
+                next_edge = edges[-1] + interval
+            except (OverflowError, ValueError):
+                next_edge = date.max
+            edges.append(min(next_edge, terminal))
+        return edges
+
     days_delta = (max_value - min_value).days
     print(max_value, min_value, days_delta)
     # _type = None
     if days_delta > 365 * 4:
         _type = "yearly"
         dmin = date(min_value.year, 1, 1)
-        if max_value.year < 3000:
+        if max_value.year < date.max.year:
             dmax = date(max_value.year, 1, 1) + relativedelta(years=+1)
         else:
-            dmax = date(3000, 1, 1)
-        interval_years = math.ceil((dmax.year - dmin.year) / 50)
+            dmax = date.max
+        interval_years = max(1, math.ceil((dmax.year - dmin.year) / 50))
         interval = relativedelta(years=+interval_years)
-        num_buckets = math.ceil((dmax.year - dmin.year) / interval.years)
-        bin_edges = [dmin + interval * i for i in range(num_buckets + 1)]
+        bin_edges = bounded_edges(dmin, dmax, interval)
+        num_buckets = len(bin_edges) - 1
         sql = f"""
         SELECT
             {{{{ date_trunc("year", "{column}") }}}} as year,
@@ -393,13 +407,12 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
         _type = "monthly"
         interval = relativedelta(months=+1)
         dmin = date(min_value.year, min_value.month, 1)
-        if max_value.year < 3000:
+        if max_value.year < date.max.year or max_value.month < 12:
             dmax = date(max_value.year, max_value.month, 1) + interval
         else:
-            dmax = date(3000, 1, 1)
-        period = relativedelta(dmax, dmin)
-        num_buckets = period.years * 12 + period.months
-        bin_edges = [dmin + relativedelta(months=i) for i in range(num_buckets + 1)]
+            dmax = date.max
+        bin_edges = bounded_edges(dmin, dmax, interval)
+        num_buckets = len(bin_edges) - 1
         sql = f"""
         SELECT
             {{{{ date_trunc("month", "{column}") }}}} as month,
@@ -413,12 +426,16 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
         _type = "daily"
         interval = relativedelta(days=+1)
         dmin = date(min_value.year, min_value.month, min_value.day)
-        if max_value.year < 3000:
+        if max_value < date.max:
             dmax = date(max_value.year, max_value.month, max_value.day) + interval
         else:
-            dmax = date(3000, 1, 1)
-        num_buckets = (dmax - dmin).days
-        bin_edges = [dmin + interval * i for i in range(num_buckets + 1)]
+            dmax = date.max
+        if dmin == dmax:
+            # date.max has no representable successor. Use the preceding day
+            # as the sole interval's left edge and close it at date.max.
+            dmin -= interval
+        bin_edges = bounded_edges(dmin, dmax, interval)
+        num_buckets = len(bin_edges) - 1
         sql = f"""
         SELECT
             {{{{ date_trunc("day", "{column}") }}}} as day,
@@ -448,15 +465,15 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
 
     def build_result(query_result):
         if query_result is None:
-            return {}
+            return {"counts": []}
 
         counts = [0] * num_buckets
         for value, count in query_result.rows:
             edge_value = value.date() if isinstance(value, datetime) else value
-            if _type == "yearly":
-                index = (edge_value.year - dmin.year) // interval.years
-            else:
-                index = bin_edges.index(edge_value)
+            index = bisect_right(bin_edges, edge_value) - 1
+            if index == num_buckets and edge_value == bin_edges[-1]:
+                # The date.max sentinel closes the last interval inclusively.
+                index -= 1
             if index < 0 or index >= num_buckets:
                 raise ValueError(f"Histogram date {edge_value} is outside the computed edge domain")
             counts[index] += count

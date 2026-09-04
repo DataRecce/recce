@@ -109,5 +109,5 @@ export interface HistogramDiffResult {
   min: HistogramWireValue | null;
   max: HistogramWireValue | null;
   bin_edges: HistogramWireValue[];
-  labels?: string[];
+  labels?: string[] | null;
 }

@@ -100,6 +100,14 @@ function formatBinRange(
   return `${formatEdge(start)} - ${formatEdge(end)}`;
 }
 
+function formatUtcHistogramEdge(value: number): string {
+  if (!Number.isFinite(value)) return String(value);
+  const iso = new Date(value).toISOString();
+  return iso.endsWith("T00:00:00.000Z")
+    ? iso.slice(0, 10)
+    : iso.replace(".000Z", "Z");
+}
+
 const MAX_EDGE_TICK_LABELS = 8;
 type HistogramChartValue = number | { x: number; y: number };
 
@@ -144,8 +152,6 @@ function HistogramChartComponent({
   title,
   dataType = "numeric",
   samples = 0,
-  min = 0,
-  max = 0,
   binEdges,
   baseData,
   currentData,
@@ -161,6 +167,8 @@ function HistogramChartComponent({
   const comparisonColors = semanticColors.comparison;
   const isDatetime = dataType === "datetime";
   const isNumeric = dataType === "numeric";
+  const baseCounts = baseData.counts ?? [];
+  const currentCounts = currentData.counts ?? [];
   const formatNumericEdge = useMemo(
     () => createHistogramEdgeFormatter(binEdges),
     [binEdges],
@@ -187,7 +195,15 @@ function HistogramChartComponent({
     const labels = binEdges
       .slice(0, -1)
       .map((_, i) =>
-        formatBinRange(binEdges, i, isNumeric ? formatNumericEdge : undefined),
+        formatBinRange(
+          binEdges,
+          i,
+          isNumeric
+            ? formatNumericEdge
+            : isDatetime
+              ? formatUtcHistogramEdge
+              : undefined,
+        ),
       );
 
     const buildDataset = (
@@ -197,7 +213,10 @@ function HistogramChartComponent({
     ) => {
       const counts = data.counts ?? [];
       const chartValues = isDatetime
-        ? counts.map((v, i) => ({ x: binEdges[i], y: v }))
+        ? counts.map((v, i) => ({
+            x: (binEdges[i] + binEdges[i + 1]) / 2,
+            y: v,
+          }))
         : isNumeric
           ? counts.map((v, i) => ({
               x: (binEdges[i] + binEdges[i + 1]) / 2,
@@ -242,7 +261,7 @@ function HistogramChartComponent({
 
   // Build chart options
   const chartOptions = useMemo<ChartOptions<"bar">>(() => {
-    const maxCount = Math.max(...currentData.counts, ...baseData.counts);
+    const maxCount = Math.max(0, ...currentCounts, ...baseCounts);
     const edgeTickInterval = Math.max(
       1,
       Math.ceil((binEdges.length - 1) / (MAX_EDGE_TICK_LABELS - 1)),
@@ -309,13 +328,16 @@ function HistogramChartComponent({
               const range = formatBinRange(
                 binEdges,
                 dataIndex,
-                isNumeric ? formatNumericEdge : undefined,
+                isNumeric
+                  ? formatNumericEdge
+                  : isDatetime
+                    ? formatUtcHistogramEdge
+                    : undefined,
               );
               return `${dataTypeLabel}\n${range}`;
             },
             label({ datasetIndex, dataIndex, dataset }) {
-              const counts =
-                datasetIndex === 0 ? currentData.counts : baseData.counts;
+              const counts = datasetIndex === 0 ? currentCounts : baseCounts;
               const count = counts[dataIndex];
               const percent =
                 samples > 0 ? formatIntervalMinMax(count / samples) : "";
@@ -329,8 +351,8 @@ function HistogramChartComponent({
           ? {
               display: !hideAxis,
               type: "timeseries",
-              min,
-              max,
+              min: firstEdge,
+              max: terminalEdge,
               adapters: { date: {} },
               time: { minUnit: "day" },
               grid: { display: false },
@@ -338,6 +360,9 @@ function HistogramChartComponent({
                 minRotation: 30,
                 maxRotation: 30,
                 maxTicksLimit: 8,
+                callback(value) {
+                  return formatUtcHistogramEdge(value as number);
+                },
                 color: themeColors.textColor,
               },
             }
@@ -396,11 +421,11 @@ function HistogramChartComponent({
     isDatetime,
     isNumeric,
     samples,
-    min,
-    max,
     binEdges,
     baseData,
     currentData,
+    baseCounts,
+    currentCounts,
     hideAxis,
     animate,
     themeColors,

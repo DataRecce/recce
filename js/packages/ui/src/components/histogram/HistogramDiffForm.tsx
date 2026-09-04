@@ -16,6 +16,7 @@ import type { HistogramDiffParams } from "../../api";
 import { useModelColumns } from "../../hooks";
 import type { RunFormProps } from "../run";
 import { classifyType } from "../ui/DataTypeIcon/classifyType";
+import { isDatetimeHistogramType } from "./histogramType";
 
 // ============================================================================
 // Type Utilities
@@ -65,12 +66,7 @@ function isBooleanDataType(columnType: string) {
 
 function isDateTimeType(columnType: string) {
   const category = classifyType(columnType);
-  if (["date", "datetime", "time"].includes(category)) {
-    return true;
-  }
-
-  const normalizedType = columnType.trim().toUpperCase();
-  return normalizedType === "YEAR" || normalizedType === "INTERVAL";
+  return category === "time" || isDatetimeHistogramType(columnType);
 }
 
 // ============================================================================

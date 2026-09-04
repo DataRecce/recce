@@ -1,5 +1,5 @@
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
@@ -211,8 +211,95 @@ def test_datetime_histogram_preserves_the_successful_side_when_one_query_fails()
     )
 
     assert bin_edges == [date(2026, 1, 1), date(2026, 1, 2)]
-    assert base == {}
+    assert base == {"counts": []}
     assert current == {"counts": [4]}
+
+
+def test_datetime_histogram_task_returns_a_stable_partial_payload_when_one_query_fails(monkeypatch):
+    """Catch a handled side failure omitting the public counts/total fields."""
+
+    class PartialDatetimeHistogramTask(HistogramDiffTask):
+        def execute_sql(self, sql, *, base):
+            if "MIN(created_at)" in sql:
+                return [(date(2026, 1, 1), date(2026, 1, 1), 4 if base else 7)]
+            if base:
+                raise RuntimeError("base warehouse query failed")
+            return HistogramRows([(date(2026, 1, 1), 7)])
+
+        def check_cancel(self):
+            return None
+
+    adapter = MagicMock()
+    monkeypatch.setattr(histogram, "default_context", lambda: SimpleNamespace(adapter=adapter))
+    task = PartialDatetimeHistogramTask(
+        {
+            "model": "orders",
+            "column_name": "created_at",
+            "column_type": "TIMESTAMP",
+        }
+    )
+
+    assert task.execute() == {
+        "base": {"counts": [], "total": 4},
+        "current": {"counts": [7], "total": 7},
+        "min": date(2026, 1, 1),
+        "max": date(2026, 1, 1),
+        "bin_edges": [date(2026, 1, 1), date(2026, 1, 2)],
+        "labels": None,
+    }
+
+
+@pytest.mark.parametrize(
+    ("extreme", "expected_edges"),
+    [
+        (date(3000, 6, 15), [date(3000, 6, 15), date(3000, 6, 16)]),
+        (date.max, [date.max - timedelta(days=1), date.max]),
+    ],
+)
+def test_datetime_histogram_extreme_daily_edges_stay_monotonic_and_bounded(extreme, expected_edges):
+    """Catch the year-3000 overflow guard reversing edges or allocating an unbounded range."""
+    task = DatetimeHistogramQueryTask(
+        base_rows=[(extreme, 3)],
+        current_rows=[(extreme, 5)],
+    )
+
+    base, current, bin_edges = histogram.query_datetime_histogram(
+        task,
+        "orders",
+        "created_at",
+        extreme,
+        extreme,
+    )
+
+    assert bin_edges == expected_edges
+    assert len(bin_edges) == 2
+    assert bin_edges[0] < bin_edges[-1]
+    assert bin_edges[0] <= extreme <= bin_edges[-1]
+    assert base == {"counts": [3]}
+    assert current == {"counts": [5]}
+
+
+def test_datetime_histogram_date_max_yearly_edges_remain_bounded():
+    """Catch terminal-date handling allocating by day or capping valid years at 3000."""
+    task = DatetimeHistogramQueryTask(
+        base_rows=[(date(9999, 1, 1), 3)],
+        current_rows=[(date(1900, 1, 1), 5)],
+    )
+
+    base, current, bin_edges = histogram.query_datetime_histogram(
+        task,
+        "orders",
+        "created_at",
+        date(1900, 1, 1),
+        date.max,
+    )
+
+    assert bin_edges[0] == date(1900, 1, 1)
+    assert bin_edges[-1] == date.max
+    assert len(bin_edges) <= 52
+    assert all(left < right for left, right in zip(bin_edges, bin_edges[1:]))
+    assert sum(base["counts"]) == 3
+    assert sum(current["counts"]) == 5
 
 
 class DecimalExtremaHistogramTask(HistogramDiffTask):
