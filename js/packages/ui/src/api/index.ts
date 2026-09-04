@@ -138,9 +138,15 @@ export type {
 export { submitRowCountDiff } from "./rowcount";
 // Runs API (core run operations and aggregation)
 export type {
+  AggregatedRunResult,
+  ColumnValidationSummary,
+  NodeRunsAggregated,
+  ProfileDiffValidationSummary,
   RunsAggregated,
   SubmitOptions,
   SubmitRunTrackProps,
+  ValidationSummary,
+  ValueDiffValidationSummary,
 } from "./runs";
 export {
   aggregateRuns,

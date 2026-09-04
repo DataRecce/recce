@@ -13,6 +13,7 @@ import asyncio
 import contextlib
 import os
 import threading
+from collections.abc import Mapping
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 from uuid import UUID
@@ -21,7 +22,8 @@ import pytest
 from pydantic import BaseModel
 
 from recce.apis.run_func import materialize_run_results
-from recce.state import RecceState
+from recce.models.types import Run, RunStatus, RunType
+from recce.state import FileStateLoader, RecceState
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -64,6 +66,318 @@ def test_materialize_run_results_skips_cancelled_runs():
     result = materialize_run_results([cancelled_run])
 
     assert result == {}, "Cancelled run leaked into materialized aggregate"
+
+
+def _aggregate_run(
+    run_type: RunType,
+    *,
+    run_id: str,
+    run_at: str,
+    result,
+    params=None,
+    status: RunStatus | None = RunStatus.FINISHED,
+) -> Run:
+    """Build a fully specified persisted run for aggregate-contract tests."""
+    return Run(
+        type=run_type,
+        params=params or {},
+        result=result,
+        status=status,
+        run_at=run_at,
+        run_id=UUID(run_id),
+    )
+
+
+def _value_diff_result(*matched_percentages: float) -> dict:
+    return {
+        "summary": {"total": 12, "added": 1, "removed": 2},
+        "data": {
+            "columns": [
+                {"name": "column", "type": "text"},
+                {"name": "matched", "type": "integer"},
+                {"name": "matched_p", "type": "number"},
+            ],
+            "data": [
+                [f"column_{index}", 10, matched_percentage]
+                for index, matched_percentage in enumerate(matched_percentages)
+            ],
+        },
+    }
+
+
+def _assert_compact_scalars(value) -> None:
+    """Reject raw result containers recursively while allowing compact maps."""
+    if isinstance(value, Mapping):
+        for nested in value.values():
+            _assert_compact_scalars(nested)
+        return
+    assert isinstance(value, (bool, int, str, UUID)), f"non-compact aggregate value: {value!r}"
+
+
+def test_materialize_validation_summaries_selects_latest_successful_results_deterministically():
+    """Unsorted failed/cancelled/repeated runs cannot replace the latest usable evidence."""
+    value_old_id = "00000000-0000-4000-8000-000000000001"
+    value_latest_id = "00000000-0000-4000-8000-000000000002"
+    profile_tie_lower_id = "00000000-0000-4000-8000-000000000003"
+    profile_tie_winner_id = "00000000-0000-4000-8000-000000000004"
+    top_k_status_old_id = "00000000-0000-4000-8000-000000000005"
+    top_k_status_latest_id = "00000000-0000-4000-8000-000000000006"
+    top_k_region_id = "00000000-0000-4000-8000-000000000007"
+    histogram_amount_id = "00000000-0000-4000-8000-000000000008"
+    histogram_age_id = "00000000-0000-4000-8000-000000000009"
+    runs = [
+        _aggregate_run(
+            RunType.VALUE_DIFF,
+            run_id="00000000-0000-4000-8000-00000000000a",
+            run_at="2026-09-04T12:00:00Z",
+            status=RunStatus.CANCELLED,
+            params={"model": "orders"},
+            result=_value_diff_result(0.0, 0.0, 0.0),
+        ),
+        _aggregate_run(
+            RunType.TOP_K_DIFF,
+            run_id=top_k_status_latest_id,
+            run_at="2026-09-04T10:00:00Z",
+            params={"model": "orders", "column_name": "status"},
+            result={"base": {"values": ["paid"]}, "current": {"values": ["paid"]}},
+        ),
+        _aggregate_run(
+            RunType.VALUE_DIFF,
+            run_id=value_old_id,
+            run_at="2026-09-04T08:00:00Z",
+            params={"model": "orders"},
+            result=_value_diff_result(0.5, 0.25),
+        ),
+        _aggregate_run(
+            RunType.PROFILE_DIFF,
+            run_id=profile_tie_lower_id,
+            run_at="2026-09-04T11:00:00Z",
+            params={"model": "orders"},
+            result={"base": {"data": ["raw"]}},
+        ),
+        _aggregate_run(
+            RunType.HISTOGRAM_DIFF,
+            run_id=histogram_amount_id,
+            run_at="2026-09-04T07:00:00Z",
+            params={"model": "orders", "column_name": "amount"},
+            result={"bin_edges": [0, 10], "base": {"counts": [1]}},
+        ),
+        _aggregate_run(
+            RunType.VALUE_DIFF,
+            run_id=value_latest_id,
+            run_at="2026-09-04T09:00:00Z",
+            params={"model": "orders"},
+            result=_value_diff_result(1.0, 0.75, 1.0),
+        ),
+        _aggregate_run(
+            RunType.TOP_K_DIFF,
+            run_id=top_k_status_old_id,
+            run_at="2026-09-04T06:00:00Z",
+            params={"model": "orders", "column_name": "status"},
+            result={"base": {"values": ["pending"]}},
+        ),
+        _aggregate_run(
+            RunType.PROFILE_DIFF,
+            run_id=profile_tie_winner_id,
+            run_at="2026-09-04T11:00:00Z",
+            params={"model": "orders"},
+            result={},
+        ),
+        _aggregate_run(
+            RunType.TOP_K_DIFF,
+            run_id=top_k_region_id,
+            run_at="2026-09-04T07:30:00Z",
+            params={"model": "orders", "column_name": "region"},
+            result={"base": {"values": ["APAC"]}},
+        ),
+        _aggregate_run(
+            RunType.HISTOGRAM_DIFF,
+            run_id=histogram_age_id,
+            run_at="2026-09-04T07:30:00Z",
+            params={"model": "orders", "column_name": "age"},
+            result={"bin_edges": [0, 20], "current": {"counts": [3]}},
+        ),
+        _aggregate_run(
+            RunType.VALUE_DIFF,
+            run_id="00000000-0000-4000-8000-00000000000b",
+            run_at="2026-09-04T13:00:00Z",
+            status=RunStatus.FAILED,
+            params={"model": "orders"},
+            result=_value_diff_result(0.0, 0.0, 0.0, 0.0),
+        ),
+        _aggregate_run(
+            RunType.HISTOGRAM_DIFF,
+            run_id="00000000-0000-4000-8000-00000000000c",
+            run_at="2026-09-04T14:00:00Z",
+            status=RunStatus.RUNNING,
+            params={"model": "orders", "column_name": "amount"},
+            result={"bin_edges": [999], "base": {"counts": [999]}},
+        ),
+        _aggregate_run(
+            RunType.TOP_K_DIFF,
+            run_id="00000000-0000-4000-8000-00000000000d",
+            run_at="2026-09-04T15:00:00Z",
+            params={"model": "orders", "column_name": "ignored"},
+            result=None,
+        ),
+    ]
+
+    context = MagicMock()
+    context.build_name_to_unique_id_index.return_value = {"orders": "model.project.orders"}
+    with patch("recce.apis.run_func.default_context", return_value=context):
+        aggregated = materialize_run_results(runs)
+
+    assert aggregated == {
+        "model.project.orders": {
+            "validation_summary": {
+                "result_count": 6,
+                "difference_count": 1,
+                "types": {
+                    "value_diff": {
+                        "latest_run_id": UUID(value_latest_id),
+                        "difference_count": 1,
+                        "result_available": True,
+                    },
+                    "profile_diff": {
+                        "latest_run_id": UUID(profile_tie_winner_id),
+                        "result_count": 1,
+                        "result_available": True,
+                    },
+                    "top_k_diff": {
+                        "latest_run_ids_by_column": {
+                            "region": UUID(top_k_region_id),
+                            "status": UUID(top_k_status_latest_id),
+                        },
+                        "column_count": 2,
+                        "result_available": True,
+                    },
+                    "histogram_diff": {
+                        "latest_run_ids_by_column": {
+                            "age": UUID(histogram_age_id),
+                            "amount": UUID(histogram_amount_id),
+                        },
+                        "column_count": 2,
+                        "result_available": True,
+                    },
+                },
+            }
+        }
+    }
+    _assert_compact_scalars(aggregated["model.project.orders"]["validation_summary"])
+
+
+def test_materialize_results_uses_resolved_key_without_clobbering_and_preserves_legacy_rows():
+    """Repeated status-less row-count evidence accumulates under one resolved node ID."""
+    row_count_diff_id = "00000000-0000-4000-8000-000000000011"
+    row_count_id = "00000000-0000-4000-8000-000000000012"
+    validation_id = "00000000-0000-4000-8000-000000000013"
+    runs = [
+        _aggregate_run(
+            RunType.ROW_COUNT_DIFF,
+            run_id=row_count_diff_id,
+            run_at="2026-09-04T08:00:00Z",
+            status=None,
+            result={"orders": {"base": 10, "curr": 12}},
+        ),
+        _aggregate_run(
+            RunType.VALUE_DIFF,
+            run_id=validation_id,
+            run_at="2026-09-04T09:00:00Z",
+            params={"model": "orders"},
+            result=_value_diff_result(1.0),
+        ),
+        _aggregate_run(
+            RunType.ROW_COUNT,
+            run_id=row_count_id,
+            run_at="2026-09-04T10:00:00Z",
+            status=None,
+            result={"orders": {"curr": 12}},
+        ),
+    ]
+    context = MagicMock()
+    context.build_name_to_unique_id_index.return_value = {"orders": "model.project.orders"}
+
+    with patch("recce.apis.run_func.default_context", return_value=context):
+        aggregated = materialize_run_results(runs)
+
+    assert aggregated["model.project.orders"]["row_count_diff"] == {
+        "run_id": UUID(row_count_diff_id),
+        "result": {"base": 10, "curr": 12},
+    }
+    assert aggregated["model.project.orders"]["row_count"] == {
+        "run_id": UUID(row_count_id),
+        "result": {"curr": 12},
+    }
+    assert aggregated["model.project.orders"]["validation_summary"]["result_count"] == 1
+
+
+def test_materialize_validation_summaries_respects_resolved_node_filter():
+    included_id = "00000000-0000-4000-8000-000000000021"
+    excluded_id = "00000000-0000-4000-8000-000000000022"
+    runs = [
+        _aggregate_run(
+            RunType.PROFILE_DIFF,
+            run_id=included_id,
+            run_at="2026-09-04T08:00:00Z",
+            params={"model": "orders"},
+            result={},
+        ),
+        _aggregate_run(
+            RunType.PROFILE_DIFF,
+            run_id=excluded_id,
+            run_at="2026-09-04T08:00:00Z",
+            params={"model": "customers"},
+            result={},
+        ),
+    ]
+    context = MagicMock()
+    context.build_name_to_unique_id_index.return_value = {
+        "orders": "model.project.orders",
+        "customers": "model.project.customers",
+    }
+
+    with patch("recce.apis.run_func.default_context", return_value=context):
+        aggregated = materialize_run_results(runs, nodes=["model.project.orders"])
+
+    assert list(aggregated) == ["model.project.orders"]
+    assert aggregated["model.project.orders"]["validation_summary"]["types"]["profile_diff"] == {
+        "latest_run_id": UUID(included_id),
+        "result_count": 1,
+        "result_available": True,
+    }
+
+
+def test_materialize_validation_summary_from_file_state_loader(tmp_path):
+    """Persisted state runs project through the aggregate without loader changes."""
+    run_id = "00000000-0000-4000-8000-000000000031"
+    state = RecceState(
+        runs=[
+            _aggregate_run(
+                RunType.TOP_K_DIFF,
+                run_id=run_id,
+                run_at="2026-09-04T08:00:00Z",
+                params={"model": "orders", "column_name": "status"},
+                result={"base": {"values": ["paid"]}, "current": {"values": ["paid"]}},
+            )
+        ]
+    )
+    state_path = tmp_path / "persisted-recce-state.json"
+    state_path.write_text(state.to_json())
+    loaded_state = FileStateLoader(state_file=str(state_path)).load()
+
+    aggregated = materialize_run_results(loaded_state.runs)
+
+    assert aggregated["orders"]["validation_summary"] == {
+        "result_count": 1,
+        "difference_count": 0,
+        "types": {
+            "top_k_diff": {
+                "latest_run_ids_by_column": {"status": UUID(run_id)},
+                "column_count": 1,
+                "result_available": True,
+            }
+        },
+    }
 
 
 # =============================================================================
