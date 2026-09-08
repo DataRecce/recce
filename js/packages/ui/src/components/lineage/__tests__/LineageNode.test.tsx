@@ -623,6 +623,23 @@ describe("LineageNode", () => {
 
       expect(screen.queryByTestId("runs-tag")).not.toBeInTheDocument();
     });
+
+    it("keeps the change label in action_result mode when the node has no action tag", () => {
+      const props = createMockNodeProps(
+        {
+          selectMode: "action_result",
+          showChangeAnalysis: true,
+          changeCategory: "non_breaking", // wire-enum-ok
+          runsAggregatedTag: <span data-testid="runs-tag">+10%</span>,
+        },
+        { label: "test" },
+      );
+
+      render(<LineageNode {...props} />);
+
+      expect(screen.getByText("Additive Change")).toBeInTheDocument();
+      expect(screen.queryByTestId("runs-tag")).not.toBeInTheDocument();
+    });
   });
 
   // ==========================================================================

@@ -678,7 +678,7 @@ function LineageNodeComponent({
                   <Box sx={{ flexGrow: 1 }} />
                   {actionTag}
                 </>
-              ) : selectMode !== "action_result" ? (
+              ) : (
                 <>
                   {changeCategoryLabel && (
                     <Typography
@@ -698,13 +698,13 @@ function LineageNodeComponent({
                       {changeCategoryLabel}
                     </Typography>
                   )}
-                  {runsAggregatedTag && (
+                  {selectMode !== "action_result" && runsAggregatedTag && (
                     <Box sx={{ display: "flex", flex: 1, minWidth: 0 }}>
                       {runsAggregatedTag}
                     </Box>
                   )}
                 </>
-              ) : null}
+              )}
             </Stack>
           </Box>
         </Box>
