@@ -130,7 +130,7 @@ js/
 
 **package.json:**
 - Requires Node.js >=26.5.0
-- Uses pnpm@12.0.0 as package manager (pinned via Corepack)
+- Uses pnpm@12.4.1 as package manager (pinned via Corepack)
 - Key scripts:
   - `dev`: Start development server with Turbopack
   - `build`: Clean, build Next.js, move to ../recce/data

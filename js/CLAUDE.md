@@ -48,7 +48,7 @@ Packages requiring overrides (exist in multiple `package.json`): `@emotion/react
 
 ## pnpm v12 — strictDepBuilds + allowBuilds
 
-The repo runs on pnpm v12.0.0 (since 2026-08-27). Five non-obvious behaviors:
+The repo runs on pnpm v12.4.1 (updated 2026-09-14). Five non-obvious behaviors:
 
 1. **`strictDepBuilds: true` is on by default.** Any transitive package with a `postinstall` script that isn't explicitly listed in `pnpm-workspace.yaml#allowBuilds` will cause `pnpm install --frozen-lockfile` to hard-fail in CI with `ERR_PNPM_IGNORED_BUILDS`. When a new dep triggers this, add it to `allowBuilds` as `true` (run its postinstall) or `false` (acknowledge it exists, do NOT run postinstall).
 
@@ -59,6 +59,16 @@ The repo runs on pnpm v12.0.0 (since 2026-08-27). Five non-obvious behaviors:
 4. **`packageManager` must be exact semver.** Do not use ranges or dist-tags such as `pnpm@12`, `latest`, or `next-12`. Pin the full `pnpm@12.x.y+sha512.<integrity>` via `corepack use pnpm@12.x.y` (note the `.` separator between `sha512` and the hash — not `:`).
 
 5. **The lockfile pins pnpm's platform executables.** Changing `packageManager` requires regenerating `pnpm-lock.yaml` so its leading `packageManagerDependencies` document records pnpm and every supported platform package with integrity hashes. CI's frozen install rejects a mismatched pin. GitHub Actions must read the version from `js/package.json` through the SHA-pinned `pnpm/setup` action rather than duplicate the version in workflow YAML.
+
+Release notes reviewed for this pin: [12.1](https://pnpm.io/blog/releases/12.1),
+[12.2–12.3](https://pnpm.io/blog/releases/12.2-12.3), and
+[12.4 / 12.4.1](https://pnpm.io/blog/releases/12.4).
+The first install after 12.4 refetches registry metadata because cache keys now
+include the full registry URL; the package store remains reusable. Version 12.4.1
+also fixes filesystem copy fallbacks, workspace dependency links, and install
+scripts whose side effects live outside their package directory. Verify both
+fresh and repeat frozen installs when updating the pin. Python dependencies
+continue to use uv; pnpm's experimental Python/Cargo support is opt-in.
 
 Canonical `allowBuilds` examples live in recce-cloud-infra:
 - `recce-cloud-infra/recce-cloud/pnpm-workspace.yaml`

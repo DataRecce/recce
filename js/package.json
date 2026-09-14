@@ -8,7 +8,7 @@
   "engines": {
     "node": ">=26.5.0"
   },
-  "packageManager": "pnpm@12.0.0+sha512.9e2e3dc3911995868dc94b8175c217c27e95408fa03b4a22749778f2b34f773b77cdd3b39ede8171b22fcd53be6a35342e9fac9948a68ef58df6488ce89a7e67",
+  "packageManager": "pnpm@12.4.1+sha512.2e81e399d73fe8390dab25e06aa788ab7a5908248d2f5a370f82b481147a6a7a367bf8048f9a6fdb6460f21a66f0542dedb8b94ca2c8723596741920b1656d4c",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build && cp -R out/. ../recce/data/ && rm -rf out",
