@@ -94,13 +94,14 @@ describe("defaultRenderCell - Basic Rendering", () => {
   test("renders boolean false without gray styling", () => {
     const colDef: ColDefWithMetadata = { field: "active" };
     const params = createParams({ active: false }, colDef);
+    const textColor = "rgb(12 34 56)";
 
-    render(<>{defaultRenderCell(params)}</>);
+    render(<div style={{ color: textColor }}>{defaultRenderCell(params)}</div>);
 
     const element = screen.getByText("false");
     expect(element).toBeInTheDocument();
-    // Boolean false does not get grayOut styling per toRenderedValue implementation
-    expect(element).toHaveStyle({ color: "inherit" });
+    // Boolean false inherits its parent's color; only null/empty values turn gray.
+    expect(element).toHaveStyle({ color: textColor });
   });
 });
 
