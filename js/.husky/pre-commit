@@ -16,7 +16,7 @@ export GIT_WORK_TREE="$REPO_ROOT"
 #   ALLOW_BIOME_BUMP=1 git commit ...
 PINNED_PKG_JSON="js/package.json"
 if git diff --cached --name-only --diff-filter=ACM | grep -qx "$PINNED_PKG_JSON"; then
-    # Pinned: @biomejs/biome → 2.5.7.
+    # Pinned: @biomejs/biome → 2.5.12.
     #
     # Rationale: biome 2.4.12 through 2.4.16 have a deterministic Rust stack
     # overflow on macOS arm64 when running TS-aware nursery rules
@@ -25,6 +25,9 @@ if git diff --cached --name-only --diff-filter=ACM | grep -qx "$PINNED_PKG_JSON"
     # shipped in 2.4.16 2026-05-27). The sister recce-cloud-infra repo tested
     # 2.4.16 locally on 2026-05-28 and CONFIRMED it still crashes — see
     # DataRecce/recce-cloud-infra#1382 for the testing notes.
+    #
+    # 2.5.12 was verified with the full 705-file source check on macOS arm64
+    # during the September 2026 Dependabot consolidation, with no stack overflow.
     #
     # 2.5.7 is ABOVE the affected 2.4.12–2.4.16 range and verified clean on
     # macOS arm64 (`biome check --staged` + a 639-file source check exit 0, no
@@ -35,7 +38,7 @@ if git diff --cached --name-only --diff-filter=ACM | grep -qx "$PINNED_PKG_JSON"
     # currently enable those nursery rules either. A silent dependabot bump
     # still requires deliberate ack: when changing biome, update EXPECTED_BIOME
     # in the same commit as the bump (and re-run the macOS arm64 check above).
-    EXPECTED_BIOME="2.5.7"
+    EXPECTED_BIOME="2.5.12"
     # head -1 hardens against a future pnpm.overrides entry adding a second
     # "@biomejs/biome": line. Fail-loud (below) if extraction is empty so a
     # package.json reformat (or removed dep) can't silently disable the guard.
