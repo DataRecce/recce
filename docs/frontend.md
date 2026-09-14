@@ -1,6 +1,6 @@
 # Frontend Structure
 
-> For frontend tooling specifics (pnpm commands, Biome, Vitest, `@datarecce/ui` publishing, pnpm v11 `strictDepBuilds`/`allowBuilds`, and style conventions), see **[`js/CLAUDE.md`](../js/CLAUDE.md)**. This document focuses on monorepo structure, package boundaries, and the build pipeline.
+> For frontend tooling specifics (pnpm commands, Biome, Vitest, `@datarecce/ui` publishing, pnpm v12 `strictDepBuilds`/`allowBuilds`, and style conventions), see **[`js/CLAUDE.md`](../js/CLAUDE.md)**. This document focuses on monorepo structure, package boundaries, and the build pipeline.
 
 ## Monorepo Layout
 

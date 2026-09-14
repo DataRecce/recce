@@ -1,6 +1,6 @@
 # Recce Copilot Instructions
 
-> Claude Code and other agents using `CLAUDE.md` should also consult **[`js/CLAUDE.md`](../js/CLAUDE.md)** for frontend tooling specifics (pnpm commands, Biome, Vitest, `@datarecce/ui` publishing, pnpm v11 `strictDepBuilds`/`allowBuilds`, style conventions). This file remains the canonical Copilot context.
+> Claude Code and other agents using `CLAUDE.md` should also consult **[`js/CLAUDE.md`](../js/CLAUDE.md)** for frontend tooling specifics (pnpm commands, Biome, Vitest, `@datarecce/ui` publishing, pnpm v12 `strictDepBuilds`/`allowBuilds`, style conventions). This file remains the canonical Copilot context.
 
 ## Project Overview
 
@@ -86,7 +86,7 @@ below:
 
 ```bash
 cd js
-pnpm install  # Uses pnpm 11, NOT npm or yarn
+pnpm install  # Uses pnpm 12, NOT npm or yarn
 ```
 
 **Development Server:**
@@ -218,7 +218,7 @@ recce/
 
 ```
 js/
-├── package.json        # pnpm 11, Node >=26.5.0, React 19, Next.js 16
+├── package.json        # pnpm 12, Node >=26.5.0, React 19, Next.js 16
 ├── tsconfig.json       # TypeScript config
 ├── next.config.js      # Next.js config (output: 'export')
 ├── app/                # OSS Next.js App Router shell (routes/layout only)

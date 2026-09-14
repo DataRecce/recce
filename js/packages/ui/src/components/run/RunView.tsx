@@ -153,8 +153,7 @@ export interface RunViewProps {
    */
   RunResultView?: ForwardRefExoticComponent<
     // biome-ignore lint/suspicious/noExplicitAny: RunResultView types vary by run type
-    RunResultViewProps<any> & RefAttributes<any>
-  >;
+    RunResultViewProps<any> & RefAttributes<any>>;
 
   /**
    * Render prop for custom result rendering.
