@@ -20,6 +20,9 @@ export const LEGIBLE_MIN_ZOOM = 0.35;
 /** Minimum zoom for manual exploration */
 export const EXPLORE_MIN_ZOOM = 0.1;
 
+/** Zoom must exceed this boundary before node and column content is rendered. */
+export const CONTENT_VISIBILITY_MIN_ZOOM = 0.3;
+
 /** Padding for fitView calls */
 export const FIT_VIEW_PADDING = 0.15;
 

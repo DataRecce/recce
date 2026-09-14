@@ -62,6 +62,8 @@ export type { RecceServerFlags } from "./flag";
 export { getServerFlag, markRelaunchHintCompleted } from "./flag";
 // Server info API (lineage, environment, dbt metadata)
 export type {
+  ArtifactHealth,
+  ArtifactHealthPair,
   CatalogCoverage,
   CatalogMetadata,
   GitInfo,
@@ -78,6 +80,7 @@ export type {
   NodeColumnData,
   NodeData,
   PullRequestInfo,
+  SchemaCoverage,
   ServerInfoResult,
   SessionStaleness,
   SQLMeshInfo,
@@ -114,6 +117,7 @@ export type {
   HistogramDiffParams,
   HistogramDiffResult,
   HistogramResult,
+  HistogramWireValue,
   ProfileDiffParams,
   ProfileDiffResult,
   ProfileDiffViewOptions,
@@ -135,9 +139,15 @@ export type {
 export { submitRowCountDiff } from "./rowcount";
 // Runs API (core run operations and aggregation)
 export type {
+  AggregatedRunResult,
+  ColumnValidationSummary,
+  NodeRunsAggregated,
+  ProfileDiffValidationSummary,
   RunsAggregated,
   SubmitOptions,
   SubmitRunTrackProps,
+  ValidationSummary,
+  ValueDiffValidationSummary,
 } from "./runs";
 export {
   aggregateRuns,

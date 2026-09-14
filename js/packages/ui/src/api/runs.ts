@@ -6,18 +6,53 @@ import { isQueryRun, type Run, type RunType } from "./types";
 // ============================================================================
 
 /**
- * Aggregated run results by model and run type
+ * A full result retained for legacy row-count lineage decorations.
  */
-export type RunsAggregated = Record<
-  string,
-  Record<
-    "row_count_diff" | "value_diff" | "row_count",
-    {
-      run_id: string;
-      result: unknown;
-    }
-  >
->;
+export interface AggregatedRunResult {
+  run_id: string;
+  result: unknown;
+}
+
+interface AvailableValidationResult {
+  result_available: true;
+}
+
+export interface ValueDiffValidationSummary extends AvailableValidationResult {
+  latest_run_id: string;
+  difference_count: number;
+}
+
+export interface ProfileDiffValidationSummary
+  extends AvailableValidationResult {
+  latest_run_id: string;
+  result_count: number;
+}
+
+export interface ColumnValidationSummary extends AvailableValidationResult {
+  latest_run_ids_by_column: Record<string, string>;
+  column_count: number;
+}
+
+export interface ValidationSummary {
+  result_count: number;
+  difference_count: number;
+  types: {
+    value_diff?: ValueDiffValidationSummary;
+    profile_diff?: ProfileDiffValidationSummary;
+    top_k_diff?: ColumnValidationSummary;
+    histogram_diff?: ColumnValidationSummary;
+  };
+}
+
+export interface NodeRunsAggregated {
+  row_count_diff?: AggregatedRunResult;
+  value_diff?: AggregatedRunResult;
+  row_count?: AggregatedRunResult;
+  validation_summary?: ValidationSummary;
+}
+
+/** Aggregated run results by resolved lineage node ID. */
+export type RunsAggregated = Record<string, NodeRunsAggregated>;
 
 /**
  * Properties for tracking run submissions (analytics)

@@ -99,7 +99,18 @@ class TestBuildInfoPayload:
         payload = _build_info_payload(adapter, diff)
 
         assert payload["adapter_type"] == "duckdb"
-        assert set(payload["lineage"].keys()) == {"nodes", "edges", "metadata"}
+        assert set(payload["lineage"].keys()) == {
+            "nodes",
+            "edges",
+            "metadata",
+            "schema_coverage",
+        }
+        assert payload["lineage"]["schema_coverage"] == {
+            "status": "partial",
+            "unchecked_nodes": ["model.demo.a"],
+            "unchecked_node_count": 1,
+            "more": False,
+        }
         # Both nodes present in merged output
         assert set(payload["lineage"]["nodes"].keys()) == {"model.demo.a", "model.demo.b"}
         # change_status baked into node
@@ -132,6 +143,40 @@ class TestWriteJsonAtomic:
 
 
 class TestEmitInfoAndLineageDiff:
+
+    def test_retains_catalog_evidence_in_both_static_artifacts(self, tmp_path: Path):
+        node_id = "model.demo.unchecked"
+        health = {
+            "status": "partial",
+            "expected_count": 1,
+            "covered_count": 0,
+            "catalog_entry_count": 0,
+            "missing_node_count": 1,
+            "missing_nodes": [node_id],
+            "missing_more": False,
+            "orphan_node_count": 0,
+            "orphan_nodes": [],
+            "orphan_more": False,
+        }
+        diff = _make_lineage_diff(base_node_ids=[node_id], curr_node_ids=[node_id])
+        diff.base["nodes"][node_id]["catalog_status"] = "unchecked"
+        diff.current["nodes"][node_id]["catalog_status"] = "unchecked"
+        diff.base["artifact_health"] = health
+        diff.current["artifact_health"] = health
+        adapter = _make_adapter(diff)
+        info_path = tmp_path / "info.json"
+        lineage_diff_path = tmp_path / "lineage_diff.json"
+
+        emit_info_and_lineage_diff(adapter, info_path, lineage_diff_path)
+
+        info = json.loads(info_path.read_text())
+        raw_lineage_diff = json.loads(lineage_diff_path.read_text())
+        assert info["lineage"]["artifact_health"] == {"base": health, "current": health}
+        assert info["lineage"]["nodes"][node_id]["schema_comparison_status"] == "unchecked"
+        assert raw_lineage_diff["current"]["artifact_health"] == health
+        assert raw_lineage_diff["current"]["nodes"][node_id]["catalog_status"] == "unchecked"
+        assert "expected_node_ids" not in info_path.read_text()
+
     def test_writes_both_files(self, tmp_path: Path):
         diff = _make_lineage_diff(
             base_node_ids=["model.demo.a"],

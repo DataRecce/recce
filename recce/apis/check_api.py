@@ -6,6 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
 from recce.apis.check_func import (
+    _validate_check,
     create_check_from_run,
     create_check_without_run,
     export_persistent_state,
@@ -165,6 +166,8 @@ async def run_check_handler(check_id: UUID, input: RunCheckIn):
         raise HTTPException(status_code=404, detail=f"Check ID '{check_id}' not found")
 
     try:
+        if check.type == RunType.HISTOGRAM_DIFF:
+            _validate_check(check.type, check.params)
         log_api_event(
             "rerun_check",
             dict(
@@ -173,7 +176,7 @@ async def run_check_handler(check_id: UUID, input: RunCheckIn):
             ),
         )
         run, future = submit_run(check.type, check.params, check_id=check_id, triggered_by="user")
-    except RecceException as e:
+    except (RecceException, ValueError) as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     if input.nowait:
@@ -237,11 +240,20 @@ class PatchCheckIn(BaseModel):
     response_model_exclude_none=True,
 )
 async def update_check_handler(check_id: UUID, patch: PatchCheckIn, background_tasks: BackgroundTasks):
+    check_dao = CheckDAO()
     try:
-        check = CheckDAO().update_check_by_id(check_id, patch)
+        if patch.params is not None:
+            existing_check = check_dao.find_check_by_id(check_id)
+            if existing_check is None:
+                raise HTTPException(status_code=404, detail="Not Found")
+            if existing_check.type == RunType.HISTOGRAM_DIFF:
+                _validate_check(existing_check.type, patch.params)
+        check = check_dao.update_check_by_id(check_id, patch)
     except RecceCloudException as e:
         log_cloud_exception(f"Failed to update check {check_id}: {e}", e)
         raise HTTPException(status_code=e.status_code, detail=str(e.reason))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     if check is None:
         raise HTTPException(status_code=404, detail="Not Found")

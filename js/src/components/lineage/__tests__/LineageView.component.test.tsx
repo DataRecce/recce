@@ -174,6 +174,9 @@ vi.mock("@xyflow/react", () => ({
     getZoom: vi.fn().mockReturnValue(1),
     getNodes: mockReactFlowGetNodes,
   })),
+  useStore: vi.fn((selector: (state: { transform: number[] }) => unknown) =>
+    selector({ transform: [0, 0, 1] }),
+  ),
   useNodesState: vi.fn((initial: unknown[]) => {
     const [nodes, setNodes] = React.useState(
       mockUseRealInitialNodes ? initial : mockUseNodesStateReturnValue[0],

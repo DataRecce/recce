@@ -26,6 +26,8 @@ import {
   type LineageGraphNode,
   type LineageGraphNodes,
   type LineageViewContextType,
+  type NodeDetailsOpenRequest,
+  type NodeDetailsView,
 } from "../../contexts/lineage/types";
 import {
   type NodeColumnSetMap,
@@ -63,6 +65,7 @@ import {
   useEdgesState,
   useNodesState,
   useReactFlow,
+  useStore,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import React, {
@@ -90,11 +93,13 @@ import {
   nextChangeAnalysisMode,
   resolveResetCllInput,
 } from "./changeAnalysisState";
+import { getDisplayedColumnTransformationTypes } from "./columnTransformation";
 import { computeColumnLineage } from "./computeColumnLineage";
 import { computeImpactedColumns } from "./computeImpactedColumns";
 import { computeIsImpacted } from "./computeIsImpacted";
 import { computeWholeModelImpact } from "./computeWholeModelImpact";
 import {
+  CONTENT_VISIBILITY_MIN_ZOOM,
   EXPLORE_MIN_ZOOM,
   edgeTypes,
   FIT_VIEW_PADDING,
@@ -139,6 +144,14 @@ export function nextFocusedNodeId(
   clickedNodeId: string,
 ): string | undefined {
   return currentNodeId === clickedNodeId ? undefined : clickedNodeId;
+}
+
+export function createNodeDetailsOpenRequest(
+  currentToken: number,
+  nodeId: string,
+  view: NodeDetailsView,
+): NodeDetailsOpenRequest {
+  return { nodeId, view, requestToken: currentToken + 1 };
 }
 
 /**
@@ -226,6 +239,9 @@ export function PrivateLineageView(
   const { apiClient } = useApiConfig();
   const queryClient = useQueryClient();
   const reactFlow = useReactFlow();
+  const isNodeContentVisible = useStore(
+    (state) => state.transform[2] > CONTENT_VISIBILITY_MIN_ZOOM,
+  );
   const refResize = useRef<HTMLDivElement>(null);
   const {
     copyToClipboard,
@@ -324,6 +340,27 @@ export function PrivateLineageView(
     return !!(lineageGraph && lineageGraph.modifiedSet.length > 0);
   }, [lineageGraph]);
 
+  const displayedColumnTransformationTypes = useMemo(() => {
+    if (!isNodeContentVisible) {
+      return [];
+    }
+
+    return getDisplayedColumnTransformationTypes(nodes, (nodeId) =>
+      isNodeShowingChangeAnalysis({
+        nodeId,
+        changeAnalysisMode,
+        cllInput: viewOptions.column_level_lineage,
+        lineageGraph,
+      }),
+    );
+  }, [
+    nodes,
+    isNodeContentVisible,
+    changeAnalysisMode,
+    viewOptions.column_level_lineage,
+    lineageGraph,
+  ]);
+
   /**
    * View mode
    * - all: show all nodes
@@ -347,6 +384,9 @@ export function PrivateLineageView(
    * Focused node: the node that is currently focused. Show the NodeView when a node is focused
    */
   const [focusedNodeId, setFocusedNodeId] = useState<string>();
+  const [nodeDetailsOpenRequest, setNodeDetailsOpenRequest] =
+    useState<NodeDetailsOpenRequest>();
+  const nodeDetailsRequestTokenRef = useRef(0);
   const focusedNode = focusedNodeId
     ? lineageGraph?.nodes[focusedNodeId]
     : undefined;
@@ -705,8 +745,28 @@ export function PrivateLineageView(
   const onNodeViewClosed = () => {
     supersedeCllInteraction();
     setFocusedNodeId(undefined);
+    setNodeDetailsOpenRequest(undefined);
     setFocusedHistory([]);
   };
+
+  const openNodeDetails = (nodeId: string, view: NodeDetailsView) => {
+    if (!lineageGraph?.nodes[nodeId]) return;
+    supersedeCllInteraction();
+    const request = createNodeDetailsOpenRequest(
+      nodeDetailsRequestTokenRef.current,
+      nodeId,
+      view,
+    );
+    nodeDetailsRequestTokenRef.current = request.requestToken;
+    setNodeDetailsOpenRequest(request);
+    setFocusedNodeId(nodeId);
+    setFocusedHistory([]);
+  };
+  const consumeNodeDetailsOpenRequest = useCallback((requestToken: number) => {
+    setNodeDetailsOpenRequest((current) =>
+      current?.requestToken === requestToken ? undefined : current,
+    );
+  }, []);
 
   /**
    * Navigate the Model Detail panel to a different node without touching the
@@ -717,6 +777,7 @@ export function PrivateLineageView(
   const navigateToNode = (nodeId: string) => {
     if (!lineageGraph?.nodes[nodeId]) return;
     supersedeCllInteraction();
+    setNodeDetailsOpenRequest(undefined);
     if (focusedNodeId === nodeId) return;
     if (focusedNodeId && focusedNodeId !== nodeId) {
       setFocusedHistory((h) => [...h, focusedNodeId]);
@@ -729,6 +790,7 @@ export function PrivateLineageView(
     const previous = focusedHistory[focusedHistory.length - 1];
     if (!lineageGraph?.nodes[previous]) return;
     supersedeCllInteraction();
+    setNodeDetailsOpenRequest(undefined);
     setFocusedNodeId(previous);
     setFocusedHistory((h) => h.slice(0, -1));
   };
@@ -742,6 +804,7 @@ export function PrivateLineageView(
     const target = focusedHistory[index];
     if (!lineageGraph?.nodes[target]) return;
     supersedeCllInteraction();
+    setNodeDetailsOpenRequest(undefined);
     setFocusedNodeId(target);
     setFocusedHistory((h) => h.slice(0, index));
   };
@@ -885,6 +948,7 @@ export function PrivateLineageView(
 
     closeContextMenu();
     supersedeCllInteraction();
+    setNodeDetailsOpenRequest(undefined);
     if (!selectMode) {
       setFocusedNodeId(nextFocusedNodeId(focusedNodeId, node.id));
       setFocusedHistory([]);
@@ -1375,6 +1439,7 @@ export function PrivateLineageView(
     onViewOptionsChanged: handleViewOptionsChanged,
     selectMode,
     selectNode,
+    openNodeDetails,
     selectParentNodes,
     selectChildNodes,
     deselect,
@@ -1671,8 +1736,12 @@ export function PrivateLineageView(
                     newCllExperience={newCllExperience}
                   />
                 )}
-                {viewOptions.column_level_lineage && (
-                  <LineageLegend variant="transformation" />
+                {displayedColumnTransformationTypes.length > 0 && (
+                  <LineageLegend
+                    variant="transformation"
+                    title="Column transformations"
+                    transformationTypes={displayedColumnTransformationTypes}
+                  />
                 )}
               </Stack>
             </Panel>
@@ -1736,6 +1805,8 @@ export function PrivateLineageView(
             <NodeView
               node={focusedNode}
               onCloseNode={onNodeViewClosed}
+              openRequest={nodeDetailsOpenRequest}
+              onOpenRequestConsumed={consumeNodeDetailsOpenRequest}
               onNavigateToNode={navigateToNode}
               onBack={focusedHistory.length > 0 ? navigateBack : undefined}
               onCenterFocused={centerFocusedNode}

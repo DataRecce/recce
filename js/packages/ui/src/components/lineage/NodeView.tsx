@@ -13,11 +13,14 @@ import {
   type ComponentType,
   type ReactElement,
   type ReactNode,
+  useEffect,
+  useRef,
   useState,
 } from "react";
 import { IoClose } from "react-icons/io5";
 import type { NodeData } from "../../api/info";
 import { DisableTooltipMessages } from "../../constants";
+import type { NodeDetailsOpenRequest } from "../../contexts/lineage/types";
 import { useThemeColors } from "../../hooks";
 import { formatTimeToNow } from "../../utils";
 import { getChangeCategoryLabel } from "./changeCategory";
@@ -210,6 +213,10 @@ export interface NodeViewProps<
   recentAnalysisRuns?: RecentAnalysisRun[];
   /** Reopen a prior analysis result in the consumer's result pane. */
   onViewAnalysisRun?: (runId: string) => void;
+  /** Explicit, repeatable request to select a detail-panel view. */
+  openRequest?: NodeDetailsOpenRequest;
+  /** Acknowledge that an explicit detail-panel request was applied. */
+  onOpenRequestConsumed?: (requestToken: number) => void;
 
   // =========================================================================
   // DEPENDENCY INJECTION: Icons
@@ -680,6 +687,8 @@ export function NodeView<TNode extends NodeViewNodeData>({
   rowCountDisplay,
   recentAnalysisRuns = [],
   onViewAnalysisRun,
+  openRequest,
+  onOpenRequestConsumed,
 }: NodeViewProps<TNode>) {
   const withColumns =
     node.data.resourceType === "model" ||
@@ -714,6 +723,25 @@ export function NodeView<TNode extends NodeViewNodeData>({
     node.data.resourceType === "seed" ||
     node.data.resourceType === "snapshot";
   const showAnalysisTab = !isSingleEnv && isModelSeedOrSnapshot;
+  const appliedRequestTokenRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (
+      openRequest === undefined ||
+      appliedRequestTokenRef.current === openRequest.requestToken
+    ) {
+      return;
+    }
+    if (
+      openRequest.nodeId === node.id &&
+      openRequest.view === "analysis" &&
+      showAnalysisTab
+    ) {
+      appliedRequestTokenRef.current = openRequest.requestToken;
+      setTabState({ nodeId: node.id, value: "analysis" });
+      onOpenRequestConsumed?.(openRequest.requestToken);
+    }
+  }, [node.id, onOpenRequestConsumed, openRequest, showAnalysisTab]);
 
   const showAddSchemaDiff =
     !isSingleEnv &&

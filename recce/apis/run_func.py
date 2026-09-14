@@ -1,12 +1,18 @@
 import asyncio
 import logging
+from collections.abc import Mapping
+from datetime import timezone
 from typing import List, Optional, Tuple
+
+import dateutil.parser
+from pydantic import BaseModel
 
 from recce.core import default_context
 from recce.exceptions import DuckDBExternalAccessBlocked, RecceException
 from recce.models import Run, RunDAO, RunType
 from recce.models.types import RunStatus
 from recce.tasks.core import Task
+from recce.util.pydantic_model import pydantic_model_dump
 
 running_tasks = {}
 logger = logging.getLogger("uvicorn")
@@ -328,68 +334,184 @@ def cancel_run(run_id: str) -> None:
     _invoke_task_cancel(task)
 
 
-def materialize_run_results(runs: List[Run], nodes: List[str] = None):
-    """
-    Materialize the run results for nodes. It walks through all runs and get the last results for primary run types.
+_VALIDATION_RUN_TYPES = (
+    RunType.VALUE_DIFF,
+    RunType.PROFILE_DIFF,
+    RunType.TOP_K_DIFF,
+    RunType.HISTOGRAM_DIFF,
+)
+_COLUMN_VALIDATION_RUN_TYPES = (RunType.TOP_K_DIFF, RunType.HISTOGRAM_DIFF)
 
-    The result format
-    {
-       'node_id': {
-          'row_count_diff': {
-            'run_id': '<run_id>',
-            'result': '<result>'
-          },
-          'value_diff': {
-            'run_id': '<run_id>',
-            'result': '<result>'
-          },
-       },
-    }
+
+def _run_recency_key(run: Run):
+    """Return an input-order-independent ordering key for persisted runs."""
+    try:
+        run_at = dateutil.parser.parse(run.run_at)
+        if run_at.tzinfo is None:
+            run_at = run_at.replace(tzinfo=timezone.utc)
+        timestamp = run_at.timestamp()
+    except (TypeError, ValueError, OverflowError):
+        timestamp = float("-inf")
+    return timestamp, str(run.run_id)
+
+
+def _result_mapping(value):
+    """Normalize persisted mappings and live Pydantic task results."""
+    if isinstance(value, Mapping):
+        return value
+    if isinstance(value, BaseModel):
+        try:
+            dumped = pydantic_model_dump(value)
+        except Exception:
+            return None
+        return dumped if isinstance(dumped, Mapping) else None
+    return None
+
+
+def _value_diff_difference_count(result) -> Optional[int]:
+    """Count mismatched columns, or reject an unusable imported result."""
+    result_mapping = _result_mapping(result)
+    if result_mapping is None:
+        return None
+    dataframe = _result_mapping(result_mapping.get("data"))
+    if dataframe is None:
+        return None
+    rows = dataframe.get("data")
+    if not isinstance(rows, (list, tuple)):
+        return None
+
+    difference_count = 0
+    for row in rows:
+        if not isinstance(row, (list, tuple)) or len(row) < 3:
+            return None
+        if row[2] is None:
+            continue
+        try:
+            if float(row[2]) < 1:
+                difference_count += 1
+        except (TypeError, ValueError):
+            return None
+    return difference_count
+
+
+def materialize_run_results(runs: List[Run], nodes: List[str] = None):
+    """Project persisted runs into compact, node-keyed lineage evidence.
+
+    Legacy row-count entries retain their full result shape. Validation runs
+    expose only IDs and scalar counts under ``validation_summary``; their raw
+    DataFrames and distribution arrays remain in the run store.
     """
 
     context = default_context()
     if context:
-        mame_to_unique_id = context.build_name_to_unique_id_index(excluded_types={"semantic_model", "metric"})
+        name_to_unique_id = context.build_name_to_unique_id_index(excluded_types={"semantic_model", "metric"})
     else:
-        mame_to_unique_id = {}
+        name_to_unique_id = {}
 
     result = {}
+    latest_validation_runs = {}
     for run in runs:
-        if not run.result:
-            continue
-        if run.status == RunStatus.CANCELLED:
-            continue
-
-        if run.type == RunType.ROW_COUNT_DIFF:
+        if run.type == RunType.ROW_COUNT_DIFF and run.result and run.status != RunStatus.CANCELLED:
             for model_name, node_run_result in run.result.items():
-                key = mame_to_unique_id.get(model_name, model_name)
+                key = name_to_unique_id.get(model_name, model_name)
 
                 if nodes:
                     if key not in nodes:
                         continue
 
-                if model_name not in result:
-                    node_result = result[key] = {}
-                else:
-                    node_result = result.get(key)
+                node_result = result.setdefault(key, {})
                 node_result["row_count_diff"] = {
                     "run_id": run.run_id,
                     "result": node_run_result,
                 }
-        elif run.type == RunType.ROW_COUNT:
+        elif run.type == RunType.ROW_COUNT and run.result and run.status != RunStatus.CANCELLED:
             for model_name, node_run_result in run.result.items():
-                key = mame_to_unique_id.get(model_name, model_name)
+                key = name_to_unique_id.get(model_name, model_name)
 
                 if nodes:
                     if key not in nodes:
                         continue
 
-                if model_name not in result:
-                    node_result = result[key] = {}
-                else:
-                    node_result = result.get(key)
+                node_result = result.setdefault(key, {})
                 node_result["row_count"] = {
                     "run_id": run.run_id,
                     "result": node_run_result,
                 }
+        elif run.type in _VALIDATION_RUN_TYPES and run.status == RunStatus.FINISHED and run.result is not None:
+            params = run.params if isinstance(run.params, dict) else {}
+            model_name = params.get("model")
+            if not isinstance(model_name, str) or not model_name:
+                continue
+
+            column_name = None
+            if run.type in _COLUMN_VALIDATION_RUN_TYPES:
+                column_name = params.get("column_name")
+                if not isinstance(column_name, str) or not column_name:
+                    continue
+            elif run.type == RunType.VALUE_DIFF and _value_diff_difference_count(run.result) is None:
+                continue
+
+            key = name_to_unique_id.get(model_name, model_name)
+            if nodes and key not in nodes:
+                continue
+
+            node_runs = latest_validation_runs.setdefault(key, {})
+            if run.type in _COLUMN_VALIDATION_RUN_TYPES:
+                column_runs = node_runs.setdefault(run.type, {})
+                previous = column_runs.get(column_name)
+                if previous is None or _run_recency_key(run) > _run_recency_key(previous):
+                    column_runs[column_name] = run
+            else:
+                previous = node_runs.get(run.type)
+                if previous is None or _run_recency_key(run) > _run_recency_key(previous):
+                    node_runs[run.type] = run
+
+    for key, node_runs in latest_validation_runs.items():
+        validation_types = {}
+        result_count = 0
+        difference_count = 0
+
+        value_diff_run = node_runs.get(RunType.VALUE_DIFF)
+        if value_diff_run is not None:
+            value_difference_count = _value_diff_difference_count(value_diff_run.result)
+            if value_difference_count is not None:
+                difference_count = value_difference_count
+                validation_types[RunType.VALUE_DIFF.value] = {
+                    "latest_run_id": value_diff_run.run_id,
+                    "difference_count": difference_count,
+                    "result_available": True,
+                }
+                result_count += 1
+
+        profile_diff_run = node_runs.get(RunType.PROFILE_DIFF)
+        if profile_diff_run is not None:
+            validation_types[RunType.PROFILE_DIFF.value] = {
+                "latest_run_id": profile_diff_run.run_id,
+                "result_count": 1,
+                "result_available": True,
+            }
+            result_count += 1
+
+        for run_type in _COLUMN_VALIDATION_RUN_TYPES:
+            column_runs = node_runs.get(run_type)
+            if not column_runs:
+                continue
+            latest_run_ids_by_column = {
+                column_name: column_runs[column_name].run_id for column_name in sorted(column_runs)
+            }
+            column_count = len(latest_run_ids_by_column)
+            validation_types[run_type.value] = {
+                "latest_run_ids_by_column": latest_run_ids_by_column,
+                "column_count": column_count,
+                "result_available": True,
+            }
+            result_count += column_count
+
+        if not validation_types:
+            continue
+        result.setdefault(key, {})["validation_summary"] = {
+            "result_count": result_count,
+            "difference_count": difference_count,
+            "types": validation_types,
+        }
     return result

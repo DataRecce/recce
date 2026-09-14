@@ -1,5 +1,5 @@
 import type { Position } from "@xyflow/react";
-import type { MergedLineageResponse } from "../../api/info";
+import type { MergedLineageResponse, SchemaCoverage } from "../../api/info";
 import { coerceCllChangeStatus } from "../../components/lineage/computeColumnLineage";
 import type {
   LineageGraph,
@@ -20,6 +20,60 @@ export const COLUMN_HEIGHT = 24;
  * Map of node IDs to their column sets
  */
 export type NodeColumnSetMap = Record<string, Set<string>>;
+
+const UNKNOWN_SCHEMA_COVERAGE: SchemaCoverage = {
+  status: "unknown",
+  unchecked_nodes: [],
+  unchecked_node_count: 0,
+  more: false,
+};
+
+function normalizeSchemaCoverage(
+  value: MergedLineageResponse["schema_coverage"],
+): SchemaCoverage {
+  if (value == null) {
+    return { ...UNKNOWN_SCHEMA_COVERAGE, unchecked_nodes: [] };
+  }
+  if (
+    !["complete", "partial", "unknown"].includes(value.status) ||
+    !Array.isArray(value.unchecked_nodes) ||
+    !value.unchecked_nodes.every((nodeId) => typeof nodeId === "string") ||
+    !Number.isInteger(value.unchecked_node_count) ||
+    value.unchecked_node_count < value.unchecked_nodes.length ||
+    typeof value.more !== "boolean"
+  ) {
+    return { ...UNKNOWN_SCHEMA_COVERAGE, unchecked_nodes: [] };
+  }
+  const hasUncheckedNodes = value.unchecked_node_count > 0;
+  const sampleIsTruncated =
+    value.unchecked_node_count > value.unchecked_nodes.length;
+  const invariantsHold =
+    value.status === "partial"
+      ? hasUncheckedNodes && value.more === sampleIsTruncated
+      : !hasUncheckedNodes && value.unchecked_nodes.length === 0 && !value.more;
+  if (!invariantsHold) {
+    return { ...UNKNOWN_SCHEMA_COVERAGE, unchecked_nodes: [] };
+  }
+  return {
+    status: value.status,
+    unchecked_nodes: [...value.unchecked_nodes],
+    unchecked_node_count: value.unchecked_node_count,
+    more: value.more,
+  };
+}
+
+function normalizeSchemaComparisonStatus(
+  status: string | undefined,
+): LineageGraphNode["data"]["schemaComparisonStatus"] {
+  if (
+    status === "complete" ||
+    status === "unchecked" ||
+    status === "not_applicable"
+  ) {
+    return status;
+  }
+  return "unknown";
+}
 
 // =============================================================================
 // Set Utilities
@@ -128,6 +182,11 @@ export function buildLineageGraph(
         materialized: merged.materialized,
         changeStatus: coerceCllChangeStatus(merged.change_status),
         change: merged.change ?? undefined,
+        schemaComparisonStatus: normalizeSchemaComparisonStatus(
+          merged.schema_comparison_status,
+        ),
+        baseCatalogStatus: merged.base_catalog_status,
+        currentCatalogStatus: merged.current_catalog_status,
         parents: {},
         children: {},
       },
@@ -176,6 +235,8 @@ export function buildLineageGraph(
       base: baseMeta?.catalog_metadata ?? undefined,
       current: currentMeta?.catalog_metadata ?? undefined,
     },
+    artifactHealth: lineage.artifact_health,
+    schemaCoverage: normalizeSchemaCoverage(lineage.schema_coverage),
   };
 }
 

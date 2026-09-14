@@ -57,6 +57,8 @@ vi.mock("@xyflow/react", () => ({
     getNodes: () => [],
     getZoom: () => 1,
   }),
+  useStore: (selector: (state: { transform: number[] }) => unknown) =>
+    selector({ transform: [0, 0, 1] }),
 }));
 
 vi.mock("../../../lib/api/track", () => ({

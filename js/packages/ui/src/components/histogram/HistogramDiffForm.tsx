@@ -15,6 +15,8 @@ import NativeSelect from "@mui/material/NativeSelect";
 import type { HistogramDiffParams } from "../../api";
 import { useModelColumns } from "../../hooks";
 import type { RunFormProps } from "../run";
+import { classifyType } from "../ui/DataTypeIcon/classifyType";
+import { isDatetimeHistogramType } from "./histogramType";
 
 // ============================================================================
 // Type Utilities
@@ -63,25 +65,8 @@ function isBooleanDataType(columnType: string) {
 }
 
 function isDateTimeType(columnType: string) {
-  const sql_datetime_types = [
-    "DATE",
-    "DATETIME",
-    "TIMESTAMP",
-    "TIME",
-    "YEAR", // Specific to MySQL/MariaDB
-    "DATETIME2",
-    "SMALLDATETIME",
-    "DATETIMEOFFSET", // Specific to SQL Server
-    "INTERVAL", // Common in PostgreSQL and Oracle
-    "TIMESTAMPTZ",
-    "TIMETZ", // Specific to PostgreSQL
-    "TIMESTAMP WITH TIME ZONE",
-    "TIMESTAMP WITH LOCAL TIME ZONE", // Oracle
-    "TIMESTAMP_LTZ",
-    "TIMESTAMP_NTZ",
-    "TIMESTAMP_TZ", // Specific to Snowflake
-  ];
-  return sql_datetime_types.includes(columnType.toUpperCase());
+  const category = classifyType(columnType);
+  return category === "time" || isDatetimeHistogramType(columnType);
 }
 
 // ============================================================================

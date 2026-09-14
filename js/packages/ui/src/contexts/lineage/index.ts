@@ -28,6 +28,8 @@ export type {
   LineageGraphNodes,
   LineageViewContextType,
   NodeAction,
+  NodeDetailsOpenRequest,
+  NodeDetailsView,
   SelectMode,
 } from "./types";
 

@@ -1,3 +1,5 @@
+import pytest
+
 from recce.models.lineage import build_merged_lineage
 from recce.models.types import (
     LineageDiff,
@@ -144,6 +146,21 @@ class TestMergedLineage:
         assert len(lineage.edges) == 1
         assert lineage.metadata["generated_at"] == "2024-01-01"
 
+    def test_artifact_health_serializes_only_bounded_public_payload(self):
+        health = _artifact_health("partial")
+        lineage = MergedLineage(
+            nodes={},
+            edges=[],
+            metadata={},
+            artifact_health={"base": health, "current": health},
+        )
+
+        wire = lineage.model_dump(exclude_none=True, mode="json")
+
+        assert wire["artifact_health"] == {"base": health, "current": health}
+        assert "expected_node_ids" not in str(wire)
+        assert "covered_node_ids" not in str(wire)
+
 
 def _make_lineage_diff(
     *,
@@ -175,7 +192,237 @@ def _make_lineage_diff(
     return LineageDiff(base=base, current=current, diff=node_diffs)
 
 
+def _artifact_health(status: str, **counts: int) -> dict:
+    """Build the bounded public artifact-health payload produced by adapters."""
+    return {
+        "status": status,
+        "expected_count": counts.get("expected_count", 1),
+        "covered_count": counts.get("covered_count", 0),
+        "catalog_entry_count": counts.get("catalog_entry_count", 0),
+        "missing_node_count": counts.get("missing_node_count", 1),
+        "missing_nodes": counts.get("missing_nodes", ["model.pkg.unchecked"]),
+        "missing_more": counts.get("missing_more", False),
+        "orphan_node_count": counts.get("orphan_node_count", 0),
+        "orphan_nodes": counts.get("orphan_nodes", []),
+        "orphan_more": counts.get("orphan_more", False),
+    }
+
+
 class TestBuildMergedLineageNodes:
+
+    def test_side_artifact_health_blocks_survive_the_merge(self):
+        base_health = _artifact_health("complete", covered_count=1, missing_node_count=0, missing_nodes=[])
+        current_health = _artifact_health("partial")
+        ld = _make_lineage_diff()
+        ld.base["artifact_health"] = base_health
+        ld.current["artifact_health"] = current_health
+
+        merged = build_merged_lineage(ld)
+
+        assert merged.artifact_health.model_dump(exclude_none=True) == {
+            "base": base_health,
+            "current": current_health,
+        }
+
+    def test_unreadable_side_health_degrades_to_unknown_not_a_broken_response(self):
+        """AC10 version skew: a producer one version ahead emits a status this
+        build has never seen. That must degrade the badge to "unknown", not
+        take the whole lineage response down — a hard failure hides the verified
+        nodes too, which is strictly worse than an unknown health state."""
+        ld = _make_lineage_diff()
+        ld.base["artifact_health"] = {**_artifact_health("complete"), "status": "degraded_v2"}
+        ld.current["artifact_health"] = _artifact_health("partial")
+
+        merged = build_merged_lineage(ld)
+
+        assert merged.artifact_health.base.status == "unknown"
+        # The readable side is untouched, and the rest of the response survives.
+        assert merged.artifact_health.current.status == "partial"
+        assert merged.schema_coverage is not None
+
+    def test_malformed_side_health_degrades_to_unknown(self):
+        """The same fail-soft rule for a payload that is the wrong shape
+        entirely, not merely an unrecognised status."""
+        ld = _make_lineage_diff()
+        ld.base["artifact_health"] = {"status": "complete", "missing_nodes": "not-a-list"}
+        ld.current["artifact_health"] = "not-a-mapping"
+
+        merged = build_merged_lineage(ld)
+
+        assert merged.artifact_health.base.status == "unknown"
+        assert merged.artifact_health.current.status == "unknown"
+
+    def test_full_merged_selection_emits_canonical_schema_coverage(self):
+        checked_id = "model.pkg.checked"
+        unchecked_id = "source.pkg.not_rebuilt"
+        checked = {
+            "name": "checked",
+            "resource_type": "model",
+            "package_name": "pkg",
+            "config": {"materialized": "table"},
+            "catalog_status": "covered",
+        }
+        source_base = {
+            "name": "not_rebuilt",
+            "resource_type": "source",
+            "package_name": "pkg",
+            "catalog_status": "covered",
+        }
+        source_current = {**source_base, "catalog_status": "unchecked"}
+        ld = _make_lineage_diff(
+            base_nodes={checked_id: checked, unchecked_id: source_base},
+            current_nodes={checked_id: checked, unchecked_id: source_current},
+        )
+
+        merged = build_merged_lineage(ld)
+
+        assert merged.schema_coverage.model_dump() == {
+            "status": "partial",
+            "unchecked_nodes": [unchecked_id],
+            "unchecked_node_count": 1,
+            "more": False,
+        }
+
+    def test_merged_node_retains_exact_catalog_status_for_both_sides(self):
+        node_id = "source.pkg.orders"
+        base_node = {
+            "name": "orders",
+            "resource_type": "source",
+            "package_name": "pkg",
+            "catalog_status": "covered",
+        }
+        current_node = {**base_node, "catalog_status": "unchecked"}
+        ld = _make_lineage_diff(
+            base_nodes={node_id: base_node},
+            current_nodes={node_id: current_node},
+        )
+
+        merged = build_merged_lineage(ld).nodes[node_id]
+        wire = merged.model_dump(exclude_none=True)
+
+        assert merged.base_catalog_status == "covered"
+        assert merged.current_catalog_status == "unchecked"
+        assert wire["base_catalog_status"] == "covered"
+        assert wire["current_catalog_status"] == "unchecked"
+
+    def test_both_uncovered_manifest_nodes_are_schema_unchecked(self):
+        node = {
+            "name": "unchecked",
+            "resource_type": "model",
+            "package_name": "pkg",
+            "catalog_status": "unchecked",
+        }
+        ld = _make_lineage_diff(
+            base_nodes={"model.pkg.unchecked": node},
+            current_nodes={"model.pkg.unchecked": node},
+        )
+
+        merged = build_merged_lineage(ld).nodes["model.pkg.unchecked"]
+
+        assert merged.schema_comparison_status == "unchecked"
+
+    def test_unchecked_node_keeps_its_verified_manifest_change(self):
+        """ "Preserve verified changes while marking unchecked nodes incomplete."
+
+        Only the marking half is pinned elsewhere: every unchecked node in this
+        file has no diff entry, so a plausible "don't render unverified
+        changes" tightening would strip change_status and change from a model
+        whose SQL genuinely changed, for as long as its catalog is stale.
+        /api/info and info.json are what consumers read, so assert the wire too.
+        """
+        node_id = "model.pkg.stale_catalog"
+        base_node = {
+            "name": "stale_catalog",
+            "resource_type": "model",
+            "package_name": "pkg",
+            "catalog_status": "covered",
+        }
+        current_node = {**base_node, "catalog_status": "unchecked"}
+        ld = _make_lineage_diff(
+            base_nodes={node_id: base_node},
+            current_nodes={node_id: current_node},
+            diff={
+                node_id: NodeDiff(
+                    change_status="modified",
+                    change=NodeChange(category="breaking", columns={"col_a": "removed"}),
+                )
+            },
+        )
+
+        merged = build_merged_lineage(ld).nodes[node_id]
+
+        assert merged.schema_comparison_status == "unchecked"
+        assert merged.current_catalog_status == "unchecked"
+        assert merged.change_status == "modified"
+        assert merged.change.columns == {"col_a": "removed"}
+
+        wire = merged.model_dump(exclude_none=True, by_alias=True)
+        assert wire["change_status"] == "modified"
+        assert wire["change"]["columns"] == {"col_a": "removed"}
+
+    def test_excluded_materialization_schema_comparison_status_is_not_applicable(self):
+        node = {
+            "name": "ephemeral_model",
+            "resource_type": "model",
+            "package_name": "pkg",
+            "config": {"materialized": "ephemeral"},
+            "catalog_status": "not_applicable",
+        }
+        ld = _make_lineage_diff(
+            base_nodes={"model.pkg.ephemeral_model": node},
+            current_nodes={"model.pkg.ephemeral_model": node},
+        )
+
+        merged = build_merged_lineage(ld).nodes["model.pkg.ephemeral_model"]
+
+        assert merged.schema_comparison_status == "not_applicable"
+
+    @pytest.mark.parametrize(
+        ("base_materialized", "current_materialized"),
+        [("table", "ephemeral"), ("semantic_view", "table")],
+        ids=["table-to-ephemeral", "semantic-view-to-table"],
+    )
+    def test_transition_with_either_non_catalogable_side_is_not_applicable(
+        self,
+        base_materialized,
+        current_materialized,
+    ):
+        node_id = "model.pkg.transitioned"
+
+        def node(materialized):
+            return {
+                "name": "transitioned",
+                "resource_type": "model",
+                "package_name": "pkg",
+                "config": {"materialized": materialized},
+                "catalog_status": "covered" if materialized == "table" else "not_applicable",
+            }
+
+        ld = _make_lineage_diff(
+            base_nodes={node_id: node(base_materialized)},
+            current_nodes={node_id: node(current_materialized)},
+        )
+
+        merged = build_merged_lineage(ld).nodes[node_id]
+
+        assert merged.schema_comparison_status == "not_applicable"
+
+    def test_one_sided_removal_preserves_structural_change_status(self):
+        node = {
+            "name": "removed",
+            "resource_type": "model",
+            "package_name": "pkg",
+            "catalog_status": "covered",
+        }
+        ld = _make_lineage_diff(
+            base_nodes={"model.pkg.removed": node},
+            diff={"model.pkg.removed": {"change_status": "removed"}},
+        )
+
+        merged = build_merged_lineage(ld).nodes["model.pkg.removed"]
+
+        assert merged.change_status == "removed"
+        assert merged.schema_comparison_status == "not_applicable"
 
     def test_unchanged_node_in_both_envs(self):
         node = {"name": "a", "resource_type": "model", "package_name": "pkg", "schema": "public", "id": "model.pkg.a"}

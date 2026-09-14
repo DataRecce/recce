@@ -1,7 +1,29 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { supportsHistogramDiff } from "../HistogramDiffForm";
 
+interface HistogramTypePolicyCase {
+  type: string;
+  backend_supported: boolean;
+  picker_supported: boolean;
+}
+
+const histogramTypePolicy = JSON.parse(
+  readFileSync(
+    resolve(process.cwd(), "../tests/fixtures/histogram_type_policy.json"),
+    "utf8",
+  ),
+) as HistogramTypePolicyCase[];
+
 describe("supportsHistogramDiff", () => {
+  it.each(histogramTypePolicy)(
+    "matches the shared backend policy for '$type'",
+    ({ type, picker_supported: pickerSupported }) => {
+      expect(supportsHistogramDiff(type)).toBe(pickerSupported);
+    },
+  );
+
   it("should return true for supported numeric types", () => {
     const supportedNumericTypes = [
       "INT",

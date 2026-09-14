@@ -668,27 +668,43 @@ function LineageNodeComponent({
               visibility: showContent ? "inherit" : "hidden",
             }}
           >
-            <Stack direction="row" spacing={1}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ alignItems: "center", minWidth: 0 }}
+            >
               {actionTag ? (
                 <>
                   <Box sx={{ flexGrow: 1 }} />
                   {actionTag}
                 </>
-              ) : changeCategoryLabel ? (
-                <Typography
-                  sx={{
-                    height: 20,
-                    color: "text.secondary",
-                    fontSize: "9pt",
-                    margin: 0,
-                    fontWeight: 600,
-                  }}
-                >
-                  {changeCategoryLabel}
-                </Typography>
-              ) : selectMode !== "action_result" && runsAggregatedTag ? (
-                runsAggregatedTag
-              ) : null}
+              ) : (
+                <>
+                  {changeCategoryLabel && (
+                    <Typography
+                      sx={{
+                        color: "text.secondary",
+                        flex: "0 1 auto",
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                        height: 20,
+                        margin: 0,
+                        minWidth: 0,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {changeCategoryLabel}
+                    </Typography>
+                  )}
+                  {selectMode !== "action_result" && runsAggregatedTag && (
+                    <Box sx={{ display: "flex", flex: 1, minWidth: 0 }}>
+                      {runsAggregatedTag}
+                    </Box>
+                  )}
+                </>
+              )}
             </Stack>
           </Box>
         </Box>

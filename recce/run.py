@@ -16,6 +16,7 @@ from recce.apis.check_func import (
     purge_preset_checks,
 )
 from recce.apis.run_func import submit_run
+from recce.artifact_health import classify_schema_coverage
 from recce.config import RecceConfig
 from recce.core import default_context
 from recce.models import CheckDAO
@@ -85,20 +86,28 @@ def schema_diff_should_be_approved(check_params: dict) -> bool:
 
         selected_node_ids = [node for node in selected_node_ids if not node.startswith("test.")]
 
-        def _get_selected_node_columns_from_lineage(lineage, node_ids: list[str]):
-            nodes = {}
-            for node_id, node in lineage.get("nodes", {}).items():
-                if node_id in node_ids:
-                    nodes[node_id] = node.get("columns", {})
-            return nodes
+        base_lineage_nodes = context.get_lineage(base=True).get("nodes", {})
+        current_lineage_nodes = context.get_lineage(base=False).get("nodes", {})
+        coverage = classify_schema_coverage(base_lineage_nodes, current_lineage_nodes, selected_node_ids)
 
-        base_nodes = _get_selected_node_columns_from_lineage(context.get_lineage(base=True), selected_node_ids)
-        curr_nodes = _get_selected_node_columns_from_lineage(context.get_lineage(base=False), selected_node_ids)
-        diff = DeepDiff(base_nodes, curr_nodes, ignore_order=True)
+        def _checked_node_columns(lineage_nodes):
+            # `comparable_node_ids`, not `checked_node_ids`: a one-sided node is
+            # absent from one map, so its columns diff against {} and the check
+            # stays unapproved instead of reading as "no schema differences".
+            return {
+                node_id: lineage_nodes.get(node_id, {}).get("columns", {}) for node_id in coverage.comparable_node_ids
+            }
 
-        # If the diff is empty, then the check should be approved
-        if bool(diff) is False:
-            return True
+        diff = DeepDiff(
+            _checked_node_columns(base_lineage_nodes),
+            _checked_node_columns(current_lineage_nodes),
+            ignore_order=True,
+        )
+        # The same rule the serialised gate applies, stated directly: only a
+        # comparison that actually covered its whole selection can read an
+        # empty diff as "no schema changes". "complete" already excludes the
+        # vacuous case, where nothing in the selection was comparable at all.
+        return coverage.status == "complete" and not diff
     except Exception as e:
         error_msg = str(e).upper()
         if any(ind in error_msg for ind in TABLE_NOT_FOUND_INDICATORS + PERMISSION_DENIED_INDICATORS):

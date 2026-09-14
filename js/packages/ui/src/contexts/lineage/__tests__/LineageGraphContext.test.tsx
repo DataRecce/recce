@@ -93,6 +93,35 @@ function createMockRunsAggregated(): RunsAggregated {
         run_id: "run-3",
         result: 100,
       },
+      validation_summary: {
+        result_count: 5,
+        difference_count: 2,
+        types: {
+          value_diff: {
+            latest_run_id: "run-4",
+            difference_count: 2,
+            result_available: true,
+          },
+          profile_diff: {
+            latest_run_id: "run-5",
+            result_count: 1,
+            result_available: true,
+          },
+          top_k_diff: {
+            latest_run_ids_by_column: {
+              status: "run-6",
+              region: "run-7",
+            },
+            column_count: 2,
+            result_available: true,
+          },
+          histogram_diff: {
+            latest_run_ids_by_column: { amount: "run-8" },
+            column_count: 1,
+            result_available: true,
+          },
+        },
+      },
     },
   };
 }

@@ -60,6 +60,7 @@ interface MockChartProps {
           ) => string | undefined;
         };
       };
+      y?: { max?: number };
     };
   };
   plugins?: Plugin<"bar">[];
@@ -100,6 +101,8 @@ vi.mock("chart.js", () => ({
   Legend: {},
   Tooltip: {},
 }));
+
+vi.mock("chartjs-adapter-date-fns", () => ({}));
 
 function getLastChartProps(): MockChartProps {
   const props = chartSpy.mock.lastCall?.[0] as MockChartProps | undefined;
@@ -377,7 +380,7 @@ describe("HistogramChart", () => {
       expect(options?.scales?.x?.type).toBe("category");
     });
 
-    it("keeps datetime labels, tuples, scale, and hidden axis unchanged", () => {
+    it("centers datetime points within edge-derived timeseries bounds", () => {
       render(
         <HistogramChart
           {...defaultProps}
@@ -388,30 +391,71 @@ describe("HistogramChart", () => {
 
       const { data, options } = getLastChartProps();
       expect(data.labels).toEqual([
-        "0 - 20",
-        "20 - 40",
-        "40 - 60",
-        "60 - 80",
-        "80 - 100",
+        "1970-01-01 - 1970-01-01T00:00:00.020Z",
+        "1970-01-01T00:00:00.020Z - 1970-01-01T00:00:00.040Z",
+        "1970-01-01T00:00:00.040Z - 1970-01-01T00:00:00.060Z",
+        "1970-01-01T00:00:00.060Z - 1970-01-01T00:00:00.080Z",
+        "1970-01-01T00:00:00.080Z - 1970-01-01T00:00:00.100Z",
       ]);
       expect(data.datasets[0].data).toEqual([
-        [0, 15],
-        [20, 25],
-        [40, 35],
-        [60, 45],
-        [80, 55],
+        { x: 10, y: 15 },
+        { x: 30, y: 25 },
+        { x: 50, y: 35 },
+        { x: 70, y: 45 },
+        { x: 90, y: 55 },
       ]);
       expect(data.datasets[1].data).toEqual([
-        [0, 10],
-        [20, 20],
-        [40, 30],
-        [60, 40],
-        [80, 50],
+        { x: 10, y: 10 },
+        { x: 30, y: 20 },
+        { x: 50, y: 30 },
+        { x: 70, y: 40 },
+        { x: 90, y: 50 },
       ]);
       expect(options?.scales?.x).toMatchObject({
         display: false,
+        max: 100,
+        min: 0,
         type: "timeseries",
       });
+    });
+
+    it("formats datetime axis and tooltip ranges as UTC", () => {
+      const binEdges = [
+        Date.UTC(2026, 0, 1),
+        Date.UTC(2026, 0, 2),
+        Date.UTC(2026, 0, 3, 12, 30),
+      ];
+      render(
+        <HistogramChart
+          {...defaultProps}
+          dataType="datetime"
+          binEdges={binEdges}
+          baseData={{ counts: [2, 3] }}
+          currentData={{ counts: [5, 7] }}
+        />,
+      );
+
+      const { options } = getLastChartProps();
+      const tickCallback = options?.scales?.x?.ticks?.callback;
+      const titleCallback = options?.plugins?.tooltip?.callbacks?.title;
+      expect(tickCallback?.(binEdges[0], 0, [])).toBe("2026-01-01");
+      expect(tickCallback?.(binEdges[2], 2, [])).toBe("2026-01-03T12:30:00Z");
+      expect(titleCallback?.([{ dataIndex: 1 }])).toBe(
+        "Date Range\n2026-01-02 - 2026-01-03T12:30:00Z",
+      );
+    });
+
+    it("keeps the y-axis maximum finite for empty datasets", () => {
+      render(
+        <HistogramChart
+          {...defaultProps}
+          binEdges={[]}
+          baseData={{ counts: [] }}
+          currentData={{ counts: [] }}
+        />,
+      );
+
+      expect(getLastChartProps().options?.scales?.y?.max).toBe(0);
     });
 
     it("creates datasets with correct labels", () => {
@@ -685,7 +729,7 @@ describe("HistogramChart", () => {
   });
 
   describe("data transformation", () => {
-    it("creates [timestamp, count] tuples for datetime type", () => {
+    it("creates timestamp/count objects for datetime type", () => {
       const datetimeBinEdges = [
         1704067200000, 1704672000000, 1705276800000, 1705881600000,
         1706486400000, 1706745600000,
@@ -704,10 +748,8 @@ describe("HistogramChart", () => {
       const chart = getByTestId("mock-chart");
       const data = JSON.parse(chart.getAttribute("data-data") || "{}");
 
-      // For datetime, data should be arrays of [x, y] tuples
       const currentData = data.datasets[0].data;
-      expect(Array.isArray(currentData[0])).toBe(true);
-      expect(currentData[0]).toHaveLength(2);
+      expect(currentData[0]).toEqual({ x: 1704369600000, y: 15 });
     });
 
     it("uses midpoint coordinate objects for numeric type", () => {

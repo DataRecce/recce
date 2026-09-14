@@ -157,6 +157,7 @@
     "ag-grid-community": "^36.0.1",
     "ag-grid-react": "^36.0.1",
     "chart.js": "^4.5.0",
+    "chartjs-adapter-date-fns": "^3.0.0",
     "common-tags": "^1.8.0",
     "date-fns": "^4.1.0",
     "file-saver": "^2.0.5",

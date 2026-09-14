@@ -77,6 +77,12 @@ export interface SchemaDataGridOptions {
    * the `inline_profile` flag is off or the adapter is unsupported.
    */
   distribution?: SchemaDistributionData;
+  /** Whether this model's two catalog schemas were actually comparable. */
+  schemaComparisonStatus?:
+    | "complete"
+    | "unchecked"
+    | "not_applicable"
+    | "unknown";
 }
 
 export interface SchemaDataGridResult {
@@ -154,6 +160,7 @@ export function toSchemaDataGrid(
     impactedColumns,
     nodeId,
     distribution,
+    schemaComparisonStatus,
   } = options;
 
   const columns: ColDef<SchemaDiffRow>[] = [
@@ -208,7 +215,26 @@ export function toSchemaDataGrid(
     });
   }
 
-  const rows = Object.values(schemaDiff);
+  // Only "unchecked" suppresses rows. It means we have positive evidence the
+  // catalog did not describe this node, so an apparent add/remove/type-change
+  // is unverified.
+  //
+  // "unknown" is different: no coverage evidence exists at all (a legacy or
+  // version-skewed producer that never emitted catalog_status). Suppressing
+  // there turns absence of evidence into affirmative absence of changes and
+  // deletes real removals from the UI — the inverse of the bug this fixes.
+  // The incomplete-comparison warning still fires for "unknown" in SchemaView,
+  // so nothing is presented as verified.
+  const rowsAreUnverified = schemaComparisonStatus === "unchecked";
+  const rows = Object.values(schemaDiff).filter((row) => {
+    if (!rowsAreUnverified) return true;
+    return (
+      row.baseIndex !== undefined &&
+      row.currentIndex !== undefined &&
+      row.baseType === row.currentType &&
+      !row.reordered
+    );
+  });
 
   // Mark columns whose SQL definition changed but have no other visible change
   if (columnChanges) {

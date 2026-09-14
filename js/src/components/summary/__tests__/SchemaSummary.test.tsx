@@ -100,6 +100,12 @@ function createGraph(
     modifiedSet,
     manifestMetadata: { base: undefined, current: undefined },
     catalogMetadata: { base: undefined, current: undefined },
+    schemaCoverage: {
+      status: "complete",
+      unchecked_nodes: [],
+      unchecked_node_count: 0,
+      more: false,
+    },
   };
 }
 

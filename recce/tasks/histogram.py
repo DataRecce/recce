@@ -1,5 +1,7 @@
+import logging
 import math
 import re
+from bisect import bisect_right
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import ROUND_CEILING, ROUND_FLOOR, Decimal, localcontext
@@ -8,11 +10,15 @@ from typing import Optional
 from dateutil.relativedelta import relativedelta
 from pydantic import BaseModel
 
+from recce.adapter.histogram_bucketing import select_histogram_bucketing
 from recce.core import default_context
+from recce.event import log_performance
 from recce.models import Check
 from recce.tasks import Task
 from recce.tasks.core import CheckValidator, TaskResultDiffer
 from recce.tasks.query import QueryMixin
+
+logger = logging.getLogger("uvicorn")
 
 sql_datetime_types = [
     "DATE",
@@ -25,6 +31,7 @@ sql_datetime_types = [
     "INTERVAL",  # Common in PostgreSQL and Oracle
     "TIMESTAMPTZ",
     "TIMESTAMP WITH TIME ZONE",
+    "TIMESTAMP WITHOUT TIME ZONE",
     "TIMESTAMP WITH LOCAL TIME ZONE",  # Oracle
     "TIMESTAMP_LTZ",
     "TIMESTAMP_NTZ",
@@ -81,13 +88,33 @@ sql_not_supported_types_pattern = [
     r"^(CHAR|VARCHAR|NCHAR|NVARCHAR|VARCHAR2|NVARCHAR2)\(\d+\)$",  # String types with lengths
 ]
 
+sql_time_only_type_pattern = re.compile(
+    r"(?:TIMETZ\s*(?:\(\s*\d+\s*\))?"
+    r"|TIME\s*(?:\(\s*\d+\s*\))?"
+    r"(?:\s+(?:WITH|WITHOUT)\s+TIME\s+ZONE\s*(?:\(\s*\d+\s*\))?)?)"
+)
+sql_type_precision_pattern = re.compile(r"\s*\(\s*\d+\s*\)")
+
+
+def _normalize_column_type(column_type: str) -> str:
+    return " ".join(column_type.strip().upper().split())
+
+
+def _is_datetime_histogram_type(column_type: str) -> bool:
+    normalized_type = sql_type_precision_pattern.sub("", _normalize_column_type(column_type), count=1)
+    return normalized_type in sql_datetime_types
+
 
 def _is_histogram_supported(column_type):
-    if column_type.upper() in sql_not_supported_types:
+    normalized_type = _normalize_column_type(column_type)
+    if sql_time_only_type_pattern.fullmatch(normalized_type):
+        return False
+
+    if normalized_type in sql_not_supported_types:
         return False
 
     for pattern in sql_not_supported_types_pattern:
-        if re.match(pattern, column_type.upper()):
+        if re.match(pattern, normalized_type):
             return False
     return True
 
@@ -257,6 +284,81 @@ def _generate_histogram_sql(node, column, min_value, max_value, num_bins, bin_si
     return sql, bin_size
 
 
+@dataclass(frozen=True)
+class _GeneratedHistogramSql:
+    sql: str
+    bin_size: Decimal
+    strategy: str
+
+
+def _generate_histogram_sql_for_adapter(
+    node,
+    column,
+    min_value,
+    max_value,
+    num_bins,
+    bin_size,
+    *,
+    adapter_type,
+    column_type,
+):
+    plan = select_histogram_bucketing(
+        adapter_type=adapter_type,
+        column_sql=column,
+        column_type=column_type,
+        minimum=min_value,
+        maximum=max_value,
+        width=bin_size,
+        num_bins=num_bins,
+    )
+    if plan.bin_expression is None:
+        sql, exact_bin_size = _generate_histogram_sql(
+            node,
+            column,
+            min_value,
+            max_value,
+            num_bins,
+            bin_size,
+        )
+        return _GeneratedHistogramSql(sql=sql, bin_size=exact_bin_size, strategy=plan.strategy)
+
+    min_literal = _decimal_sql_literal(min_value)
+    max_literal = _decimal_sql_literal(max_value)
+    bin_size_literal = _decimal_sql_literal(bin_size)
+    sql = f"""
+    WITH value_ranges AS (
+        SELECT
+            {min_literal} as min_value,
+            {max_literal} as max_value
+    ),
+    bin_parameters AS (
+        SELECT
+            min_value,
+            max_value,
+            {bin_size_literal} AS bin_size
+        FROM value_ranges
+    ),
+    binned_values AS (
+        SELECT
+            {column} as column_value,
+            {plan.bin_expression} AS bin
+        FROM {{{{ ref("{node}") }}}},
+        bin_parameters
+    ),
+    bin_edges AS (
+        SELECT
+            bin,
+            COUNT(*) AS count
+        FROM binned_values, bin_parameters
+        GROUP BY bin
+        ORDER BY bin
+    )
+
+    SELECT bin, count FROM bin_edges
+    """
+    return _GeneratedHistogramSql(sql=sql, bin_size=_decimal_value(bin_size), strategy=plan.strategy)
+
+
 def generate_histogram_sql_integer(node, column, min_value, max_value, num_bins=50, bin_size=None):
     if bin_size is None:
         bin_size = Decimal(max(math.ceil((max_value - min_value) / num_bins), 1))
@@ -276,16 +378,102 @@ class HistogramDiffParams(BaseModel):
     num_bins: Optional[int] = 50
 
 
-def query_numeric_histogram(task, node, column, column_type, min_value, max_value, num_bins=50):
+def _validate_histogram_column_type(column_type: str) -> None:
+    if _is_histogram_supported(column_type) is False:
+        raise ValueError(f"Column type {column_type} is not supported for histogram analysis")
+
+
+def _emit_histogram_sql_telemetry(adapter_type, strategy, effective_bin_count, sql_length):
+    try:
+        normalized_adapter_type = adapter_type.strip().lower() if isinstance(adapter_type, str) else "unknown"
+        log_performance(
+            "histogram_sql",
+            {
+                "adapter_type": normalized_adapter_type,
+                "strategy": strategy,
+                "effective_bin_count": effective_bin_count,
+                "sql_length": sql_length,
+            },
+        )
+    except Exception:
+        logger.debug("histogram SQL telemetry emit failed", exc_info=True)
+
+
+def _normalize_physical_column_type(column_type):
+    return " ".join(column_type.strip().upper().split()) if isinstance(column_type, str) else ""
+
+
+def _shared_compact_column_type(base_column_type, current_column_type):
+    base_normalized = _normalize_physical_column_type(base_column_type)
+    current_normalized = _normalize_physical_column_type(current_column_type)
+    if not base_normalized or base_normalized != current_normalized:
+        return None
+    return base_normalized
+
+
+def _get_physical_histogram_column_types(dbt_adapter, node, column):
+    """Resolve both runtime relation types, returning unknowns on any uncertainty."""
+    get_columns = getattr(dbt_adapter, "get_columns", None)
+    if not callable(get_columns):
+        return None, None
+
+    physical_types = []
+    for base in (True, False):
+        try:
+            columns = get_columns(node, base=base)
+            matches = [
+                candidate
+                for candidate in columns
+                if str(getattr(candidate, "column", "")).casefold() == str(column).casefold()
+            ]
+            if len(matches) != 1:
+                return None, None
+            column_type = getattr(matches[0], "dtype", None)
+            if not _normalize_physical_column_type(column_type):
+                return None, None
+            physical_types.append(column_type)
+        except Exception:
+            logger.debug("histogram physical column type lookup failed", exc_info=True)
+            return None, None
+    return physical_types[0], physical_types[1]
+
+
+def query_numeric_histogram(
+    task,
+    node,
+    column,
+    column_type,
+    min_value,
+    max_value,
+    num_bins=50,
+    *,
+    adapter_type=None,
+    base_column_type=None,
+    current_column_type=None,
+):
     is_integer = is_integral_histogram_type(column_type)
     geometry = numeric_histogram_geometry(min_value, max_value, num_bins, is_integer=is_integer)
     min_edge = geometry.bin_edges[0]
     max_edge = geometry.bin_edges[-1]
     num_bins = geometry.num_bins
-    if is_integer:
-        histogram_sql, _ = generate_histogram_sql_integer(node, column, min_edge, max_edge, num_bins, geometry.width)
-    else:
-        histogram_sql, _ = generate_histogram_sql_numeric(node, column, min_edge, max_edge, num_bins, geometry.width)
+    compact_column_type = _shared_compact_column_type(base_column_type, current_column_type)
+    generated_sql = _generate_histogram_sql_for_adapter(
+        node,
+        column,
+        min_edge,
+        max_edge,
+        num_bins,
+        geometry.width,
+        adapter_type=adapter_type,
+        column_type=compact_column_type,
+    )
+    histogram_sql = generated_sql.sql
+    _emit_histogram_sql_telemetry(
+        adapter_type,
+        generated_sql.strategy,
+        num_bins,
+        len(histogram_sql),
+    )
 
     base = None
     try:
@@ -340,20 +528,33 @@ def query_numeric_histogram(task, node, column, column_type, min_value, max_valu
 
 
 def query_datetime_histogram(task, node, column, min_value, max_value):
+    def bounded_edges(start, terminal, interval):
+        # Each branch limits its bucket count before reaching this helper
+        # (daily <= 61, monthly <= 49, yearly <= 51). Iteration avoids an
+        # overflowing final relativedelta at date.max without a large range.
+        edges = [start]
+        while edges[-1] < terminal:
+            try:
+                next_edge = edges[-1] + interval
+            except (OverflowError, ValueError):
+                next_edge = date.max
+            edges.append(min(next_edge, terminal))
+        return edges
+
     days_delta = (max_value - min_value).days
     print(max_value, min_value, days_delta)
     # _type = None
     if days_delta > 365 * 4:
         _type = "yearly"
         dmin = date(min_value.year, 1, 1)
-        if max_value.year < 3000:
+        if max_value.year < date.max.year:
             dmax = date(max_value.year, 1, 1) + relativedelta(years=+1)
         else:
-            dmax = date(3000, 1, 1)
-        interval_years = math.ceil((dmax.year - dmin.year) / 50)
+            dmax = date.max
+        interval_years = max(1, math.ceil((dmax.year - dmin.year) / 50))
         interval = relativedelta(years=+interval_years)
-        num_buckets = math.ceil((dmax.year - dmin.year) / interval.years)
-        bin_edges = [dmin + relativedelta(year=i) for i in range(num_buckets + 1)]
+        bin_edges = bounded_edges(dmin, dmax, interval)
+        num_buckets = len(bin_edges) - 1
         sql = f"""
         SELECT
             {{{{ date_trunc("year", "{column}") }}}} as year,
@@ -367,13 +568,12 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
         _type = "monthly"
         interval = relativedelta(months=+1)
         dmin = date(min_value.year, min_value.month, 1)
-        if max_value.year < 3000:
+        if max_value.year < date.max.year or max_value.month < 12:
             dmax = date(max_value.year, max_value.month, 1) + interval
         else:
-            dmax = date(3000, 1, 1)
-        period = relativedelta(dmax, dmin)
-        num_buckets = period.years * 12 + period.months
-        bin_edges = [dmin + relativedelta(months=i) for i in range(num_buckets + 1)]
+            dmax = date.max
+        bin_edges = bounded_edges(dmin, dmax, interval)
+        num_buckets = len(bin_edges) - 1
         sql = f"""
         SELECT
             {{{{ date_trunc("month", "{column}") }}}} as month,
@@ -387,12 +587,16 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
         _type = "daily"
         interval = relativedelta(days=+1)
         dmin = date(min_value.year, min_value.month, min_value.day)
-        if max_value.year < 3000:
+        if max_value < date.max:
             dmax = date(max_value.year, max_value.month, max_value.day) + interval
         else:
-            dmax = date(3000, 1, 1)
-        num_buckets = (dmax - dmin).days
-        bin_edges = [dmin + relativedelta(day=i) for i in range(num_buckets + 1)]
+            dmax = date.max
+        if dmin == dmax:
+            # date.max has no representable successor. Use the preceding day
+            # as the sole interval's left edge and close it at date.max.
+            dmin -= interval
+        bin_edges = bounded_edges(dmin, dmax, interval)
+        num_buckets = len(bin_edges) - 1
         sql = f"""
         SELECT
             {{{{ date_trunc("day", "{column}") }}}} as day,
@@ -418,21 +622,26 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
     finally:
         task.check_cancel()
 
-    base_counts = [0] * num_buckets
     print(_type)
-    for d, v in base.rows:
-        i = bin_edges.index(d.date()) if isinstance(d, datetime) else bin_edges.index(d)
-        base_counts[i] = v
-    curr_counts = [0] * num_buckets
-    for d, v in curr.rows:
-        i = bin_edges.index(d.date()) if isinstance(d, datetime) else bin_edges.index(d)
-        curr_counts[i] = v
-    base_result = {
-        "counts": base_counts,
-    }
-    curr_result = {
-        "counts": curr_counts,
-    }
+
+    def build_result(query_result):
+        if query_result is None:
+            return {"counts": []}
+
+        counts = [0] * num_buckets
+        for value, count in query_result.rows:
+            edge_value = value.date() if isinstance(value, datetime) else value
+            index = bisect_right(bin_edges, edge_value) - 1
+            if index == num_buckets and edge_value == bin_edges[-1]:
+                # The date.max sentinel closes the last interval inclusively.
+                index -= 1
+            if index < 0 or index >= num_buckets:
+                raise ValueError(f"Histogram date {edge_value} is outside the computed edge domain")
+            counts[index] += count
+        return {"counts": counts}
+
+    base_result = build_result(base)
+    curr_result = build_result(curr)
 
     return base_result, curr_result, bin_edges
 
@@ -441,6 +650,7 @@ class HistogramDiffTask(Task, QueryMixin):
     def __init__(self, params):
         super().__init__()
         self.params = HistogramDiffParams(**params)
+        _validate_histogram_column_type(self.params.column_type)
         self.connection = None
 
     def execute(self):
@@ -449,13 +659,14 @@ class HistogramDiffTask(Task, QueryMixin):
         result = {}
 
         dbt_adapter: DbtAdapter = default_context().adapter
+        adapter_type = dbt_adapter.adapter.type()
         node = self.params.model
         column = self.params.column_name
         num_bins = self.params.num_bins or 50
         column_type = self.params.column_type
 
-        if _is_histogram_supported(column_type) is False:
-            raise ValueError(f"Column type {column_type} is not supported for histogram analysis")
+        _validate_histogram_column_type(column_type)
+        is_datetime_type = _is_datetime_histogram_type(column_type)
 
         with dbt_adapter.connection_named("query"):
             self.connection = dbt_adapter.get_thread_connection()
@@ -496,13 +707,30 @@ class HistogramDiffTask(Task, QueryMixin):
                 }
                 bin_edges = []
                 labels = []
-            elif column_type.upper() in sql_datetime_types:
+            elif is_datetime_type:
                 base_result, current_result, bin_edges = query_datetime_histogram(
                     self, node, column, min_value, max_value
                 )
             else:
+                base_column_type = None
+                current_column_type = None
+                if isinstance(adapter_type, str) and adapter_type.strip().lower() == "duckdb":
+                    base_column_type, current_column_type = _get_physical_histogram_column_types(
+                        dbt_adapter,
+                        node,
+                        column,
+                    )
                 base_result, current_result, bin_edges, labels = query_numeric_histogram(
-                    self, node, column, column_type, min_value, max_value, num_bins
+                    self,
+                    node,
+                    column,
+                    column_type,
+                    min_value,
+                    max_value,
+                    num_bins,
+                    adapter_type=adapter_type,
+                    base_column_type=base_column_type,
+                    current_column_type=current_column_type,
                 )
             if base_result:
                 base_result["total"] = base_total
@@ -510,7 +738,7 @@ class HistogramDiffTask(Task, QueryMixin):
                 current_result["total"] = curr_total
             result["base"] = base_result
             result["current"] = current_result
-            if column_type.upper() in sql_datetime_types or min_value is None:
+            if is_datetime_type or min_value is None:
                 result["min"] = min_value
                 result["max"] = max_value
             else:
@@ -539,5 +767,4 @@ class HistogramDiffCheckValidator(CheckValidator):
         except Exception as e:
             raise ValueError(f"Invalid check: {str(e)}")
 
-        if _is_histogram_supported(params.column_type) is False:
-            raise ValueError(f"Column type {params.column_type} is not supported for histogram analysis")
+        _validate_histogram_column_type(params.column_type)

@@ -94,7 +94,7 @@ grep -q '^## Manifest Information$' ./recce_summary.md
 lineage_section=$(awk '/^## Lineage Graph$/,/^## Checks Summary$/' ./recce_summary.md)
 grep -q 'model.jaffle_shop.customers' <<< "$lineage_section"
 
-checks_summary_row=$(grep -A 2 '^|Checks Run|Data Mismatch Detected|$' ./recce_summary.md | tail -1)
+checks_summary_row=$(grep -A 2 '^|Checks Run|Data Mismatch Detected|Incomplete Schema Comparisons|$' ./recce_summary.md | tail -1)
 checks_run=$(awk -F'|' '{gsub(/ /,"",$2); print $2}' <<< "$checks_summary_row")
 mismatch_count=$(awk -F'|' '{gsub(/ /,"",$3); print $3}' <<< "$checks_summary_row")
 # recce.yml defines two preset checks; only the row count one mismatches.

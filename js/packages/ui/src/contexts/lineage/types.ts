@@ -2,10 +2,13 @@ import type { Edge, Node } from "@xyflow/react";
 import type React from "react";
 import type { CllInput, ColumnLineageData } from "../../api/cll";
 import type {
+  ArtifactHealthPair,
   CatalogMetadata,
   GitInfo,
   ManifestMetadata,
+  NodeCatalogStatus,
   PullRequestInfo,
+  SchemaCoverage,
   SQLMeshInfo,
   StateMetadata,
 } from "../../api/info";
@@ -51,6 +54,13 @@ export type LineageGraphNode = Node<
       category: "breaking" | "non_breaking" | "partial_breaking" | "unknown";
       columns?: Record<string, "added" | "removed" | "modified" | "unknown">;
     };
+    schemaComparisonStatus?:
+      | "complete"
+      | "unchecked"
+      | "not_applicable"
+      | "unknown";
+    baseCatalogStatus?: NodeCatalogStatus;
+    currentCatalogStatus?: NodeCatalogStatus;
     parents: Record<string, LineageGraphEdge>;
     children: Record<string, LineageGraphEdge>;
   },
@@ -104,6 +114,8 @@ export interface LineageGraph {
     base?: CatalogMetadata;
     current?: CatalogMetadata;
   };
+  artifactHealth?: ArtifactHealthPair | null;
+  schemaCoverage?: SchemaCoverage;
 }
 
 /**
@@ -174,6 +186,20 @@ export type ActionMode = "per_node" | "multi_nodes";
  */
 export type SelectMode = "selecting" | "action_result" | undefined;
 
+/** A detail-panel destination that a lineage-node affordance can request. */
+export type NodeDetailsView = "analysis";
+
+/**
+ * An explicit request to open one node's detail panel at a specific view.
+ * `requestToken` changes for every activation, including repeated activation
+ * of the same node and view.
+ */
+export interface NodeDetailsOpenRequest {
+  nodeId: string;
+  view: NodeDetailsView;
+  requestToken: number;
+}
+
 /**
  * Action state for individual node operations
  */
@@ -237,6 +263,8 @@ export interface LineageViewContextType {
   selectMode: SelectMode;
   /** Select/deselect a single node */
   selectNode: (nodeId: string) => void;
+  /** Open a node's detail panel without changing batch selection. */
+  openNodeDetails: (nodeId: string, view: NodeDetailsView) => void;
   /** Select all parent nodes up to a degree */
   selectParentNodes: (nodeId: string, degree?: number) => void;
   /** Select all child nodes up to a degree */
