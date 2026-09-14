@@ -46,17 +46,29 @@ When updating frontend deps:
 
 Packages requiring overrides (exist in multiple `package.json`): `@emotion/react`, `@mui/material`, `@tanstack/react-query`, `@xyflow/react`, `axios`, `date-fns`, `lodash`, `tailwindcss`, `typescript`, `vitest`.
 
-## pnpm v11 — strictDepBuilds + allowBuilds
+## pnpm v12 — strictDepBuilds + allowBuilds
 
-The repo runs on pnpm v11.1.1 (since DRC-3439, 2026-05-13). Four non-obvious behaviors:
+The repo runs on pnpm v12.4.1 (updated 2026-09-14). Five non-obvious behaviors:
 
 1. **`strictDepBuilds: true` is on by default.** Any transitive package with a `postinstall` script that isn't explicitly listed in `pnpm-workspace.yaml#allowBuilds` will cause `pnpm install --frozen-lockfile` to hard-fail in CI with `ERR_PNPM_IGNORED_BUILDS`. When a new dep triggers this, add it to `allowBuilds` as `true` (run its postinstall) or `false` (acknowledge it exists, do NOT run postinstall).
 
 2. **Local repro requires CI parity.** Use `CI=true pnpm install --frozen-lockfile` to match CI exactly. The `--ignore-scripts` flag will MASK this failure — do not use it as a verification path.
 
-3. **pnpm 11 silently appends placeholder lines.** If you run `pnpm install` in a non-TTY context and it hits an ignored build, pnpm appends `<pkg>: set this to true or false` to `pnpm-workspace.yaml#allowBuilds`. Always `git status` after running install — never commit these placeholders.
+3. **Never accept generated `allowBuilds` placeholders.** If a non-TTY install discovers an ignored build, inspect `pnpm-workspace.yaml#allowBuilds` for `<pkg>: set this to true or false`. Always run `git status` after an install and replace any placeholder with a reviewed boolean decision before committing.
 
-4. **`packageManager` must be exact semver.** Corepack rejects ranges like `pnpm@11`. Pin the full `pnpm@11.x.y+sha512.<integrity>` via `corepack use pnpm@11.x.y` (note the `.` separator between `sha512` and the hash — not `:`).
+4. **`packageManager` must be exact semver.** Do not use ranges or dist-tags such as `pnpm@12`, `latest`, or `next-12`. Pin the full `pnpm@12.x.y+sha512.<integrity>` via `corepack use pnpm@12.x.y` (note the `.` separator between `sha512` and the hash — not `:`).
+
+5. **The lockfile pins pnpm's platform executables.** Changing `packageManager` requires regenerating `pnpm-lock.yaml` so its leading `packageManagerDependencies` document records pnpm and every supported platform package with integrity hashes. CI's frozen install rejects a mismatched pin. GitHub Actions must read the version from `js/package.json` through the SHA-pinned `pnpm/setup` action rather than duplicate the version in workflow YAML.
+
+Release notes reviewed for this pin: [12.1](https://pnpm.io/blog/releases/12.1),
+[12.2–12.3](https://pnpm.io/blog/releases/12.2-12.3), and
+[12.4 / 12.4.1](https://pnpm.io/blog/releases/12.4).
+The first install after 12.4 refetches registry metadata because cache keys now
+include the full registry URL; the package store remains reusable. Version 12.4.1
+also fixes filesystem copy fallbacks, workspace dependency links, and install
+scripts whose side effects live outside their package directory. Verify both
+fresh and repeat frozen installs when updating the pin. Python dependencies
+continue to use uv; pnpm's experimental Python/Cargo support is opt-in.
 
 Canonical `allowBuilds` examples live in recce-cloud-infra:
 - `recce-cloud-infra/recce-cloud/pnpm-workspace.yaml`

@@ -95,7 +95,7 @@ uv run pytest tests/test_foo.py --cov=recce.module --cov-report=term-missing
 
 ### Frontend (TypeScript) — only if `js/` changed
 
-For frontend tooling specifics (pnpm v11 quirks, Biome config, style conventions), see **[`js/CLAUDE.md`](../../js/CLAUDE.md)**.
+For frontend tooling specifics (pnpm v12 quirks, Biome config, style conventions), see **[`js/CLAUDE.md`](../../js/CLAUDE.md)**.
 
 ```bash
 cd js

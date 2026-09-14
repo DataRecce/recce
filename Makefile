@@ -94,8 +94,10 @@ test-tox-python-versions:
 	@tox run-parallel -e 3.10,3.11,3.12,3.13
 
 install-frontend-requires:
-# Install pnpm if not installed
-	@command -v pnpm || npm install -g pnpm
+# Install Corepack if needed, then provision the pnpm version pinned by js/package.json
+	@command -v corepack >/dev/null || npm install -g corepack@latest
+	@corepack enable
+	@cd js && corepack install
 	@cd js && pnpm install
 
 dev: install-frontend-requires
