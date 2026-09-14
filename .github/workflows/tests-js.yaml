@@ -82,6 +82,12 @@ jobs:
         working-directory: ./js
         run: pnpm test
 
+      - name: Build and smoke the UI package
+        working-directory: ./js
+        run: |
+          pnpm --filter @datarecce/ui build
+          pnpm test:dist
+
       - name: Build the static files
         working-directory: ./js
         run: pnpm build
