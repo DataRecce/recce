@@ -19,6 +19,23 @@ _event_init_lock = threading.Lock()
 _event_initialized = False
 
 
+def _installed_dbt_version():
+    """Installed dbt version from package metadata.
+
+    Reads metadata, not an import: the import fails when dbt v2 is installed.
+    dbt v2 ships as `dbt`, dbt 1.x as `dbt-core`. Read `dbt-core` first, so a
+    mixed environment reports the one Recce uses.
+    """
+    from importlib.metadata import PackageNotFoundError, version
+
+    for dist in ("dbt-core", "dbt"):
+        try:
+            return version(dist)
+        except PackageNotFoundError:
+            continue
+    return None
+
+
 def _initialize_event_tracking() -> None:
     """Initialize event tracking at most once across concurrent commands."""
     global _event_initialized
@@ -143,6 +160,7 @@ class TrackCommand(Command):
                     status=status,
                     reason=reason,
                     duration=duration,
+                    dbt_version=_installed_dbt_version(),
                     cloud=ctx.params.get("cloud", False),
                     review=ctx.params.get("review", False),
                     debug=ctx.params.get("debug", False),
