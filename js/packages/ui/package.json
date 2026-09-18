@@ -164,7 +164,7 @@
     "js-cookie": "^3.0.7",
     "lodash": "^4.17.21",
     "next-themes": "^0.4.0",
-    "posthog-js": "^1.428.3",
+    "posthog-js": "^1.433.3",
     "react-chartjs-2": "^5.3.0",
     "react-icons": "^5.7.0",
     "react-markdown": "^10.1.0",
@@ -173,7 +173,7 @@
     "remark-gfm": "^4.0.0",
     "usehooks-ts": "^3.1.1",
     "write-excel-file": "^4.0.2",
-    "yaml": "^2.8.0"
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.3.3",
