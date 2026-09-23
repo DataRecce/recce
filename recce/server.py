@@ -297,7 +297,7 @@ async def lifespan(fastapi: FastAPI):
         except Exception as e:
             if isinstance(e, DbtUnavailableError):
                 logger.debug("Failed to load server context during startup", exc_info=True)
-                logger.error(f"Failed to load server context during startup: {e}")
+                logger.warning(f"Failed to load server context during startup: {e}")
             else:
                 logger.exception("Failed to load server context during startup")
             app_state.startup_error = e
