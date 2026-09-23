@@ -16,6 +16,7 @@ from recce.models.types import (  # noqa: F401  (re-exported for callers importi
     normalize_change_category,
     to_v2_change_category,
 )
+from recce.util.cll import set_operation_scopes
 
 CHANGE_CATEGORY_UNKNOWN = NodeChange(category="unknown")
 CHANGE_CATEGORY_BREAKING = NodeChange(category="breaking")
@@ -345,15 +346,17 @@ def _diff_select_scope(old_scope: Scope, new_scope: Scope, scope_changes_map: di
 def _diff_union_scope(old_scope: Scope, new_scope: Scope, scope_changes_map: dict[Scope, NodeChange]) -> NodeChange:
     assert old_scope.expression.key == "union"
     assert new_scope.expression.key == "union"
-    assert len(old_scope.union_scopes) == len(new_scope.union_scopes)
-    assert new_scope.union_scopes is not None
-    assert len(new_scope.union_scopes) > 0
+    old_sub_scopes = set_operation_scopes(old_scope)
+    new_sub_scopes = set_operation_scopes(new_scope)
+    assert len(old_sub_scopes) == len(new_sub_scopes)
+    assert new_sub_scopes is not None
+    assert len(new_sub_scopes) > 0
 
-    result_left = scope_changes_map.get(new_scope.union_scopes[0])
+    result_left = scope_changes_map.get(new_sub_scopes[0])
     change_category = result_left.category
     changed_columns = result_left.columns.copy()
 
-    for sub_scope in new_scope.union_scopes[1:]:
+    for sub_scope in new_sub_scopes[1:]:
         result_right = scope_changes_map.get(sub_scope)
         if change_category == "partial_breaking":
             if result_right.category in ["breaking"]:
