@@ -46,7 +46,7 @@ from .connect_to_cloud import (
 )
 from .core import RecceContext, default_context, load_context
 from .event import get_recce_api_token, log_api_event, log_single_env_event
-from .exceptions import RecceException
+from .exceptions import DbtUnavailableError, RecceException
 from .github import is_github_codespace
 from .models.types import CllData
 from .models.websocket import CloudUserContextMessage
@@ -295,7 +295,7 @@ async def lifespan(fastapi: FastAPI):
                         tracker.node_count = len(recce_ctx.adapter.curr_manifest.nodes)
                 log_performance("server_startup", tracker.to_dict())
         except Exception as e:
-            if isinstance(e, RecceException):
+            if isinstance(e, DbtUnavailableError):
                 logger.debug("Failed to load server context during startup", exc_info=True)
                 logger.error(f"Failed to load server context during startup: {e}")
             else:

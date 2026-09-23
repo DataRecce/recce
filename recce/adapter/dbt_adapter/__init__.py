@@ -27,6 +27,7 @@ from typing import (
 
 from recce.event import log_performance
 from recce.exceptions import (
+    DbtUnavailableError,
     DuckDBExternalAccessBlocked,
     RecceException,
     UnsupportedDbtSchemaError,
@@ -58,8 +59,8 @@ except ImportError as e:
     except ImportError:
         is_dbt_v2 = False
     if is_dbt_v2:
-        raise RecceException("Recce supports dbt-core 1.x. dbt v2 (Fusion) is not supported yet.") from e
-    raise RecceException(
+        raise DbtUnavailableError("Recce supports dbt-core 1.x. dbt v2 (Fusion) is not supported yet.") from e
+    raise DbtUnavailableError(
         "dbt module not found. Please install it by running:\n  pip install dbt-core dbt-<adapter>"
     ) from e
 

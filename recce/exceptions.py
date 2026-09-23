@@ -21,6 +21,10 @@ class RecceConfigException(RecceException):
         return super().__str__()
 
 
+class DbtUnavailableError(RecceException):
+    pass
+
+
 class UnsupportedDbtSchemaError(RecceException):
     """The version limits are in _DBT1X_MAX_SCHEMA in the dbt adapter."""
 
