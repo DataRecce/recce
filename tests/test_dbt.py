@@ -89,7 +89,6 @@ class TestNewerSchemaFailLoud(TestCase):
             os.unlink(path)
 
     def test_supported_schema_not_flagged(self):
-        # The result must not depend on the installed dbt version.
         from recce.adapter.dbt_adapter import _guard_unsupported_schema
 
         _guard_unsupported_schema("manifest", "https://schemas.getdbt.com/dbt/manifest/v12.json")

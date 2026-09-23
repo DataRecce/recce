@@ -246,9 +246,10 @@ def as_manifest(m: WritableManifest) -> Manifest:
         return result
 
 
-# dbt-core 1.x and dbt v2 both write manifest v12 and catalog v1. Do not use the
-# versions that the installed dbt accepts: dbt 1.6 rejects a v12 manifest, and
-# that case must raise dbt's own version-mismatch error.
+# dbt-core 1.x and dbt v2 both write manifest v12 and catalog v1.
+# Keep these limits fixed. Do not set them from the installed dbt: an old dbt,
+# such as dbt 1.7, cannot read a v12 manifest, and that case must raise dbt's
+# own IncompatibleSchemaError, not UnsupportedDbtSchemaError.
 _DBT1X_MAX_SCHEMA = {"manifest": 12, "catalog": 1}
 
 
