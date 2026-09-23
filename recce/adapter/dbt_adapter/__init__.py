@@ -50,9 +50,18 @@ try:
     import dbt.adapters.factory
     from dbt.contracts.state import PreviousState
 except ImportError as e:
-    print("Error: dbt module not found. Please install it by running:")
-    print("pip install dbt-core dbt-<adapter>")
-    raise e
+    import importlib.util
+
+    try:
+        # dbt v2 (Fusion) has a dbt._core module and no dbt.adapters module.
+        is_dbt_v2 = importlib.util.find_spec("dbt._core") is not None
+    except ImportError:
+        is_dbt_v2 = False
+    if is_dbt_v2:
+        raise RecceException("Recce supports dbt-core 1.x. dbt v2 (Fusion) is not supported yet.") from e
+    raise RecceException(
+        "dbt module not found. Please install it by running:\n  pip install dbt-core dbt-<adapter>"
+    ) from e
 
 try:
     from dbt.artifacts.exceptions import IncompatibleSchemaError
@@ -237,17 +246,13 @@ def as_manifest(m: WritableManifest) -> Manifest:
         return result
 
 
-# Highest schema versions dbt 1.x ever emits; dbt v2 / Fusion jumps straight to
-# v20, so anything above these is a Fusion artifact. Do not tie the ceiling to
-# what the installed dbt is compatible with: under dbt 1.6 a v12 manifest is
-# already incompatible, but it comes from dbt 1.x and should surface dbt's own
-# version-mismatch error, not be reported as Fusion.
+# dbt-core 1.x and dbt v2 both write manifest v12 and catalog v1. Do not use the
+# versions that the installed dbt accepts: dbt 1.6 rejects a v12 manifest, and
+# that case must raise dbt's own version-mismatch error.
 _DBT1X_MAX_SCHEMA = {"manifest": 12, "catalog": 1}
 
 
 def _guard_unsupported_schema(artifact: str, found_version_url):
-    """Raise UnsupportedDbtSchemaError if `found_version_url` is a dbt v2 / Fusion
-    schema (above the dbt 1.x ceiling); no-op otherwise."""
     # dbt_schema_version looks like "https://schemas.getdbt.com/dbt/manifest/v12.json"
     match = re.search(r"/v(\d+)\.json", str(found_version_url))
     found = int(match.group(1)) if match else None

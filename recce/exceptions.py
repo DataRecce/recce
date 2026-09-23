@@ -22,15 +22,13 @@ class RecceConfigException(RecceException):
 
 
 class UnsupportedDbtSchemaError(RecceException):
-    """Raised when a dbt artifact's schema is newer than the bundled dbt 1.x
-    supports, i.e. a dbt v2 / Fusion artifact. See _DBT1X_MAX_SCHEMA in the dbt
-    adapter for the version ceiling."""
+    """The version limits are in _DBT1X_MAX_SCHEMA in the dbt adapter."""
 
     def __init__(self, artifact: str, found_version: int):
         message = (
-            f"dbt v2 / Fusion {artifact}s (schema v{found_version}) are not yet "
-            f"supported by Recce. Recce supports dbt 1.x artifacts (manifest schema up "
-            f"to v12, catalog v1). Re-generate the {artifact} with dbt 1.x."
+            f"The {artifact} uses schema v{found_version}, which is newer than Recce "
+            f"supports (manifest up to v12, catalog v1). Re-generate the {artifact} "
+            f"with dbt-core 1.x."
         )
         super().__init__(message, is_raise=True)
 

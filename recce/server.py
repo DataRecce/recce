@@ -295,7 +295,11 @@ async def lifespan(fastapi: FastAPI):
                         tracker.node_count = len(recce_ctx.adapter.curr_manifest.nodes)
                 log_performance("server_startup", tracker.to_dict())
         except Exception as e:
-            logger.exception("Failed to load server context during startup")
+            if isinstance(e, RecceException):
+                logger.debug("Failed to load server context during startup", exc_info=True)
+                logger.error(f"Failed to load server context during startup: {e}")
+            else:
+                logger.exception("Failed to load server context during startup")
             app_state.startup_error = e
         finally:
             clear_startup_tracker()

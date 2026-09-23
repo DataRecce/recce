@@ -12,9 +12,12 @@ from recce.exceptions import UnsupportedDbtSchemaError
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-def _fusion_artifact(kind: str) -> dict:
+_ABOVE_CEILING = {"manifest": 13, "catalog": 2}
+
+
+def _newer_artifact(kind: str) -> dict:
     return {
-        "metadata": {"dbt_schema_version": f"https://schemas.getdbt.com/dbt/{kind}/v20.json"},
+        "metadata": {"dbt_schema_version": f"https://schemas.getdbt.com/dbt/{kind}/v{_ABOVE_CEILING[kind]}.json"},
     }
 
 
@@ -47,58 +50,52 @@ class TestAdapterLineage(TestCase):
         assert len(lineage["nodes"]["model.jaffle_shop.orders"]["columns"]) == 9
 
 
-class TestFusionManifestFailLoud(TestCase):
-    """A v20 (dbt v2 / Fusion) artifact must fail loud with a Recce-branded message."""
-
-    def _assert_friendly(self, exc_info):
+class TestNewerSchemaFailLoud(TestCase):
+    def _assert_friendly(self, exc_info, kind):
         msg = str(exc_info.value)
-        assert "Fusion" in msg
-        assert "v20" in msg
-        assert "not yet supported" in msg
+        assert f"v{_ABOVE_CEILING[kind]}" in msg
+        assert "newer than Recce supports" in msg
 
-    def test_load_manifest_v20_data_fails_loud(self):
+    def test_load_manifest_newer_data_fails_loud(self):
         with pytest.raises(UnsupportedDbtSchemaError) as exc_info:
-            load_manifest(data=_fusion_artifact("manifest"))
-        self._assert_friendly(exc_info)
+            load_manifest(data=_newer_artifact("manifest"))
+        self._assert_friendly(exc_info, "manifest")
 
-    def test_load_manifest_v20_path_fails_loud(self):
+    def test_load_manifest_newer_path_fails_loud(self):
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
-            json.dump(_fusion_artifact("manifest"), f)
+            json.dump(_newer_artifact("manifest"), f)
             path = f.name
         try:
             with pytest.raises(UnsupportedDbtSchemaError) as exc_info:
                 load_manifest(path=path)
-            self._assert_friendly(exc_info)
+            self._assert_friendly(exc_info, "manifest")
         finally:
             os.unlink(path)
 
-    def test_load_catalog_v20_data_fails_loud(self):
+    def test_load_catalog_newer_data_fails_loud(self):
         with pytest.raises(UnsupportedDbtSchemaError) as exc_info:
-            load_catalog(data=_fusion_artifact("catalog"))
-        self._assert_friendly(exc_info)
+            load_catalog(data=_newer_artifact("catalog"))
+        self._assert_friendly(exc_info, "catalog")
 
-    def test_load_catalog_v20_path_fails_loud(self):
+    def test_load_catalog_newer_path_fails_loud(self):
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
-            json.dump(_fusion_artifact("catalog"), f)
+            json.dump(_newer_artifact("catalog"), f)
             path = f.name
         try:
             with pytest.raises(UnsupportedDbtSchemaError) as exc_info:
                 load_catalog(path=path)
-            self._assert_friendly(exc_info)
+            self._assert_friendly(exc_info, "catalog")
         finally:
             os.unlink(path)
 
-    def test_v12_not_flagged_as_fusion(self):
-        # A v12 manifest / v1 catalog is dbt 1.x, not Fusion — the guard must not fire,
-        # regardless of which dbt version Recce is running against.
+    def test_supported_schema_not_flagged(self):
+        # The result must not depend on the installed dbt version.
         from recce.adapter.dbt_adapter import _guard_unsupported_schema
 
         _guard_unsupported_schema("manifest", "https://schemas.getdbt.com/dbt/manifest/v12.json")
         _guard_unsupported_schema("catalog", "https://schemas.getdbt.com/dbt/catalog/v1.json")
 
     def test_old_incompatible_artifact_keeps_dbt_error(self):
-        # v1 / v0 sit below the 1.x ceiling but dbt still rejects them as too old —
-        # the guard must stay silent, not mislabel them as Fusion.
         from recce.adapter.dbt_adapter import IncompatibleSchemaError
 
         for loader, kind, version in [(load_manifest, "manifest", 1), (load_catalog, "catalog", 0)]:
