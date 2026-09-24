@@ -53,16 +53,14 @@ try:
 except ImportError as e:
     import importlib.util
 
-    try:
-        # dbt v2 (Fusion) has a dbt._core module and no dbt.adapters module.
-        is_dbt_v2 = importlib.util.find_spec("dbt._core") is not None
-    except ImportError:
-        is_dbt_v2 = False
-    if is_dbt_v2:
+    if importlib.util.find_spec("dbt") is None:
+        raise DbtUnavailableError(
+            "dbt module not found. Please install it by running:\n  pip install dbt-core dbt-<adapter>"
+        ) from e
+    # dbt v2 (Fusion) has a dbt._core module and no dbt.adapters module.
+    if importlib.util.find_spec("dbt._core") is not None:
         raise DbtUnavailableError("Recce supports dbt-core 1.x. dbt v2 (Fusion) is not supported yet.") from e
-    raise DbtUnavailableError(
-        "dbt module not found. Please install it by running:\n  pip install dbt-core dbt-<adapter>"
-    ) from e
+    raise
 
 try:
     from dbt.artifacts.exceptions import IncompatibleSchemaError

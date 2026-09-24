@@ -1,5 +1,7 @@
 import json
 import os
+import subprocess
+import sys
 import tempfile
 from unittest import TestCase
 from unittest.mock import MagicMock
@@ -109,3 +111,34 @@ class TestNewerSchemaFailLoud(TestCase):
                     loader(path=path)
             finally:
                 os.unlink(path)
+
+
+def _import_dbt_adapter(fake_packages_dir) -> subprocess.CompletedProcess:
+    pythonpath = os.pathsep.join(p for p in [str(fake_packages_dir), os.environ.get("PYTHONPATH")] if p)
+    return subprocess.run(
+        [sys.executable, "-c", "import recce.adapter.dbt_adapter"],
+        env={**os.environ, "PYTHONPATH": pythonpath},
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_dbt_v2_import_names_dbt_v2(tmp_path):
+    (tmp_path / "dbt").mkdir()
+    (tmp_path / "dbt" / "__init__.py").write_text("")
+    (tmp_path / "dbt" / "_core.py").write_text("")
+
+    result = _import_dbt_adapter(tmp_path)
+
+    assert result.returncode != 0
+    assert "DbtUnavailableError: Recce supports dbt-core 1.x. dbt v2 (Fusion) is not supported yet." in result.stderr
+
+
+def test_unexpected_import_error_keeps_original_error(tmp_path):
+    (tmp_path / "agate.py").write_text("raise ImportError(\"cannot import name 'MappedSequence' from 'agate'\")")
+
+    result = _import_dbt_adapter(tmp_path)
+
+    assert result.returncode != 0
+    assert "ImportError: cannot import name 'MappedSequence' from 'agate'" in result.stderr
+    assert "DbtUnavailableError" not in result.stderr
