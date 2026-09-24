@@ -256,6 +256,9 @@ def _do_lifespan_setup(app_state: AppState):
 
 @asynccontextmanager
 async def lifespan(fastapi: FastAPI):
+    from rich.console import Console
+    from rich.markup import escape
+
     from recce.core import default_context
     from recce.event import log_performance
     from recce.util.startup_perf import clear_startup_tracker, get_startup_tracker
@@ -297,7 +300,9 @@ async def lifespan(fastapi: FastAPI):
         except Exception as e:
             if isinstance(e, DbtUnavailableError):
                 logger.debug("Failed to load server context during startup", exc_info=True)
-                logger.warning(f"Failed to load server context during startup: {e}")
+                console = Console(stderr=True)
+                message = escape(str(e))
+                console.print(f"[[red]Error[/red]] Failed to load server context during startup: {message}")
             else:
                 logger.exception("Failed to load server context during startup")
             app_state.startup_error = e
