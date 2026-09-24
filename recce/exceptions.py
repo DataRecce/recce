@@ -22,11 +22,12 @@ class RecceConfigException(RecceException):
 
 
 class DbtUnavailableError(RecceException):
-    pass
+    """Raised when the dbt adapter cannot import dbt: dbt is not installed, or dbt v2 (Fusion) is installed."""
 
 
 class UnsupportedDbtSchemaError(RecceException):
-    """The version limits are in _DBT1X_MAX_SCHEMA in the dbt adapter."""
+    """Raised when a dbt artifact's schema is newer than Recce supports.
+    The version limits are in _DBT1X_MAX_SCHEMA in the dbt adapter."""
 
     def __init__(self, artifact: str, found_version: int):
         message = (
