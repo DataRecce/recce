@@ -297,13 +297,20 @@ def _dedeup_depends_on(depends_on: List[CllColumnDep]) -> List[CllColumnDep]:
     return dedup_list
 
 
+def set_operation_scopes(scope: Scope) -> List[Scope]:
+    # sqlglot 30.19 renamed Scope.union_scopes to Scope.set_operation_scopes.
+    if hasattr(scope, "set_operation_scopes"):
+        return scope.set_operation_scopes
+    return scope.union_scopes
+
+
 def _cll_set_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> CllResult:
     # model-to-column
     m2c: List[CllColumnDep] = []
     # column-to-column
     c2c_map: Dict[str, CllColumn] = {}
 
-    for union_scope in scope.union_scopes:
+    for union_scope in set_operation_scopes(scope):
         sub_scope_result = scope_cll_map.get(union_scope)
         if sub_scope_result is None:
             raise RecceException(f"Scope {union_scope} not found in scope_cll_map")

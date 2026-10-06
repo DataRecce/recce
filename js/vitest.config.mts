@@ -317,6 +317,8 @@ export default defineConfig({
       "**/node_modules/**",
       "**/.worktrees/**",
       "**/packages/storybook/**", // Already uses Vitest separately
+      // Needs a built packages/ui/dist, so it runs via vitest.dist.config.mts
+      "**/packages/ui/__smoke__/**",
     ],
 
     // Enable globals (describe, it, expect without imports)
