@@ -19,6 +19,10 @@
     },
     "types": ["node", "vitest/globals", "@testing-library/jest-dom"]
   },
-  "include": ["src/**/*", "../../mui-augmentations.d.ts"],
+  "include": [
+    "src/**/*",
+    "../../mui-augmentations.d.ts",
+    "../../vitest-jest-dom.d.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }
