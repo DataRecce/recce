@@ -27,7 +27,7 @@
     "@vitejs/plugin-react": "^6.1.1",
     "@vitest/browser-playwright": "^5.0.1",
     "@vitest/coverage-v8": "^5.0.1",
-    "msw": "^2.15.0",
+    "msw": "^3.0.2",
     "playwright": "^1.63.0",
     "storybook": "^10.6.1",
     "vitest": "^5.0.1"
