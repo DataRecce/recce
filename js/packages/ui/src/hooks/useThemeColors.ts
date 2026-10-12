@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme as useMuiTheme } from "@mui/material/styles";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRecceThemeOptional } from "../providers/contexts/ThemeContext";
 import { colors } from "../theme/colors";
 import { useIsDark } from "./useIsDark";
@@ -37,6 +37,125 @@ import { useIsDark } from "./useIsDark";
  * }
  * ```
  */
+/**
+ * Mode-specific color sections.
+ *
+ * Built once at module load so every section keeps a stable reference for
+ * as long as the mode is unchanged. Consumers can safely place a section in a
+ * `useMemo` / `useCallback` dependency array without spurious invalidation.
+ */
+interface ThemeColorSections {
+  /** Background colors */
+  background: {
+    /** Default page background */
+    default: string;
+    /** Paper/card background */
+    paper: string;
+    /** Subtle background for slight elevation (e.g., hover states, inputs) */
+    subtle: string;
+    /** Emphasized background for higher contrast areas */
+    emphasized: string;
+  };
+  /** Text colors */
+  text: {
+    /** Primary text color */
+    primary: string;
+    /** Secondary/muted text color */
+    secondary: string;
+    /** Disabled text color */
+    disabled: string;
+    /** Inverted text (for use on dark backgrounds in light mode, etc.) */
+    inverted: string;
+  };
+  /** Border colors */
+  border: {
+    /** Light border for subtle separations */
+    light: string;
+    /** Default border color */
+    default: string;
+    /** Strong border for emphasis */
+    strong: string;
+  };
+  /** Status/semantic colors */
+  status: {
+    /** Added/success backgrounds */
+    added: { bg: string; text: string };
+    /** Removed/error backgrounds */
+    removed: { bg: string; text: string };
+    /** Modified/warning backgrounds */
+    modified: { bg: string; text: string };
+  };
+  /** Interactive element colors */
+  interactive: {
+    /** Hover state background */
+    hover: string;
+    /** Active/pressed state background */
+    active: string;
+    /** Focus ring color */
+    focus: string;
+  };
+}
+
+const LIGHT_COLORS: ThemeColorSections = {
+  background: {
+    default: colors.white,
+    paper: colors.white,
+    subtle: colors.neutral[50],
+    emphasized: colors.neutral[100],
+  },
+  text: {
+    primary: colors.neutral[900],
+    secondary: colors.neutral[600],
+    disabled: colors.neutral[400],
+    inverted: colors.neutral[50],
+  },
+  border: {
+    light: colors.neutral[200],
+    default: colors.neutral[300],
+    strong: colors.neutral[400],
+  },
+  status: {
+    added: { bg: colors.green[100], text: colors.neutral[900] },
+    removed: { bg: colors.red[200], text: colors.neutral[900] },
+    modified: { bg: colors.amber[100], text: colors.neutral[900] },
+  },
+  interactive: {
+    hover: colors.neutral[100],
+    active: colors.neutral[200],
+    focus: colors.iochmara[500],
+  },
+};
+
+const DARK_COLORS: ThemeColorSections = {
+  background: {
+    default: colors.neutral[900],
+    paper: colors.neutral[800],
+    subtle: colors.neutral[800],
+    emphasized: colors.neutral[700],
+  },
+  text: {
+    primary: colors.neutral[50],
+    secondary: colors.neutral[400],
+    disabled: colors.neutral[500],
+    inverted: colors.neutral[900],
+  },
+  border: {
+    light: colors.neutral[700],
+    default: colors.neutral[600],
+    strong: colors.neutral[500],
+  },
+  status: {
+    added: { bg: colors.green[900], text: colors.neutral[50] },
+    removed: { bg: colors.red[950], text: colors.neutral[50] },
+    modified: { bg: colors.yellow[900], text: colors.neutral[50] },
+  },
+  interactive: {
+    hover: colors.neutral[700],
+    active: colors.neutral[600],
+    focus: colors.iochmara[500],
+  },
+};
+
 export function useThemeColors() {
   const muiTheme = useMuiTheme();
   // Try context first (returns null if not in RecceProvider)
@@ -56,76 +175,18 @@ export function useThemeColors() {
       : isDarkFallback
     : false;
 
-  return {
-    /** Whether the current theme is dark mode */
-    isDark,
+  return useMemo(
+    () => ({
+      /** Whether the current theme is dark mode */
+      isDark,
 
-    /** MUI theme object for direct access when needed */
-    theme: muiTheme,
+      /** MUI theme object for direct access when needed */
+      theme: muiTheme,
 
-    /** Background colors */
-    background: {
-      /** Default page background */
-      default: isDark ? colors.neutral[900] : colors.white,
-      /** Paper/card background */
-      paper: isDark ? colors.neutral[800] : colors.white,
-      /** Subtle background for slight elevation (e.g., hover states, inputs) */
-      subtle: isDark ? colors.neutral[800] : colors.neutral[50],
-      /** Emphasized background for higher contrast areas */
-      emphasized: isDark ? colors.neutral[700] : colors.neutral[100],
-    },
-
-    /** Text colors */
-    text: {
-      /** Primary text color */
-      primary: isDark ? colors.neutral[50] : colors.neutral[900],
-      /** Secondary/muted text color */
-      secondary: isDark ? colors.neutral[400] : colors.neutral[600],
-      /** Disabled text color */
-      disabled: isDark ? colors.neutral[500] : colors.neutral[400],
-      /** Inverted text (for use on dark backgrounds in light mode, etc.) */
-      inverted: isDark ? colors.neutral[900] : colors.neutral[50],
-    },
-
-    /** Border colors */
-    border: {
-      /** Light border for subtle separations */
-      light: isDark ? colors.neutral[700] : colors.neutral[200],
-      /** Default border color */
-      default: isDark ? colors.neutral[600] : colors.neutral[300],
-      /** Strong border for emphasis */
-      strong: isDark ? colors.neutral[500] : colors.neutral[400],
-    },
-
-    /** Status/semantic colors */
-    status: {
-      /** Added/success backgrounds */
-      added: {
-        bg: isDark ? colors.green[900] : colors.green[100],
-        text: isDark ? colors.neutral[50] : colors.neutral[900],
-      },
-      /** Removed/error backgrounds */
-      removed: {
-        bg: isDark ? colors.red[950] : colors.red[200],
-        text: isDark ? colors.neutral[50] : colors.neutral[900],
-      },
-      /** Modified/warning backgrounds */
-      modified: {
-        bg: isDark ? colors.yellow[900] : colors.amber[100],
-        text: isDark ? colors.neutral[50] : colors.neutral[900],
-      },
-    },
-
-    /** Interactive element colors */
-    interactive: {
-      /** Hover state background */
-      hover: isDark ? colors.neutral[700] : colors.neutral[100],
-      /** Active/pressed state background */
-      active: isDark ? colors.neutral[600] : colors.neutral[200],
-      /** Focus ring color */
-      focus: colors.iochmara[500],
-    },
-  };
+      ...(isDark ? DARK_COLORS : LIGHT_COLORS),
+    }),
+    [isDark, muiTheme],
+  );
 }
 
 export type ThemeColors = ReturnType<typeof useThemeColors>;
