@@ -360,10 +360,7 @@ def init(cache_db, **kwargs):
     from recce.util.cll import _DEFAULT_DB_PATH, CllCache, get_cll_cache, set_cll_cache
     from recce.util.info_emitter import emit_info_and_lineage_diff
     from recce.util.per_node_db import SCHEMA_VERSION as PER_NODE_DB_SCHEMA_VERSION
-    from recce.util.per_node_db import (
-        PerNodeDbWriter,
-        extract_rows_from_artifacts,
-    )
+    from recce.util.per_node_db import PerNodeDbWriter, extract_rows_from_artifacts
 
     logger = logging.getLogger("recce")
     console = Console()

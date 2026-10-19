@@ -26,14 +26,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           version: "latest"
+          # Publishing workflow: keep the uv cache off (setup-uv >= v5 enables it by default).
+          enable-cache: false
 
       - name: Setup Node.js 26
         uses: actions/setup-node@v7
@@ -41,9 +43,10 @@ jobs:
           node-version-file: 'js/.nvmrc'
 
       - name: Set up pnpm
-        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
         with:
-          package-json-file: js/package.json
+          working-directory: js
+          node-version-file: false
           install: false
           cache: true
           cache-dependency-path: js/pnpm-lock.yaml
@@ -133,7 +136,7 @@ jobs:
           PYPIRC: ${{ secrets.PYPI }}
 
       - name: Mark Sentry Release
-        uses: getsentry/action-release@v1
+        uses: getsentry/action-release@v3
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: infuseai
@@ -142,13 +145,13 @@ jobs:
           environment: nightly
           ignore_empty: true
           ignore_missing: true
-          version: ${{ steps.patch_version.outputs.nightly_version }}
+          release: ${{ steps.patch_version.outputs.nightly_version }}
 
       # Only upload version artifact for regular nightly builds (not alpha)
       # Alpha builds are for testing unmerged PRs and should not trigger npm release
       - name: Upload version artifact for UI release
         if: inputs.release_type != 'Alpha Release'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: recce-nightly-version
           path: recce/VERSION
@@ -159,14 +162,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           version: "latest"
+          # Publishing workflow: keep the uv cache off (setup-uv >= v5 enables it by default).
+          enable-cache: false
 
       - name: Install dependencies
         run: |
@@ -223,7 +228,7 @@ jobs:
           PYPIRC: ${{ secrets.PYPI }}
 
       - name: Mark Sentry Release
-        uses: getsentry/action-release@v1
+        uses: getsentry/action-release@v3
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: infuseai
@@ -232,7 +237,7 @@ jobs:
           environment: nightly
           ignore_empty: true
           ignore_missing: true
-          version: ${{ steps.patch_version.outputs.nightly_version }}
+          release: ${{ steps.patch_version.outputs.nightly_version }}
 
   trigger-build-recce-instance-launcher-image:
     name: Trigger Build Recce Instance Launcher Image
@@ -241,7 +246,7 @@ jobs:
       contents: read
     needs: build-nightly-release
     steps:
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@v3
         id: app-token
         with:
           app-id: ${{ secrets.RECCE_ACTION_BOT_APP_ID }}

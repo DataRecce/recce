@@ -16,7 +16,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Node.js 26
         uses: actions/setup-node@v7
@@ -24,9 +24,10 @@ jobs:
           node-version-file: 'js/.nvmrc'
 
       - name: Set up pnpm
-        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
         with:
-          package-json-file: js/package.json
+          working-directory: js
+          node-version-file: false
           install: false
           cache: true
           cache-dependency-path: js/pnpm-lock.yaml
@@ -51,7 +52,7 @@ jobs:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Node.js 26
         uses: actions/setup-node@v7
@@ -59,9 +60,10 @@ jobs:
           node-version-file: 'js/.nvmrc'
 
       - name: Set up pnpm
-        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
         with:
-          package-json-file: js/package.json
+          working-directory: js
+          node-version-file: false
           install: false
           cache: true
           cache-dependency-path: js/pnpm-lock.yaml
