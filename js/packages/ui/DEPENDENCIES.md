@@ -10,7 +10,7 @@ These must be installed in your project. `@datarecce/ui` does not bundle them.
 |---------|---------------|-------|
 | `react` | `^18.0.0 \|\| ^19.0.0` | |
 | `react-dom` | `^18.0.0 \|\| ^19.0.0` | |
-| `@sentry/react` | `^10.0.0` | **Optional.** Error boundary integration. |
+| `@sentry/react` | `^10.0.0 \|\| ^11.0.0` | **Optional.** Error boundary integration. |
 
 ## Transitive Dependencies (installed automatically)
 

@@ -38,7 +38,7 @@ jobs:
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           # For workflow_run, checkout the same ref that triggered the parent workflow
@@ -51,9 +51,10 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Set up pnpm
-        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
         with:
-          package-json-file: js/package.json
+          working-directory: js
+          node-version-file: false
           install: false
           cache: true
           cache-dependency-path: js/pnpm-lock.yaml
@@ -114,7 +115,7 @@ jobs:
         id: download_nightly
         if: github.event_name == 'workflow_run' && steps.release_type.outputs.type == 'nightly'
         continue-on-error: true
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: recce-nightly-version
           path: .version-artifact
@@ -125,7 +126,7 @@ jobs:
         id: download_official
         if: github.event_name == 'workflow_run' && steps.release_type.outputs.type == 'official'
         continue-on-error: true
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: recce-release-version
           path: .version-artifact
@@ -337,7 +338,7 @@ jobs:
           fi
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@v3
         id: app-token
         if: steps.check_artifact.outputs.skip != 'true' && steps.patch_version.outputs.npm_tag == 'latest'
         continue-on-error: true
