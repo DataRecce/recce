@@ -64,6 +64,7 @@ def test_released_build_starts_sentry(stubs, version, expected_env):
     kwargs = stubs.sentry_sdk.init.call_args.kwargs
     assert kwargs["environment"] == expected_env
     assert kwargs["release"] == version
+    assert kwargs["include_local_variables"] is False
 
 
 @pytest.mark.parametrize("value", ["1", "TRUE"])
