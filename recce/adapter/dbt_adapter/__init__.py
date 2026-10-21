@@ -1066,6 +1066,10 @@ class DbtAdapter(BaseAdapter):
                             table = parts[3]
                             source = source.replace("-", "_")
                             name = f"__{source}__{table}"
+                        # Same as the CLL schema builders: an empty table makes sqlglot
+                        # skip qualify() for the whole statement (DRC-4918).
+                        if not columns:
+                            continue
                         schema[name] = {name: column.get("type") for name, column in columns.items()}
                     return schema
 
@@ -1665,6 +1669,10 @@ class DbtAdapter(BaseAdapter):
             if parent_id in catalog.sources:
                 for col_name, col_metadata in catalog.sources[parent_id].columns.items():
                     columns[col_name] = col_metadata.type
+            # sqlglot rejects a table with zero columns, which would mark the whole model
+            # unknown. Leave such parents out so cataloged parents still resolve (DRC-4918).
+            if not columns:
+                continue
             schema[table_name] = columns
         return schema
 
@@ -1853,6 +1861,9 @@ class DbtAdapter(BaseAdapter):
                     if parent_id in catalog.sources:
                         for col_name, col_metadata in catalog.sources[parent_id].columns.items():
                             columns[col_name] = col_metadata.type
+                    # Skip parents without catalog columns: sqlglot rejects empty tables (DRC-4918).
+                    if not columns:
+                        continue
                     schema[table_name] = columns
 
         try:

@@ -227,6 +227,85 @@ def test_build_schema_from_aliases(dbt_test_helper):
     assert adapter._build_schema_from_aliases(manifest, None, parent_list) == {}
 
 
+def test_build_schema_from_aliases_omits_parents_without_catalog_columns(dbt_test_helper):
+    """A parent present in the manifest but absent from catalog.json must not produce an empty
+    schema entry: sqlglot rejects tables with zero columns and the whole model becomes unknown."""
+    dbt_test_helper.create_model(
+        "model1", unique_id="model.model1", curr_sql="select 1 as c", curr_columns={"c": "int"}
+    )
+    dbt_test_helper.create_model("ghost", unique_id="model.ghost", curr_sql="select 1 as d", curr_columns={"d": "int"})
+
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+    from recce.adapter.dbt_adapter import as_manifest
+
+    manifest = as_manifest(adapter.get_manifest(base=False))
+    catalog = adapter.curr_catalog
+    catalog.nodes.pop("model.ghost")
+
+    schema = adapter._build_schema_from_aliases(manifest, catalog, ["model.model1", "model.ghost"])
+
+    assert schema == {"model1": {"c": "int"}}
+
+
+def test_cll_pre_compiled_with_parent_missing_from_catalog_keeps_cataloged_columns(dbt_test_helper, disable_cll_cache):
+    """DRC-4918: a parent missing from catalog.json must not turn the whole model into `unknown`.
+    Columns sourced from the cataloged parent still resolve."""
+    dbt_test_helper.create_model(
+        "model1", unique_id="model.model1", curr_sql="select 1 as c", curr_columns={"c": "int"}
+    )
+    dbt_test_helper.create_model(
+        "ghost",
+        unique_id="model.ghost",
+        curr_sql="select 1 as id, 2 as d",
+        curr_columns={"id": "int", "d": "int"},
+    )
+    dbt_test_helper.create_model(
+        "model2",
+        unique_id="model.model2",
+        curr_sql='select c from {{ ref("model1") }}',
+        curr_columns={"c": "int"},
+        depends_on=["model.model1", "model.ghost"],
+    )
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+    adapter.curr_catalog.nodes.pop("model.ghost")
+    _set_compiled_code(
+        adapter,
+        "model.model2",
+        'select model1.c as c from "main"."model1" as model1 ' 'join "main"."ghost" as ghost on model1.c = ghost.id',
+    )
+
+    result = adapter.get_cll("model.model1", "c")
+    assert_column(result, "model.model2", "c", transformation_type="passthrough", parents=[("model.model1", "c")])
+
+
+def test_cll_jinja_path_with_parent_missing_from_catalog_keeps_cataloged_columns(dbt_test_helper, disable_cll_cache):
+    """DRC-4918, Jinja fallback path: same as the pre-compiled case when no compiled SQL is set."""
+    dbt_test_helper.create_model(
+        "model1", unique_id="model.model1", curr_sql="select 1 as c", curr_columns={"c": "int"}
+    )
+    dbt_test_helper.create_model(
+        "ghost",
+        unique_id="model.ghost",
+        curr_sql="select 1 as id, 2 as d",
+        curr_columns={"id": "int", "d": "int"},
+    )
+    dbt_test_helper.create_model(
+        "model2",
+        unique_id="model.model2",
+        curr_sql=(
+            'select model1.c as c from {{ ref("model1") }} as model1 '
+            'join {{ ref("ghost") }} as ghost on model1.c = ghost.id'
+        ),
+        curr_columns={"c": "int"},
+        depends_on=["model.model1", "model.ghost"],
+    )
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+    adapter.curr_catalog.nodes.pop("model.ghost")
+
+    result = adapter.get_cll("model.model1", "c")
+    assert_column(result, "model.model2", "c", transformation_type="passthrough", parents=[("model.model1", "c")])
+
+
 def _set_compiled_code(adapter, node_id, compiled_code, base=False):
     """Set compiled_code on a manifest node after set_artifacts has been called.
 
