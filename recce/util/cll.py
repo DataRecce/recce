@@ -12,6 +12,13 @@ from sqlglot import Dialect, parse_one
 from sqlglot.errors import OptimizeError, SqlglotError
 from sqlglot.optimizer import Scope, traverse_scope
 from sqlglot.optimizer.qualify import qualify
+from sqlglot.optimizer.qualify_columns import validate_qualify_columns
+from sqlglot.schema import Schema, ensure_schema
+
+try:
+    from sqlglot.optimizer.resolver import Resolver
+except ImportError:  # older sqlglot kept Resolver in qualify_columns
+    from sqlglot.optimizer.qualify_columns import Resolver
 
 from recce.exceptions import RecceException
 from recce.models.types import CllColumn, CllColumnDep
@@ -24,7 +31,7 @@ CllResult = Tuple[
 ]
 
 _DEFAULT_DB_PATH = os.path.join(os.path.expanduser("~"), ".recce", "cll_cache.db")
-_CACHE_SCHEMA_VERSION = 3
+_CACHE_SCHEMA_VERSION = 4
 _DEFAULT_TTL_SECONDS = 7 * 24 * 3600  # 7 days
 
 
@@ -615,6 +622,38 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
     return m2c, c2c_map
 
 
+def _attribute_to_schemaless_source(expression: exp.Expression, schema: Schema) -> None:
+    # sqlglot 30.22 dropped `infer_schema` (tobymao/sqlglot#8552), which, when no schema was
+    # given, attributed an unqualified column to the scope's only source without known columns.
+    for scope in traverse_scope(expression):
+        if not isinstance(scope.expression, exp.Select):
+            continue
+        columns = scope.unqualified_columns
+        if not columns:
+            continue
+
+        resolver = Resolver(scope, schema)
+        schemaless_sources = []
+        for name in [*scope.selected_sources, *scope.lateral_sources]:
+            source_columns = resolver.get_source_columns(name)
+            if not source_columns or "*" in source_columns:
+                schemaless_sources.append(name)
+
+        if len(schemaless_sources) == 1:
+            for column in columns:
+                column.set("table", exp.to_identifier(schemaless_sources[0]))
+
+
+def _qualify(expression: exp.Expression, schema, dialect) -> exp.Expression:
+    schema = ensure_schema(schema, dialect=dialect)
+    if not schema.empty:
+        return qualify(expression, schema=schema, dialect=dialect)
+
+    expression = qualify(expression, schema=schema, dialect=dialect, validate_qualify_columns=False)
+    _attribute_to_schemaless_source(expression, schema)
+    return validate_qualify_columns(expression)
+
+
 def cll(sql, schema=None, dialect=None) -> CllResult:
     # given a sql, return the cll for the sql
     # {
@@ -635,7 +674,7 @@ def cll(sql, schema=None, dialect=None) -> CllResult:
         raise RecceException(f"Failed to parse SQL: {str(e)}")
 
     try:
-        expression = qualify(expression, schema=schema, dialect=dialect)
+        expression = _qualify(expression, schema=schema, dialect=dialect)
     except OptimizeError as e:
         raise RecceException(f"Failed to optimize SQL: {str(e)}")
     except SqlglotError as e:

@@ -1,6 +1,7 @@
 import unittest
 from typing import List, Tuple
 
+from recce.exceptions import RecceException
 from recce.util.cll import CllResult, cll
 
 
@@ -354,6 +355,42 @@ class ColumnLevelLineageTest(unittest.TestCase):
         result = cll(sql, {"table1": {"id": "Int", "a": "Int"}, "table2": {"id": "Int", "b": "Int"}})
         assert_column(result, "a", "passthrough", [("table1", "a")])
         assert_column(result, "b", "passthrough", [("table2", "b")])
+
+    def test_empty_schema_dict(self):
+        # DbtAdapter passes schema={} when there is no catalog.json
+        sql = """
+        select a as c from table1
+        """
+        result = cll(sql, schema={})
+        assert_column(result, "c", "renamed", [("table1", "a")])
+
+    def test_unqualified_column_resolves_to_only_schemaless_source(self):
+        # The derived table's columns are known, so table2 is the only source without a schema
+        sql = """
+        select x.a, b
+        from (select a from table1) x
+        join table2 on x.a = table2.a
+        """
+        result = cll(sql)
+        assert_column(result, "a", "passthrough", [("table1", "a")])
+        assert_column(result, "b", "passthrough", [("table2", "b")])
+
+    def test_unqualified_column_ambiguous_without_schema(self):
+        sql = """
+        select a
+        from table1
+        join table2 on table1.id = table2.id
+        """
+        with self.assertRaises(RecceException):
+            cll(sql)
+
+    def test_unqualified_column_with_partial_schema(self):
+        # Attribution only applies when the whole schema is empty, matching sqlglot <30.22
+        sql = """
+        select b from table2
+        """
+        with self.assertRaises(RecceException):
+            cll(sql, schema={"table1": {"a": "int"}})
 
     def test_cte(self):
         sql = """

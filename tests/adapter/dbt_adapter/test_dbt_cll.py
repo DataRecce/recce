@@ -783,6 +783,20 @@ def test_model_without_catalog(dbt_test_helper, disable_cll_cache):
     assert not result.nodes["model1"].columns
 
 
+def test_model_reading_hardcoded_relation(dbt_test_helper, disable_cll_cache):
+    # No dbt parents, so cll() gets an empty schema and must attribute columns to raw_events itself
+    dbt_test_helper.create_model(
+        "model1",
+        unique_id="model.model1",
+        curr_sql="select a as c from raw_events",
+        curr_columns={"c": "int"},
+    )
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+
+    result = adapter.get_cll("model.model1")
+    assert_column(result, "model.model1", "c", transformation_type="renamed", parents=[])
+
+
 def test_column_level_lineage(dbt_test_helper, disable_cll_cache):
     dbt_test_helper.create_model(
         "model1", unique_id="model.model1", curr_sql="select 1 as c", curr_columns={"c": "int"}
