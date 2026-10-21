@@ -119,3 +119,40 @@ def test_get_lineage_catalog_status_marks_excluded_materializations_not_applicab
     lineage = dbt_test_helper.adapter.get_lineage()
 
     assert lineage["nodes"][node_id]["catalog_status"] == "not_applicable"
+
+
+def test_change_analysis_ignores_parent_without_columns(dbt_test_helper):
+    """DRC-4918: a parent with no columns must not be written to the change-analysis schema as an
+    empty table. sqlglot then skips qualify() for the whole statement, so `select *` cannot expand and
+    the column diff is wrong. Here `ghost` is a parent but is not referenced in the SQL."""
+    dbt_test_helper.create_model(
+        "customers",
+        unique_id="model.customers",
+        base_sql="select 1 as id, 2 as a, 3 as b",
+        curr_sql="select 1 as id, 2 as a, 3 as b",
+        base_columns={"id": "int", "a": "int", "b": "int"},
+        curr_columns={"id": "int", "a": "int", "b": "int"},
+    )
+    dbt_test_helper.create_model(
+        "ghost",
+        unique_id="model.ghost",
+        base_sql="select 1 as id",
+        curr_sql="select 1 as id",
+        base_columns={},
+        curr_columns={},
+    )
+    dbt_test_helper.create_model(
+        "model2",
+        unique_id="model.model2",
+        base_sql='select * from {{ ref("customers") }}',
+        curr_sql='select id, a from {{ ref("customers") }}',
+        base_columns={"id": "int", "a": "int", "b": "int"},
+        curr_columns={"id": "int", "a": "int"},
+        depends_on=["model.customers", "model.ghost"],
+    )
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+
+    node_diff = adapter.get_change_analysis_cached("model.model2")
+
+    assert node_diff.change.category == "partial_breaking"
+    assert node_diff.change.columns == {"b": "removed"}
