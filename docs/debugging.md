@@ -26,7 +26,7 @@ Checks dbt artifacts and database connections.
 | Adapter not found | Wrong CLI flags | Check `--sqlmesh` flag |
 | State not persisting | FileStateLoader path | Check `recce_state.json` location |
 | SQL execution fails | Adapter connection | Run `recce debug` |
-| `recce github artifact` refuses to extract (exits 1) | Archive member is not a plain relative file/directory path (absolute, `..`, `\`, `:`, Windows device name, trailing dot/space, link or special type), paths duplicate or conflict ignoring case, or an existing destination component is a symlink, wrong type, or resolves outside the working directory | All members are validated and CRC-checked before any file is written. Run in a directory without symlinks along the artifact's paths, or fix the workflow that produced the artifact. The checks cover archive contents and links already in the directory; they do not guard against another process changing the directory during extraction |
+| `recce github artifact` refuses to extract (exits 1) | An archive member or existing destination is unsafe | Follow the error message; remove unsafe destination links or fix the workflow artifact. Extraction checks do not protect against concurrent changes to the working directory. |
 
 ## Frontend Debugging
 

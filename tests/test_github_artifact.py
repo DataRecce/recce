@@ -154,15 +154,6 @@ def test_overwrite_hardlinked_leaf_does_not_write_through(workspace, serve):
         "//server/share/evil.txt",
         "\\\\server\\share\\evil.txt",
         "evil.txt\x00.json",
-        "report.json:stream",
-        "dir:ads/evil.txt",
-        "CON",
-        "nul.txt",
-        "dir/Com1.json",
-        "lpt9 .txt",
-        "evil.",
-        "evil ",
-        "dir./evil.txt",
     ],
 )
 def test_rejects_unsafe_member_names(workspace, serve, name):
@@ -172,6 +163,30 @@ def test_rejects_unsafe_member_names(workspace, serve, name):
     artifact = serve(make_zip([("keep.txt", b"new"), ("ok/file.txt", b"ok"), (name, b"evil")]))
 
     assert_rejected(workspace, artifact)
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "report.json:stream",
+        "dir:ads/evil.txt",
+        "CON",
+        "nul.txt",
+        "dir/Com1.json",
+        "lpt9 .txt",
+        "evil.",
+        "evil ",
+        "dir./evil.txt",
+        "2026-10-22T03:10:20.log",
+    ],
+)
+def test_platform_specific_filename_rules(workspace, serve, name):
+    artifact = serve(make_zip([(name, b"ordinary artifact")]))
+    if os.name == "nt":
+        assert_rejected(workspace, artifact)
+    else:
+        assert download_artifact("token", artifact) == [name]
+        assert (workspace.root / name).read_bytes() == b"ordinary artifact"
 
 
 @pytest.mark.parametrize(

@@ -1,4 +1,5 @@
 import io
+import ntpath
 import os
 import re
 import shutil
@@ -27,19 +28,21 @@ def _archive_path_parts(name: str) -> Tuple[str, ...]:
     Split an archive member name into path components, rejecting names that are not plain relative paths.
 
     Names are rejected rather than normalized so that a dangerous name never turns into a valid one.
-    Windows-only aliases (drive prefixes, ADS colons, device names, trailing dots/spaces) are rejected
-    on every platform so an archive behaves the same everywhere.
+    Windows filesystem aliases (ADS colons, device names, trailing dots/spaces) are
+    rejected on Windows; drive-qualified paths are rejected on every platform.
     """
     relative = name[:-1] if name.endswith("/") else name
     parts = tuple(relative.split("/"))
-    if not relative or relative.startswith("/") or "\\" in name or "\0" in name:
+    if not relative or relative.startswith("/") or ntpath.splitdrive(relative)[0] or "\\" in name or "\0" in name:
         raise ValueError(f"Unsafe path in artifact archive: {name!r}")
     for part in parts:
-        if (
-            part in ("", ".", "..")
-            or ":" in part
-            or part.endswith((".", " "))
-            or part.partition(".")[0].rstrip(" ").upper() in _WINDOWS_RESERVED_NAMES
+        if part in ("", ".", "..") or (
+            os.name == "nt"
+            and (
+                ":" in part
+                or part.endswith((".", " "))
+                or part.partition(".")[0].rstrip(" ").upper() in _WINDOWS_RESERVED_NAMES
+            )
         ):
             raise ValueError(f"Unsafe path in artifact archive: {name!r}")
     return parts
