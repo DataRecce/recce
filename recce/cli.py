@@ -2465,7 +2465,10 @@ def github(**kwargs):
 def artifact(**kwargs):
     from recce.github import recce_ci_artifact
 
-    return recce_ci_artifact(**kwargs)
+    rc = recce_ci_artifact(**kwargs)
+    if rc != 0:
+        exit(rc)
+    return rc
 
 
 @cli.command(cls=TrackCommand)

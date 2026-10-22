@@ -26,6 +26,7 @@ Checks dbt artifacts and database connections.
 | Adapter not found | Wrong CLI flags | Check `--sqlmesh` flag |
 | State not persisting | FileStateLoader path | Check `recce_state.json` location |
 | SQL execution fails | Adapter connection | Run `recce debug` |
+| `recce github artifact` refuses to extract (exits 1) | An archive member or existing destination is unsafe | Follow the error message; remove unsafe destination links or fix the workflow artifact. Extraction checks do not protect against concurrent changes to the working directory. |
 
 ## Frontend Debugging
 
