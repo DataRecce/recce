@@ -1,4 +1,5 @@
 import gzip
+import io
 import json
 import os
 import shutil
@@ -68,7 +69,7 @@ def archive_artifacts(target_path: str) -> (str, str):
     artifacts_tar_path = os.path.join(tmp_dir, "dbt_artifacts.tar")
     artifacts_tar_gz_path = artifacts_tar_path + ".gz"
 
-    with tarfile.open(artifacts_tar_path, "w") as tar:
+    with tarfile.open(artifacts_tar_path, "w", dereference=True) as tar:
         tar.add(manifest_path, arcname="manifest.json")
         tar.add(catalog_path, arcname="catalog.json")
 
@@ -234,29 +235,57 @@ def download_dbt_artifacts(
     if response.status_code != 200:
         raise Exception(response.text)
 
-    if os.path.exists(target_path):
-        if not force:
-            raise Exception(
-                f"Path {target_path} already exists. Please provide a new path or use '--force' option to overwrite the existing folder."
-            )
-        console.print(f"[[yellow]Warning[/yellow]] Overwrite existing path: {target_path}")
-        shutil.rmtree(target_path)
-    os.mkdir(target_path)
+    target_path = os.path.abspath(target_path)
+    if os.path.dirname(target_path) == target_path:
+        raise Exception(f"Path {target_path} is a filesystem root. Please provide a directory path.")
+    if os.path.islink(target_path):
+        raise Exception(f"Path {target_path} is a symbolic link. Please provide a regular directory path.")
+    if os.path.exists(target_path) and not force:
+        raise Exception(
+            f"Path {target_path} already exists. Please provide a new path or use '--force' option to overwrite the existing folder."
+        )
 
-    tar_gz_file = os.path.join(target_path, "dbt_artifacts.tar.gz")
-    with open(tar_gz_file, "wb") as f:
-        f.write(response.content)
+    with tempfile.TemporaryDirectory(dir=os.path.dirname(target_path), prefix=".recce-artifacts-") as staging_root:
+        staging_path = os.path.join(staging_root, "artifacts")
+        os.mkdir(staging_path)
+        _extract_dbt_artifacts(response.content, staging_path)
 
-    with tarfile.open(tar_gz_file, "r") as tar:
-        tar.extractall(path=target_path)
-
-    # Clean up the compressed artifacts
-    try:
-        # Remove the compressed artifacts
-        os.remove(tar_gz_file)
-    except FileNotFoundError:
-        pass
+        if os.path.islink(target_path):
+            raise Exception(f"Path {target_path} is a symbolic link. Please provide a regular directory path.")
+        if os.path.exists(target_path):
+            if not force:
+                raise Exception(
+                    f"Path {target_path} already exists. Please provide a new path or use '--force' option to overwrite the existing folder."
+                )
+            console.print(f"[[yellow]Warning[/yellow]] Overwrite existing path: {target_path}")
+            shutil.rmtree(target_path)
+        os.replace(staging_path, target_path)
     return 0
+
+
+_DBT_ARTIFACT_NAMES = ("manifest.json", "catalog.json")
+
+
+def _extract_dbt_artifacts(content: bytes, staging_path: str):
+    """Copy exactly manifest.json and catalog.json from a downloaded archive into staging_path.
+
+    The whole member list is validated before any bytes are read; links, special files,
+    unexpected or duplicate names, and missing artifacts are rejected. No archive metadata is applied.
+    """
+    with tarfile.open(fileobj=io.BytesIO(content), mode="r:*") as tar:
+        members = tar.getmembers()
+        names = [m.name for m in members]
+        if sorted(names) != sorted(_DBT_ARTIFACT_NAMES):
+            raise Exception("Invalid dbt artifacts archive: expected exactly manifest.json and catalog.json")
+        for member in members:
+            if member.type not in (tarfile.REGTYPE, tarfile.AREGTYPE) or member.issparse():
+                raise Exception(f"Invalid dbt artifacts archive: {member.name} is not a regular file")
+        for member in members:
+            src = tar.extractfile(member)
+            if src is None:
+                raise Exception(f"Invalid dbt artifacts archive: cannot read {member.name}")
+            with src, open(os.path.join(staging_path, member.name), "xb") as dst:
+                shutil.copyfileobj(src, dst)
 
 
 def delete_dbt_artifacts(branch: str, token: str, debug: bool = False):
