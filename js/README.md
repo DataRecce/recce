@@ -1,6 +1,6 @@
 ## Prerequisites
 
-1. Node.js 26.5.0 via [nave](https://github.com/isaacs/nave) (`.nvmrc` is the source of truth)
+1. Node.js 26.12.1 via [nave](https://github.com/isaacs/nave) (`.nvmrc` is the source of truth)
    ```
    nave install "$(cat .nvmrc)"
    nave use "$(cat .nvmrc)"
