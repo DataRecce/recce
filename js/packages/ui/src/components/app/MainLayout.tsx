@@ -148,18 +148,22 @@ export function Main({
         className={_isRunResultOpen ? undefined : "split-gutter-hidden"}
         style={{ flex: "1", contain: "size" }}
       >
-        <Suspense fallback={<MainContentLoading />}>
-          {/* suppressHydrationWarning: react-split adds inline styles (height, width)
-              to children after mount, causing expected server/client mismatches */}
-          <Box
-            sx={{
-              p: 0,
-              contain: "content",
-              height: "100%",
-              position: "relative",
-            }}
-            suppressHydrationWarning
-          >
+        {/* suppressHydrationWarning: react-split adds inline styles (height, width)
+            to children after mount, causing expected server/client mismatches.
+            The Suspense boundary must stay INSIDE this pane: split.js sizes the
+            element children present at mount, and a boundary at this level swaps
+            its fallback (and the static export's <template> placeholder) for an
+            unsized element, leaving the empty result pane at height 100% (DRC-3467). */}
+        <Box
+          sx={{
+            p: 0,
+            contain: "content",
+            height: "100%",
+            position: "relative",
+          }}
+          suppressHydrationWarning
+        >
+          <Suspense fallback={<MainContentLoading />}>
             {/*
              * Lineage parallel route - always mounted but visibility controlled
              * This replaces the old RouteAlwaysMount pattern
@@ -177,8 +181,8 @@ export function Main({
 
             {/* Other route content */}
             {!isLineageRoute && children}
-          </Box>
-        </Suspense>
+          </Suspense>
+        </Box>
         {/* suppressHydrationWarning: react-split adds inline styles after mount */}
         <Box
           sx={{ height: "100%", bgcolor: isDark ? "grey.900" : "grey.50" }}
