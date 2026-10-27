@@ -8,7 +8,11 @@
 
 ## Reporting a Vulnerability
 
-Please report (suspected) security vulnerabilities to **dev@infuseai.io**. You will receive a response from us within 48 hours. In the response, we will confirm whether the vulnerability was indeed found, and we will discuss the steps towards a solution.
+Please report (suspected) security vulnerabilities using the submit form on our security page: **https://reccehq.com/security/**. Reports are managed through our HackerOne program, so this is the preferred way to reach us.
+
+If you cannot use the security page, you can email **cybersecurity@reccehq.com** instead.
+
+We will respond to your report as soon as we can. In the response, we will confirm whether the vulnerability was indeed found, and we will discuss the steps towards a solution.
 
 It's important to never publicly disclose a security vulnerability before it has been fully resolved, as this can potentially put the wider community at risk.
 
