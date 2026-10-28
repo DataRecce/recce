@@ -9,7 +9,7 @@ For repo-wide guidance see `../CLAUDE.md` and `../AGENTS.md`.
 ## Package Manager & Tooling
 
 - This monorepo uses **pnpm** — never npm or npx for install/test/lint/build.
-- Node.js 26.5.0: use `nave use $(cat .nvmrc)` (not `nvm`); `.nvmrc` is the source of truth.
+- Node.js 26.12.1: use `nave use $(cat .nvmrc)` (not `nvm`); `.nvmrc` is the source of truth.
 - Linter/formatter: **Biome 2.4** — run `pnpm lint:fix` for autofix and `pnpm lint` for verification.
 - Type checking: `pnpm type:check`.
 - Tests: `pnpm test` (Vitest + React Testing Library).
