@@ -375,6 +375,51 @@ class RecceCloudClientTests(unittest.TestCase):
         self.assertNotIn("localhost", result["catalog_url"])
 
     @patch("recce_cloud.api.client.requests.request")
+    def test_get_base_download_urls_success(self, mock_request):
+        """Test get_base_download_urls_by_session_id calls the base-session endpoint with session_id."""
+        client = RecceCloudClient(self.api_token)
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "presigned_urls": {
+                "manifest_url": "https://s3.amazonaws.com/bucket/session/base/manifest.json",
+                "catalog_url": "https://s3.amazonaws.com/bucket/session/base/catalog.json",
+                "cll_cache_url": "https://s3.amazonaws.com/bucket/session/base/cll_cache.db",
+                "recce_state_url": None,
+            }
+        }
+        mock_request.return_value = mock_response
+
+        result = client.get_base_download_urls_by_session_id(self.org_id, self.project_id, self.session_id)
+
+        self.assertIn("/base/manifest.json", result["manifest_url"])
+        self.assertIn("/base/catalog.json", result["catalog_url"])
+        call_args = mock_request.call_args
+        self.assertEqual(call_args[0][0], "GET")
+        self.assertTrue(
+            call_args[0][1].endswith(
+                f"/organizations/{self.org_id}/projects/{self.project_id}/base-session/download-url"
+            )
+        )
+        self.assertEqual(call_args[1]["params"], {"session_id": self.session_id})
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_get_base_download_urls_not_found(self, mock_request):
+        """Test get_base_download_urls_by_session_id with 404 response."""
+        client = RecceCloudClient(self.api_token)
+
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_response.text = "No base session found for this project"
+        mock_request.return_value = mock_response
+
+        with self.assertRaises(RecceCloudException) as context:
+            client.get_base_download_urls_by_session_id(self.org_id, self.project_id, self.session_id)
+
+        self.assertEqual(context.exception.status_code, 404)
+
+    @patch("recce_cloud.api.client.requests.request")
     def test_delete_session_success(self, mock_request):
         """Test successful delete_session call."""
         client = RecceCloudClient(self.api_token)

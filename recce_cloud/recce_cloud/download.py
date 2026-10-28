@@ -87,18 +87,27 @@ def _download_artifacts(console, manifest_url: str, catalog_url: str, target_pat
     _download_artifact(console, catalog_url, catalog_path, "catalog.json")
 
 
-def download_from_existing_session(console, token: str, session_id: str, target_path: str, force: bool = False):
+def download_from_existing_session(
+    console,
+    token: str,
+    session_id: str,
+    target_path: str,
+    force: bool = False,
+    base: bool = False,
+):
     """
     Download artifacts from an existing Recce Cloud session using session ID.
 
     This is the generic workflow that requires a pre-existing session ID.
+    With base=True, download the base the session compares against instead.
     """
     # Initialize client
     with cloud_error_handler(console, "initialize API client", exit_code=ExitCode.INIT_ERROR):
         client = RecceCloudClient(token)
 
     # Get session info (org_id, project_id)
-    console.print(f'Downloading artifacts for session ID "{session_id}"')
+    label = "base artifacts" if base else "artifacts"
+    console.print(f'Downloading {label} for session ID "{session_id}"')
     with cloud_error_handler(console, "get session info", exit_code=ExitCode.INIT_ERROR):
         session = client.get_session(session_id)
 
@@ -119,7 +128,10 @@ def download_from_existing_session(console, token: str, session_id: str, target_
 
     # Get presigned URLs
     with cloud_error_handler(console, "get download URLs"):
-        presigned_urls = client.get_download_urls_by_session_id(org_id, project_id, session_id)
+        if base:
+            presigned_urls = client.get_base_download_urls_by_session_id(org_id, project_id, session_id)
+        else:
+            presigned_urls = client.get_download_urls_by_session_id(org_id, project_id, session_id)
 
     # Ensure target directory exists
     _ensure_target_directory(console, target_path, force)
@@ -135,9 +147,24 @@ def download_from_existing_session(console, token: str, session_id: str, target_
     # Success!
     console.rule("Downloaded Successfully", style="green")
     console.print(
-        f'Downloaded dbt artifacts from Recce Cloud for session ID "{session_id}" to "{os.path.abspath(target_path)}"'
+        f'Downloaded dbt {label} from Recce Cloud for session ID "{session_id}" to "{os.path.abspath(target_path)}"'
     )
+    if base:
+        _print_base_source(console, session)
     sys.exit(0)
+
+
+def _print_base_source(console, session: dict):
+    # The base download endpoint does not say which base it returned. This label
+    # uses session fields read in an earlier request.
+    if "has_isolated_base" not in session:
+        return
+    if session["has_isolated_base"]:
+        console.print("Base: frozen base snapshot of this session")
+    else:
+        shared_id = session.get("current_base_session_id")
+        suffix = f' "{shared_id}"' if shared_id else ""
+        console.print(f"Base: shared project base session{suffix}")
 
 
 def download_with_platform_apis(console, token: str, ci_info, target_path: str, force: bool = False):
