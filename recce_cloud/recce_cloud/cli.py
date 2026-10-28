@@ -1229,6 +1229,12 @@ def list_projects_cmd(org, show_archived, output_json):
     help="Download production/base session instead of PR/MR session",
 )
 @click.option(
+    "--base",
+    is_flag=True,
+    help="Download the base that --session-id compares against: its frozen base snapshot "
+    "if it has one, otherwise the project's shared base session. Requires --session-id.",
+)
+@click.option(
     "--dry-run",
     is_flag=True,
     help="Show what would be downloaded without actually downloading",
@@ -1239,7 +1245,7 @@ def list_projects_cmd(org, show_archived, output_json):
     is_flag=True,
     help="Overwrite existing files without prompting",
 )
-def download(target_path, session_id, prod, dry_run, force):
+def download(target_path, session_id, prod, base, dry_run, force):
     """
     Download dbt artifacts (manifest.json, catalog.json) from Recce Cloud.
 
@@ -1263,6 +1269,9 @@ def download(target_path, session_id, prod, dry_run, force):
       # Download prod session to target-base
       recce-cloud download --prod --target-path target-base
 
+      # Download the base a specific session compares against
+      recce-cloud download --session-id abc123 --base --target-path target-base
+
       # Force overwrite existing files
       recce-cloud download --force
     """
@@ -1274,11 +1283,16 @@ def download(target_path, session_id, prod, dry_run, force):
         {
             "has_session_id": session_id is not None,
             "prod": prod,
+            "base": base,
             "dry_run": dry_run,
         },
     )
 
     # Validate flag combinations
+    if base and not session_id:
+        console.print("[red]Error:[/red] --base requires --session-id")
+        sys.exit(2)
+
     if session_id and prod:
         console.print("[yellow]Warning:[/yellow] --prod is ignored when --session-id is provided")
 
@@ -1351,7 +1365,10 @@ def download(target_path, session_id, prod, dry_run, force):
         # Display download summary
         console.print("[cyan]Download Workflow:[/cyan]")
         if session_id:
-            console.print("  • Download from specific session ID")
+            if base:
+                console.print("  • Download the base of a specific session ID")
+            else:
+                console.print("  • Download from specific session ID")
             console.print(f"  • Session ID: {session_id}")
         else:
             if prod:
@@ -1389,7 +1406,7 @@ def download(target_path, session_id, prod, dry_run, force):
             console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
             sys.exit(2)
 
-        download_from_existing_session(console, token, session_id, target_path, force)
+        download_from_existing_session(console, token, session_id, target_path, force, base=base)
     else:
         # Platform-specific workflow: Use platform APIs to find session and download
         # This workflow MUST use CI job tokens (CI_JOB_TOKEN or GITHUB_TOKEN)

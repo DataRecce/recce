@@ -850,6 +850,100 @@ class TestDownloadDryRun(unittest.TestCase):
         self.assertIn("manifest.json, catalog.json", result.output)
 
 
+class TestDownloadBaseFlag(unittest.TestCase):
+    """Test cases for the --base flag in download command."""
+
+    def setUp(self):
+        self.runner = CliRunner()
+        self.temp_dir = tempfile.mkdtemp()
+        self.download_dir = Path(self.temp_dir) / "target-base"
+
+    def tearDown(self):
+        import shutil
+
+        if os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
+
+    def test_base_requires_session_id(self):
+        with patch.dict(os.environ, {}, clear=True):
+            result = self.runner.invoke(
+                cloud_cli,
+                ["download", "--base", "--target-path", str(self.download_dir)],
+            )
+
+        self.assertEqual(result.exit_code, 2, result.output)
+        self.assertIn("--base requires --session-id", result.output)
+
+    def test_base_dry_run(self):
+        with patch.dict(os.environ, {}, clear=True):
+            result = self.runner.invoke(
+                cloud_cli,
+                ["download", "--session-id", "sess-1", "--base", "--target-path", str(self.download_dir), "--dry-run"],
+            )
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("Download the base of a specific session ID", result.output)
+
+    @patch("recce_cloud.download.requests.get")
+    @patch("recce_cloud.download.RecceCloudClient")
+    def test_base_downloads_from_base_urls(self, mock_client_cls, mock_get):
+        client = mock_client_cls.return_value
+        client.get_session.return_value = {"org_id": "org-1", "project_id": "proj-1"}
+        client.get_base_download_urls_by_session_id.return_value = {
+            "manifest_url": "https://s3/base/manifest.json",
+            "catalog_url": "https://s3/base/catalog.json",
+        }
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.content = b"{}"
+
+        with patch.dict(os.environ, {"RECCE_API_TOKEN": "test-token"}, clear=True):
+            result = self.runner.invoke(
+                cloud_cli,
+                ["download", "--session-id", "sess-1", "--base", "--target-path", str(self.download_dir)],
+            )
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        client.get_base_download_urls_by_session_id.assert_called_once_with("org-1", "proj-1", "sess-1")
+        client.get_download_urls_by_session_id.assert_not_called()
+        self.assertEqual(
+            [c.args[0] for c in mock_get.call_args_list],
+            ["https://s3/base/manifest.json", "https://s3/base/catalog.json"],
+        )
+        self.assertTrue((self.download_dir / "manifest.json").exists())
+        self.assertTrue((self.download_dir / "catalog.json").exists())
+
+    @patch("recce_cloud.download.requests.get")
+    @patch("recce_cloud.download.RecceCloudClient")
+    def test_base_reports_which_base_was_downloaded(self, mock_client_cls, mock_get):
+        client = mock_client_cls.return_value
+        client.get_base_download_urls_by_session_id.return_value = {
+            "manifest_url": "https://s3/manifest.json",
+            "catalog_url": "https://s3/catalog.json",
+        }
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.content = b"{}"
+        cases = [
+            (
+                {"has_isolated_base": True},
+                "Base: frozen base snapshot of this session",
+            ),
+            (
+                {"has_isolated_base": False, "current_base_session_id": "shared-1"},
+                'Base: shared project base session "shared-1"',
+            ),
+        ]
+
+        for session_fields, expected in cases:
+            client.get_session.return_value = {"org_id": "org-1", "project_id": "proj-1", **session_fields}
+            with patch.dict(os.environ, {"RECCE_API_TOKEN": "test-token", "COLUMNS": "200"}, clear=True):
+                result = self.runner.invoke(
+                    cloud_cli,
+                    ["download", "--session-id", "sess-1", "--base", "--target-path", str(self.download_dir), "-f"],
+                )
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertIn(expected, result.output)
+
+
 class TestDeleteDryRun(unittest.TestCase):
     """Test cases for the --dry-run flag in delete command."""
 
