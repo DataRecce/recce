@@ -16,11 +16,14 @@ import { ThemeProvider } from "../providers/contexts/ThemeContext";
 import { colors } from "../theme/colors";
 import { useThemeColors } from "./useThemeColors";
 
-// Mock MUI theme hook
+// Mock MUI theme hook. The theme object is hoisted to a single constant so
+// the hook sees a stable reference across renders, as MUI's ThemeProvider
+// guarantees in production.
+const { mockMuiTheme } = vi.hoisted(() => ({
+  mockMuiTheme: { palette: { mode: "light" } },
+}));
 vi.mock("@mui/material/styles", () => ({
-  useTheme: () => ({
-    palette: { mode: "light" },
-  }),
+  useTheme: () => mockMuiTheme,
 }));
 
 // Helper to toggle dark class on document
@@ -159,6 +162,92 @@ describe("useThemeColors", () => {
       expect(result.current).toHaveProperty("border");
       expect(result.current).toHaveProperty("status");
       expect(result.current).toHaveProperty("interactive");
+    });
+  });
+
+  describe("referential stability", () => {
+    const waitForMount = async () => {
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0));
+      });
+    };
+
+    const sections = [
+      "background",
+      "text",
+      "border",
+      "status",
+      "interactive",
+    ] as const;
+
+    it("keeps every section referentially equal across a same-mode rerender (light)", async () => {
+      setDarkClass(false);
+      const { result, rerender } = renderHook(() => useThemeColors());
+      await waitForMount();
+      expect(result.current.isDark).toBe(false);
+
+      const before = result.current;
+      rerender();
+
+      for (const section of sections) {
+        expect(result.current[section]).toBe(before[section]);
+      }
+    });
+
+    it("keeps every section referentially equal across a same-mode rerender (dark, via ThemeProvider)", async () => {
+      const wrapper = ({ children }: { children: ReactNode }) => (
+        <ThemeProvider defaultMode="dark">{children}</ThemeProvider>
+      );
+      const { result, rerender } = renderHook(() => useThemeColors(), {
+        wrapper,
+      });
+      await waitForMount();
+      expect(result.current.isDark).toBe(true);
+
+      const before = result.current;
+      rerender();
+
+      for (const section of sections) {
+        expect(result.current[section]).toBe(before[section]);
+      }
+    });
+
+    it("returns the same top-level object across a same-mode rerender", async () => {
+      setDarkClass(false);
+      const { result, rerender } = renderHook(() => useThemeColors());
+      await waitForMount();
+
+      const before = result.current;
+      rerender();
+
+      expect(result.current).toBe(before);
+    });
+
+    it("swaps sections on a mode flip and restores the original references on flipping back", async () => {
+      setDarkClass(false);
+      const { result } = renderHook(() => useThemeColors());
+      await waitForMount();
+      expect(result.current.isDark).toBe(false);
+      const light = result.current;
+
+      await act(async () => {
+        setDarkClass(true);
+        await new Promise((r) => setTimeout(r, 0));
+      });
+      expect(result.current.isDark).toBe(true);
+      expect(result.current.background.default).toBe(colors.neutral[900]);
+      for (const section of sections) {
+        expect(result.current[section]).not.toBe(light[section]);
+      }
+
+      await act(async () => {
+        setDarkClass(false);
+        await new Promise((r) => setTimeout(r, 0));
+      });
+      expect(result.current.isDark).toBe(false);
+      for (const section of sections) {
+        expect(result.current[section]).toBe(light[section]);
+      }
     });
   });
 });
