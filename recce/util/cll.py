@@ -1,3 +1,5 @@
+import contextvars
+import functools
 import hashlib
 import logging
 import os
@@ -7,11 +9,21 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+import sqlglot
 import sqlglot.expressions as exp
 from sqlglot import Dialect, parse_one
 from sqlglot.errors import OptimizeError, SqlglotError
-from sqlglot.optimizer import Scope, traverse_scope
+from sqlglot.optimizer import Scope
+from sqlglot.optimizer import qualify_columns as _sqlglot_qualify_columns
+from sqlglot.optimizer import traverse_scope
 from sqlglot.optimizer.qualify import qualify
+from sqlglot.optimizer.qualify_columns import validate_qualify_columns
+from sqlglot.schema import Schema, ensure_schema
+
+try:
+    from sqlglot.optimizer.resolver import Resolver
+except ImportError:  # older sqlglot kept Resolver in qualify_columns
+    from sqlglot.optimizer.qualify_columns import Resolver
 
 from recce.exceptions import RecceException
 from recce.models.types import CllColumn, CllColumnDep
@@ -24,7 +36,9 @@ CllResult = Tuple[
 ]
 
 _DEFAULT_DB_PATH = os.path.join(os.path.expanduser("~"), ".recce", "cll_cache.db")
-_CACHE_SCHEMA_VERSION = 3
+# 5: DRC-5072 — under sqlglot>=30.25 a missing-schema raise cached the whole model as `unknown`.
+# 6: DRC-5073 — partial schemas, `select *` CTE tracing, no CTE-named placeholder dependencies.
+_CACHE_SCHEMA_VERSION = 6
 _DEFAULT_TTL_SECONDS = 7 * 24 * 3600  # 7 days
 
 
@@ -343,6 +357,51 @@ def _resolve_scope_cll(source: Scope, scope_cll_map: dict[Scope, CllResult]) -> 
     return result
 
 
+def _star_passes_column(star: exp.Star, column_name: str) -> bool:
+    """Whether `*` (with any EXCLUDE / REPLACE / RENAME / ILIKE modifiers) passes `column_name`
+    through unchanged. Modifiers recce can't evaluate exactly count as "no" (conservative)."""
+    if star.args.get("rename") or star.args.get("ilike"):
+        return False
+    excluded = star.args.get("except_") or star.args.get("except") or []
+    replaced = star.args.get("replace") or []
+    return not any(e.output_name == column_name for e in [*excluded, *replaced])
+
+
+def _trace_through_star(scope: Scope, column_name: str, scope_cll_map: dict[Scope, CllResult]) -> Optional[CllColumn]:
+    """DRC-5073: a `select *` / `select t.*` over a source sqlglot couldn't expand (no schema)
+    passes every column through unchanged. Trace `column_name` to the single source that can
+    supply it, following nested CTEs. Returns None when zero or several sources could."""
+    select = scope.expression
+    if not isinstance(select, exp.Select):
+        return None
+
+    candidates: List[str] = []
+    for projection in select.selects:
+        if isinstance(projection, exp.Star):
+            if _star_passes_column(projection, column_name):
+                candidates.extend(scope.selected_sources)
+        elif isinstance(projection, exp.Column) and isinstance(projection.this, exp.Star):
+            if _star_passes_column(projection.this, column_name):
+                candidates.append(projection.table)
+    candidates = list(dict.fromkeys(candidates))
+    if len(candidates) != 1:
+        return None
+
+    source = scope.sources.get(candidates[0])
+    if isinstance(source, exp.Table):
+        return CllColumn(
+            name=column_name,
+            transformation_type="passthrough",
+            depends_on=[CllColumnDep(node=source.name, column=column_name)],
+        )
+    if isinstance(source, Scope):
+        sub_result = _resolve_scope_cll(source, scope_cll_map)
+        if sub_result is not None and column_name in sub_result[1]:
+            return sub_result[1][column_name]
+        return _trace_through_star(source, column_name, scope_cll_map)
+    return None
+
+
 def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> CllResult:
     assert scope.expression.key == "select"
 
@@ -364,7 +423,10 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
             if ref_cll_result is None:
                 return None
             _, sub_c2c_map = ref_cll_result
-            return sub_c2c_map.get(column_name)
+            resolved = sub_c2c_map.get(column_name)
+            if resolved is None:
+                resolved = _trace_through_star(source, column_name, scope_cll_map)
+            return resolved
         elif isinstance(source, exp.Table):
             return CllColumn(
                 name=column_name,
@@ -465,6 +527,8 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
     for proj in scope.expression.selects:
         transformation_type = "source"
         column_depends_on: List[CllColumnDep] = []
+        # Set when a column reads from a CTE/derived table that can't say where the column comes from.
+        unresolved_scope_ref = False
         root = proj.this if isinstance(proj, exp.Alias) else proj
 
         # Identify columns inside subqueries so they are handled via
@@ -496,6 +560,11 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                     elif ref_column_dependency.transformation_type == "passthrough":
                         if transformation_type == "source":
                             transformation_type = "passthrough"
+                elif isinstance(scope.sources.get(expression.table), Scope):
+                    # DRC-5073: never emit a placeholder named after a CTE/derived table. Downstream,
+                    # DbtAdapter resolves unknown names project-wide, so a CTE called `orders` would
+                    # link to an unrelated `orders` model. Unknown beats wrong.
+                    unresolved_scope_ref = True
                 else:
                     column_depends_on.append(CllColumnDep(node=expression.table, column=expression.name))
                     if transformation_type == "source":
@@ -520,7 +589,9 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
 
         column_depends_on = _dedeup_depends_on(column_depends_on)
 
-        if len(column_depends_on) == 0 and transformation_type != "source":
+        if len(column_depends_on) == 0 and unresolved_scope_ref:
+            transformation_type = "unknown"
+        elif len(column_depends_on) == 0 and transformation_type != "source":
             transformation_type = "source"
 
         if isinstance(proj, exp.Alias):
@@ -615,6 +686,107 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
     return m2c, c2c_map
 
 
+def _sole_schemaless_source(scope: Scope, resolver) -> Optional[str]:
+    """The scope's only source without known columns, or None if there are zero or several."""
+    schemaless_sources = []
+    for name in [*scope.selected_sources, *scope.lateral_sources]:
+        source_columns = resolver.get_source_columns(name)
+        if not source_columns or "*" in source_columns:
+            schemaless_sources.append(name)
+    return schemaless_sources[0] if len(schemaless_sources) == 1 else None
+
+
+def _attribute_to_schemaless_source(expression: exp.Expression, schema: Schema) -> None:
+    # sqlglot 30.22 dropped `infer_schema` (tobymao/sqlglot#8552), which, when no schema was
+    # given, attributed an unqualified column to the scope's only source without known columns.
+    for scope in traverse_scope(expression):
+        if not isinstance(scope.expression, exp.Select):
+            continue
+        columns = scope.unqualified_columns
+        if not columns:
+            continue
+
+        source = _sole_schemaless_source(scope, Resolver(scope, schema))
+        if source:
+            for column in columns:
+                column.set("table", exp.to_identifier(source))
+
+
+# DRC-5072: sqlglot 30.25 made `qualify` refuse to guess when a source has no schema, raising
+# "Cannot resolve '<col>' due to missing source schemas" where sqlglot<=30.24 resolved:
+#   - `_expand_alias_refs`: an alias reference that a schemaless source column could shadow
+#     (`select a as a2 ... group by a2`). sqlglot<=30.24: the alias wins.
+#   - `_qualify_columns`, in a scope that could be correlated (`where x in (select x from t2)`):
+#     the column was left for later resolution (recce's post-pass above, with an empty schema),
+#     and a column named like a source could still be read as that table (duckdb/BigQuery/Postgres).
+# Both sites, and nothing else, read `resolver.has_unknown_sources`, so while cll() qualifies they
+# get a resolver view that reports no unknown sources. Outside cll() sqlglot is left untouched.
+_SCHEMALESS_GUESSES: "contextvars.ContextVar[bool]" = contextvars.ContextVar(
+    "recce_cll_schemaless_guesses", default=False
+)
+
+
+class _KnownSourcesResolver:
+    """A sqlglot Resolver view that reports no unknown sources.
+
+    Only `has_unknown_sources` changes; every other attribute, including the real resolver's
+    own internal reads (e.g. table-valued-function handling in `get_table`), is the original.
+    """
+
+    has_unknown_sources = False
+
+    def __init__(self, resolver):
+        self._resolver = resolver
+
+    def __getattr__(self, name):
+        return getattr(self._resolver, name)
+
+
+def _install_schemaless_guesses() -> None:
+    version = tuple(int(part) for part in sqlglot.__version__.split(".")[:2] if part.isdigit())
+    module = _sqlglot_qualify_columns
+    expand_alias_refs = getattr(module, "_expand_alias_refs", None)
+    qualify_scope_columns = getattr(module, "_qualify_columns", None)
+    if version < (30, 25) or expand_alias_refs is None or qualify_scope_columns is None:
+        return
+    if getattr(module, "_recce_schemaless_guesses", False):
+        return
+
+    @functools.wraps(expand_alias_refs)
+    def _expand_alias_refs(scope, resolver, *args, **kwargs):
+        if _SCHEMALESS_GUESSES.get():
+            resolver = _KnownSourcesResolver(resolver)
+        return expand_alias_refs(scope, resolver, *args, **kwargs)
+
+    @functools.wraps(qualify_scope_columns)
+    def _qualify_columns(scope, resolver, *args, **kwargs):
+        if _SCHEMALESS_GUESSES.get() and getattr(scope, "can_be_correlated", False):
+            resolver = _KnownSourcesResolver(resolver)
+        return qualify_scope_columns(scope, resolver, *args, **kwargs)
+
+    module._expand_alias_refs = _expand_alias_refs
+    module._qualify_columns = _qualify_columns
+    module._recce_schemaless_guesses = True
+
+
+_install_schemaless_guesses()
+
+
+def _qualify(expression: exp.Expression, schema, dialect) -> exp.Expression:
+    schema = ensure_schema(schema, dialect=dialect)
+    token = _SCHEMALESS_GUESSES.set(True)
+    try:
+        # Qualify without validation, attribute what only a schemaless source can own, then
+        # validate. DRC-4901 did this for an empty schema; DRC-5073 extends it to a partial one
+        # (a parent missing from catalog.json), where strict `qualify` failed the whole model.
+        # With every source known, the attribution step finds nothing to do.
+        expression = qualify(expression, schema=schema, dialect=dialect, validate_qualify_columns=False)
+        _attribute_to_schemaless_source(expression, schema)
+        return validate_qualify_columns(expression)
+    finally:
+        _SCHEMALESS_GUESSES.reset(token)
+
+
 def cll(sql, schema=None, dialect=None) -> CllResult:
     # given a sql, return the cll for the sql
     # {
@@ -635,7 +807,7 @@ def cll(sql, schema=None, dialect=None) -> CllResult:
         raise RecceException(f"Failed to parse SQL: {str(e)}")
 
     try:
-        expression = qualify(expression, schema=schema, dialect=dialect)
+        expression = _qualify(expression, schema=schema, dialect=dialect)
     except OptimizeError as e:
         raise RecceException(f"Failed to optimize SQL: {str(e)}")
     except SqlglotError as e:

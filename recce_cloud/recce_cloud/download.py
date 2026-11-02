@@ -27,22 +27,16 @@ def _ensure_target_directory(console, target_path: str, force: bool = False):
     """
     if os.path.exists(target_path):
         if not force:
-            console.print(
-                f"[red]Error:[/red] Target path already exists: {target_path}"
-            )
+            console.print(f"[red]Error:[/red] Target path already exists: {target_path}")
             console.print("Use --force to overwrite existing directory")
             sys.exit(3)
-        console.print(
-            f"[yellow]Warning:[/yellow] Overwriting existing path: {target_path}"
-        )
+        console.print(f"[yellow]Warning:[/yellow] Overwriting existing path: {target_path}")
     else:
         # Create target directory
         try:
             os.makedirs(target_path, exist_ok=True)
         except Exception as e:
-            console.print(
-                f"[red]Error:[/red] Failed to create target path: {target_path}"
-            )
+            console.print(f"[red]Error:[/red] Failed to create target path: {target_path}")
             console.print(f"Reason: {e}")
             sys.exit(3)
 
@@ -64,9 +58,7 @@ def _download_artifact(console, url: str, target_path: str, artifact_name: str):
     try:
         response = requests.get(url)
         if response.status_code != 200:
-            raise Exception(
-                f"Download failed with status {response.status_code}: {response.text}"
-            )
+            raise Exception(f"Download failed with status {response.status_code}: {response.text}")
         with open(target_path, "wb") as f:
             f.write(response.content)
     except Exception as e:
@@ -96,24 +88,27 @@ def _download_artifacts(console, manifest_url: str, catalog_url: str, target_pat
 
 
 def download_from_existing_session(
-    console, token: str, session_id: str, target_path: str, force: bool = False
+    console,
+    token: str,
+    session_id: str,
+    target_path: str,
+    force: bool = False,
+    base: bool = False,
 ):
     """
     Download artifacts from an existing Recce Cloud session using session ID.
 
     This is the generic workflow that requires a pre-existing session ID.
+    With base=True, download the base the session compares against instead.
     """
     # Initialize client
-    with cloud_error_handler(
-        console, "initialize API client", exit_code=ExitCode.INIT_ERROR
-    ):
+    with cloud_error_handler(console, "initialize API client", exit_code=ExitCode.INIT_ERROR):
         client = RecceCloudClient(token)
 
     # Get session info (org_id, project_id)
-    console.print(f'Downloading artifacts for session ID "{session_id}"')
-    with cloud_error_handler(
-        console, "get session info", exit_code=ExitCode.INIT_ERROR
-    ):
+    label = "base artifacts" if base else "artifacts"
+    console.print(f'Downloading {label} for session ID "{session_id}"')
+    with cloud_error_handler(console, "get session info", exit_code=ExitCode.INIT_ERROR):
         session = client.get_session(session_id)
 
     # Inline validation stays outside
@@ -123,23 +118,20 @@ def download_from_existing_session(
 
     org_id = session.get("org_id")
     if org_id is None:
-        console.print(
-            f"[red]Error:[/red] Session ID {session_id} does not belong to any organization."
-        )
+        console.print(f"[red]Error:[/red] Session ID {session_id} does not belong to any organization.")
         sys.exit(2)
 
     project_id = session.get("project_id")
     if project_id is None:
-        console.print(
-            f"[red]Error:[/red] Session ID {session_id} does not belong to any project."
-        )
+        console.print(f"[red]Error:[/red] Session ID {session_id} does not belong to any project.")
         sys.exit(2)
 
     # Get presigned URLs
     with cloud_error_handler(console, "get download URLs"):
-        presigned_urls = client.get_download_urls_by_session_id(
-            org_id, project_id, session_id
-        )
+        if base:
+            presigned_urls = client.get_base_download_urls_by_session_id(org_id, project_id, session_id)
+        else:
+            presigned_urls = client.get_download_urls_by_session_id(org_id, project_id, session_id)
 
     # Ensure target directory exists
     _ensure_target_directory(console, target_path, force)
@@ -155,14 +147,27 @@ def download_from_existing_session(
     # Success!
     console.rule("Downloaded Successfully", style="green")
     console.print(
-        f'Downloaded dbt artifacts from Recce Cloud for session ID "{session_id}" to "{os.path.abspath(target_path)}"'
+        f'Downloaded dbt {label} from Recce Cloud for session ID "{session_id}" to "{os.path.abspath(target_path)}"'
     )
+    if base:
+        _print_base_source(console, session)
     sys.exit(0)
 
 
-def download_with_platform_apis(
-    console, token: str, ci_info, target_path: str, force: bool = False
-):
+def _print_base_source(console, session: dict):
+    # The base download endpoint does not say which base it returned. This label
+    # uses session fields read in an earlier request.
+    if "has_isolated_base" not in session:
+        return
+    if session["has_isolated_base"]:
+        console.print("Base: frozen base snapshot of this session")
+    else:
+        shared_id = session.get("current_base_session_id")
+        suffix = f' "{shared_id}"' if shared_id else ""
+        console.print(f"Base: shared project base session{suffix}")
+
+
+def download_with_platform_apis(console, token: str, ci_info, target_path: str, force: bool = False):
     """
     Download artifacts using platform-specific APIs (GitHub Actions or GitLab CI).
 
@@ -170,9 +175,7 @@ def download_with_platform_apis(
     """
     # Validate platform support
     if ci_info.platform not in ["github-actions", "gitlab-ci"]:
-        console.print(
-            "[red]Error:[/red] Platform-specific download requires GitHub Actions or GitLab CI environment"
-        )
+        console.print("[red]Error:[/red] Platform-specific download requires GitHub Actions or GitLab CI environment")
         console.print(f"Detected platform: {ci_info.platform or 'unknown'}")
         console.print(
             "Either run this command in a supported CI environment or provide --session-id for generic download"
@@ -210,9 +213,7 @@ def download_with_platform_apis(
     catalog_download_url = presigned_urls.get("catalog_url")
 
     if not session_id or not manifest_download_url or not catalog_download_url:
-        console.print(
-            "[red]Error:[/red] Incomplete response from session-download-url API"
-        )
+        console.print("[red]Error:[/red] Incomplete response from session-download-url API")
         console.print(f"Response: {download_response}")
         sys.exit(4)
 
@@ -222,15 +223,11 @@ def download_with_platform_apis(
     _ensure_target_directory(console, target_path, force)
 
     # Download artifacts
-    _download_artifacts(
-        console, manifest_download_url, catalog_download_url, target_path
-    )
+    _download_artifacts(console, manifest_download_url, catalog_download_url, target_path)
 
     # Success!
     console.rule("Downloaded Successfully", style="green")
-    console.print(
-        f'Downloaded dbt artifacts from Recce Cloud for session ID "{session_id}"'
-    )
+    console.print(f'Downloaded dbt artifacts from Recce Cloud for session ID "{session_id}"')
     console.print(f'Artifacts saved to: "{os.path.abspath(target_path)}"')
 
     if ci_info.pr_url:

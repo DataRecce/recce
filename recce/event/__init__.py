@@ -64,6 +64,8 @@ def init():
         # of transactions for performance monitoring.
         # We recommend adjusting this value in production.
         traces_sample_rate=1.0,
+        # DbtAdapter's dataclass repr includes the full manifests (several GB).
+        include_local_variables=False,
     )
     sentry_sdk.set_tag("recce.version", __version__)
     sentry_sdk.set_tag("platform", sys.platform)

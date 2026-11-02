@@ -41,3 +41,18 @@ updates:
       all-minor-patch:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+
+  # GitHub Actions used by .github/workflows
+  # Covers both floating major tags (e.g. actions/checkout@v7) and SHA pins
+  # with a version comment (e.g. pnpm/setup@<sha> # v3.1.1).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      all-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]

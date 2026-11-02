@@ -18,7 +18,7 @@
  * // Initialize MSW before rendering stories
  * if (typeof window !== 'undefined') {
  *   worker.start({
- *     onUnhandledRequest: 'bypass', // Don't warn on unhandled requests
+ *     onUnhandledFrame: 'bypass', // Don't warn on unhandled requests
  *     quiet: true, // Reduce console noise
  *   });
  * }

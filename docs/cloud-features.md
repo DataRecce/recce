@@ -45,6 +45,10 @@ GitHub PR-style discussion feature for checks.
 - Automatic conflict resolution
 - Real-time updates for team members
 
+### dbt Artifact Downloads
+
+`recce cloud download-artifacts` (`recce/artifact.py`) accepts only archives containing exactly one regular `manifest.json` and one regular `catalog.json`; links, special files, other entries, and duplicates are rejected before anything is written. Files are staged in a private sibling directory and replace the target only after validation; `--force` is required to overwrite an existing target, and symlinked or root targets are refused. Uploads store symlinked local artifacts as regular files.
+
 ## Approval Workflows
 
 ### Check Approval States

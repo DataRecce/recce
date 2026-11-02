@@ -337,6 +337,14 @@ class TestAnalyzeSqlSetOperations(unittest.TestCase):
         self.assertEqual(sorted(result.refs), ["t1", "t2", "t3"])
         self.assertEqual(len(result.projections), 3)
 
+    def test_parenthesized_set_operation_leg_contributes_projections(self):
+        # sqlglot wraps a parenthesized leg in exp.Subquery. sqlglot>=30.26 also does it
+        # implicitly for `a UNION b INTERSECT c` (INTERSECT binds tighter: a UNION (b INTERSECT c)).
+        sql = "SELECT a FROM t1 UNION (SELECT a FROM t2)"
+        result = analyze_sql(sql)
+        self.assertEqual(sorted(result.refs), ["t1", "t2"])
+        self.assertEqual(len(result.projections), 2)
+
 
 class TestAnalyzeSqlDialect(unittest.TestCase):
     """Dialect must be forwarded to sqlglot — dialect-specific syntax must parse."""
