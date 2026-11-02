@@ -1,0 +1,114 @@
+name: sqlglot Canary
+
+# Regular CI installs from uv.lock, so it only ever tests the locked sqlglot. sqlglot ships
+# releases every few days, and new releases have broken recce's column-level lineage twice
+# (DRC-4901 at 30.22, DRC-5072 at 30.25). Each time the break reached users on a fresh
+# `pip install recce` before CI noticed. This canary runs the Python suite against the newest
+# sqlglot so the next break shows up here first.
+#
+#   allowed: newest sqlglot inside pyproject.toml's range, which is what users install. A failure
+#            here means released recce is broken today: cap sqlglot or adapt (see DRC-5072).
+#   latest:  newest sqlglot on PyPI, even outside the range (e.g. a new major). Early warning
+#            before a cap is lifted; informational, never fails the run.
+
+on:
+  schedule:
+    - cron: "0 1 * * *" # daily, 01:00 UTC
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "recce/util/cll.py"
+      - "recce/util/ast_analyze.py"
+      - "recce/util/change_classifier.py"
+      - "recce/adapter/dbt_adapter/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/sqlglot-canary.yaml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sqlglot-canary-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  canary:
+    name: sqlglot ${{ matrix.track }}
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.track == 'latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        track: [allowed, latest]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "latest"
+
+      - name: Install dependencies with the newest sqlglot
+        env:
+          TRACK: ${{ matrix.track }}
+        run: |
+          locked=$(python -c "import tomllib; print(next(p['version'] for p in tomllib.load(open('uv.lock', 'rb'))['package'] if p['name'] == 'sqlglot'))")
+          # --upgrade-package resolves the newest sqlglot pyproject.toml allows (rewrites uv.lock
+          # in this workspace only).
+          uv sync --all-extras --python 3.12 --upgrade-package sqlglot
+          if [ "$TRACK" = "latest" ]; then
+            uv pip install --upgrade sqlglot
+          fi
+          tested=$(uv run --no-sync python -c "import sqlglot; print(sqlglot.__version__)")
+          {
+            echo "### sqlglot canary: \`$TRACK\`"
+            echo ""
+            echo "| locked (uv.lock) | tested |"
+            echo "|---|---|"
+            echo "| $locked | **$tested** |"
+            if [ "$locked" = "$tested" ]; then
+              echo ""
+              echo "No newer sqlglot than the lock: this run matches regular CI."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run tests
+        # --no-sync: a plain `uv run` would re-sync the venv back to the locked sqlglot.
+        # The SPA-route server tests need a built frontend and never touch sqlglot. They're skipped
+        # so a frontend/npm hiccup can't page Slack as a "sqlglot" failure.
+        run: >-
+          uv run --no-sync python -m pytest tests/ -q
+          -k "not test_spa_route and not test_nonexistent_route"
+
+  notify-failure:
+    needs: canary
+    # `latest` is continue-on-error, so this fires only when the `allowed` track breaks.
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack
+        run: |
+          curl -s -X POST "$SLACK_WEBHOOK_URL_DEV" \
+            -H 'Content-type: application/json' \
+            -d "{
+              \"text\": \":red_circle: sqlglot canary failed\",
+              \"blocks\": [
+                {
+                  \"type\": \"section\",
+                  \"text\": {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \":red_circle: *sqlglot canary failed*: the newest sqlglot that pyproject.toml allows breaks recce's tests, so fresh installs of released recce are likely affected. Cap sqlglot or adapt (see DRC-5072).\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View workflow run>\"
+                  }
+                }
+              ]
+            }"
+        env:
+          SLACK_WEBHOOK_URL_DEV: ${{ secrets.SLACK_WEBHOOK_URL_DEV }}
