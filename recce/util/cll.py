@@ -37,7 +37,8 @@ CllResult = Tuple[
 
 _DEFAULT_DB_PATH = os.path.join(os.path.expanduser("~"), ".recce", "cll_cache.db")
 # 5: DRC-5072 — under sqlglot>=30.25 a missing-schema raise cached the whole model as `unknown`.
-_CACHE_SCHEMA_VERSION = 5
+# 6: DRC-5073 — partial schemas, `select *` CTE tracing, no CTE-named placeholder dependencies.
+_CACHE_SCHEMA_VERSION = 6
 _DEFAULT_TTL_SECONDS = 7 * 24 * 3600  # 7 days
 
 
@@ -356,6 +357,51 @@ def _resolve_scope_cll(source: Scope, scope_cll_map: dict[Scope, CllResult]) -> 
     return result
 
 
+def _star_passes_column(star: exp.Star, column_name: str) -> bool:
+    """Whether `*` (with any EXCLUDE / REPLACE / RENAME / ILIKE modifiers) passes `column_name`
+    through unchanged. Modifiers recce can't evaluate exactly count as "no" (conservative)."""
+    if star.args.get("rename") or star.args.get("ilike"):
+        return False
+    excluded = star.args.get("except_") or star.args.get("except") or []
+    replaced = star.args.get("replace") or []
+    return not any(e.output_name == column_name for e in [*excluded, *replaced])
+
+
+def _trace_through_star(scope: Scope, column_name: str, scope_cll_map: dict[Scope, CllResult]) -> Optional[CllColumn]:
+    """DRC-5073: a `select *` / `select t.*` over a source sqlglot couldn't expand (no schema)
+    passes every column through unchanged. Trace `column_name` to the single source that can
+    supply it, following nested CTEs. Returns None when zero or several sources could."""
+    select = scope.expression
+    if not isinstance(select, exp.Select):
+        return None
+
+    candidates: List[str] = []
+    for projection in select.selects:
+        if isinstance(projection, exp.Star):
+            if _star_passes_column(projection, column_name):
+                candidates.extend(scope.selected_sources)
+        elif isinstance(projection, exp.Column) and isinstance(projection.this, exp.Star):
+            if _star_passes_column(projection.this, column_name):
+                candidates.append(projection.table)
+    candidates = list(dict.fromkeys(candidates))
+    if len(candidates) != 1:
+        return None
+
+    source = scope.sources.get(candidates[0])
+    if isinstance(source, exp.Table):
+        return CllColumn(
+            name=column_name,
+            transformation_type="passthrough",
+            depends_on=[CllColumnDep(node=source.name, column=column_name)],
+        )
+    if isinstance(source, Scope):
+        sub_result = _resolve_scope_cll(source, scope_cll_map)
+        if sub_result is not None and column_name in sub_result[1]:
+            return sub_result[1][column_name]
+        return _trace_through_star(source, column_name, scope_cll_map)
+    return None
+
+
 def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> CllResult:
     assert scope.expression.key == "select"
 
@@ -377,7 +423,10 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
             if ref_cll_result is None:
                 return None
             _, sub_c2c_map = ref_cll_result
-            return sub_c2c_map.get(column_name)
+            resolved = sub_c2c_map.get(column_name)
+            if resolved is None:
+                resolved = _trace_through_star(source, column_name, scope_cll_map)
+            return resolved
         elif isinstance(source, exp.Table):
             return CllColumn(
                 name=column_name,
@@ -478,6 +527,8 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
     for proj in scope.expression.selects:
         transformation_type = "source"
         column_depends_on: List[CllColumnDep] = []
+        # Set when a column reads from a CTE/derived table that can't say where the column comes from.
+        unresolved_scope_ref = False
         root = proj.this if isinstance(proj, exp.Alias) else proj
 
         # Identify columns inside subqueries so they are handled via
@@ -509,6 +560,11 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                     elif ref_column_dependency.transformation_type == "passthrough":
                         if transformation_type == "source":
                             transformation_type = "passthrough"
+                elif isinstance(scope.sources.get(expression.table), Scope):
+                    # DRC-5073: never emit a placeholder named after a CTE/derived table. Downstream,
+                    # DbtAdapter resolves unknown names project-wide, so a CTE called `orders` would
+                    # link to an unrelated `orders` model. Unknown beats wrong.
+                    unresolved_scope_ref = True
                 else:
                     column_depends_on.append(CllColumnDep(node=expression.table, column=expression.name))
                     if transformation_type == "source":
@@ -533,7 +589,9 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
 
         column_depends_on = _dedeup_depends_on(column_depends_on)
 
-        if len(column_depends_on) == 0 and transformation_type != "source":
+        if len(column_depends_on) == 0 and unresolved_scope_ref:
+            transformation_type = "unknown"
+        elif len(column_depends_on) == 0 and transformation_type != "source":
             transformation_type = "source"
 
         if isinstance(proj, exp.Alias):
@@ -718,9 +776,10 @@ def _qualify(expression: exp.Expression, schema, dialect) -> exp.Expression:
     schema = ensure_schema(schema, dialect=dialect)
     token = _SCHEMALESS_GUESSES.set(True)
     try:
-        if not schema.empty:
-            return qualify(expression, schema=schema, dialect=dialect)
-
+        # Qualify without validation, attribute what only a schemaless source can own, then
+        # validate. DRC-4901 did this for an empty schema; DRC-5073 extends it to a partial one
+        # (a parent missing from catalog.json), where strict `qualify` failed the whole model.
+        # With every source known, the attribution step finds nothing to do.
         expression = qualify(expression, schema=schema, dialect=dialect, validate_qualify_columns=False)
         _attribute_to_schemaless_source(expression, schema)
         return validate_qualify_columns(expression)
