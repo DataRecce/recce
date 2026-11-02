@@ -355,7 +355,9 @@ class TestBranchDefaultResolution:
 
         mock_upload.return_value = 0
         runner = CliRunner()
-        runner.invoke(cloud, ["upload-artifacts", "--password", "test"])
+        # --branch reads GITHUB_HEAD_REF, which GitHub Actions sets on pull_request events. Unset it
+        # so the default comes from current_branch() wherever the suite runs.
+        runner.invoke(cloud, ["upload-artifacts", "--password", "test"], env={"GITHUB_HEAD_REF": None})
 
         mock_branch.assert_called()
         # The branch arg passed to upload_dbt_artifacts should be the mocked branch
