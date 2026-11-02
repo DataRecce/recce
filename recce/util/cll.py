@@ -1,3 +1,5 @@
+import contextvars
+import functools
 import hashlib
 import logging
 import os
@@ -7,10 +9,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+import sqlglot
 import sqlglot.expressions as exp
 from sqlglot import Dialect, parse_one
 from sqlglot.errors import OptimizeError, SqlglotError
-from sqlglot.optimizer import Scope, traverse_scope
+from sqlglot.optimizer import Scope
+from sqlglot.optimizer import qualify_columns as _sqlglot_qualify_columns
+from sqlglot.optimizer import traverse_scope
 from sqlglot.optimizer.qualify import qualify
 from sqlglot.optimizer.qualify_columns import validate_qualify_columns
 from sqlglot.schema import Schema, ensure_schema
@@ -31,7 +36,8 @@ CllResult = Tuple[
 ]
 
 _DEFAULT_DB_PATH = os.path.join(os.path.expanduser("~"), ".recce", "cll_cache.db")
-_CACHE_SCHEMA_VERSION = 4
+# 5: DRC-5072 — under sqlglot>=30.25 a missing-schema raise cached the whole model as `unknown`.
+_CACHE_SCHEMA_VERSION = 5
 _DEFAULT_TTL_SECONDS = 7 * 24 * 3600  # 7 days
 
 
@@ -622,6 +628,16 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
     return m2c, c2c_map
 
 
+def _sole_schemaless_source(scope: Scope, resolver) -> Optional[str]:
+    """The scope's only source without known columns, or None if there are zero or several."""
+    schemaless_sources = []
+    for name in [*scope.selected_sources, *scope.lateral_sources]:
+        source_columns = resolver.get_source_columns(name)
+        if not source_columns or "*" in source_columns:
+            schemaless_sources.append(name)
+    return schemaless_sources[0] if len(schemaless_sources) == 1 else None
+
+
 def _attribute_to_schemaless_source(expression: exp.Expression, schema: Schema) -> None:
     # sqlglot 30.22 dropped `infer_schema` (tobymao/sqlglot#8552), which, when no schema was
     # given, attributed an unqualified column to the scope's only source without known columns.
@@ -632,26 +648,84 @@ def _attribute_to_schemaless_source(expression: exp.Expression, schema: Schema) 
         if not columns:
             continue
 
-        resolver = Resolver(scope, schema)
-        schemaless_sources = []
-        for name in [*scope.selected_sources, *scope.lateral_sources]:
-            source_columns = resolver.get_source_columns(name)
-            if not source_columns or "*" in source_columns:
-                schemaless_sources.append(name)
-
-        if len(schemaless_sources) == 1:
+        source = _sole_schemaless_source(scope, Resolver(scope, schema))
+        if source:
             for column in columns:
-                column.set("table", exp.to_identifier(schemaless_sources[0]))
+                column.set("table", exp.to_identifier(source))
+
+
+# DRC-5072: sqlglot 30.25 made `qualify` refuse to guess when a source has no schema, raising
+# "Cannot resolve '<col>' due to missing source schemas" where sqlglot<=30.24 resolved:
+#   - `_expand_alias_refs`: an alias reference that a schemaless source column could shadow
+#     (`select a as a2 ... group by a2`). sqlglot<=30.24: the alias wins.
+#   - `_qualify_columns`, in a scope that could be correlated (`where x in (select x from t2)`):
+#     the column was left for later resolution (recce's post-pass above, with an empty schema),
+#     and a column named like a source could still be read as that table (duckdb/BigQuery/Postgres).
+# Both sites, and nothing else, read `resolver.has_unknown_sources`, so while cll() qualifies they
+# get a resolver view that reports no unknown sources. Outside cll() sqlglot is left untouched.
+_SCHEMALESS_GUESSES: "contextvars.ContextVar[bool]" = contextvars.ContextVar(
+    "recce_cll_schemaless_guesses", default=False
+)
+
+
+class _KnownSourcesResolver:
+    """A sqlglot Resolver view that reports no unknown sources.
+
+    Only `has_unknown_sources` changes; every other attribute, including the real resolver's
+    own internal reads (e.g. table-valued-function handling in `get_table`), is the original.
+    """
+
+    has_unknown_sources = False
+
+    def __init__(self, resolver):
+        self._resolver = resolver
+
+    def __getattr__(self, name):
+        return getattr(self._resolver, name)
+
+
+def _install_schemaless_guesses() -> None:
+    version = tuple(int(part) for part in sqlglot.__version__.split(".")[:2] if part.isdigit())
+    module = _sqlglot_qualify_columns
+    expand_alias_refs = getattr(module, "_expand_alias_refs", None)
+    qualify_scope_columns = getattr(module, "_qualify_columns", None)
+    if version < (30, 25) or expand_alias_refs is None or qualify_scope_columns is None:
+        return
+    if getattr(module, "_recce_schemaless_guesses", False):
+        return
+
+    @functools.wraps(expand_alias_refs)
+    def _expand_alias_refs(scope, resolver, *args, **kwargs):
+        if _SCHEMALESS_GUESSES.get():
+            resolver = _KnownSourcesResolver(resolver)
+        return expand_alias_refs(scope, resolver, *args, **kwargs)
+
+    @functools.wraps(qualify_scope_columns)
+    def _qualify_columns(scope, resolver, *args, **kwargs):
+        if _SCHEMALESS_GUESSES.get() and getattr(scope, "can_be_correlated", False):
+            resolver = _KnownSourcesResolver(resolver)
+        return qualify_scope_columns(scope, resolver, *args, **kwargs)
+
+    module._expand_alias_refs = _expand_alias_refs
+    module._qualify_columns = _qualify_columns
+    module._recce_schemaless_guesses = True
+
+
+_install_schemaless_guesses()
 
 
 def _qualify(expression: exp.Expression, schema, dialect) -> exp.Expression:
     schema = ensure_schema(schema, dialect=dialect)
-    if not schema.empty:
-        return qualify(expression, schema=schema, dialect=dialect)
+    token = _SCHEMALESS_GUESSES.set(True)
+    try:
+        if not schema.empty:
+            return qualify(expression, schema=schema, dialect=dialect)
 
-    expression = qualify(expression, schema=schema, dialect=dialect, validate_qualify_columns=False)
-    _attribute_to_schemaless_source(expression, schema)
-    return validate_qualify_columns(expression)
+        expression = qualify(expression, schema=schema, dialect=dialect, validate_qualify_columns=False)
+        _attribute_to_schemaless_source(expression, schema)
+        return validate_qualify_columns(expression)
+    finally:
+        _SCHEMALESS_GUESSES.reset(token)
 
 
 def cll(sql, schema=None, dialect=None) -> CllResult:
