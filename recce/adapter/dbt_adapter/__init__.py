@@ -1665,7 +1665,11 @@ class DbtAdapter(BaseAdapter):
             if parent_id in catalog.sources:
                 for col_name, col_metadata in catalog.sources[parent_id].columns.items():
                     columns[col_name] = col_metadata.type
-            schema[table_name] = columns
+            # DRC-5073: leave a parent missing from the catalog out entirely. sqlglot rejects an
+            # empty column map ("Table X must have at least one column"); left out, the parent is
+            # an unknown source that cll() can still attribute columns to.
+            if columns:
+                schema[table_name] = columns
         return schema
 
     # Resource types that produce database relations (and can therefore be
@@ -1853,7 +1857,8 @@ class DbtAdapter(BaseAdapter):
                     if parent_id in catalog.sources:
                         for col_name, col_metadata in catalog.sources[parent_id].columns.items():
                             columns[col_name] = col_metadata.type
-                    schema[table_name] = columns
+                    if columns:  # DRC-5073: see _build_schema_from_aliases
+                        schema[table_name] = columns
 
         try:
             if pre_compiled:
