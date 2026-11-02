@@ -99,18 +99,27 @@ def _aggregation_info(agg: exp.AggFunc) -> AggregationInfo:
     return AggregationInfo(function=function, column=column_name)
 
 
+def _unwrap_leg(leg: exp.Expression) -> exp.Expression:
+    """Strip the parentheses (``exp.Subquery``, possibly nested) around a set-operation leg."""
+    while isinstance(leg, exp.Subquery):
+        leg = leg.this
+    return leg
+
+
 def _top_level_selects(tree: exp.Expression) -> list[exp.Select]:
     """Return the SELECT legs of the outermost tree.
 
     For a plain SELECT, returns [tree]. For UNION / INTERSECT / EXCEPT (any
     sqlglot ``exp.SetOperation`` subclass — Union, Intersect, and Except all
     inherit from SetOperation independently, not from each other), recurses
-    into ``left`` / ``right`` and returns each leg's SELECT. Selects inside
-    CTEs and subqueries are not returned — those are walked separately by
-    ``find_all`` for aggregations and case expressions.
+    into ``left`` / ``right`` and returns each leg's SELECT. A parenthesized
+    leg is an ``exp.Subquery`` and is unwrapped (sqlglot>=30.26 also wraps the
+    tighter-binding INTERSECT in ``a UNION b INTERSECT c``). Selects inside
+    CTEs and FROM/WHERE subqueries are not returned — those are walked
+    separately by ``find_all`` for aggregations and case expressions.
     """
     if isinstance(tree, exp.SetOperation):
-        return _top_level_selects(tree.left) + _top_level_selects(tree.right)
+        return _top_level_selects(_unwrap_leg(tree.left)) + _top_level_selects(_unwrap_leg(tree.right))
     if isinstance(tree, exp.Select):
         return [tree]
     return []
