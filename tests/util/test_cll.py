@@ -385,12 +385,14 @@ class ColumnLevelLineageTest(unittest.TestCase):
             cll(sql)
 
     def test_unqualified_column_with_partial_schema(self):
-        # Attribution only applies when the whole schema is empty, matching sqlglot <30.22
+        # DRC-5073: attribution also applies when only part of the schema is known (a parent
+        # missing from catalog.json). Previously (DRC-4901) this raised and the whole model went
+        # `unknown`; table2 is the scope's only schemaless source, so it owns `b`.
         sql = """
         select b from table2
         """
-        with self.assertRaises(RecceException):
-            cll(sql, schema={"table1": {"a": "int"}})
+        result = cll(sql, schema={"table1": {"a": "int"}})
+        assert_column(result, "b", "passthrough", [("table2", "b")])
 
     def test_cte(self):
         sql = """
@@ -829,6 +831,88 @@ class ColumnLevelLineageTest(unittest.TestCase):
             """
         result = cll(sql)
         assert_model(result, [("table1", "a"), ("table1", "user_id"), ("table2", "user_id")])
+
+    def test_alias_ref_with_partially_known_schema(self):
+        # DRC-5072: sqlglot>=30.25 raises "Cannot resolve 'a2' due to missing source schemas" when an
+        # alias reference meets a source without a schema (here the hard-coded relation raw_events).
+        # Lineage must match sqlglot<=30.24: the alias wins.
+        sql = """
+        select t.a as a2, count(*) as n
+        from table1 t
+        cross join raw_events e
+        group by a2
+        """
+        result = cll(sql, schema={"table1": {"a": "int", "b": "int"}})
+        assert_model(result, [("table1", "a")])
+        assert_column(result, "a2", "renamed", [("table1", "a")])
+        assert_column(result, "n", "source", [])
+
+    def test_partial_schema_attributes_column_to_sole_schemaless_source(self):
+        # DRC-5073: one source has a schema, one doesn't (a parent missing from catalog.json).
+        # `status` can only come from the schemaless source.
+        sql = "select k.id, status from known k join raw_events e on k.id = e.id"
+        result = cll(sql, schema={"known": {"id": "int"}})
+        assert_column(result, "id", "passthrough", [("known", "id")])
+        assert_column(result, "status", "passthrough", [("raw_events", "status")])
+
+    def test_star_cte_traces_through_to_its_source(self):
+        # DRC-5073: `select *` over a schemaless table can't be expanded; columns read from the CTE
+        # are still passthroughs of that table, not dependencies on the CTE's name.
+        sql = "with c as (select * from raw_tbl) select c.x, c.y as z from c"
+        result = cll(sql)
+        assert_column(result, "x", "passthrough", [("raw_tbl", "x")])
+        assert_column(result, "z", "renamed", [("raw_tbl", "y")])
+
+        sql = "with c as (select * from raw_tbl) select c.x, k.name from c join known k on c.x = k.id"
+        result = cll(sql, schema={"known": {"id": "int", "name": "text"}})
+        assert_column(result, "x", "passthrough", [("raw_tbl", "x")])
+        assert_column(result, "name", "passthrough", [("known", "name")])
+
+    def test_qualified_and_nested_star_ctes_trace_through(self):
+        sql = "with c as (select t1.*, t2.y from t1 join t2 on t1.id = t2.id) select c.x, c.y from c"
+        result = cll(sql)
+        assert_column(result, "x", "passthrough", [("t1", "x")])
+        assert_column(result, "y", "passthrough", [("t2", "y")])
+
+        sql = "with a as (select * from raw), b as (select * from a) select b.x from b"
+        result = cll(sql)
+        assert_column(result, "x", "passthrough", [("raw", "x")])
+
+    def test_star_modifiers_stop_passthrough_tracing(self):
+        # `* REPLACE (x + 1 AS x)` recomputes x: it is not a passthrough of raw.x. `* EXCLUDE (a)`
+        # still passes every other column through.
+        sql = "with c as (select * replace (x + 1 as x) from raw) select c.x, c.y from c"
+        result = cll(sql, dialect="duckdb")
+        assert_column(result, "x", "unknown", [])
+        assert_column(result, "y", "passthrough", [("raw", "y")])
+
+        sql = "with c as (select * exclude (a) from raw) select c.y from c"
+        result = cll(sql, dialect="duckdb")
+        assert_column(result, "y", "passthrough", [("raw", "y")])
+
+    def test_untraceable_star_cte_column_is_unknown_not_a_cte_dependency(self):
+        # A bare `*` over two schemaless sources can't say which one supplies `x`. The column must
+        # be `unknown`, never a dependency named after the CTE: downstream that name can resolve to
+        # an unrelated model of the same name.
+        sql = "with c as (select * from t1 join t2 on t1.id = t2.id) select c.x from c"
+        result = cll(sql)
+        assert_column(result, "x", "unknown", [])
+
+    def test_schemaless_guesses_do_not_leak_outside_cll(self):
+        # The sqlglot>=30.25 leniency recce applies inside cll() must not change sqlglot for any
+        # other caller in the process.
+        import sqlglot
+        from sqlglot.errors import OptimizeError
+        from sqlglot.optimizer.qualify import qualify
+
+        if tuple(int(p) for p in sqlglot.__version__.split(".")[:2]) < (30, 25):
+            self.skipTest("sqlglot<30.25 has no missing-schema raise to guard")
+
+        sql = "select a as a2, sum(b) as b from table1 group by a2"
+        cll(sql)  # exercises recce's leniency first
+        # Match the specific raise: with leniency leaked, qualify still fails later, in validation.
+        with self.assertRaisesRegex(OptimizeError, "Cannot resolve 'a2' due to missing source schemas"):
+            qualify(sqlglot.parse_one(sql), schema={})
 
     def test_correlated_subquery_in_select(self):
         """Correlated subquery in SELECT should resolve table aliases (o2 -> orders)."""
