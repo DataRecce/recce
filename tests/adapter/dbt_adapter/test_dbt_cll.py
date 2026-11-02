@@ -227,24 +227,64 @@ def test_build_schema_from_aliases(dbt_test_helper):
     assert adapter._build_schema_from_aliases(manifest, None, parent_list) == {}
 
 
-def test_build_schema_from_aliases_omits_parents_without_catalog_columns(dbt_test_helper):
-    """A parent present in the manifest but absent from catalog.json must not produce an empty
-    schema entry: sqlglot rejects tables with zero columns and the whole model becomes unknown."""
+def test_build_schema_from_aliases_omits_parent_missing_from_catalog(dbt_test_helper):
+    """DRC-5073: a parent without catalog columns must be left out, not written as `{}`.
+
+    sqlglot rejects an empty column map in a non-empty schema ("Table X must have at least one
+    column"), which made the whole child model `unknown`.
+    """
     dbt_test_helper.create_model(
-        "model1", unique_id="model.model1", curr_sql="select 1 as c", curr_columns={"c": "int"}
+        "known", unique_id="model.known", curr_sql="select 1 as id", curr_columns={"id": "int"}
     )
-    dbt_test_helper.create_model("ghost", unique_id="model.ghost", curr_sql="select 1 as d", curr_columns={"d": "int"})
+    dbt_test_helper.create_model("uncataloged", unique_id="model.uncataloged", curr_sql="select 1 as id")
 
     adapter: DbtAdapter = dbt_test_helper.context.adapter
     from recce.adapter.dbt_adapter import as_manifest
 
     manifest = as_manifest(adapter.get_manifest(base=False))
-    catalog = adapter.curr_catalog
-    catalog.nodes.pop("model.ghost")
+    schema = adapter._build_schema_from_aliases(manifest, adapter.curr_catalog, ["model.known", "model.uncataloged"])
+    assert set(schema) == {"known"}
 
-    schema = adapter._build_schema_from_aliases(manifest, catalog, ["model.model1", "model.ghost"])
 
-    assert schema == {"model1": {"c": "int"}}
+def test_cll_parent_missing_from_catalog_keeps_lineage(dbt_test_helper):
+    """DRC-5073: a parent missing from catalog.json must not make the whole child `unknown`,
+    `select *` CTEs over it must trace through to it, and a CTE named like an unrelated model
+    (`orders`) must never resolve to that model."""
+    dbt_test_helper.create_model(
+        "orders", unique_id="model.orders", curr_sql="select 1 as id", curr_columns={"id": "int"}
+    )
+    dbt_test_helper.create_model(
+        "known",
+        unique_id="model.known",
+        curr_sql="select 1 as id, 'a' as name",
+        curr_columns={"id": "int", "name": "varchar"},
+    )
+    # stg_orders is a real parent with NO catalog entry
+    dbt_test_helper.create_model("stg_orders", unique_id="model.stg_orders", curr_sql="select 1 as id, 2 as amount")
+    dbt_test_helper.create_model(
+        "child",
+        unique_id="model.child",
+        curr_sql="select 1",
+        curr_columns={"id": "int", "amount": "int", "name": "varchar"},
+        depends_on=["model.stg_orders", "model.known"],
+    )
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+    _set_compiled_code(
+        adapter,
+        "model.child",
+        'with orders as (select * from "main"."stg_orders") '
+        'select orders.id, orders.amount, k.name from orders join "main"."known" k on orders.id = k.id',
+    )
+
+    result = adapter.get_cll("model.child")
+    assert_column(result, "model.child", "name", transformation_type="passthrough", parents=[("model.known", "name")])
+    assert_column(result, "model.child", "id", transformation_type="passthrough", parents=[("model.stg_orders", "id")])
+    assert_column(
+        result, "model.child", "amount", transformation_type="passthrough", parents=[("model.stg_orders", "amount")]
+    )
+    # never an edge to the unrelated model that shares the CTE's name
+    for column_id, parents in result.parent_map.items():
+        assert not any(p.startswith("model.orders_") for p in parents), (column_id, parents)
 
 
 def test_cll_pre_compiled_with_parent_missing_from_catalog_keeps_cataloged_columns(dbt_test_helper, disable_cll_cache):
