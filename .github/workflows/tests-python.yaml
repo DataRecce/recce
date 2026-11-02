@@ -17,6 +17,7 @@ on:
       - "recce/**" # Recce OSS codebase
       - "tests/**" # Recce OSS python unit tests
       - "pyproject.toml"
+      - "uv.lock" # CI installs via `uv sync`, so lock bumps change what is tested
 
 jobs:
   test-flake8:
