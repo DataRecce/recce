@@ -830,6 +830,37 @@ class ColumnLevelLineageTest(unittest.TestCase):
         result = cll(sql)
         assert_model(result, [("table1", "a"), ("table1", "user_id"), ("table2", "user_id")])
 
+    def test_alias_ref_with_partially_known_schema(self):
+        # DRC-5072: sqlglot>=30.25 raises "Cannot resolve 'a2' due to missing source schemas" when an
+        # alias reference meets a source without a schema (here the hard-coded relation raw_events).
+        # Lineage must match sqlglot<=30.24: the alias wins.
+        sql = """
+        select t.a as a2, count(*) as n
+        from table1 t
+        cross join raw_events e
+        group by a2
+        """
+        result = cll(sql, schema={"table1": {"a": "int", "b": "int"}})
+        assert_model(result, [("table1", "a")])
+        assert_column(result, "a2", "renamed", [("table1", "a")])
+        assert_column(result, "n", "source", [])
+
+    def test_schemaless_guesses_do_not_leak_outside_cll(self):
+        # The sqlglot>=30.25 leniency recce applies inside cll() must not change sqlglot for any
+        # other caller in the process.
+        import sqlglot
+        from sqlglot.errors import OptimizeError
+        from sqlglot.optimizer.qualify import qualify
+
+        if tuple(int(p) for p in sqlglot.__version__.split(".")[:2]) < (30, 25):
+            self.skipTest("sqlglot<30.25 has no missing-schema raise to guard")
+
+        sql = "select a as a2, sum(b) as b from table1 group by a2"
+        cll(sql)  # exercises recce's leniency first
+        # Match the specific raise: with leniency leaked, qualify still fails later, in validation.
+        with self.assertRaisesRegex(OptimizeError, "Cannot resolve 'a2' due to missing source schemas"):
+            qualify(sqlglot.parse_one(sql), schema={})
+
     def test_correlated_subquery_in_select(self):
         """Correlated subquery in SELECT should resolve table aliases (o2 -> orders)."""
         sql = """
