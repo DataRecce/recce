@@ -60,9 +60,9 @@ jobs:
         uses: actions/cache@v6
         with:
           path: .tox
-          key: ${{ runner.os }}-tox-uv-${{ hashFiles('tox.ini', 'pyproject.toml') }}-3.10
+          key: ${{ runner.os }}-tox-uv-${{ hashFiles('tox.ini', 'pyproject.toml', 'uv.lock') }}-3.10
           restore-keys: |
-            ${{ runner.os }}-tox-uv-${{ hashFiles('tox.ini', 'pyproject.toml') }}-
+            ${{ runner.os }}-tox-uv-${{ hashFiles('tox.ini', 'pyproject.toml', 'uv.lock') }}-
             ${{ runner.os }}-tox-uv-
 
       - name: Install tox and tox-uv
@@ -154,9 +154,9 @@ jobs:
         uses: actions/cache@v6
         with:
           path: .tox
-          key: ${{ runner.os }}-tox-uv-${{ hashFiles('tox.ini', 'pyproject.toml') }}-${{ matrix.python-version }}
+          key: ${{ runner.os }}-tox-uv-${{ hashFiles('tox.ini', 'pyproject.toml', 'uv.lock') }}-${{ matrix.python-version }}
           restore-keys: |
-            ${{ runner.os }}-tox-uv-${{ hashFiles('tox.ini', 'pyproject.toml') }}-
+            ${{ runner.os }}-tox-uv-${{ hashFiles('tox.ini', 'pyproject.toml', 'uv.lock') }}-
             ${{ runner.os }}-tox-uv-
 
       - name: Install tox and tox-uv
