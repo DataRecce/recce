@@ -3,7 +3,7 @@
 from recce.models import RunType
 
 QUERY_RUN_TYPES = {RunType.QUERY, RunType.QUERY_BASE, RunType.QUERY_DIFF}
-QUERY_FAILURE_MESSAGE = "Query failed. Check server logs for details."
+QUERY_FAILURE_MESSAGE = "Query failed. Check the query and try again."
 
 
 def public_run_error(run):
