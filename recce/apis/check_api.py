@@ -13,6 +13,7 @@ from recce.apis.check_func import (
 )
 from recce.apis.cloud_utils import log_cloud_exception
 from recce.apis.run_func import submit_run
+from recce.apis.run_security import public_run
 from recce.core import default_context
 from recce.event import log_api_event
 from recce.exceptions import DuckDBExternalAccessBlocked, RecceException
@@ -60,7 +61,7 @@ class CheckOut(BaseModel):
             view_options=check.view_options,
             is_checked=check.is_checked,
             is_preset=check.is_preset,
-            last_run=last_run,
+            last_run=public_run(last_run),
             is_outdated=is_outdated,
         )
 
@@ -180,13 +181,13 @@ async def run_check_handler(check_id: UUID, input: RunCheckIn):
         raise HTTPException(status_code=400, detail=str(e))
 
     if input.nowait:
-        return run
+        return public_run(run)
     else:
         try:
             run.result = await future
         except DuckDBExternalAccessBlocked as e:
             raise HTTPException(status_code=400, detail=str(e))
-        return run
+        return public_run(run)
 
 
 @check_router.get(

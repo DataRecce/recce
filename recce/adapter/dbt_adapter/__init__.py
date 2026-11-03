@@ -704,6 +704,7 @@ class DbtAdapter(BaseAdapter):
         base: bool = False,
         context=None,
         provided_manifest=None,
+        safe_template: bool = False,
     ):
         if context is None:
             context = {}
@@ -719,10 +720,40 @@ class DbtAdapter(BaseAdapter):
             set_invocation_context({})
             get_invocation_context()._env = dict(os.environ)
 
+        if safe_template:
+            from jinja2 import nodes
+            from jinja2.sandbox import SandboxedEnvironment
+
+            # Validate before dbt parses the template. Ad-hoc SQL needs only
+            # relation lookup and project vars, never dbt's execution macros.
+            safe_env = SandboxedEnvironment(extensions=["jinja2.ext.do"])
+            allowed_calls = {"ref", "source", "var"}
+            for call in safe_env.parse(sql_template).find_all(nodes.Call):
+                if not isinstance(call.node, nodes.Name) or call.node.name not in allowed_calls:
+                    raise RecceException("Only ref(), source(), and var() calls are allowed in query templates")
+
         node_id = str("generated_" + uuid.uuid4().hex)
         node = parser.parse_remote(sql_template, node_id)
         process_node(self.runtime_config, manifest, node)
 
+        if safe_template:
+            from dbt.context.providers import generate_runtime_model_context
+            from jinja2 import StrictUndefined
+            from jinja2.sandbox import SandboxedEnvironment
+
+            jinja_ctx = generate_runtime_model_context(node, self.runtime_config, manifest)
+            safe_env = SandboxedEnvironment(undefined=StrictUndefined)
+            safe_context = {
+                name: (
+                    (lambda *args, _name=name: str(jinja_ctx[_name](*args)))
+                    if name in ("ref", "source")
+                    else jinja_ctx[name]
+                )
+                for name in ("ref", "source", "var")
+            }
+            allowed_functions = tuple(safe_context.values())
+            safe_env.is_safe_callable = lambda value: any(value is fn for fn in allowed_functions)
+            return safe_env.from_string(sql_template).render(safe_context)
         if dbt_version < dbt_version.parse("v1.8"):
             compiler = self.adapter.get_compiler()
             compiler.compile_node(node, manifest, context)
