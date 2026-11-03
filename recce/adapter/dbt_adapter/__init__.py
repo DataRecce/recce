@@ -1066,6 +1066,10 @@ class DbtAdapter(BaseAdapter):
                             table = parts[3]
                             source = source.replace("-", "_")
                             name = f"__{source}__{table}"
+                        # Same as the CLL schema builders: an empty table makes sqlglot
+                        # skip qualify() for the whole statement (DRC-4918).
+                        if not columns:
+                            continue
                         schema[name] = {name: column.get("type") for name, column in columns.items()}
                     return schema
 
