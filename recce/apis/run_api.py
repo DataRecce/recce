@@ -27,6 +27,7 @@ from recce.apis.run_func import (
     materialize_run_results,
     submit_run,
 )
+from recce.apis.run_security import public_run, public_run_error
 from recce.event import log_api_event
 from recce.exceptions import DuckDBExternalAccessBlocked, RecceException
 from recce.models import RunDAO
@@ -74,13 +75,13 @@ async def create_run_handler(input: CreateRunIn):
         raise HTTPException(status_code=400, detail=str(e))
 
     if input.nowait:
-        return run
+        return public_run(run)
     else:
         try:
             run.result = await future
         except DuckDBExternalAccessBlocked as e:
             raise HTTPException(status_code=400, detail=str(e))
-        return run
+        return public_run(run)
 
 
 def _resolve_adapter_type() -> Optional[str]:
@@ -190,7 +191,7 @@ async def wait_run_handler(run_id: UUID, timeout: int = Query(None, description=
         await asyncio.sleep(1)
         if timeout is not None and (asyncio.get_event_loop().time() - start_time) > timeout:
             break
-    return run
+    return public_run(run)
 
 
 @run_router.get("/runs", status_code=200)
@@ -206,7 +207,7 @@ async def list_run_handler():
             "params": run.params,
             "status": run.status,
             "check_id": run.check_id,
-            "error": run.error,
+            "error": public_run_error(run),
             "triggered_by": run.triggered_by,
         }
         for run in runs
@@ -235,7 +236,7 @@ async def search_runs_handler(search: SearchRunsIn):
         if not all(search.params[key] == run.params.get(key) for key in search.params.keys()):
             continue
 
-        result.append(run)
+        result.append(public_run(run))
 
     if search.limit:
         return result[-search.limit :]
@@ -326,8 +327,9 @@ async def export_run_handler(run_id: UUID, format: str = Query("csv", descriptio
             raise HTTPException(status_code=400, detail=str(e))
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Export query failed: {str(e)}")
+        except Exception:
+            logger.error("Export query failed")
+            raise HTTPException(status_code=500, detail="Export query failed") from None
 
     # Semaphore released — data is in memory, formatting is cheap.
     if format == "csv":
@@ -395,7 +397,7 @@ def _execute_export_query(run) -> t.Tuple[t.List[str], t.List[tuple]]:
     with dbt_adapter.connection_named("export"):
         if run_type in ("query", "query_base"):
             is_base = run_type == "query_base"
-            compiled_sql = dbt_adapter.generate_sql(sql_template, is_base)
+            compiled_sql = dbt_adapter.generate_sql(sql_template, is_base, safe_template=True)
             limited_sql = wrap_sql_with_export_limit(compiled_sql, EXPORT_MAX_ROWS)
             _, table = dbt_adapter.execute(limited_sql, fetch=True, auto_begin=True)
             columns = list(table.column_names)
@@ -405,11 +407,11 @@ def _execute_export_query(run) -> t.Tuple[t.List[str], t.List[tuple]]:
         elif run_type == "query_diff":
             base_sql = params.get("base_sql_template")
 
-            base_compiled = dbt_adapter.generate_sql(base_sql or sql_template, True)
+            base_compiled = dbt_adapter.generate_sql(base_sql or sql_template, True, safe_template=True)
             base_limited = wrap_sql_with_export_limit(base_compiled, EXPORT_MAX_ROWS)
             _, base_table = dbt_adapter.execute(base_limited, fetch=True, auto_begin=True)
 
-            curr_compiled = dbt_adapter.generate_sql(sql_template, False)
+            curr_compiled = dbt_adapter.generate_sql(sql_template, False, safe_template=True)
             curr_limited = wrap_sql_with_export_limit(curr_compiled, EXPORT_MAX_ROWS)
             _, current_table = dbt_adapter.execute(curr_limited, fetch=True, auto_begin=True)
 

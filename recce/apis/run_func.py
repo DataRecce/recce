@@ -7,6 +7,7 @@ from typing import List, Optional, Tuple
 import dateutil.parser
 from pydantic import BaseModel
 
+from recce.apis.run_security import QUERY_FAILURE_MESSAGE, QUERY_RUN_TYPES
 from recce.core import default_context
 from recce.exceptions import DuckDBExternalAccessBlocked, RecceException
 from recce.models import Run, RunDAO, RunType
@@ -229,8 +230,10 @@ def submit_run(type, params, check_id=None, triggered_by=None):
             # Status BEFORE error: same reason as above.
             if run.status != RunStatus.CANCELLED:
                 run.status = RunStatus.FAILED
-            failed_reason = str(error) if str(error) != "None" else repr(error)
-            run.error = failed_reason
+            if run.type in QUERY_RUN_TYPES:
+                run.error = QUERY_FAILURE_MESSAGE
+            else:
+                run.error = str(error) if str(error) != "None" else repr(error)
         run.progress = None
 
     def fn():
@@ -272,10 +275,16 @@ def submit_run(type, params, check_id=None, triggered_by=None):
                 return None
             import sentry_sdk
 
-            sentry_sdk.capture_exception(e)
-            failed_reason = str(e) if str(e) != "None" else repr(e)
-            failed_reason = failed_reason.replace(". ", ".\n")
-            logger.error(f"Failed to execute {run_type} task: {failed_reason}")
+            if run.type in QUERY_RUN_TYPES:
+                # The exception may contain output produced by a dbt macro or
+                # a warehouse. Do not send it to logs or Sentry either.
+                sentry_sdk.capture_message(f"Failed to execute {run_type} task")
+                logger.error("Failed to execute %s task", run_type)
+            else:
+                sentry_sdk.capture_exception(e)
+                failed_reason = str(e) if str(e) != "None" else repr(e)
+                failed_reason = failed_reason.replace(". ", ".\n")
+                logger.error(f"Failed to execute {run_type} task: {failed_reason}")
             return None
 
     future = loop.run_in_executor(None, fn)

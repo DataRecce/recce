@@ -1,5 +1,6 @@
 import pytest
 
+from recce.exceptions import RecceException
 from recce.tasks import QueryDiffTask, QueryTask
 
 # =============================================================================
@@ -21,6 +22,28 @@ def test_query(dbt_test_helper):
     task = QueryTask(params)
     run_result = task.execute()
     assert len(run_result.data) == 3
+
+
+@pytest.mark.parametrize("task_type", [QueryTask, QueryDiffTask])
+def test_query_template_cannot_submit_python_job(dbt_test_helper, task_type):
+    # The Python body is a harmless computed marker. Reaching it means the
+    # query renderer permitted a materialization-only execution capability.
+    template = """{% do context_macro_stack.push('materialization') %}
+{% do context_macro_stack.push('macro.dbt.statement') %}
+{% do submit_python_job({'alias':'p'}, "raise Exception('RECCE_PYTHON_CANARY: ' + str(1 + 1))") %}
+select 1 as x"""
+    with pytest.raises(RecceException, match=r"Only ref\(\), source\(\), and var\(\)"):
+        task_type({"sql_template": template}).execute()
+
+
+def test_query_template_cannot_call_adapter(dbt_test_helper):
+    with pytest.raises(RecceException, match=r"Only ref\(\), source\(\), and var\(\)"):
+        QueryTask({"sql_template": "{{ adapter.execute('select 1') }}"}).execute()
+
+
+def test_query_template_allows_dbt_var(dbt_test_helper):
+    sql = dbt_test_helper.adapter.generate_sql("select {{ var('test_value', 2) }} as x", safe_template=True)
+    assert sql == "select 2 as x"
 
 
 # =============================================================================

@@ -35,7 +35,7 @@ class QueryMixin:
         from dbt.exceptions import TargetNotFoundError
 
         try:
-            sql = dbt_adapter.generate_sql(sql_template, base)
+            sql = dbt_adapter.generate_sql(sql_template, base, safe_template=True)
             if limit is None:
                 _, result = dbt_adapter.execute(sql, fetch=True, auto_begin=True)
                 return result, False
@@ -60,7 +60,7 @@ class QueryMixin:
         dbt_adapter = default_context().adapter
 
         try:
-            sql = dbt_adapter.generate_sql(sql_template, base)
+            sql = dbt_adapter.generate_sql(sql_template, base, safe_template=True)
             count_sql = f"SELECT COUNT(*) AS _total_row_count FROM ({sql}) AS _count_subquery"
             _, result = dbt_adapter.execute(count_sql, fetch=True, auto_begin=True)
             if result.rows:
@@ -302,10 +302,10 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         self.check_cancel()
 
         if preview_change:
-            base_query = dbt_adapter.generate_sql(base_sql_template, base=False)
+            base_query = dbt_adapter.generate_sql(base_sql_template, base=False, safe_template=True)
         else:
-            base_query = dbt_adapter.generate_sql(base_sql_template or sql_template, base=True)
-        current_query = dbt_adapter.generate_sql(sql_template, base=False)
+            base_query = dbt_adapter.generate_sql(base_sql_template or sql_template, base=True, safe_template=True)
+        current_query = dbt_adapter.generate_sql(sql_template, base=False, safe_template=True)
 
         sql = dbt_adapter.generate_sql(
             query_template,
