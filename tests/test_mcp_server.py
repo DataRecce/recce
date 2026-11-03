@@ -4069,9 +4069,8 @@ class TestLocalModeRunBacked:
                 await server._tool_query_diff(
                     {"sql_template": "SELECT bad_col FROM {{ ref('orders') }}", "primary_keys": ["id"]}
                 )
-        # The original error message must be preserved so call_tool's _classify_db_error
-        # can classify it (TABLE_NOT_FOUND / PERMISSION_DENIED / SYNTAX_ERROR).
-        assert "bad_col" in str(exc_info.value)
+        # Query errors must not disclose raw exception text through MCP.
+        assert str(exc_info.value) == "Query failed. Check server logs for details."
 
     @pytest.mark.asyncio
     async def test_failing_run_still_persists_failed_run_for_citation(self, server):
@@ -4102,8 +4101,7 @@ class TestLocalModeRunBacked:
                 server, "query_diff", {"sql_template": "SELECT bad_col", "primary_keys": ["id"]}
             )
         assert result.isError is True
-        # The original message is surfaced so _classify_db_error / the agent can see it.
-        assert "bad_col" in result.content[0].text
+        assert result.content[0].text == "Query failed. Check server logs for details."
         # The FAILED Run is still persisted for citation, not dropped.
         assert len(self._context.runs) == 1
         assert self._context.runs[0].status == RunStatus.FAILED
