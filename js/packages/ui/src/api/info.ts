@@ -289,6 +289,11 @@ export interface ServerInfoResult {
    * null when the cloud session has not produced a conclusive classification.
    */
   catalog_coverage?: CatalogCoverage | null;
+  /**
+   * Whether the caller's role may refresh the session base (cloud mode only).
+   * Omitted by OSS and older servers; absent means allowed.
+   */
+  can_refresh_base?: boolean;
 }
 
 /**
