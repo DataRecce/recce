@@ -25,6 +25,7 @@ import { vi } from "vitest";
 import type { ServerInfoResult, SessionStaleness } from "../../../api";
 import { cacheKeys } from "../../../api";
 import { LOCAL_STORAGE_KEYS } from "../../../api/storageKeys";
+import { HttpError } from "../../../lib/fetchClient";
 
 // ============================================================================
 // Mocks - must be defined before vi.mock (vi.mock is hoisted but factories
@@ -140,8 +141,9 @@ const NO_SHARED_BASE_STALENESS: SessionStaleness = {
  */
 function makeServerInfo(
   staleness: SessionStaleness | undefined,
+  extra?: Partial<ServerInfoResult>,
 ): Partial<ServerInfoResult> {
-  return { session_staleness: staleness };
+  return { session_staleness: staleness, ...extra };
 }
 
 /**
@@ -165,13 +167,16 @@ function createTestClient() {
 
 function renderWithStaleness(
   staleness: SessionStaleness | undefined,
-  options?: { existingClient?: QueryClient },
+  options?: {
+    existingClient?: QueryClient;
+    serverInfo?: Partial<ServerInfoResult>;
+  },
 ) {
   const client = options?.existingClient ?? createTestClient();
 
   client.setQueryData(
     cacheKeys.lineage(),
-    makeServerInfo(staleness) as ServerInfoResult,
+    makeServerInfo(staleness, options?.serverInfo) as ServerInfoResult,
   );
 
   const result = render(
@@ -320,6 +325,113 @@ describe("StalenessBanner", () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+  });
+
+  describe("refresh permission (can_refresh_base)", () => {
+    const PERMISSION_MESSAGE =
+      "You do not have the appropriate permissions to Refresh Base.";
+
+    it("disables the button and explains why when can_refresh_base is false", async () => {
+      const user = userEvent.setup();
+      renderWithStaleness(OUTDATED_STALENESS, {
+        serverInfo: { can_refresh_base: false },
+      });
+
+      const button = screen.getByRole("button", { name: /Refresh base/ });
+      expect(button).toBeDisabled();
+
+      // Hover the wrapper span: a disabled button receives no pointer events.
+      const wrapper = button.parentElement;
+      if (!wrapper) throw new Error("expected tooltip wrapper span");
+      await user.hover(wrapper);
+
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        PERMISSION_MESSAGE,
+      );
+    });
+
+    it("keeps the button enabled when can_refresh_base is absent (OSS / older backends)", () => {
+      renderWithStaleness(OUTDATED_STALENESS);
+
+      expect(
+        screen.getByRole("button", { name: /Refresh base/ }),
+      ).toBeEnabled();
+    });
+
+    it("keeps the button enabled when can_refresh_base is true", () => {
+      renderWithStaleness(OUTDATED_STALENESS, {
+        serverInfo: { can_refresh_base: true },
+      });
+
+      expect(
+        screen.getByRole("button", { name: /Refresh base/ }),
+      ).toBeEnabled();
+    });
+
+    it("shows the no-shared-base tooltip when both reasons apply", async () => {
+      const user = userEvent.setup();
+      renderWithStaleness(NO_SHARED_BASE_STALENESS, {
+        serverInfo: { can_refresh_base: false },
+      });
+
+      const button = screen.getByRole("button", { name: /Refresh base/ });
+      expect(button).toBeDisabled();
+
+      const wrapper = button.parentElement;
+      if (!wrapper) throw new Error("expected tooltip wrapper span");
+      await user.hover(wrapper);
+
+      const tooltip = await screen.findByRole("tooltip");
+      expect(tooltip).toHaveTextContent(
+        "No shared base configured for this project.",
+      );
+      expect(tooltip).not.toHaveTextContent(PERMISSION_MESSAGE);
+    });
+
+    it("shows a permission toast when the refresh request returns 403", async () => {
+      const user = userEvent.setup();
+      mockApiPost.mockRejectedValue(
+        new HttpError(403, { detail: "Forbidden" }, "Forbidden"),
+      );
+
+      renderWithStaleness(OUTDATED_STALENESS);
+
+      await user.click(screen.getByRole("button", { name: /Refresh base/ }));
+
+      await waitFor(() => {
+        expect(mockToasterError).toHaveBeenCalledWith(
+          expect.objectContaining({ description: PERMISSION_MESSAGE }),
+        );
+      });
+      expect(mockToasterError).toHaveBeenCalledTimes(1);
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /Refresh base/ }),
+        ).toBeEnabled();
+      });
+    });
+
+    it("keeps the generic failure toast when the refresh request returns 500", async () => {
+      const user = userEvent.setup();
+      mockApiPost.mockRejectedValue(
+        new HttpError(500, { detail: "Internal" }, "Internal Server Error"),
+      );
+
+      renderWithStaleness(OUTDATED_STALENESS);
+
+      await user.click(screen.getByRole("button", { name: /Refresh base/ }));
+
+      await waitFor(() => {
+        expect(mockToasterError).toHaveBeenCalledWith(
+          expect.objectContaining({
+            description: "Refresh failed — try again.",
+          }),
+        );
+      });
+      expect(mockToasterError).not.toHaveBeenCalledWith(
+        expect.objectContaining({ description: PERMISSION_MESSAGE }),
+      );
     });
   });
 

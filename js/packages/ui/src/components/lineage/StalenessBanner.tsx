@@ -19,8 +19,13 @@ import {
 } from "../../api";
 import { useLineageGraphContext } from "../../contexts";
 import { useApiConfig, useServerInfo } from "../../hooks";
+import { isHttpError } from "../../lib/fetchClient";
 import { toaster } from "../ui/Toaster";
 import { FirstTimePopover } from "./FirstTimePopover";
+
+const REFRESH_FAILED_MESSAGE = "Refresh failed — try again.";
+const NO_PERMISSION_MESSAGE =
+  "You do not have the appropriate permissions to Refresh Base.";
 
 /** Milliseconds before clearing the refreshing spinner if no WS event arrives. */
 const REFRESH_TIMEOUT_MS = 30_000;
@@ -163,6 +168,11 @@ export function StalenessBanner({
   const { data: staleness } = useServerInfo({
     select: (d) => d.session_staleness,
   });
+  // Only an explicit `false` blocks: OSS and older servers omit the field.
+  const { data: canRefreshBase } = useServerInfo({
+    select: (d) => d.can_refresh_base,
+  });
+  const noPermission = canRefreshBase === false;
 
   // Track previous staleness to detect the outdated→matching transition.
   // Note: this ref is component-local, so it does NOT survive remounts. If the
@@ -272,7 +282,7 @@ export function StalenessBanner({
     // 30s timeout fallback: if the WS event never arrives, clear spinner + show error.
     timeoutRef.current = setTimeout(() => {
       setRefreshing(false);
-      toast.error("Refresh failed — try again.", { duration: 5000 });
+      toast.error(REFRESH_FAILED_MESSAGE, { duration: 5000 });
       timeoutRef.current = null;
       userInitiatedRefreshRef.current = false;
     }, REFRESH_TIMEOUT_MS);
@@ -283,14 +293,17 @@ export function StalenessBanner({
       // useQuery subscription updates staleness → outdated flips to false →
       // the useEffect above clears it.
       // The 30s timeout handles the fallback if WS never arrives.
-    } catch {
+    } catch (err) {
       // If the timeout already fired, it already toasted — skip the second toast.
       if (!timeoutRef.current) return;
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
       setRefreshing(false);
       userInitiatedRefreshRef.current = false;
-      toast.error("Refresh failed — try again.", { duration: 5000 });
+      const forbidden = isHttpError(err) && err.status === 403;
+      toast.error(forbidden ? NO_PERMISSION_MESSAGE : REFRESH_FAILED_MESSAGE, {
+        duration: 5000,
+      });
     }
   };
 
@@ -315,18 +328,23 @@ export function StalenessBanner({
   };
 
   const messageText = noSharedBase ? noSharedBaseMessage : outdatedMessage;
-  const refreshTooltipTitle = noSharedBase
+  const refreshDisabledReason = noSharedBase
     ? "No shared base configured for this project."
-    : "";
+    : noPermission
+      ? NO_PERMISSION_MESSAGE
+      : "";
 
   const refreshButton = (
-    <Tooltip title={refreshTooltipTitle} disableHoverListener={!noSharedBase}>
+    <Tooltip
+      title={refreshDisabledReason}
+      disableHoverListener={!refreshDisabledReason}
+    >
       <span>
         <Button
           size="small"
           variant="outlined"
           onClick={() => void handleRefresh()}
-          disabled={refreshing || noSharedBase}
+          disabled={refreshing || noSharedBase || noPermission}
           startIcon={refreshing ? <CircularProgress size={12} /> : undefined}
           sx={{ whiteSpace: "nowrap" }}
         >
