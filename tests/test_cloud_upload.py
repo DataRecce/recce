@@ -317,7 +317,7 @@ class TestCloudOrganizationsEndpoint(_EndpointTestBase):
     @patch("recce.server.default_context")
     def test_401_when_no_token(self, mock_ctx, mock_token):
         mock_ctx.return_value = _mock_context_no_token()
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         resp = client.get("/api/cloud/organizations")
         assert resp.status_code == 401
 
@@ -327,7 +327,7 @@ class TestCloudOrganizationsEndpoint(_EndpointTestBase):
     def test_returns_organizations(self, mock_ctx, mock_token, mock_list):
         mock_ctx.return_value = _mock_context_with_token()
         mock_list.return_value = [{"id": "1", "name": "org1"}]
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         resp = client.get("/api/cloud/organizations")
         assert resp.status_code == 200
         assert resp.json()["organizations"] == [{"id": "1", "name": "org1"}]
@@ -338,7 +338,7 @@ class TestCloudOrganizationsEndpoint(_EndpointTestBase):
     def test_400_on_cloud_error(self, mock_ctx, mock_token, mock_list):
         mock_ctx.return_value = _mock_context_with_token()
         mock_list.side_effect = Exception("Cloud error")
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         resp = client.get("/api/cloud/organizations")
         assert resp.status_code == 400
 
@@ -350,7 +350,7 @@ class TestCloudProjectsEndpoint(_EndpointTestBase):
     @patch("recce.server.default_context")
     def test_401_when_no_token(self, mock_ctx, mock_token):
         mock_ctx.return_value = _mock_context_no_token()
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         resp = client.get("/api/cloud/organizations/org1/projects")
         assert resp.status_code == 401
 
@@ -360,7 +360,7 @@ class TestCloudProjectsEndpoint(_EndpointTestBase):
     def test_returns_projects(self, mock_ctx, mock_token, mock_list):
         mock_ctx.return_value = _mock_context_with_token()
         mock_list.return_value = [{"id": "1", "name": "proj1"}]
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         resp = client.get("/api/cloud/organizations/org1/projects")
         assert resp.status_code == 200
         assert resp.json()["projects"] == [{"id": "1", "name": "proj1"}]
@@ -373,7 +373,7 @@ class TestCloudBaseStatusEndpoint(_EndpointTestBase):
     @patch("recce.server.default_context")
     def test_401_when_no_token(self, mock_ctx, mock_token):
         mock_ctx.return_value = _mock_context_no_token()
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         resp = client.get("/api/cloud/organizations/org1/projects/proj1/base-status")
         assert resp.status_code == 401
 
@@ -383,7 +383,7 @@ class TestCloudBaseStatusEndpoint(_EndpointTestBase):
     def test_returns_base_needs_upload_true(self, mock_ctx, mock_token, mock_sessions):
         mock_ctx.return_value = _mock_context_with_token()
         mock_sessions.return_value = [{"id": "s1", "is_base": True, "adapter_type": None}]
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         resp = client.get("/api/cloud/organizations/org1/projects/proj1/base-status")
         assert resp.status_code == 200
         assert resp.json()["base_needs_upload"] is True
@@ -394,7 +394,7 @@ class TestCloudBaseStatusEndpoint(_EndpointTestBase):
     def test_returns_base_needs_upload_false(self, mock_ctx, mock_token, mock_sessions):
         mock_ctx.return_value = _mock_context_with_token()
         mock_sessions.return_value = [{"id": "s1", "is_base": True, "adapter_type": "postgres"}]
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         resp = client.get("/api/cloud/organizations/org1/projects/proj1/base-status")
         assert resp.status_code == 200
         assert resp.json()["base_needs_upload"] is False
@@ -407,7 +407,7 @@ class TestCloudUploadEndpoint(_EndpointTestBase):
     @patch("recce.server.default_context")
     def test_401_when_no_token(self, mock_ctx, mock_token):
         mock_ctx.return_value = _mock_context_no_token()
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         resp = client.post(
             "/api/cloud/upload",
             json={
@@ -424,7 +424,7 @@ class TestCloudUploadEndpoint(_EndpointTestBase):
         ctx = _mock_context_with_token()
         ctx.adapter = None
         mock_ctx.return_value = ctx
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         resp = client.post(
             "/api/cloud/upload",
             json={
@@ -442,7 +442,7 @@ class TestCloudUploadEndpoint(_EndpointTestBase):
         ctx = _mock_context_with_token()
         ctx.adapter = Mock(spec=[])  # No target_path attribute
         mock_ctx.return_value = ctx
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         resp = client.post(
             "/api/cloud/upload",
             json={
@@ -475,7 +475,7 @@ class TestCloudUploadEndpoint(_EndpointTestBase):
             mock_base.return_value = False
             mock_create.return_value = {"id": "sess-123"}
 
-            client = TestClient(app)
+            client = TestClient(app, headers={"X-Recce-Request": "1"})
             resp = client.post(
                 "/api/cloud/upload",
                 json={
@@ -506,7 +506,7 @@ class TestCloudUploadEndpoint(_EndpointTestBase):
             ctx.adapter.target_path = tmp_dir  # No manifest.json
             mock_ctx.return_value = ctx
 
-            client = TestClient(app)
+            client = TestClient(app, headers={"X-Recce-Request": "1"})
             resp = client.post(
                 "/api/cloud/upload",
                 json={
@@ -541,7 +541,7 @@ class TestAdapterTypeValidation(_EndpointTestBase):
             ctx.adapter.target_path = tmp_dir
             mock_ctx.return_value = ctx
 
-            client = TestClient(app)
+            client = TestClient(app, headers={"X-Recce-Request": "1"})
             resp = client.post(
                 "/api/cloud/upload",
                 json={
@@ -572,7 +572,7 @@ class TestAdapterTypeValidation(_EndpointTestBase):
             ctx.adapter.target_path = tmp_dir
             mock_ctx.return_value = ctx
 
-            client = TestClient(app)
+            client = TestClient(app, headers={"X-Recce-Request": "1"})
             resp = client.post(
                 "/api/cloud/upload",
                 json={
@@ -627,7 +627,7 @@ class TestConnectionInfoEndpoint(_EndpointTestBase):
     @patch("recce.server.default_context")
     def test_401_when_no_token(self, mock_ctx, mock_token):
         mock_ctx.return_value = _mock_context_no_token()
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         resp = client.get("/api/connection-info")
         assert resp.status_code == 401
 
@@ -648,7 +648,7 @@ class TestConnectionInfoEndpoint(_EndpointTestBase):
         ctx.adapter.runtime_config = runtime_config
         mock_ctx.return_value = ctx
 
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         resp = client.get("/api/connection-info")
         assert resp.status_code == 200
         data = resp.json()["connection_info"]
@@ -664,7 +664,7 @@ class TestConnectionInfoEndpoint(_EndpointTestBase):
         ctx.adapter = Mock(spec=[])  # No runtime_config
         mock_ctx.return_value = ctx
 
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         resp = client.get("/api/connection-info")
         assert resp.status_code == 200
         assert resp.json()["connection_info"] is None
@@ -677,7 +677,7 @@ class TestConnectionInfoEndpoint(_EndpointTestBase):
         ctx.adapter.runtime_config = None
         mock_ctx.return_value = ctx
 
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         resp = client.get("/api/connection-info")
         assert resp.status_code == 200
         assert resp.json()["connection_info"] is None
@@ -690,7 +690,7 @@ class TestWarehouseSetupEndpoint(_EndpointTestBase):
     @patch("recce.server.default_context")
     def test_401_when_no_token(self, mock_ctx, mock_token):
         mock_ctx.return_value = _mock_context_no_token()
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         resp = client.post(
             "/api/cloud/warehouse-setup",
             json={
@@ -711,7 +711,7 @@ class TestWarehouseSetupEndpoint(_EndpointTestBase):
         mock_create.return_value = {"id": "wc-123", "name": "My DW"}
         mock_bind.return_value = {"status": "ok"}
 
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         resp = client.post(
             "/api/cloud/warehouse-setup",
             json={
@@ -744,7 +744,7 @@ class TestWarehouseSetupEndpoint(_EndpointTestBase):
         mock_ctx.return_value = _mock_context_with_token()
         mock_create.side_effect = Exception("Invalid config")
 
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         resp = client.post(
             "/api/cloud/warehouse-setup",
             json={
@@ -766,7 +766,7 @@ class TestWarehouseSetupEndpoint(_EndpointTestBase):
         mock_create.return_value = {"id": "wc-123"}
         mock_bind.side_effect = Exception("Bind failed")
 
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         resp = client.post(
             "/api/cloud/warehouse-setup",
             json={
@@ -787,7 +787,7 @@ class TestWarehouseSetupEndpoint(_EndpointTestBase):
         mock_ctx.return_value = _mock_context_with_token()
         mock_create.return_value = {"name": "DW"}  # No 'id' key
 
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         resp = client.post(
             "/api/cloud/warehouse-setup",
             json={
@@ -808,7 +808,7 @@ class TestWarehouseSetupEndpoint(_EndpointTestBase):
         mock_ctx.return_value = _mock_context_with_token()
         mock_create.return_value = {"id": None, "name": "DW"}
 
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         resp = client.post(
             "/api/cloud/warehouse-setup",
             json={

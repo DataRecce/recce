@@ -350,6 +350,8 @@ class DbtAdapter(BaseAdapter):
     runtime_config: RuntimeConfig = None
     adapter: SQLAdapter = None
     manifest: Manifest = None
+    # True once artifacts came from an imported (untrusted) state: their macros are never used.
+    _artifacts_imported: bool = False
     previous_state: PreviousState = None
     target_path: str = None
     _full_cll_map: Optional["CllData"] = None
@@ -708,7 +710,12 @@ class DbtAdapter(BaseAdapter):
     ):
         if context is None:
             context = {}
-        manifest = provided_manifest if provided_manifest is not None else as_manifest(self.get_manifest(base))
+        if provided_manifest is not None:
+            manifest = provided_manifest
+        else:
+            manifest = as_manifest(self.get_manifest(base))
+            if self._artifacts_imported and self.manifest is not None:
+                manifest.macros = self.manifest.macros
         parser = SqlBlockParser(self.runtime_config, manifest, self.runtime_config)
 
         if dbt_version >= dbt_version.parse("v1.8"):
@@ -2280,6 +2287,18 @@ class DbtAdapter(BaseAdapter):
         }
         return artifacts
 
+    def _get_local_macros(self) -> dict:
+        """Macros that come from the local dbt project, never from imported state."""
+        if self.manifest is not None:
+            return dict(self.manifest.macros)
+        try:
+            from dbt.parser.manifest import ManifestLoader
+
+            return dict(ManifestLoader.load_macros(self.runtime_config, lambda macro: None).macros)
+        except Exception as e:
+            logger.warning("Unable to load local dbt macros; imported models will not be rendered: %s", e)
+            return {}
+
     def import_artifacts(self, artifacts: ArtifactsRoot, merge=True):
         # Merge the artifacts from the state file or cloud
         def _select_artifact(
@@ -2300,13 +2319,19 @@ class DbtAdapter(BaseAdapter):
         self.base_catalog = _select_artifact(self.base_catalog, load_catalog(data=artifacts.base.get("catalog")))
         self.curr_catalog = _select_artifact(self.curr_catalog, load_catalog(data=artifacts.current.get("catalog")))
 
+        # Imported artifacts are untrusted data: never take macros from them (DRC-5335).
+        # Rendering imported models must only execute macros loaded from the local project.
+        local_macros = self._get_local_macros()
+        self._artifacts_imported = True
         self.manifest = as_manifest(self.curr_manifest)
+        self.manifest.macros = local_macros
         self.previous_state = previous_state(
             Path(self.base_path),
             Path(self.runtime_config.target_path),
             Path(self.runtime_config.project_root),
         )
         self.previous_state.manifest = as_manifest(self.base_manifest)
+        self.previous_state.manifest.macros = local_macros
 
         # The dependencies of the review mode is derived from manifests.
         # It is a workaround solution to use macro dispatch

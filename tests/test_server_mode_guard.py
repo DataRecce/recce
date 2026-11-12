@@ -70,7 +70,9 @@ def _client(flag):
         except ValueError:
             return {"echoed_type": None}
 
-    return TestClient(app)
+    # The CSRF header is enforced by the same middleware; send it so these tests
+    # keep exercising the mode gate itself.
+    return TestClient(app, headers={"X-Recce-Request": "1"})
 
 
 def test_middleware_blocks_query_run_in_read_only():
