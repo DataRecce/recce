@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Literal, Optional, Union
 from pydantic import BaseModel
 
 from recce.core import default_context
+from recce.exceptions import RecceException
 from recce.models import Check
 from recce.tasks import Task
 from recce.tasks.core import CheckValidator, TaskResultDiffer
@@ -350,6 +351,15 @@ class RowCountDiffTask(Task, QueryMixin):
             query_candidates.append(node_name)
 
         sqlmesh_adapter = default_context().adapter
+
+        # Only names that exist in the SQLMesh graph may reach SQL text.
+        known = set()
+        for model_id, model in sqlmesh_adapter.context.models.items():
+            known.add(model_id)
+            known.add(model.name)
+        for name in query_candidates:
+            if name not in known:
+                raise RecceException(f"Model '{name}' does not exist in the SQLMesh project")
 
         for name in query_candidates:
             # Query base environment

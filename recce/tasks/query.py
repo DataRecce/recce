@@ -8,6 +8,7 @@ from ..exceptions import DuckDBExternalAccessBlocked, RecceException
 from ..models import Check
 from .core import CheckValidator, Task, TaskResultDiffer
 from .dataframe import DataFrame
+from .identifiers import resolve_order_by_identifiers, resolve_verified_model
 from .utils import normalize_boolean_flag_columns, normalize_keys_to_columns
 from .valuediff import ValueDiffMixin
 
@@ -349,10 +350,17 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
             primary_keys = self.params.primary_keys
             base_sql_template = self.params.base_sql_template
             if self.params.current_model:
-                base_sql_template = self._select_single_model(self.params.current_model)
+                current_model = resolve_verified_model(dbt_adapter, self.params.current_model, bases=(False,))
+                base_sql_template = self._select_single_model(current_model)
                 preview_change = True
 
             if primary_keys:
+                primary_keys = resolve_order_by_identifiers(
+                    dbt_adapter,
+                    primary_keys,
+                    sql_template,
+                    resolve_star=lambda m: [c.column for c in dbt_adapter.get_columns(m, base=False)],
+                )
                 return self._query_diff_join(
                     dbt_adapter,
                     sql_template,
@@ -443,6 +451,7 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         base_sql = self.params.base_sql_template
 
         if primary_keys:
+            primary_keys = resolve_order_by_identifiers(None, primary_keys, sql)
             return self._sqlmesh_query_diff_join(sql, primary_keys, base_sql=base_sql)
         else:
             return self._sqlmesh_query_diff(sql, base_sql=base_sql)

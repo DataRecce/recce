@@ -1,18 +1,23 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from recce.core import default_context
 from recce.models import Check
 from recce.tasks import Task
 from recce.tasks.core import CheckValidator, TaskResultDiffer
+from recce.tasks.identifiers import (
+    quote_identifier,
+    resolve_verified_column,
+    resolve_verified_model,
+)
 from recce.tasks.query import QueryMixin
 
 
 class TopKDiffParams(BaseModel):
     model: str
     column_name: str
-    k: Optional[int] = 10
+    k: Optional[int] = Field(10, ge=1, le=1000)
 
 
 class TopKDiffTask(Task, QueryMixin):
@@ -111,9 +116,10 @@ class TopKDiffTask(Task, QueryMixin):
 
         with dbt_adapter.connection_named("query"):
             self.connection = dbt_adapter.get_thread_connection()
-            model = self.params.model
-            column = self.params.column_name
-            k = self.params.k or 10
+            model = resolve_verified_model(dbt_adapter, self.params.model, bases=(True, False))
+            # Resolve to the canonical physical name, then quote (doubling embedded quotes).
+            column = quote_identifier(dbt_adapter, resolve_verified_column(dbt_adapter, model, self.params.column_name))
+            k = int(self.params.k or 10)
 
             base_relation = dbt_adapter.create_relation(model, base=True)
             if base_relation is None:

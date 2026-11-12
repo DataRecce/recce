@@ -22,6 +22,7 @@ class TestSqlmeshErrorClassification:
         mock_adapter = MagicMock()
         mock_ctx.return_value.adapter = mock_adapter
         mock_ctx.return_value.adapter_type = "sqlmesh"
+        mock_adapter.context.models = {"test_model": MagicMock(**{"name": "test_model"})}
 
         import pandas as pd
 
@@ -39,6 +40,7 @@ class TestSqlmeshErrorClassification:
         mock_adapter = MagicMock()
         mock_ctx.return_value.adapter = mock_adapter
         mock_ctx.return_value.adapter_type = "sqlmesh"
+        mock_adapter.context.models = {"test_model": MagicMock(**{"name": "test_model"})}
 
         import pandas as pd
 
@@ -56,6 +58,7 @@ class TestSqlmeshErrorClassification:
         mock_adapter = MagicMock()
         mock_ctx.return_value.adapter = mock_adapter
         mock_ctx.return_value.adapter_type = "sqlmesh"
+        mock_adapter.context.models = {"test_model": MagicMock(**{"name": "test_model"})}
 
         mock_adapter.fetchdf_with_limit.side_effect = [
             Exception("Connection refused"),  # base fails with unknown error
