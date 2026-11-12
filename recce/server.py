@@ -619,6 +619,17 @@ async def enforce_server_mode(request: Request, call_next):
             status_code=403,
         )
 
+    # Starlette spools the whole multipart body before the handler runs, so the
+    # chunked read in import_handler cannot stop an oversized upload from landing
+    # on disk. Reject by declared size up front (the handler cap stays as backstop).
+    if request.method == "POST" and request.url.path == "/api/import":
+        declared = request.headers.get("content-length")
+        if declared and declared.isdigit() and int(declared) > MAX_IMPORT_BYTES + 64 * 1024:
+            return JSONResponse(
+                {"detail": f"State file exceeds the {MAX_IMPORT_BYTES} byte import limit."},
+                status_code=413,
+            )
+
     return await call_next(request)
 
 

@@ -147,6 +147,20 @@ def test_import_over_size_cap_is_rejected(import_client, monkeypatch):
     assert response.status_code == 413, response.text
 
 
+def test_import_over_size_cap_rejected_before_body_is_read(import_client, monkeypatch):
+    """Starlette spools the multipart body before the handler runs, so the cap must
+    also be enforced on the declared Content-Length, before the handler is reached."""
+    import recce.server as server
+
+    async def _boom(*args, **kwargs):
+        raise AssertionError("handler reached: oversized upload was not rejected up front")
+
+    monkeypatch.setattr(server, "MAX_IMPORT_BYTES", 1024)
+    monkeypatch.setattr(server, "_read_capped", _boom)
+    response = _post_import(import_client, _state_bytes(padding=128 * 1024), headers=CSRF_HEADER)
+    assert response.status_code == 413, response.text
+
+
 def test_state_mutating_routes_require_csrf_header(import_client):
     """Plan item 2 covers all state-mutating POST/PATCH/DELETE routes. Fails today
     with 200: /api/save is reachable without X-Recce-Request."""
