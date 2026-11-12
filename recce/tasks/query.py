@@ -331,7 +331,9 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
 
         # Normalize primary_keys to match actual column keys from warehouse
         column_keys = [col.key for col in diff_df.columns]
-        self.params.primary_keys = normalize_keys_to_columns(primary_keys, column_keys)
+        self.params.primary_keys = normalize_keys_to_columns(
+            self.params.primary_keys, column_keys
+        )  # user spelling, not the quoted SQL form
 
         return QueryDiffResult(diff=diff_df)
 
