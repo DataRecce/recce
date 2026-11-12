@@ -41,9 +41,9 @@ class UnsupportedDbtSchemaError(RecceException):
 class DuckDBExternalAccessBlocked(RecceException):
     """Raised when DuckDB rejects a query because external access is disabled."""
 
-    def __init__(self, original_message: str):
+    def __init__(self):
         message = (
-            f"DuckDB external access is disabled — {original_message}. "
+            "DuckDB external access is disabled. "
             "To allow, restart with --duckdb-external-access or set "
             "duckdb_external_access: true in recce.yml."
         )

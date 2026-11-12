@@ -732,28 +732,12 @@ class DbtAdapter(BaseAdapter):
                 if not isinstance(call.node, nodes.Name) or call.node.name not in allowed_calls:
                     raise RecceException("Only ref(), source(), and var() calls are allowed in query templates")
 
+            return self._render_safe_template(sql_template, manifest)
+
         node_id = str("generated_" + uuid.uuid4().hex)
         node = parser.parse_remote(sql_template, node_id)
         process_node(self.runtime_config, manifest, node)
 
-        if safe_template:
-            from dbt.context.providers import generate_runtime_model_context
-            from jinja2 import StrictUndefined
-            from jinja2.sandbox import SandboxedEnvironment
-
-            jinja_ctx = generate_runtime_model_context(node, self.runtime_config, manifest)
-            safe_env = SandboxedEnvironment(undefined=StrictUndefined)
-            safe_context = {
-                name: (
-                    (lambda *args, _name=name: str(jinja_ctx[_name](*args)))
-                    if name in ("ref", "source")
-                    else jinja_ctx[name]
-                )
-                for name in ("ref", "source", "var")
-            }
-            allowed_functions = tuple(safe_context.values())
-            safe_env.is_safe_callable = lambda value: any(value is fn for fn in allowed_functions)
-            return safe_env.from_string(sql_template).render(safe_context)
         if dbt_version < dbt_version.parse("v1.8"):
             compiler = self.adapter.get_compiler()
             compiler.compile_node(node, manifest, context)
@@ -775,6 +759,65 @@ class DbtAdapter(BaseAdapter):
             compiled_code = jinja.get_rendered(sql_template, jinja_ctx, node)
             return compiled_code
 
+    def _render_safe_template(self, sql_template: str, manifest) -> str:
+        """Render an ad-hoc template in a standalone sandbox.
+
+        ref/source resolve from the compiled manifest's relation metadata and var from the
+        static project vars. dbt's parser/runtime context (parse_remote, RuntimeVar) is never
+        used, so no project macro, hook or var re-render runs.
+        """
+        from jinja2 import StrictUndefined
+        from jinja2.sandbox import SandboxedEnvironment
+
+        def make_relation(node):
+            return str(self.adapter.Relation.create_from(self.runtime_config, node))
+
+        def safe_ref(*args, **kwargs):
+            if not 1 <= len(args) <= 2:
+                raise RecceException("ref() takes a model name, optionally preceded by a package name")
+            package, name = (args[0], args[1]) if len(args) == 2 else (None, args[0])
+            version = kwargs.get("version", kwargs.get("v"))
+            candidates = [
+                n
+                for n in manifest.nodes.values()
+                if n.resource_type in ("model", "seed", "snapshot")
+                and n.name == name
+                and (package is None or n.package_name == package)
+                and (version is None or str(getattr(n, "version", None)) == str(version))
+            ]
+            if package is None and len(candidates) > 1:
+                root = [n for n in candidates if n.package_name == self.runtime_config.project_name]
+                candidates = root or candidates
+            if not candidates:
+                raise RecceException(f"Unknown model referenced in ref(): {name}")
+            if len(candidates) > 1:
+                versioned = [n for n in candidates if getattr(n, "version", None) is not None]
+                latest = getattr(candidates[0], "latest_version", None)
+                candidates = [n for n in versioned if n.version == latest] or candidates
+            return make_relation(candidates[0])
+
+        def safe_source(source_name, table_name):
+            for src in manifest.sources.values():
+                if src.source_name == source_name and src.name == table_name:
+                    return make_relation(src)
+            raise RecceException(f"Unknown source referenced in source(): {source_name}.{table_name}")
+
+        project_vars = dict(self.runtime_config.vars.to_dict())
+        _missing = object()
+
+        def safe_var(name, default=_missing):
+            if name in project_vars:
+                return project_vars[name]
+            if default is not _missing:
+                return default
+            raise RecceException("Undefined dbt variable")
+
+        safe_context = {"ref": safe_ref, "source": safe_source, "var": safe_var}
+        allowed_functions = tuple(safe_context.values())
+        safe_env = SandboxedEnvironment(undefined=StrictUndefined)
+        safe_env.is_safe_callable = lambda value: any(value is fn for fn in allowed_functions)
+        return safe_env.from_string(sql_template).render(safe_context)
+
     def execute(
         self,
         sql: str,
@@ -788,8 +831,8 @@ class DbtAdapter(BaseAdapter):
 
             return self.adapter.execute(sql, auto_begin=auto_begin, fetch=fetch, limit=limit)
         except Exception as e:
-            if is_duckdb_external_access_blocked(e):
-                raise DuckDBExternalAccessBlocked(str(e)) from e
+            if self.adapter.type() == "duckdb" and is_duckdb_external_access_blocked(e):
+                raise DuckDBExternalAccessBlocked() from e
             raise
 
     def build_parent_map(self, nodes: Dict, base: Optional[bool] = False) -> Dict[str, List[str]]:

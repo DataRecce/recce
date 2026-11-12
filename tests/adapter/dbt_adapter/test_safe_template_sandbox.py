@@ -1,14 +1,13 @@
 """Reproductions for DRC-5337 (REC-03). These tests assert the SECURE behavior and
 currently FAIL, each pinning one flaw in generate_sql(safe_template=True) / execute() / cli."""
 
-import inspect
 from unittest.mock import patch
 
 import pytest
 from dbt.contracts.graph.nodes import Macro
 from dbt.parser.sql import SqlBlockParser
 
-from recce.exceptions import DuckDBExternalAccessBlocked, RecceException
+from recce.exceptions import DuckDBExternalAccessBlocked
 
 
 def _add_macro(helper, name, body, package="recce_test"):
@@ -70,12 +69,15 @@ def test_non_duckdb_error_with_duckdb_substring_stays_unredacted_marker_free(dbt
     (public_run_error returns that unredacted). Simulates a non-duckdb adapter."""
     adapter = dbt_test_helper.adapter
     err = Exception("Snowflake: file system operations are disabled by configuration for user=admin host=secret")
-    with patch.object(adapter.adapter, "execute", side_effect=err), patch.object(
-        type(adapter.adapter), "type", return_value="snowflake"
+    with (
+        patch.object(adapter.adapter, "execute", side_effect=err),
+        patch.object(type(adapter.adapter), "type", return_value="snowflake"),
     ):
         with pytest.raises(Exception) as ei:
             adapter.execute("select 1")
-    assert not isinstance(ei.value, DuckDBExternalAccessBlocked), "non-duckdb error promoted to DuckDBExternalAccessBlocked"
+    assert not isinstance(
+        ei.value, DuckDBExternalAccessBlocked
+    ), "non-duckdb error promoted to DuckDBExternalAccessBlocked"
 
 
 def test_duckdb_external_access_message_is_static(dbt_test_helper):
