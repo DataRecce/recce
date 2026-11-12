@@ -508,12 +508,42 @@ _QUERY_RUN_TYPES = frozenset(
 )
 
 
+_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+_MUTATING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+
+# Header that makes a cross-site request non-"simple", forcing a CORS preflight
+# that the CORS policy denies for foreign origins (CSRF defence, DRC-5335).
+CSRF_HEADER = "x-recce-request"
+
+# Maximum accepted size of an uploaded state file (POST /api/import).
+MAX_IMPORT_BYTES = int(os.environ.get("RECCE_MAX_IMPORT_BYTES", 100 * 1024 * 1024))
+
+# Mutating routes a viewer may call in read-only and preview mode. Everything
+# else that mutates is denied by default (allowlist, not deny-list).
+_VIEWER_POSTS = frozenset(
+    {
+        "/api/runs",  # run types that execute a query are rejected separately
+        "/api/runs/search",
+        "/api/runs/aggregate",
+        "/api/cll",
+        "/api/select",
+        "/api/keep-alive",
+        "/api/relaunch-hint/completed",
+    }
+)
+# Additionally allowed in preview mode only (no query execution, but state and checklist edits).
+_PREVIEW_POSTS = frozenset({"/api/save", "/api/save-as", "/api/rename", "/api/export"})
+
+
 def _mode_block_reason(method, path, run_type, read_only, preview):
     """Return a denial reason if server mode disallows the request, else None.
 
     Preview (metadata-only) blocks query execution. Read-only additionally
     blocks all state and checklist writes. Matches cli.py: read-only = "No run
     query, no checklist"; preview = "No run query".
+
+    Mutating requests are checked against an explicit allowlist: a route that is
+    not listed is denied, so new write routes are safe by default.
     """
     if not (read_only or preview):
         return None
@@ -528,13 +558,20 @@ def _mode_block_reason(method, path, run_type, read_only, preview):
     if method == "GET" and path.startswith("/api/runs/") and path.endswith("/export"):
         return "exporting a run re-executes its query"
 
-    # State and checklist writes — blocked in read-only only.
-    if read_only:
-        if method == "POST" and path in ("/api/save", "/api/save-as", "/api/rename", "/api/export"):
-            return "modifying server state"
-        if method in ("POST", "PATCH", "PUT", "DELETE") and path.startswith("/api/checks"):
-            return "modifying the checklist"
-    return None
+    if method in _SAFE_METHODS:
+        return None
+
+    # Mutating requests: explicit allowlist per mode.
+    if method == "POST" and path in _VIEWER_POSTS:
+        return None
+    if method == "POST" and path.startswith("/api/runs/") and path.endswith("/cancel"):
+        return None
+    if preview and not read_only:
+        if method == "POST" and path in _PREVIEW_POSTS:
+            return None
+        if method in _MUTATING_METHODS and (path == "/api/checks" or path.startswith("/api/checks/")):
+            return None
+    return "this action is not permitted"
 
 
 @app.middleware("http")
@@ -569,6 +606,18 @@ async def enforce_server_mode(request: Request, call_next):
                 {"detail": f"This action is not allowed in {mode} mode ({reason})."},
                 status_code=403,
             )
+
+    # CSRF: every state-mutating API call must carry a custom header, which a
+    # cross-site form or simple request cannot set without a (denied) preflight.
+    if (
+        request.method in _MUTATING_METHODS
+        and request.url.path.startswith("/api/")
+        and not request.headers.get(CSRF_HEADER)
+    ):
+        return JSONResponse(
+            {"detail": "Missing X-Recce-Request header on a state-changing request."},
+            status_code=403,
+        )
 
     return await call_next(request)
 
@@ -942,6 +991,21 @@ async def export_handler():
         raise HTTPException(status_code=400, detail=e.message)
 
 
+async def _read_capped(file: UploadFile, limit: int) -> bytes:
+    """Read an upload in chunks, refusing it with 413 once it exceeds `limit` bytes."""
+    chunks = []
+    total = 0
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > limit:
+            raise HTTPException(status_code=413, detail=f"State file exceeds the {limit} byte import limit.")
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 @app.post("/api/import", status_code=200)
 async def import_handler(
     file: Annotated[UploadFile, Form()], checks_only: Annotated[bool, Form()], background_tasks: BackgroundTasks
@@ -954,7 +1018,7 @@ async def import_handler(
     context = default_context()
     try:
         log_api_event("import", dict(state_loader_mode=context.state_loader_mode()))
-        content = await file.read()
+        content = await _read_capped(file, MAX_IMPORT_BYTES)
         state = RecceState.from_json(content)
 
         if checks_only:

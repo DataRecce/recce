@@ -169,6 +169,40 @@ describe("createFetchClient", () => {
     });
   });
 
+  describe("CSRF header", () => {
+    it.each([
+      ["post", "POST"],
+      ["patch", "PATCH"],
+      ["delete", "DELETE"],
+    ] as const)("%s sends X-Recce-Request: 1", async (method, verb) => {
+      mockFetch.mockResolvedValueOnce(jsonResponse({}));
+
+      await client[method]("/api/items/1");
+
+      const [, init] = mockFetch.mock.calls[0];
+      expect(init.method).toBe(verb);
+      expect(init.headers.get("X-Recce-Request")).toBe("1");
+    });
+
+    it("multipart upload (FormData) also carries the header", async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse({}));
+
+      await client.post("/api/import", new FormData());
+
+      const [, init] = mockFetch.mock.calls[0];
+      expect(init.headers.get("X-Recce-Request")).toBe("1");
+    });
+
+    it("GET does not send it", async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse({}));
+
+      await client.get("/api/health");
+
+      const [, init] = mockFetch.mock.calls[0];
+      expect(init.headers.has("X-Recce-Request")).toBe(false);
+    });
+  });
+
   describe("query params", () => {
     it("serializes params to URL search params", async () => {
       mockFetch.mockResolvedValueOnce(jsonResponse([]));
