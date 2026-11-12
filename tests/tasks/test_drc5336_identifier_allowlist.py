@@ -297,11 +297,26 @@ DRIVER_ERROR = 'Database Error: relation "analytics.secret_table" does not exist
 
 
 @pytest.mark.parametrize("run_type", NON_QUERY_TYPES, ids=lambda t: t.value)
-def test_public_run_error_redacts_driver_errors_for_all_run_types(run_type):
-    """Fails: public_run_error only redacts QUERY_RUN_TYPES (run_security.py:5-12)."""
-    run = Run(type=run_type, params={}, status=RunStatus.FAILED, error=DRIVER_ERROR)
-    assert public_run_error(run) != DRIVER_ERROR
+def test_new_run_driver_errors_are_redacted_for_all_run_types(run_type):
+    """Rewritten per captain decision D2 ("new runs only"). The original version asserted that
+    public_run_error redacts a legacy stored error at read time; that contradicts D2 and
+    test_non_query_error_is_preserved. Now: an error stored by a NEW failed run (via
+    stored_run_error, as update_run_result does) is redacted and survives public_run_error."""
+    from recce.apis.run_security import RUN_FAILURE_MESSAGE, stored_run_error
+
+    stored = stored_run_error(run_type, RuntimeError(DRIVER_ERROR))
+    assert stored == RUN_FAILURE_MESSAGE
+    run = Run(type=run_type, params={}, status=RunStatus.FAILED, error=stored)
     assert "hunter2" not in public_run(run).error
+    assert "hunter2" not in public_run_error(run)
+
+
+@pytest.mark.parametrize("run_type", NON_QUERY_TYPES, ids=lambda t: t.value)
+def test_legacy_stored_non_query_error_is_left_unchanged(run_type):
+    """D2: errors already stored on old non-QUERY runs are not redacted on read."""
+    run = Run(type=run_type, params={}, status=RunStatus.FAILED, error=DRIVER_ERROR)
+    assert public_run_error(run) == DRIVER_ERROR
+    assert public_run(run).error == DRIVER_ERROR
 
 
 @pytest.mark.parametrize("run_type", NON_QUERY_TYPES, ids=lambda t: t.value)
