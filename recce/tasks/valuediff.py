@@ -7,6 +7,11 @@ from ..exceptions import RecceException
 from ..models import Check
 from .core import CheckValidator, Task, TaskResultDiffer
 from .dataframe import DataFrame
+from .identifiers import (
+    get_canonical_columns,
+    quote_identifier,
+    resolve_verified_model,
+)
 from .utils import normalize_boolean_flag_columns, normalize_keys_to_columns
 
 
@@ -39,19 +44,22 @@ class ValueDiffMixin:
         This lookup lets callers normalise a user-supplied lowercase name to the physical
         name before quoting, mirroring the pattern already used by profile_diff.
         """
-        lookup: dict = {}
-        for base in (True, False):
-            try:
-                for col in dbt_adapter.get_columns(model, base=base):
-                    name = col.column if hasattr(col, "column") else col.name
-                    lookup[name.lower()] = name
-            except Exception:
-                pass
-        return lookup
+        # Fail closed: a missing model/relation or a get_columns error must surface, not
+        # degrade to an empty lookup that lets every user-supplied identifier through.
+        resolve_verified_model(dbt_adapter, model, bases=(True, False))
+        base_lookup, curr_lookup = get_canonical_columns(dbt_adapter, model, bases=(True, False))
+        return {key: name for key, name in curr_lookup.items() if key in base_lookup}
 
     def _normalise_identifier(self, identifier: str, lookup: dict) -> str:
-        """Map a user-supplied identifier to its physical catalog name, or return as-is."""
-        return lookup.get(identifier.lower(), identifier)
+        """Map a user-supplied identifier to its physical catalog name; reject unknown ones."""
+        physical = lookup.get(identifier.lower()) if isinstance(identifier, str) else None
+        if physical is None:
+            raise RecceException(f"Column '{identifier}' does not exist in the model")
+        return physical
+
+    @staticmethod
+    def _quote_all(dbt_adapter, names) -> List[str]:
+        return [quote_identifier(dbt_adapter, n) for n in names]
 
     @staticmethod
     def _stamp_catalog_types(dbt_adapter, df: DataFrame, model: str) -> DataFrame:
@@ -91,41 +99,29 @@ class ValueDiffMixin:
 
     def _verify_primary_key(self, dbt_adapter, primary_key: Union[str, List[str]], model: str):
         self.update_progress(message=f"Verify primary key: {primary_key}")
-        composite = True if isinstance(primary_key, List) else False
+        pks = primary_key if isinstance(primary_key, List) else [primary_key]
+        if len(pks) == 0 or any(pk is None or len(pk) == 0 for pk in pks):
+            raise RecceException("Primary key cannot be empty")
 
-        if composite:
-            if len(primary_key) == 0:
-                raise RecceException("Primary key cannot be empty")
-            sql_template = r"""
-            {%- set quoted_cols = [] %}
-            {%- for col in primary_key %}
-                {%- do quoted_cols.append(adapter.quote(col)) %}
-            {%- endfor %}
-            {%- set columns_csv = quoted_cols | join(', ') %}
+        # Constant template; identifiers arrive pre-verified and pre-quoted via the context.
+        sql_template = r"""
+        with validation_errors as (
+            select
+                {{ columns_csv }}
+            from {{ relation }}
+            group by {{ columns_csv }}
+            having count(*) > 1
+        )
 
-            with validation_errors as (
-                select
-                    {{ columns_csv }}
-                from {{ relation }}
-                group by {{ columns_csv }}
-                having count(*) > 1
-            )
-
-            select *
-            from validation_errors
-            """
-        else:
-            if primary_key is None or len(primary_key) == 0:
-                raise RecceException("Primary key cannot be empty")
-            sql_template = r"""{{ adapter.dispatch('test_unique', 'dbt')(relation, primary_key) }}"""
+        select *
+        from validation_errors
+        """
+        columns_csv = ", ".join(self._quote_all(dbt_adapter, pks))
 
         # check primary keys
         for base in [True, False]:
             relation = dbt_adapter.create_relation(model, base)
-            context = dict(
-                relation=relation,
-                primary_key=primary_key,
-            )
+            context = dict(relation=relation, columns_csv=columns_csv)
 
             sql = dbt_adapter.generate_sql(sql_template, context=context)
             sql_test = f"""SELECT COUNT(*) AS INVALIDS FROM ({sql}) AS T"""
@@ -134,9 +130,8 @@ class ValueDiffMixin:
             for row in table.rows:
                 invalids = row[0]
                 if invalids > 0:
-                    raise RecceException(
-                        f"Invalid primary key: \"{primary_key}\". The column should be unique. Please check by this sql: '{sql}'"
-                    )
+                    # Do not echo the compiled SQL back to the caller.
+                    raise RecceException(f'Invalid primary key: "{primary_key}". The column should be unique.')
                 break
             else:
                 # it will never happen unless we use a wrong check sql
@@ -203,7 +198,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
 
         {%- for field in primary_keys -%}
             {%- do fields.append(
-                "coalesce(cast(" ~ adapter.quote(field) ~ " as " ~ dbt.type_string() ~ "), '" ~ default_null_value  ~"')"
+                "coalesce(cast(" ~ field ~ " as " ~ dbt.type_string() ~ "), '" ~ default_null_value  ~"')"
             ) -%}
 
             {%- if not loop.last %}
@@ -221,7 +216,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
             select {{ _pk }} as _pk, * from {{ curr_relation }}
         ),
 
-        {%- set _quoted_col = adapter.quote(column_to_compare) -%}
+        {%- set _quoted_col = column_to_compare -%}
 
         joined as (
             select
@@ -244,7 +239,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
 
         aggregated as (
             select
-                '{{ column_to_compare }}' as column_name,
+                '{{ column_label }}' as column_name,
                 match_status,
                 count(*) as count_records
             from joined
@@ -267,8 +262,9 @@ class ValueDiffTask(Task, ValueDiffMixin):
                 context=dict(
                     base_relation=dbt_adapter.create_relation(model, base=True),
                     curr_relation=dbt_adapter.create_relation(model, base=False),
-                    primary_keys=primary_key if composite else [primary_key],
-                    column_to_compare=column,
+                    primary_keys=self._quote_all(dbt_adapter, primary_key if composite else [primary_key]),
+                    column_to_compare=quote_identifier(dbt_adapter, column),
+                    column_label=column.replace("'", "''"),
                     a_relation_name="a",
                     b_relation_name="b",
                 ),
@@ -374,6 +370,9 @@ class ValueDiffTask(Task, ValueDiffMixin):
                 primary_key = [self._normalise_identifier(pk, case_lookup) for pk in primary_key]
             else:
                 primary_key = self._normalise_identifier(primary_key, case_lookup)
+            # Validate every user-supplied column before anything is sent to the warehouse.
+            for column in columns or []:
+                self._normalise_identifier(column, case_lookup)
 
             self._verify_primary_key(dbt_adapter, primary_key, model)
             self.check_cancel()
@@ -474,11 +473,11 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
         sql_template = r"""
                        {%- set _quoted_cols = [] -%}
                        {%- for col in columns -%}
-                           {%- do _quoted_cols.append(adapter.quote(col)) -%}
+                           {%- do _quoted_cols.append(col) -%}
                        {%- endfor -%}
                        {%- set _quoted_pks = [] -%}
                        {%- for pk in primary_keys -%}
-                           {%- do _quoted_pks.append(adapter.quote(pk)) -%}
+                           {%- do _quoted_pks.append(pk) -%}
                        {%- endfor -%}
 
                        with a_query as (select {{ _quoted_cols | join (',\n') }}
@@ -534,8 +533,8 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
             context=dict(
                 base_relation=dbt_adapter.create_relation(model, base=True),
                 curr_relation=dbt_adapter.create_relation(model, base=False),
-                primary_keys=primary_key if composite else [primary_key],
-                columns=columns,
+                primary_keys=self._quote_all(dbt_adapter, primary_key if composite else [primary_key]),
+                columns=self._quote_all(dbt_adapter, columns),
                 limit=1000,
             ),
         )
@@ -583,6 +582,9 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
                 primary_key = [self._normalise_identifier(pk, case_lookup) for pk in primary_key]
             else:
                 primary_key = self._normalise_identifier(primary_key, case_lookup)
+            # Validate every user-supplied column before anything is sent to the warehouse.
+            for column in columns or []:
+                self._normalise_identifier(column, case_lookup)
 
             self._verify_primary_key(dbt_adapter, primary_key, model)
             self.check_cancel()

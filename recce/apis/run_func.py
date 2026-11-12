@@ -7,7 +7,7 @@ from typing import List, Optional, Tuple
 import dateutil.parser
 from pydantic import BaseModel
 
-from recce.apis.run_security import QUERY_FAILURE_MESSAGE, QUERY_RUN_TYPES
+from recce.apis.run_security import QUERY_RUN_TYPES, stored_run_error
 from recce.core import default_context
 from recce.exceptions import DuckDBExternalAccessBlocked, RecceException
 from recce.models import Run, RunDAO, RunType
@@ -230,10 +230,7 @@ def submit_run(type, params, check_id=None, triggered_by=None):
             # Status BEFORE error: same reason as above.
             if run.status != RunStatus.CANCELLED:
                 run.status = RunStatus.FAILED
-            if run.type in QUERY_RUN_TYPES:
-                run.error = QUERY_FAILURE_MESSAGE
-            else:
-                run.error = str(error) if str(error) != "None" else repr(error)
+            run.error = stored_run_error(run.type, error)
         run.progress = None
 
     def fn():
