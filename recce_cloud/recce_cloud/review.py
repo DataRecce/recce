@@ -29,6 +29,7 @@ class ReviewStatus(Enum):
     # CLI-specific states
     ALREADY_EXISTS = "ALREADY_EXISTS"
     TIMEOUT = "TIMEOUT"
+    TRIGGERED = "TRIGGERED"
 
     # In-progress states (align with backend RecceTaskStatus)
     QUEUED = "QUEUED"
@@ -256,6 +257,7 @@ def generate_data_review(
     regenerate: bool = False,
     timeout: int = DEFAULT_TIMEOUT_SECONDS,
     json_output: bool = False,
+    wait: bool = True,
 ) -> ReviewResult:
     """
     Generate data review for a session.
@@ -275,6 +277,7 @@ def generate_data_review(
         regenerate: If True, regenerate even if review exists.
         timeout: Maximum seconds to wait for generation.
         json_output: If True, suppress progress output.
+        wait: If False, return right after the task is started instead of polling.
 
     Returns:
         ReviewResult with status and details.
@@ -304,7 +307,8 @@ def generate_data_review(
         task_id = running_task["task_id"]
         if not json_output:
             console.print(f"[yellow]Task already running:[/yellow] {task_id}")
-            console.print("Waiting for completion...")
+            if wait:
+                console.print("Waiting for completion...")
     else:
         task_id = None
 
@@ -344,6 +348,15 @@ def generate_data_review(
                 session_name=session_name,
                 error_message=f"Failed to trigger review generation: {e.reason}",
             )
+
+    if not wait:
+        return ReviewResult(
+            status=ReviewStatus.TRIGGERED,
+            session_id=session_id,
+            session_name=session_name,
+            review_url=generate_review_url(org_id, project_id, session_id, client),
+            task_id=task_id,
+        )
 
     # 4. Poll for completion
     def progress_callback(task_status):
@@ -389,6 +402,7 @@ def generate_data_review(
             status=ReviewStatus.TIMEOUT,
             session_id=session_id,
             session_name=session_name,
+            review_url=generate_review_url(org_id, project_id, session_id, client),
             task_id=task_id,
             error_message=poll_result["error"],
         )
@@ -412,6 +426,7 @@ def run_review_command(
     regenerate: bool = False,
     timeout: int = DEFAULT_TIMEOUT_SECONDS,
     json_output: bool = False,
+    wait: bool = True,
 ):
     """
     Main entry point for the review command.
@@ -432,6 +447,7 @@ def run_review_command(
         regenerate: If True, regenerate even if review exists.
         timeout: Maximum seconds to wait for generation.
         json_output: If True, output JSON instead of human-readable text.
+        wait: If False, exit right after the task is started.
     """
     # 1. Initialize client
     try:
@@ -488,12 +504,18 @@ def run_review_command(
         regenerate=regenerate,
         timeout=timeout,
         json_output=json_output,
+        wait=wait,
     )
 
     # 4. Display results
     if json_output:
         output = {
-            "success": result.status in [ReviewStatus.SUCCEEDED, ReviewStatus.ALREADY_EXISTS],
+            "success": result.status
+            in [
+                ReviewStatus.SUCCEEDED,
+                ReviewStatus.ALREADY_EXISTS,
+                ReviewStatus.TRIGGERED,
+            ],
             "status": result.status.value,
             "session_id": result.session_id,
             "session_name": result.session_name,
@@ -517,6 +539,12 @@ def run_review_command(
             console.print(f"[cyan]View review at:[/cyan] {result.review_url}")
             console.print()
             console.print("[dim]Tip: Use --regenerate to create a new review[/dim]")
+        elif result.status == ReviewStatus.TRIGGERED:
+            console.rule("Review Generation Started", style="green")
+            console.print(f"[green]✓[/green] Data review generation started for session '{result.session_name}'")
+            console.print(f"Task ID: {result.task_id}")
+            console.print()
+            console.print(f"[cyan]Check status at:[/cyan] {result.review_url}")
         elif result.status == ReviewStatus.TIMEOUT:
             console.rule("Review Generation Timeout", style="yellow")
             console.print("[yellow]Warning:[/yellow] Review generation is still in progress")
@@ -529,7 +557,11 @@ def run_review_command(
             console.print(f"[red]Error:[/red] {result.error_message}")
 
     # Exit with appropriate code
-    if result.status in [ReviewStatus.SUCCEEDED, ReviewStatus.ALREADY_EXISTS]:
+    if result.status in [
+        ReviewStatus.SUCCEEDED,
+        ReviewStatus.ALREADY_EXISTS,
+        ReviewStatus.TRIGGERED,
+    ]:
         sys.exit(0)
     elif result.status == ReviewStatus.TIMEOUT:
         sys.exit(0)  # Timeout is not a hard failure - task is still running
