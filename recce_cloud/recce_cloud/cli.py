@@ -1752,18 +1752,23 @@ def report(repo, since, until, base_branch, merged_only, output):
     help="Maximum seconds to wait for review generation (default: 300)",
 )
 @click.option(
+    "--no-wait",
+    is_flag=True,
+    help="Exit right after the review generation starts. Do not wait for it to finish.",
+)
+@click.option(
     "--json",
     "json_output",
     is_flag=True,
     help="Output result as JSON (for scripting)",
 )
-def review(session_id, session_name, org, project, regenerate, timeout, json_output):
+def review(session_id, session_name, org, project, regenerate, timeout, no_wait, json_output):
     """
     Generate a data review for a session.
 
     Data reviews provide AI-generated insights comparing your session's data
     with the production baseline. This command triggers review generation and
-    waits for completion.
+    waits for completion, unless --no-wait is set.
 
     \b
     Prerequisites:
@@ -1794,6 +1799,9 @@ def review(session_id, session_name, org, project, regenerate, timeout, json_out
 
       # Custom timeout (10 minutes)
       recce-cloud review --session-name my-session --timeout 600
+
+      # Start a new review and exit without waiting
+      recce-cloud review --session-name my-session --regenerate --no-wait
     """
     console = Console()
 
@@ -1804,6 +1812,7 @@ def review(session_id, session_name, org, project, regenerate, timeout, json_out
             "has_session_id": session_id is not None,
             "has_session_name": session_name is not None,
             "regenerate": regenerate,
+            "no_wait": no_wait,
             "json_output": json_output,
         },
     )
@@ -1897,6 +1906,7 @@ def review(session_id, session_name, org, project, regenerate, timeout, json_out
         regenerate=regenerate,
         timeout=timeout,
         json_output=json_output,
+        wait=not no_wait,
     )
 
 
