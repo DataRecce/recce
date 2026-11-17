@@ -1157,6 +1157,28 @@ class DbtAdapter(BaseAdapter):
         return node_diff
 
     @staticmethod
+    def _has_compiled_code(manifest, node_id: str) -> bool:
+        manifest_node = manifest.nodes[node_id] if node_id in manifest.nodes else None
+        return bool(getattr(manifest_node, "compiled_code", None))
+
+    @staticmethod
+    def _should_recompute_cached(cached: Union[str, dict], manifest, node_id: str) -> bool:
+        # The per-node cache key has no environment, so base and current share one entry
+        # for an unchanged model. An all-unknown entry written by a side that had to render
+        # raw_code must not hide the result this side gets from compiled_code.
+        if not DbtAdapter._has_compiled_code(manifest, node_id):
+            return False
+        try:
+            data = json.loads(cached) if isinstance(cached, str) else cached
+        except ValueError:
+            return False
+        if data.get("from_compiled_code"):
+            return False
+        node = (data.get("nodes") or {}).get(node_id) or {}
+        columns = list((node.get("columns") or {}).values())
+        return bool(columns) and all(col.get("transformation_type") == "unknown" for col in columns)
+
+    @staticmethod
     def _make_node_content_key(
         checksum: str,
         parent_checksums: List[str],
@@ -1203,10 +1225,11 @@ class DbtAdapter(BaseAdapter):
         return nid
 
     @staticmethod
-    def _serialize_cll_data(cll_data: CllData) -> str:
+    def _serialize_cll_data(cll_data: CllData, from_compiled_code: bool = False) -> str:
         """Serialize a per-node CllData to JSON, excluding change analysis fields (change_status, change_category)."""
         return json.dumps(
             {
+                "from_compiled_code": from_compiled_code,
                 "nodes": {
                     nid: n.model_dump(exclude={"change_status", "change_category"}) for nid, n in cll_data.nodes.items()
                 },
@@ -1216,9 +1239,9 @@ class DbtAdapter(BaseAdapter):
         )
 
     @staticmethod
-    def _deserialize_cll_data(data_str: str) -> CllData:
+    def _deserialize_cll_data(data_str: Union[str, dict]) -> CllData:
         """Deserialize a per-node CllData from JSON."""
-        data = json.loads(data_str)
+        data = json.loads(data_str) if isinstance(data_str, str) else data_str
         return CllData(
             nodes={nid: CllNode(**n) for nid, n in data["nodes"].items()},
             columns={cid: CllColumn(**c) for cid, c in data["columns"].items()},
@@ -1288,8 +1311,12 @@ class DbtAdapter(BaseAdapter):
             cached_json = cache.get_node(node_id, content_key)
             if cached_json:
                 try:
-                    cll_data_one = self._deserialize_cll_data(cached_json)
-                    node_cache_hits += 1
+                    cached_data = json.loads(cached_json)
+                    if self._should_recompute_cached(cached_data, manifest, node_id):
+                        cached_json = None
+                    else:
+                        cll_data_one = self._deserialize_cll_data(cached_data)
+                        node_cache_hits += 1
                 except Exception as e:
                     logger.debug(
                         "[cll cache] corrupted entry for %s, recomputing: %s",
@@ -1312,7 +1339,10 @@ class DbtAdapter(BaseAdapter):
                 if cll_data_one is None:
                     continue
                 try:
-                    batch_to_store.append((node_id, content_key, self._serialize_cll_data(cll_data_one)))
+                    from_compiled_code = self._has_compiled_code(manifest, node_id)
+                    batch_to_store.append(
+                        (node_id, content_key, self._serialize_cll_data(cll_data_one, from_compiled_code))
+                    )
                 except Exception as e:
                     logger.debug("[cll cache] failed to serialize %s: %s", node_id, e)
 
