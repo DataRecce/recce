@@ -613,6 +613,7 @@ class DbtAdapter(BaseAdapter):
             Path(self.runtime_config.target_path),
             Path(self.runtime_config.project_root),
         )
+        self._use_manifest_project(curr_manifest, base_manifest)
 
         # set the file paths to watch
         self.artifacts_files = [
@@ -1145,9 +1146,8 @@ class DbtAdapter(BaseAdapter):
                         changed_columns_final[column_name] = changed_columns[column_name.lower()]
 
                 change.columns = changed_columns_final
-            except Exception:
-                # TODO: telemetry
-                pass
+            except Exception as e:
+                logger.warning("[change analysis] %s: category is unknown, %s", node_id, type(e).__name__)
 
         breaking_perf_tracker.end_lineage_diff()
         log_performance("change analysis per node", breaking_perf_tracker.to_dict())
@@ -2103,14 +2103,23 @@ class DbtAdapter(BaseAdapter):
             Path(self.runtime_config.project_root),
         )
         self.previous_state.manifest = previous_manifest
+        self._use_manifest_project(self.manifest)
 
-        # The dependencies of the review mode is derived from manifests.
-        # It is a workaround solution to use macro dispatch
-        # see: https://docs.getdbt.com/reference/dbt-jinja-functions/dispatch
-        dependencies = {}
-        for macro in self.manifest.macros.values():
-            if macro.package_name not in dependencies:
-                dependencies[macro.package_name] = self.runtime_config
+    def _use_manifest_project(self, *manifests):
+        # recce can run from a dbt project other than the one that built the manifest
+        # (for example, the Recce Cloud placeholder project). dbt makes only the root
+        # project's macros global, and adapter.dispatch() searches only packages listed
+        # in the dependencies. Take both from the manifest so its macros resolve.
+        manifests = [m for m in manifests if m is not None]
+        if not manifests:
+            return
+        project_name = getattr(manifests[0].metadata, "project_name", None)
+        if project_name:
+            self.runtime_config.project_name = project_name
+        dependencies = dict(self.runtime_config.dependencies or {})
+        for manifest in manifests:
+            for macro in manifest.macros.values():
+                dependencies.setdefault(macro.package_name, self.runtime_config)
         self.runtime_config.dependencies = dependencies
 
     def refresh(self, refresh_file_path: str = None):
@@ -2307,16 +2316,7 @@ class DbtAdapter(BaseAdapter):
             Path(self.runtime_config.project_root),
         )
         self.previous_state.manifest = as_manifest(self.base_manifest)
-
-        # The dependencies of the review mode is derived from manifests.
-        # It is a workaround solution to use macro dispatch
-        # see: https://docs.getdbt.com/reference/dbt-jinja-functions/dispatch
-        dependencies = {}
-        for macro in self.manifest.macros.values():
-            if macro.package_name not in dependencies:
-                dependencies[macro.package_name] = self.runtime_config
-
-        self.runtime_config.dependencies = dependencies
+        self._use_manifest_project(self.manifest)
 
         if not self.curr_manifest or not self.base_manifest:
             raise Exception(
