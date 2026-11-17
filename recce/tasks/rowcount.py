@@ -352,11 +352,15 @@ class RowCountDiffTask(Task, QueryMixin):
 
         sqlmesh_adapter = default_context().adapter
 
-        # Only names that exist in the SQLMesh graph may reach SQL text.
+        # Only names that exist in the SQLMesh graph may reach SQL text. Lineage node ids
+        # come from each environment's snapshots (SqlmeshAdapter.get_lineage), so a model
+        # removed or renamed in this change exists only in base_env, not context.models.
         known = set()
         for model_id, model in sqlmesh_adapter.context.models.items():
             known.add(model_id)
             known.add(model.name)
+        for env in (sqlmesh_adapter.base_env, sqlmesh_adapter.curr_env):
+            known.update(snapshot.name for snapshot in env.snapshots)
         for name in query_candidates:
             if name not in known:
                 raise RecceException(f"Model '{name}' does not exist in the SQLMesh project")
