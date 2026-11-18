@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from recce.exceptions import RecceException
 from recce.tasks import ValueDiffDetailTask, ValueDiffTask
 from recce.tasks.valuediff import ValueDiffMixin
 
@@ -522,13 +523,12 @@ class TestBuildColumnCaseLookup:
         assert lookup["customer_lifetime_value"] == "CUSTOMER_LIFETIME_VALUE"
 
     def test_gracefully_handles_get_columns_failure(self):
-        """A failing get_columns() call returns an empty lookup (pass-through behaviour)."""
+        """DRC-5336: a failing get_columns() must fail closed, not degrade to a pass-through lookup."""
         dbt_adapter = MagicMock()
         dbt_adapter.get_columns.side_effect = Exception("relation not found")
 
-        lookup = ValueDiffMixin._build_column_case_lookup(dbt_adapter, "missing_model")
-
-        assert lookup == {}
+        with pytest.raises(Exception, match="relation not found"):
+            ValueDiffMixin._build_column_case_lookup(dbt_adapter, "missing_model")
 
     def test_normalise_identifier_maps_lowercase_to_physical(self):
         mixin = ValueDiffTask.__new__(ValueDiffTask)
@@ -537,12 +537,13 @@ class TestBuildColumnCaseLookup:
         assert mixin._normalise_identifier("customer_id", lookup) == "CUSTOMER_ID"
         assert mixin._normalise_identifier("CUSTOMER_ID", lookup) == "CUSTOMER_ID"
 
-    def test_normalise_identifier_passthrough_for_unknown(self):
-        """Identifiers not in the catalog are returned unchanged."""
+    def test_normalise_identifier_rejects_unknown(self):
+        """DRC-5336: identifiers not in the catalog are rejected, not passed through."""
         mixin = ValueDiffTask.__new__(ValueDiffTask)
         lookup = {"customer_id": "CUSTOMER_ID"}
 
-        assert mixin._normalise_identifier("unknown_col", lookup) == "unknown_col"
+        with pytest.raises(RecceException, match="does not exist"):
+            mixin._normalise_identifier("unknown_col", lookup)
 
 
 def test_value_diff_snowflake_uppercase_columns(dbt_test_helper):
