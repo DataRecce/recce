@@ -578,6 +578,52 @@ class TestGenerateDataReview(unittest.TestCase):
 
         self.assertEqual(result.status, ReviewStatus.TIMEOUT)
         self.assertIn("timed out", result.error_message)
+        self.assertIsNotNone(result.review_url)
+
+    @patch("recce_cloud.review.poll_task_status")
+    def test_generate_data_review_no_wait(self, mock_poll):
+        """Test that wait=False returns after the task starts, without polling."""
+        mock_client = MagicMock(spec=RecceCloudClient)
+        mock_client.get_running_task.return_value = None
+        mock_client.generate_data_review.return_value = {"task_id": "task-123"}
+
+        result = generate_data_review(
+            self.console,
+            mock_client,
+            self.org_id,
+            self.project_id,
+            self.session,
+            regenerate=True,
+            json_output=True,
+            wait=False,
+        )
+
+        self.assertEqual(result.status, ReviewStatus.TRIGGERED)
+        self.assertEqual(result.task_id, "task-123")
+        self.assertIsNotNone(result.review_url)
+        mock_poll.assert_not_called()
+
+    @patch("recce_cloud.review.poll_task_status")
+    def test_generate_data_review_no_wait_running_task(self, mock_poll):
+        """Test that wait=False returns the running task without starting a new one."""
+        mock_client = MagicMock(spec=RecceCloudClient)
+        mock_client.get_running_task.return_value = {"task_id": "task-running"}
+
+        result = generate_data_review(
+            self.console,
+            mock_client,
+            self.org_id,
+            self.project_id,
+            self.session,
+            regenerate=True,
+            json_output=True,
+            wait=False,
+        )
+
+        self.assertEqual(result.status, ReviewStatus.TRIGGERED)
+        self.assertEqual(result.task_id, "task-running")
+        mock_client.generate_data_review.assert_not_called()
+        mock_poll.assert_not_called()
 
     def test_generate_data_review_trigger_failure(self):
         """Test when triggering review generation fails."""
@@ -652,6 +698,7 @@ class TestReviewStatus(unittest.TestCase):
         # CLI-specific states
         self.assertEqual(ReviewStatus.ALREADY_EXISTS.value, "ALREADY_EXISTS")
         self.assertEqual(ReviewStatus.TIMEOUT.value, "TIMEOUT")
+        self.assertEqual(ReviewStatus.TRIGGERED.value, "TRIGGERED")
         # In-progress states
         self.assertEqual(ReviewStatus.QUEUED.value, "QUEUED")
         self.assertEqual(ReviewStatus.SCHEDULED.value, "SCHEDULED")

@@ -8,7 +8,7 @@ from decimal import ROUND_CEILING, ROUND_FLOOR, Decimal, localcontext
 from typing import Optional
 
 from dateutil.relativedelta import relativedelta
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from recce.adapter.histogram_bucketing import select_histogram_bucketing
 from recce.core import default_context
@@ -16,6 +16,11 @@ from recce.event import log_performance
 from recce.models import Check
 from recce.tasks import Task
 from recce.tasks.core import CheckValidator, TaskResultDiffer
+from recce.tasks.identifiers import (
+    quote_identifier,
+    resolve_verified_column,
+    resolve_verified_model,
+)
 from recce.tasks.query import QueryMixin
 
 logger = logging.getLogger("uvicorn")
@@ -375,7 +380,7 @@ class HistogramDiffParams(BaseModel):
     model: str
     column_name: str
     column_type: str
-    num_bins: Optional[int] = 50
+    num_bins: Optional[int] = Field(50, ge=1, le=500)
 
 
 def _validate_histogram_column_type(column_type: str) -> None:
@@ -527,6 +532,22 @@ def query_numeric_histogram(
     return base_result, curr_result, bin_edges, labels
 
 
+def _render_date_trunc(unit, quoted_column):
+    """Resolve the adapter's ``date_trunc`` macro in Python.
+
+    The template is a constant; the (already verified and quoted) column enters only as a
+    context value. The resulting plain SQL fragment can then be embedded in the query that
+    runs under ``safe_template=True``, which does not allow macro calls.
+    """
+    if unit not in ("year", "month", "day"):
+        raise ValueError(f"Unsupported date_trunc unit: {unit}")
+    dbt_adapter = default_context().adapter
+    return dbt_adapter.generate_sql(
+        "{{ date_trunc(unit, column) }}",
+        context=dict(unit=unit, column=quoted_column),
+    ).strip()
+
+
 def query_datetime_histogram(task, node, column, min_value, max_value):
     def bounded_edges(start, terminal, interval):
         # Each branch limits its bucket count before reaching this helper
@@ -541,8 +562,16 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
             edges.append(min(next_edge, terminal))
         return edges
 
+    # TIMESTAMP columns return datetime; the edge arithmetic below is date based.
+    if isinstance(min_value, datetime):
+        min_value = min_value.date()
+    if isinstance(max_value, datetime):
+        max_value = max_value.date()
+
+    def trunc(unit):
+        return _render_date_trunc(unit, column)
+
     days_delta = (max_value - min_value).days
-    print(max_value, min_value, days_delta)
     # _type = None
     if days_delta > 365 * 4:
         _type = "yearly"
@@ -557,7 +586,7 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
         num_buckets = len(bin_edges) - 1
         sql = f"""
         SELECT
-            {{{{ date_trunc("year", "{column}") }}}} as year,
+            {trunc('year')} as year,
             COUNT(*) AS counts
         FROM {{{{ ref("{node}") }}}}
         WHERE {column} IS NOT NULL
@@ -576,7 +605,7 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
         num_buckets = len(bin_edges) - 1
         sql = f"""
         SELECT
-            {{{{ date_trunc("month", "{column}") }}}} as month,
+            {trunc('month')} as month,
             COUNT(*) AS counts
         FROM {{{{ ref("{node}") }}}}
         WHERE {column} IS NOT NULL
@@ -599,7 +628,7 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
         num_buckets = len(bin_edges) - 1
         sql = f"""
         SELECT
-            {{{{ date_trunc("day", "{column}") }}}} as day,
+            {trunc('day')} as day,
             COUNT(*) AS counts
         FROM {{{{ ref("{node}") }}}}
         WHERE {column} IS NOT NULL
@@ -660,9 +689,7 @@ class HistogramDiffTask(Task, QueryMixin):
 
         dbt_adapter: DbtAdapter = default_context().adapter
         adapter_type = dbt_adapter.adapter.type()
-        node = self.params.model
-        column = self.params.column_name
-        num_bins = self.params.num_bins or 50
+        num_bins = int(self.params.num_bins or 50)
         column_type = self.params.column_type
 
         _validate_histogram_column_type(column_type)
@@ -670,6 +697,9 @@ class HistogramDiffTask(Task, QueryMixin):
 
         with dbt_adapter.connection_named("query"):
             self.connection = dbt_adapter.get_thread_connection()
+            node = resolve_verified_model(dbt_adapter, self.params.model, bases=(True, False))
+            column_name = resolve_verified_column(dbt_adapter, node, self.params.column_name)
+            column = quote_identifier(dbt_adapter, column_name)
             min_max_sql = f"""
                 SELECT
                     MIN({column}) as min,
@@ -718,7 +748,7 @@ class HistogramDiffTask(Task, QueryMixin):
                     base_column_type, current_column_type = _get_physical_histogram_column_types(
                         dbt_adapter,
                         node,
-                        column,
+                        column_name,
                     )
                 base_result, current_result, bin_edges, labels = query_numeric_histogram(
                     self,
