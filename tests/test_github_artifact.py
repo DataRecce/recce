@@ -1,6 +1,7 @@
 import io
 import os
 import stat
+import tempfile
 import warnings
 import zipfile
 from pathlib import Path
@@ -18,6 +19,21 @@ FILE_ATTR = (stat.S_IFREG | 0o644) << 16
 DIR_ATTR = ((stat.S_IFDIR | 0o755) << 16) | 0x10
 REJECTED = (ValueError, OSError)
 CORRUPTED = (ValueError, OSError, zipfile.BadZipFile)
+
+
+@pytest.fixture(autouse=True)
+def offline_artifact_tests(monkeypatch):
+    from recce import event
+
+    monkeypatch.setattr(event, "init", lambda: None)
+    monkeypatch.setattr(event, "should_log_event", lambda: False)
+    monkeypatch.setattr(event, "flush_events", lambda: None)
+    monkeypatch.setattr(event, "log_codespaces_events", lambda command: None)
+
+    def blocked(*args, **kwargs):
+        raise AssertionError("Artifact tests must remain offline")
+
+    monkeypatch.setattr(requests.sessions.Session, "send", blocked)
 
 
 def make_zip(entries):
@@ -558,4 +574,184 @@ def test_ci_artifact_command_requires_worktree(workspace, serve):
     assert result.exit_code == 1
     assert "worktree" in result.output
     github_module.requests.get.assert_not_called()
+    assert snapshot(workspace.root) == {}
+
+
+@pytest.mark.parametrize("cached", [True, False], ids=["cached-tempdir", "uncached-TMPDIR"])
+def test_invalid_input_causes_no_worktree_writes(workspace, serve, monkeypatch, cached):
+    local_temp = workspace.root / "tmp"
+    local_temp.mkdir()
+    monkeypatch.setenv("TMPDIR", str(local_temp))
+    monkeypatch.setattr(tempfile, "tempdir", str(local_temp) if cached else None)
+    artifact = serve(make_zip([("./manifest.json", b"{}")]))
+    writes = []
+    mkdir, open_fd = os.mkdir, os.open
+
+    def record(path):
+        path = Path(path).resolve()
+        if path.is_relative_to(workspace.root):
+            writes.append(str(path.relative_to(workspace.root)))
+
+    def observe_mkdir(path, *args, **kwargs):
+        result = mkdir(path, *args, **kwargs)
+        record(path)
+        return result
+
+    def observe_open(path, flags, *args, **kwargs):
+        fd = open_fd(path, flags, *args, **kwargs)
+        if flags & (os.O_CREAT | os.O_WRONLY | os.O_RDWR):
+            record(path)
+        return fd
+
+    monkeypatch.setattr(os, "mkdir", observe_mkdir)
+    monkeypatch.setattr(os, "open", observe_open)
+    with pytest.raises(ValueError):
+        download_artifact("token", artifact, worktree_root=str(workspace.root))
+    assert list(local_temp.iterdir()) == []
+    assert not writes, f"worktree writes before rejection: {writes}"
+
+
+def test_download_requires_temporary_parent_outside_worktree(workspace, serve, monkeypatch):
+    artifact = serve(make_zip([("manifest.json", b"{}")]))
+    monkeypatch.setattr(tempfile, "tempdir", str(workspace.root))
+    monkeypatch.setattr(tempfile, "_candidate_tempdir_list", lambda: [str(workspace.root)])
+    with patch.object(os, "mkdir", wraps=os.mkdir) as mkdir, patch.object(os, "open", wraps=os.open) as open_fd:
+        with pytest.raises(OSError, match="temporary directory outside"):
+            download_artifact("token", artifact)
+    mkdir.assert_not_called()
+    open_fd.assert_not_called()
+    github_module.requests.get.assert_not_called()
+
+
+def test_invalid_archive_never_creates_worktree_staging(workspace, serve):
+    artifact = serve(make_zip([("./manifest.json", b"{}")]))
+    with patch.object(os, "mkdir", wraps=os.mkdir) as mkdir, patch.object(os, "open", wraps=os.open) as open_fd:
+        with pytest.raises(ValueError):
+            download_artifact("token", artifact)
+    writes = [call.args[0] for call in mkdir.call_args_list + open_fd.call_args_list]
+    assert not [path for path in writes if Path(path).resolve().is_relative_to(workspace.root)]
+    assert snapshot(workspace.root) == {}
+
+
+@pytest.mark.parametrize(
+    "entries",
+    [
+        [("target-base/manifest.json", b"{}"), ("target-base/catalog.json", b"[]")],
+        [("target/manifest.json", b"{}"), ("target/catalog.json", b"[]"), ("recce_state.json", b'{"state":1}')],
+        [("target-base/", b""), ("target-base/manifest.json", b"{}"), ("recce_state.json", b'{"state":1}')],
+    ],
+    ids=["baseline-wrapper", "wrapped-dbt-and-root-state", "baseline-directory-and-root-state"],
+)
+def test_download_accepts_supported_layouts(workspace, serve, entries):
+    output, names = download_artifact("token", serve(make_zip(entries)), worktree_root=str(workspace.root))
+    output = Path(output)
+    assert output.parent == workspace.root
+    assert set(workspace.root.iterdir()) == {output}
+    expected = {Path(name).name: content for name, content in entries if not name.endswith("/")}
+    assert set(names) == set(expected)
+    assert {path.name: path.read_bytes() for path in output.iterdir()} == expected
+
+
+@pytest.mark.parametrize("prefix", ["target/", "target-base/"])
+def test_rejects_flat_output_collision_before_extraction(workspace, serve, prefix):
+    artifact = serve(make_zip([(prefix + "recce_state.json", b"first"), ("recce_state.json", b"second")]))
+    with patch.object(github_module, "_extract_zip", wraps=github_module._extract_zip) as extract:
+        with pytest.raises(ValueError, match="Duplicate destination"):
+            download_artifact("token", artifact)
+    extract.assert_not_called()
+    assert snapshot(workspace.root) == {}
+
+
+def test_declared_byte_limit_rejected_before_opening_member(workspace, serve, monkeypatch):
+    artifact = serve(make_zip([("manifest.json", b"123"), ("catalog.json", b"456")]))
+    monkeypatch.setattr(github_module, "MAX_ARCHIVE_BYTES", 5)
+    with patch.object(
+        zipfile.ZipFile, "open", side_effect=AssertionError("Member opened before size preflight")
+    ) as member:
+        with pytest.raises(ValueError, match="uncompressed byte limit"):
+            download_artifact("token", artifact)
+    member.assert_not_called()
+    assert snapshot(workspace.root) == {}
+
+
+def test_download_counts_cumulative_http_chunks(workspace, serve, monkeypatch):
+    content = make_zip([("manifest.json", b"{}")])
+    artifact = serve(content)
+    response = github_module.requests.get.return_value.__enter__.return_value
+    response.iter_content.side_effect = lambda chunk_size: iter([content[:20], b"", content[20:]])
+    monkeypatch.setattr(github_module, "MAX_DOWNLOAD_BYTES", len(content))
+    download_artifact("token", artifact)
+    before = snapshot(workspace.root)
+    monkeypatch.setattr(github_module, "MAX_DOWNLOAD_BYTES", len(content) - 1)
+    with patch.object(github_module.zipfile, "ZipFile", wraps=zipfile.ZipFile) as open_zip:
+        with pytest.raises(ValueError, match="compressed byte limit"):
+            download_artifact("token", artifact)
+        open_zip.assert_not_called()
+    assert snapshot(workspace.root) == before
+
+
+@pytest.mark.parametrize(
+    "directory,payload,filename",
+    [
+        ("unexpected/", b"", "recce_state.json"),
+        ("target/deep/", b"", "target/manifest.json"),
+        ("target/", b"hidden payload", "target/manifest.json"),
+    ],
+    ids=["unexpected-wrapper", "nested-directory", "directory-payload"],
+)
+def test_rejects_invalid_directory_entries(workspace, serve, directory, payload, filename):
+    artifact = serve(make_zip([(directory, payload), (filename, b"{}")]))
+    with pytest.raises(ValueError, match="Disallowed directory"):
+        download_artifact("token", artifact)
+    assert snapshot(workspace.root) == {}
+
+
+@pytest.mark.parametrize("anchor", ["missing", "file"])
+def test_rejects_invalid_output_anchor_before_download(workspace, serve, anchor):
+    root = workspace.root / anchor
+    if anchor == "file":
+        root.write_bytes(b"keep")
+    artifact = serve(make_zip([("manifest.json", b"{}")]))
+    before = snapshot(workspace.root)
+    with patch.object(os, "mkdir", wraps=os.mkdir) as mkdir, patch.object(os, "open", wraps=os.open) as open_fd:
+        with pytest.raises(ValueError, match="existing worktree directory"):
+            download_artifact("token", artifact, worktree_root=str(root))
+    mkdir.assert_not_called()
+    open_fd.assert_not_called()
+    github_module.requests.get.assert_not_called()
+    assert snapshot(workspace.root) == before
+
+
+def test_rejects_existing_output_collision(workspace, serve, monkeypatch):
+    monkeypatch.setattr(github_module.uuid, "uuid4", lambda: SimpleNamespace(hex="collision"))
+    output = workspace.root / ".recce-github-artifact-collision"
+    output.mkdir()
+    before = snapshot(workspace.root)
+    artifact = serve(make_zip([("manifest.json", b"{}")]))
+    with pytest.raises(FileExistsError, match="Artifact output directory already exists"):
+        download_artifact("token", artifact)
+    assert snapshot(workspace.root) == before
+
+
+def test_ci_artifact_command_renders_literal_artifact_name(workspace, serve):
+    extra = SimpleNamespace(name="[bold]artifact[/bold]", archive_download_url="https://example.invalid/other.zip")
+    result = _invoke_ci_artifact(serve, make_zip([("manifest.json", b"{}")]), extra_artifacts=[extra])
+    assert result.exit_code == 0, result.output
+    assert "Artifact: [bold]artifact[/bold]" in result.output
+
+
+def test_ci_artifact_command_rejects_http_status_failure(workspace, serve):
+    def status_serve(content):
+        artifact = serve(content)
+        response = github_module.requests.get.return_value.__enter__.return_value
+        response.raise_for_status.side_effect = requests.HTTPError("https://example.invalid/private-download")
+        return artifact
+
+    result = _invoke_ci_artifact(status_serve, make_zip([("manifest.json", b"{}")]))
+    assert result.exit_code == 1, result.output
+    assert "HTTP download failed" in result.output
+    assert "https://example.invalid" not in result.output
+    response = github_module.requests.get.return_value.__enter__.return_value
+    response.iter_content.assert_not_called()
+    response.__exit__.assert_called_once()
     assert snapshot(workspace.root) == {}
