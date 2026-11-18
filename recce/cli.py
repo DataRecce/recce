@@ -276,7 +276,7 @@ def _execute_sql(context, sql_template, base=False):
 
     dbt_adapter: DbtAdapter = context.adapter
     with dbt_adapter.connection_named("recce"):
-        sql = dbt_adapter.generate_sql(sql_template, base)
+        sql = dbt_adapter.generate_sql(sql_template, base, safe_template=True)
         response, result = dbt_adapter.execute(sql, fetch=True, auto_begin=True)
         table = result
         df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
