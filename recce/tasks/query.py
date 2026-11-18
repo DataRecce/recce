@@ -127,7 +127,7 @@ class QueryTask(Task, QueryMixin):
 
         sqlmesh_adapter: SqlmeshAdapter = default_context().adapter
 
-        sql = self.params.get("sql_template")
+        sql = self.params.sql_template
         limit = QUERY_LIMIT
         df, more = sqlmesh_adapter.fetchdf_with_limit(sql, base=self.is_base, limit=limit)
         result = DataFrame.from_pandas(df, limit=limit, more=more)

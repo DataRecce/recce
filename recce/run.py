@@ -19,6 +19,10 @@ from recce.apis.run_func import submit_run
 from recce.artifact_health import classify_schema_coverage
 from recce.config import RecceConfig
 from recce.core import default_context
+from recce.exceptions import (
+    DUCKDB_RUN_EXTERNAL_ACCESS_MESSAGE,
+    DuckDBExternalAccessBlocked,
+)
 from recce.models import CheckDAO
 from recce.models.types import RunType
 from recce.summary import generate_markdown_summary
@@ -202,27 +206,32 @@ async def execute_preset_checks(preset_checks: List, is_skip_query: bool) -> Tup
             )
         except Exception as e:
             rc = 1
+            reason = (
+                DUCKDB_RUN_EXTERNAL_ACCESS_MESSAGE
+                if isinstance(e, DuckDBExternalAccessBlocked)
+                else (run.error if run is not None else str(e))
+            )
             if run is None:
-                table.add_row("[[red]Error[/red]]", check_name, check_type.replace("_", " ").title(), "N/A", str(e))
+                table.add_row("[[red]Error[/red]]", check_name, check_type.replace("_", " ").title(), "N/A", reason)
                 failed_checks.append(
                     {
                         "check_name": check_name,
                         "check_type": check_type,
                         "check_description": check_description,
                         "failed_type": "error",
-                        "failed_reason": str(e),
+                        "failed_reason": reason,
                     }
                 )
             else:
                 create_check_from_run(run.run_id, check_name, check_description, check_options, is_preset=True)
-                table.add_row("[[red]Failed[/red]]", check_name, check_type.replace("_", " ").title(), "N/A", run.error)
+                table.add_row("[[red]Failed[/red]]", check_name, check_type.replace("_", " ").title(), "N/A", reason)
                 failed_checks.append(
                     {
                         "check_name": check_name,
                         "check_type": check_type,
                         "check_description": "N/A",
                         "failed_type": "failed",
-                        "failed_reason": run.error,
+                        "failed_reason": reason,
                     }
                 )
 
@@ -276,26 +285,31 @@ async def execute_state_checks(checks: List, is_skip_query: bool) -> Tuple[int, 
             )
         except Exception as e:
             rc = 1
+            reason = (
+                DUCKDB_RUN_EXTERNAL_ACCESS_MESSAGE
+                if isinstance(e, DuckDBExternalAccessBlocked)
+                else (run.error if run is not None else str(e))
+            )
             if run is None:
-                table.add_row("[[red]Error[/red]]", check_name, check_type.replace("_", " ").title(), "N/A", str(e))
+                table.add_row("[[red]Error[/red]]", check_name, check_type.replace("_", " ").title(), "N/A", reason)
                 failed_checks.append(
                     {
                         "check_name": check_name,
                         "check_type": check_type,
                         "check_description": check_description,
                         "failed_type": "error",
-                        "failed_reason": str(e),
+                        "failed_reason": reason,
                     }
                 )
             else:
-                table.add_row("[[red]Failed[/red]]", check_name, check_type.replace("_", " ").title(), "N/A", run.error)
+                table.add_row("[[red]Failed[/red]]", check_name, check_type.replace("_", " ").title(), "N/A", reason)
                 failed_checks.append(
                     {
                         "check_name": check_name,
                         "check_type": check_type,
                         "check_description": "N/A",
                         "failed_type": "failed",
-                        "failed_reason": run.error,
+                        "failed_reason": reason,
                     }
                 )
 

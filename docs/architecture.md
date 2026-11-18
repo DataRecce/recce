@@ -33,6 +33,16 @@ DbtAdapter also provides:
 
 Adapters are loaded dynamically based on CLI flags (`--sqlmesh`).
 
+DuckDB external access is disabled by default for `recce run`, `recce server`,
+and `recce mcp-server`. dbt injects the shared external-access setting into
+credentials so each new cursor is restricted. SQLMesh guards its actual query
+engine when its dialect is DuckDB, verifies the sandbox on each execution
+cursor, and locks the configuration. SQLMesh accepts only a single read-only
+query, including for query-diff ASTs; dbt node selectors are unsupported.
+`recce run --duckdb-external-access` opts trusted checks into external I/O;
+YAML cannot enable it for `run`. See the [migration notes](release-notes.md)
+for compatibility details and SQLMesh's temporary disk spilling restriction.
+
 ### In-Memory State with Persistence
 
 - `RecceContext` holds runtime state (runs, checks, adapter)
