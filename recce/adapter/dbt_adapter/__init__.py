@@ -176,6 +176,13 @@ def silence_no_nodes_warning():
 logger = logging.getLogger("uvicorn")
 MIN_DBT_NODE_COMPOSITION = 3
 
+# Trusted no-op stand-ins for the dbt context members imported raw_code most often
+# calls, so sandboxed rendering (DRC-5335) does not reject ordinary models.
+_IMPORTED_NODE_NOOP_CONTEXT = {
+    "config": lambda *args, **kwargs: "",
+    "is_incremental": lambda: False,
+}
+
 
 class ArtifactsEventHandler(FileSystemEventHandler):
     def __init__(self, watch_files: List[str], callback: Callable = None):
@@ -734,7 +741,9 @@ class DbtAdapter(BaseAdapter):
             # Validate before dbt parses the template. Ad-hoc SQL needs only
             # relation lookup and project vars, never dbt's execution macros.
             safe_env = SandboxedEnvironment(extensions=["jinja2.ext.do"])
-            allowed_calls = {"ref", "source", "var"}
+            # Callables supplied by Recce itself in ``context`` (e.g. the CLL ref/source
+            # resolvers) are trusted and may be called too; they override dbt's.
+            allowed_calls = {"ref", "source", "var"} | {name for name, value in context.items() if callable(value)}
             for call in safe_env.parse(sql_template).find_all(nodes.Call):
                 if not isinstance(call.node, nodes.Name) or call.node.name not in allowed_calls:
                     raise RecceException("Only ref(), source(), and var() calls are allowed in query templates")
@@ -758,7 +767,8 @@ class DbtAdapter(BaseAdapter):
                 )
                 for name in ("ref", "source", "var")
             }
-            allowed_functions = tuple(safe_context.values())
+            safe_context.update(context)
+            allowed_functions = tuple(value for value in safe_context.values() if callable(value))
             safe_env.is_safe_callable = lambda value: any(value is fn for fn in allowed_functions)
             return safe_env.from_string(sql_template).render(safe_context)
         if dbt_version < dbt_version.parse("v1.8"):
@@ -781,6 +791,21 @@ class DbtAdapter(BaseAdapter):
             jinja_ctx.update(context)
             compiled_code = jinja.get_rendered(sql_template, jinja_ctx, node)
             return compiled_code
+
+    def _generate_node_sql(self, raw_code: str, base: bool, context: Dict) -> str:
+        """Render a manifest node's ``raw_code`` for lineage/change analysis.
+
+        Imported artifacts are untrusted (DRC-5335): their ``raw_code`` renders in the
+        ``safe_template`` sandbox, which only allows ref()/source()/var() plus the
+        caller's own resolvers, so it can never reach env_var(), run_query(),
+        adapter.* or any other dbt context member. config() and is_incremental() are
+        no-ops there (they render to "" and False at runtime anyway). A template that
+        needs anything else raises RecceException and the caller degrades to "unknown".
+        """
+        if not self._artifacts_imported:
+            return self.generate_sql(raw_code, base=base, context=context)
+        sandbox_context = {**_IMPORTED_NODE_NOOP_CONTEXT, **context}
+        return self.generate_sql(raw_code, base=base, context=sandbox_context, safe_template=True)
 
     def execute(
         self,
@@ -1111,12 +1136,12 @@ class DbtAdapter(BaseAdapter):
                         schema[name] = {name: column.get("type") for name, column in columns.items()}
                     return schema
 
-                base_sql = self.generate_sql(
+                base_sql = self._generate_node_sql(
                     base_node.get("raw_code"),
                     base=True,
                     context=jinja_context,
                 )
-                curr_sql = self.generate_sql(
+                curr_sql = self._generate_node_sql(
                     curr_node.get("raw_code"),
                     base=False,
                     context=jinja_context,
@@ -1906,7 +1931,7 @@ class DbtAdapter(BaseAdapter):
             if pre_compiled:
                 compiled_sql = pre_compiled
             else:
-                compiled_sql = self.generate_sql(raw_code, base=base, context=jinja_context)
+                compiled_sql = self._generate_node_sql(raw_code, base=base, context=jinja_context)
             dialect = self.adapter.type()
             if self.get_manifest(base).metadata.adapter_type is not None:
                 dialect = self.get_manifest(base).metadata.adapter_type
