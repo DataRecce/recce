@@ -39,10 +39,13 @@ to the Git worktree root.
 Each ZIP must contain at least one of these exact lowercase filenames:
 `manifest.json`, `catalog.json`, `run_results.json`, `sources.json`,
 `semantic_manifest.json`, or `recce_state.json`. Files must either all be at the
-archive root or all directly below `target/`; an empty `target/` directory entry is
-optional. Mixed layouts and other directories or filenames are rejected. This
-includes `.git` in any case, Windows `git~1` aliases, dotfiles, YAML configuration,
-and unexpected extensions. Existing traversal, symlink, special-file, duplicate
+archive root or all directly below one wrapper, `target/` or `target-base/`; an
+empty entry for that wrapper directory is optional. A root `recce_state.json` may
+accompany wrapped files. Every final basename must be unique, including the state
+file: wrapped and root state files cannot both be present. Other mixed layouts,
+directories, and filenames are rejected. This includes `.git` in any case,
+Windows `git~1` aliases, dotfiles, YAML configuration, and unexpected extensions.
+Existing traversal, symlink, special-file, duplicate
 path, encryption, and CRC checks also apply.
 
 Limits apply to each artifact: 128 MiB of downloaded ZIP bytes, 512 MiB of cumulative
@@ -51,9 +54,11 @@ accepted. Both declared sizes and actual decompressed bytes are checked. HTTP
 requests stream with a 5-second connect timeout and a 30-second read timeout; the
 read timeout measures inactivity rather than total transfer time.
 
-Validation and CRC checks happen in a private system temporary directory. Only a
-fully validated archive is published, with its files flattened into a fresh
-`.recce-github-artifact-<unique>` subdirectory under the Git worktree root. The
+Validation and CRC checks happen in a private temporary directory outside the
+resolved worktree, even when `TMPDIR` or Python's cached temporary directory points
+inside it. The command fails before creating files if no suitable outside parent
+is available. Only a fully validated archive is published, with its files flattened
+into a fresh `.recce-github-artifact-<unique>` subdirectory under the Git worktree root. The
 command prints that absolute directory and its filenames for each artifact. It
 does not replace the project's `target/`, configuration, Git metadata, or earlier
 downloads. A failed archive leaves no partial output; successful earlier artifacts

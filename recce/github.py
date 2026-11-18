@@ -43,9 +43,11 @@ def _bounded_archive_members(archive: zipfile.ZipFile) -> List[zipfile.ZipInfo]:
 
 
 def _artifact_file_parts(archive: zipfile.ZipFile) -> List[Tuple[str, ...]]:
-    """Allow only flat dbt/Recce JSON files or one target/ wrapper, never metadata paths."""
+    """Allow flat JSON or one dbt wrapper with optional root state, never metadata paths."""
     files = []
     layouts = set()
+    destinations = set()
+    wrappers = ("target", "target-base")
     for info in _bounded_archive_members(archive):
         name = info.orig_filename
         parts = _archive_path_parts(name)
@@ -53,18 +55,23 @@ def _artifact_file_parts(archive: zipfile.ZipFile) -> List[Tuple[str, ...]]:
         if any(part.startswith(".") or part.casefold() == "git~1" for part in parts):
             raise ValueError(f"Disallowed path in artifact archive: {name!r}")
         if is_dir:
-            if parts != ("target",) or info.file_size:
+            if len(parts) != 1 or parts[0] not in wrappers or info.file_size:
                 raise ValueError(f"Disallowed directory in artifact archive: {name!r}")
-            layouts.add("target")
+            layouts.add(parts[0])
         else:
             if parts[-1] not in _ALLOWED_ARTIFACT_FILENAMES or not (
-                len(parts) == 1 or (len(parts) == 2 and parts[0] == "target")
+                len(parts) == 1 or (len(parts) == 2 and parts[0] in wrappers)
             ):
                 raise ValueError(f"Disallowed filename or layout in artifact archive: {name!r}")
-            layouts.add("target" if len(parts) == 2 else "flat")
+            if parts != ("recce_state.json",):
+                layouts.add(parts[0] if len(parts) == 2 else "flat")
+            key = _destination_key((parts[-1],))
+            if key in destinations:
+                raise ValueError(f"Duplicate destination in artifact archive: {name!r}")
+            destinations.add(key)
             files.append(parts)
-    if not files or len(layouts) != 1:
-        raise ValueError("Artifact archive must contain JSON files in one flat or target/ layout")
+    if not files or len(layouts) > 1:
+        raise ValueError("Artifact archive must contain JSON files in one flat, target/, or target-base/ layout")
     return files
 
 
@@ -202,6 +209,17 @@ def _extract_zip(archive: zipfile.ZipFile, root: str) -> None:
                 os.replace(os.path.join(staging, str(index)), destination)
 
 
+def _artifact_temporary_parent(root: str) -> str:
+    # gettempdir() probes candidates by writing, and its cached value may be inside
+    # the worktree. Inspect and resolve candidates before allowing any such writes.
+    candidates = ([tempfile.tempdir] if tempfile.tempdir is not None else []) + tempfile._candidate_tempdir_list()
+    for candidate in candidates:
+        parent = os.path.realpath(os.fsdecode(candidate))
+        if not _is_within(root, parent) and os.path.isdir(parent) and os.access(parent, os.W_OK | os.X_OK):
+            return parent
+    raise OSError("No suitable temporary directory outside the worktree")
+
+
 def download_artifact(
     github_token: str, artifact: Artifact, *, worktree_root: Optional[str] = None
 ) -> Tuple[str, List[str]]:
@@ -213,11 +231,12 @@ def download_artifact(
     root = os.path.realpath(worktree_root if worktree_root is not None else os.getcwd())
     if not os.path.isdir(root):
         raise ValueError("Artifact output anchor must be an existing worktree directory")
+    temporary_parent = _artifact_temporary_parent(root)
     headers = {
         "Authorization": f"Bearer {github_token}",
     }
-    with tempfile.TemporaryDirectory(prefix="recce-artifact-validated-") as validated:
-        with tempfile.TemporaryFile() as downloaded:
+    with tempfile.TemporaryDirectory(prefix="recce-artifact-validated-", dir=temporary_parent) as validated:
+        with tempfile.TemporaryFile(dir=temporary_parent) as downloaded:
             with requests.get(
                 artifact.archive_download_url, headers=headers, stream=True, timeout=ARTIFACT_DOWNLOAD_TIMEOUT
             ) as response:
