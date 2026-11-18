@@ -2448,7 +2448,13 @@ def github(**kwargs):
 
 @github.command(
     cls=TrackCommand,
-    short_help="Download the artifacts from the GitHub repository based on the current Pull Request.",
+    short_help="Download CI artifacts into isolated directories.",
+    help=(
+        "Download artifacts from the current branch's first successful pull request workflow run. "
+        "Each archive is validated and extracted into a fresh isolated directory under the Git worktree. "
+        "The absolute output path is printed; pass it to recce server --target-path "
+        "(or --target-base-path for a baseline). Only allowlisted dbt/Recce JSON files are accepted."
+    ),
 )
 @click.option(
     "--github-token",
