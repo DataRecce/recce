@@ -271,3 +271,144 @@ def test_get_model_on_imported_state_never_executes_manifest_macros(imported_evi
     assert EVIL_MACRO_ID not in invoked
     assert all(not (m or "").startswith("macro.recce_test.evil") for m in invoked)
     assert json.dumps(list(adapter.manifest.macros)).count("evil_canary") == 0
+
+
+# ---------------------------------------------------------------------------
+# 4. Imported raw_code must render sandboxed (only ref/source/var + no-op config)
+# ---------------------------------------------------------------------------
+
+RUN_QUERY_PROBE = "{% do run_query('create table probe_pwned as select 42 as x') %}select 1 as id"
+ENV_VAR_PROBE_NAME = "RECCE_DRC5335_PROBE"
+ENV_VAR_PROBE = "select '{{ env_var('" + ENV_VAR_PROBE_NAME + "') }}' as id"
+
+
+@pytest.fixture
+def import_raw_code(dbt_test_helper, monkeypatch):  # noqa: F811
+    """Factory: import (via the API) a state whose ``probe_model`` has the given
+    current raw_code and ``compiled_code=None``, so CLL must render raw_code.
+    Base and current checksums differ, so the node is ``modified`` and change
+    analysis renders both sides. Records every generate_sql call and every dbt
+    macro invocation."""
+    from dbt.clients import jinja
+
+    from recce.adapter.dbt_adapter import DbtAdapter
+    from recce.state import RecceState
+
+    helper = dbt_test_helper
+    helper.create_model(
+        "probe_model",
+        curr_sql="select 2 as id",
+        base_sql="select 1 as id",
+        curr_columns={"id": "integer"},
+        base_columns={"id": "integer"},
+    )
+    context = helper.context
+    adapter = context.adapter
+    monkeypatch.setattr(context, "sync_state", lambda *a, **k: None)
+
+    renders = []
+    original_generate_sql = DbtAdapter.generate_sql
+
+    def generate_sql_spy(self, sql_template, *args, **kwargs):
+        entry = {"template": sql_template, "safe": kwargs.get("safe_template", False), "output": None}
+        renders.append(entry)
+        entry["output"] = original_generate_sql(self, sql_template, *args, **kwargs)
+        return entry["output"]
+
+    invoked = []
+    original_call = jinja.MacroGenerator.__call__
+
+    def macro_spy(self, *args, **kwargs):
+        invoked.append(getattr(self.macro, "unique_id", None))
+        return original_call(self, *args, **kwargs)
+
+    def _import(curr_raw_code, base_raw_code="select 1 as id"):
+        artifacts = adapter.export_artifacts()
+        artifacts.base["catalog"] = None
+        artifacts.current["catalog"] = None
+        future = datetime(2099, 1, 1, tzinfo=timezone.utc).isoformat()
+        for env, raw_code in ((artifacts.base, base_raw_code), (artifacts.current, curr_raw_code)):
+            manifest = env["manifest"]
+            manifest["metadata"]["generated_at"] = future
+            for node in manifest["nodes"].values():
+                if node["name"] == "probe_model":
+                    node["raw_code"] = raw_code
+                    node["compiled_code"] = None
+                    node["columns"] = {
+                        "id": {"name": "id", "description": "", "meta": {}, "tags": [], "constraints": []}
+                    }
+
+        app.state.last_activity = None
+        app.state.flag = {"disable_cll_cache": True}
+        client = TestClient(app)
+        response = _post_import(
+            client, RecceState(artifacts=artifacts).to_json().encode(), headers=CSRF_HEADER, checks_only="false"
+        )
+        assert response.status_code == 200, response.text
+        assert adapter._artifacts_imported
+        monkeypatch.setattr(DbtAdapter, "generate_sql", generate_sql_spy)
+        monkeypatch.setattr(jinja.MacroGenerator, "__call__", macro_spy)
+        return client
+
+    return SimpleNamespace(import_state=_import, renders=renders, invoked=invoked, adapter=adapter)
+
+
+def _post_cll(client, change_analysis=False):
+    return client.post(
+        "/api/cll",
+        json={"node_id": "probe_model", "change_analysis": change_analysis},
+        headers=CSRF_HEADER,
+    )
+
+
+def _assert_never_rendered_unsandboxed(renders, template):
+    rendered = [r for r in renders if r["template"] == template]
+    assert rendered, "expected the imported raw_code to reach generate_sql"
+    assert all(r["safe"] for r in rendered), "imported raw_code was rendered with safe_template=False"
+
+
+@pytest.mark.parametrize("change_analysis", [False, True], ids=["cll", "change_analysis"])
+def test_imported_raw_code_run_query_is_never_executed(import_raw_code, change_analysis):
+    """Fails before the fix: get_cll_cached / get_change_analysis_cached render the
+    imported raw_code with safe_template=False, so dbt's run_query macro is invoked."""
+    client = import_raw_code.import_state(RUN_QUERY_PROBE)
+    response = _post_cll(client, change_analysis=change_analysis)
+
+    assert response.status_code == 200, response.text
+    _assert_never_rendered_unsandboxed(import_raw_code.renders, RUN_QUERY_PROBE)
+    assert "macro.dbt.run_query" not in import_raw_code.invoked
+    assert "macro.dbt.statement" not in import_raw_code.invoked
+    # Graceful degradation: the node is reported, its columns are just "unknown".
+    node = response.json()["current"]["nodes"]["probe_model"]
+    if change_analysis:
+        assert node["change_category"] == "unknown"
+
+
+@pytest.mark.parametrize("change_analysis", [False, True], ids=["cll", "change_analysis"])
+def test_imported_raw_code_env_var_is_never_evaluated(import_raw_code, monkeypatch, change_analysis):
+    """Fails before the fix: env_var() in imported raw_code is evaluated by dbt's
+    full Jinja context, so the process environment leaks into rendered SQL."""
+    secret = "drc5335-probe-value"
+    monkeypatch.setenv(ENV_VAR_PROBE_NAME, secret)
+    client = import_raw_code.import_state(ENV_VAR_PROBE)
+    response = _post_cll(client, change_analysis=change_analysis)
+
+    assert response.status_code == 200, response.text
+    _assert_never_rendered_unsandboxed(import_raw_code.renders, ENV_VAR_PROBE)
+    assert all(secret not in (r["output"] or "") for r in import_raw_code.renders)
+    assert secret not in response.text
+
+
+def test_imported_raw_code_with_config_and_ref_still_renders_sandboxed(import_raw_code):
+    """Imported models that only use config()/is_incremental()/ref() keep working:
+    they render in the sandbox and change analysis still classifies them."""
+    curr = "{{ config(materialized='table') }}select id, 2 as extra from {{ ref('probe_model') }}"
+    curr += "{% if is_incremental() %} where 1=0{% endif %}"
+    client = import_raw_code.import_state(curr, base_raw_code="select id from {{ ref('probe_model') }}")
+    response = _post_cll(client, change_analysis=True)
+
+    assert response.status_code == 200, response.text
+    _assert_never_rendered_unsandboxed(import_raw_code.renders, curr)
+    rendered = next(r["output"] for r in import_raw_code.renders if r["template"] == curr)
+    assert "config" not in rendered and "where 1=0" not in rendered
+    assert response.json()["current"]["nodes"]["probe_model"]["change_category"] != "unknown"
