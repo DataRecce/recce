@@ -103,3 +103,20 @@ def test_cli_execute_sql_uses_safe_template():
     context = MagicMock(adapter=adapter)
     cli._execute_sql(context, "select 1")
     assert adapter.generate_sql.call_args.kwargs.get("safe_template") is True
+
+
+def test_safe_template_var_merges_project_scoped_vars(dbt_test_helper, monkeypatch):
+    """dbt's VarProvider.vars_for merges global vars with vars[<package>]; the scoped value wins."""
+    from dbt.config.project import VarProvider
+
+    cfg = dbt_test_helper.adapter.runtime_config
+    project = cfg.project_name
+    monkeypatch.setattr(
+        cfg,
+        "vars",
+        VarProvider({"global_x": 1, "shared": "global", project: {"scoped_y": 2, "shared": "scoped"}}),
+    )
+    generate_sql = dbt_test_helper.adapter.generate_sql
+    assert generate_sql("select {{ var('scoped_y') }}", safe_template=True) == "select 2"
+    assert generate_sql("select {{ var('global_x') }}", safe_template=True) == "select 1"
+    assert generate_sql("select '{{ var('shared') }}'", safe_template=True) == "select 'scoped'"

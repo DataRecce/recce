@@ -802,7 +802,9 @@ class DbtAdapter(BaseAdapter):
                     return make_relation(src)
             raise RecceException(f"Unknown source referenced in source(): {source_name}.{table_name}")
 
-        project_vars = dict(self.runtime_config.vars.to_dict())
+        all_vars = self.runtime_config.vars.to_dict()
+        # dbt merges global vars with the root project's scoped block (VarProvider.vars_for).
+        project_vars = {**all_vars, **(all_vars.get(self.runtime_config.project_name) or {})}
         _missing = object()
 
         def safe_var(name, default=_missing):
