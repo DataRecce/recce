@@ -158,11 +158,11 @@ def test_change_analysis_ignores_parent_without_columns(dbt_test_helper):
     assert node_diff.change.columns == {"b": "removed"}
 
 
-def _add_macro(helper, package_name, name, macro_sql):
+def _add_macro(helper, package_name, name, macro_sql, manifests=None):
     from dbt.contracts.graph.nodes import Macro
 
     unique_id = f"macro.{package_name}.{name}"
-    for manifest in (helper.base_manifest, helper.curr_manifest):
+    for manifest in manifests or (helper.base_manifest, helper.curr_manifest):
         manifest.macros[unique_id] = Macro.from_dict(
             {
                 "name": name,
@@ -221,3 +221,47 @@ def test_change_analysis_resolves_macros_of_another_project(dbt_test_helper):
 
     assert node_diff.change.category == "non_breaking"
     assert node_diff.change.columns == {"total": "added"}
+
+
+def test_change_analysis_resolves_package_macros_only_in_base_manifest(dbt_test_helper):
+    """A package the base manifest uses but the current manifest dropped must still be
+    searched by adapter.dispatch(), or the base render fails and the category is unknown."""
+    base_only = (dbt_test_helper.base_manifest,)
+    _add_macro(
+        dbt_test_helper,
+        "base_pkg",
+        "add_up",
+        "{% macro add_up(a, b) %}{{ return(adapter.dispatch('add_up', 'base_pkg')(a, b)) }}{% endmacro %}",
+        manifests=base_only,
+    )
+    _add_macro(
+        dbt_test_helper,
+        "base_pkg",
+        "default__add_up",
+        "{% macro default__add_up(a, b) %}{{ a }} + {{ b }}{% endmacro %}",
+        manifests=base_only,
+    )
+
+    dbt_test_helper.create_model(
+        "payments",
+        unique_id="model.payments",
+        base_sql="select 1 as id, 200 as amount",
+        curr_sql="select 1 as id, 200 as amount",
+        base_columns={"id": "int", "amount": "int"},
+        curr_columns={"id": "int", "amount": "int"},
+    )
+    dbt_test_helper.create_model(
+        "model2",
+        unique_id="model.model2",
+        base_sql='select id, amount, {{ base_pkg.add_up("id", "amount") }} as total from {{ ref("payments") }}',
+        curr_sql='select id, amount, id + amount as total, 1 as flag from {{ ref("payments") }}',
+        base_columns={"id": "int", "amount": "int", "total": "int"},
+        curr_columns={"id": "int", "amount": "int", "total": "int", "flag": "int"},
+        depends_on=["model.payments"],
+    )
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+
+    node_diff = adapter.get_change_analysis_cached("model.model2")
+
+    assert node_diff.change.category == "non_breaking"
+    assert node_diff.change.columns == {"flag": "added"}

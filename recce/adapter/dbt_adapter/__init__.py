@@ -2133,7 +2133,7 @@ class DbtAdapter(BaseAdapter):
             Path(self.runtime_config.project_root),
         )
         self.previous_state.manifest = previous_manifest
-        self._use_manifest_project(self.manifest)
+        self._use_manifest_project(self.manifest, previous_manifest)
 
     def _use_manifest_project(self, *manifests):
         # recce can run from a dbt project other than the one that built the manifest
@@ -2346,7 +2346,7 @@ class DbtAdapter(BaseAdapter):
             Path(self.runtime_config.project_root),
         )
         self.previous_state.manifest = as_manifest(self.base_manifest)
-        self._use_manifest_project(self.manifest)
+        self._use_manifest_project(self.manifest, self.previous_state.manifest)
 
         if not self.curr_manifest or not self.base_manifest:
             raise Exception(
