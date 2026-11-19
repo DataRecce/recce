@@ -250,6 +250,30 @@ def test_imported_manifest_macros_are_not_installed(imported_evil_state):
     assert EVIL_MACRO_ID not in adapter.manifest.macros
 
 
+def test_import_keeps_local_project_name(dbt_test_helper):  # noqa: F811
+    """Imported macros are replaced by local ones, so the local project must stay the
+    root project: adopting the imported manifest's name would stop the local root
+    macros from being global. Its packages are still registered for dispatch."""
+    from recce.state import RecceState
+
+    adapter = dbt_test_helper.context.adapter
+    local_name = adapter.runtime_config.project_name
+    artifacts = adapter.export_artifacts()
+    artifacts.base["catalog"] = None
+    artifacts.current["catalog"] = None
+    future = datetime(2099, 1, 1, tzinfo=timezone.utc).isoformat()
+    for env in (artifacts.base, artifacts.current):
+        env["manifest"]["metadata"]["generated_at"] = future
+        env["manifest"]["metadata"]["project_name"] = "imported_proj"
+
+    adapter.import_artifacts(RecceState(artifacts=artifacts).artifacts)
+
+    assert adapter.curr_manifest.metadata.project_name == "imported_proj"
+    assert adapter.runtime_config.project_name == local_name
+    local_packages = {m.package_name for m in adapter.manifest.macros.values()}
+    assert local_packages <= set(adapter.runtime_config.dependencies)
+
+
 def test_cll_on_imported_state_never_executes_manifest_macros(imported_evil_state):
     """Fails today: get_cll_cached -> generate_sql(safe_template=False) renders raw_code
     against the imported macros (dbt_adapter/__init__.py:1902)."""
