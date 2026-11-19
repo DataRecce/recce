@@ -277,6 +277,94 @@ class TestInit:
         assert "skip:" in result.output
 
     @patch("recce.core.load_context")
+    def test_init_recomputes_all_unknown_entry_when_compiled_code_exists(
+        self, mock_load_context, runner, tmp_path, tmp_db
+    ):
+        """Base recomputes the unknown entry that current stored, because base has compiled_code."""
+        from recce.models.types import CllColumn, CllData, CllNode
+
+        _setup_target_dir(tmp_path)
+        (tmp_path / "target-base").mkdir()
+        (tmp_path / "target-base" / "manifest.json").write_text("{}")
+
+        nid = "model.test.m"
+
+        def _cll(node_id, base=False):
+            node = CllNode(
+                id=node_id,
+                name="m",
+                package_name="test",
+                resource_type="model",
+                columns={"c": CllColumn(name="c", transformation_type="passthrough" if base else "unknown")},
+            )
+            return CllData(nodes={node_id: node})
+
+        curr_node = _make_mock_node(raw_code="SELECT a FROM src")
+        curr_node.compiled_code = None
+        base_node = _make_mock_node(raw_code="SELECT a FROM src")
+        base_node.compiled_code = "SELECT a FROM src"
+        base_manifest = MagicMock()
+        base_manifest.nodes = {nid: base_node}
+        adapter = _make_mock_adapter({nid: curr_node}, base_manifest=base_manifest)
+        adapter.get_cll_cached.side_effect = _cll
+
+        mock_ctx = MagicMock()
+        mock_ctx.adapter = adapter
+        mock_load_context.return_value = mock_ctx
+
+        result = runner.invoke(
+            cli,
+            ["init", "--cache-db", tmp_db, "--project-dir", str(tmp_path)],
+            catch_exceptions=False,
+        )
+
+        assert result.exit_code == 0
+        assert adapter.get_cll_cached.call_count == 2
+        assert CllCache(db_path=tmp_db).stats["entries"] == 1
+        with sqlite3.connect(tmp_db) as conn:
+            (stored,) = conn.execute("SELECT value FROM cll_node_cache").fetchone()
+        assert "passthrough" in stored and "unknown" not in stored
+
+    @patch("recce.core.load_context")
+    def test_init_keeps_all_unknown_entry_from_compiled_code(self, mock_load_context, runner, tmp_path, tmp_db):
+        """Base reuses the unknown entry that current computed from its own compiled_code."""
+        from recce.models.types import CllColumn, CllData, CllNode
+
+        _setup_target_dir(tmp_path)
+        (tmp_path / "target-base").mkdir()
+        (tmp_path / "target-base" / "manifest.json").write_text("{}")
+
+        nid = "model.test.m"
+        node = CllNode(
+            id=nid,
+            name="m",
+            package_name="test",
+            resource_type="model",
+            columns={"c": CllColumn(name="c", transformation_type="unknown")},
+        )
+        curr_node = _make_mock_node(raw_code="SELECT a FROM src")
+        curr_node.compiled_code = "SELECT a FROM src"
+        base_node = _make_mock_node(raw_code="SELECT a FROM src")
+        base_node.compiled_code = "SELECT a FROM src"
+        base_manifest = MagicMock()
+        base_manifest.nodes = {nid: base_node}
+        adapter = _make_mock_adapter({nid: curr_node}, base_manifest=base_manifest)
+        adapter.get_cll_cached.return_value = CllData(nodes={nid: node})
+
+        mock_ctx = MagicMock()
+        mock_ctx.adapter = adapter
+        mock_load_context.return_value = mock_ctx
+
+        result = runner.invoke(
+            cli,
+            ["init", "--cache-db", tmp_db, "--project-dir", str(tmp_path)],
+            catch_exceptions=False,
+        )
+
+        assert result.exit_code == 0
+        assert adapter.get_cll_cached.call_count == 1
+
+    @patch("recce.core.load_context")
     def test_init_cll_returns_none(self, mock_load_context, runner, tmp_path, tmp_db):
         """init should count None CLL results as skipped."""
         _setup_target_dir(tmp_path)

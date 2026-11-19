@@ -622,6 +622,7 @@ class DbtAdapter(BaseAdapter):
             Path(self.runtime_config.target_path),
             Path(self.runtime_config.project_root),
         )
+        self._use_manifest_project(curr_manifest, base_manifest)
 
         # set the file paths to watch
         self.artifacts_files = [
@@ -748,29 +749,12 @@ class DbtAdapter(BaseAdapter):
                 if not isinstance(call.node, nodes.Name) or call.node.name not in allowed_calls:
                     raise RecceException("Only ref(), source(), and var() calls are allowed in query templates")
 
+            return self._render_safe_template(sql_template, manifest, context)
+
         node_id = str("generated_" + uuid.uuid4().hex)
         node = parser.parse_remote(sql_template, node_id)
         process_node(self.runtime_config, manifest, node)
 
-        if safe_template:
-            from dbt.context.providers import generate_runtime_model_context
-            from jinja2 import StrictUndefined
-            from jinja2.sandbox import SandboxedEnvironment
-
-            jinja_ctx = generate_runtime_model_context(node, self.runtime_config, manifest)
-            safe_env = SandboxedEnvironment(undefined=StrictUndefined)
-            safe_context = {
-                name: (
-                    (lambda *args, _name=name: str(jinja_ctx[_name](*args)))
-                    if name in ("ref", "source")
-                    else jinja_ctx[name]
-                )
-                for name in ("ref", "source", "var")
-            }
-            safe_context.update(context)
-            allowed_functions = tuple(value for value in safe_context.values() if callable(value))
-            safe_env.is_safe_callable = lambda value: any(value is fn for fn in allowed_functions)
-            return safe_env.from_string(sql_template).render(safe_context)
         if dbt_version < dbt_version.parse("v1.8"):
             compiler = self.adapter.get_compiler()
             compiler.compile_node(node, manifest, context)
@@ -807,6 +791,72 @@ class DbtAdapter(BaseAdapter):
         sandbox_context = {**_IMPORTED_NODE_NOOP_CONTEXT, **context}
         return self.generate_sql(raw_code, base=base, context=sandbox_context, safe_template=True)
 
+    def _render_safe_template(self, sql_template: str, manifest, context: Optional[Dict] = None) -> str:
+        """Render an ad-hoc template in a standalone sandbox.
+
+        ref/source resolve from the compiled manifest's relation metadata and var from the
+        static project vars. dbt's parser/runtime context (parse_remote, RuntimeVar) is never
+        used, so no project macro, hook or var re-render runs.
+
+        Callables in ``context`` are supplied by Recce itself (the CLL/change-analysis
+        ref/source resolvers, the imported-node no-ops), so they are trusted: they are
+        callable in the sandbox and override the defaults above.
+        """
+        from jinja2 import StrictUndefined
+        from jinja2.sandbox import SandboxedEnvironment
+
+        def make_relation(node):
+            return str(self.adapter.Relation.create_from(self.runtime_config, node))
+
+        def safe_ref(*args, **kwargs):
+            if not 1 <= len(args) <= 2:
+                raise RecceException("ref() takes a model name, optionally preceded by a package name")
+            package, name = (args[0], args[1]) if len(args) == 2 else (None, args[0])
+            version = kwargs.get("version", kwargs.get("v"))
+            candidates = [
+                n
+                for n in manifest.nodes.values()
+                if n.resource_type in ("model", "seed", "snapshot")
+                and n.name == name
+                and (package is None or n.package_name == package)
+                and (version is None or str(getattr(n, "version", None)) == str(version))
+            ]
+            if package is None and len(candidates) > 1:
+                root = [n for n in candidates if n.package_name == self.runtime_config.project_name]
+                candidates = root or candidates
+            if not candidates:
+                raise RecceException(f"Unknown model referenced in ref(): {name}")
+            if len(candidates) > 1:
+                versioned = [n for n in candidates if getattr(n, "version", None) is not None]
+                latest = getattr(candidates[0], "latest_version", None)
+                candidates = [n for n in versioned if n.version == latest] or candidates
+            return make_relation(candidates[0])
+
+        def safe_source(source_name, table_name):
+            for src in manifest.sources.values():
+                if src.source_name == source_name and src.name == table_name:
+                    return make_relation(src)
+            raise RecceException(f"Unknown source referenced in source(): {source_name}.{table_name}")
+
+        all_vars = self.runtime_config.vars.to_dict()
+        # dbt merges global vars with the root project's scoped block (VarProvider.vars_for).
+        project_vars = {**all_vars, **(all_vars.get(self.runtime_config.project_name) or {})}
+        _missing = object()
+
+        def safe_var(name, default=_missing):
+            if name in project_vars:
+                return project_vars[name]
+            if default is not _missing:
+                return default
+            raise RecceException("Undefined dbt variable")
+
+        safe_context = {"ref": safe_ref, "source": safe_source, "var": safe_var}
+        safe_context.update(context or {})
+        allowed_functions = tuple(value for value in safe_context.values() if callable(value))
+        safe_env = SandboxedEnvironment(undefined=StrictUndefined)
+        safe_env.is_safe_callable = lambda value: any(value is fn for fn in allowed_functions)
+        return safe_env.from_string(sql_template).render(safe_context)
+
     def execute(
         self,
         sql: str,
@@ -820,8 +870,8 @@ class DbtAdapter(BaseAdapter):
 
             return self.adapter.execute(sql, auto_begin=auto_begin, fetch=fetch, limit=limit)
         except Exception as e:
-            if is_duckdb_external_access_blocked(e):
-                raise DuckDBExternalAccessBlocked(str(e)) from e
+            if self.adapter.type() == "duckdb" and is_duckdb_external_access_blocked(e):
+                raise DuckDBExternalAccessBlocked() from e
             raise
 
     def build_parent_map(self, nodes: Dict, base: Optional[bool] = False) -> Dict[str, List[str]]:
@@ -1177,9 +1227,8 @@ class DbtAdapter(BaseAdapter):
                         changed_columns_final[column_name] = changed_columns[column_name.lower()]
 
                 change.columns = changed_columns_final
-            except Exception:
-                # TODO: telemetry
-                pass
+            except Exception as e:
+                logger.warning("[change analysis] %s: category is unknown, %s", node_id, type(e).__name__)
 
         breaking_perf_tracker.end_lineage_diff()
         log_performance("change analysis per node", breaking_perf_tracker.to_dict())
@@ -1187,6 +1236,28 @@ class DbtAdapter(BaseAdapter):
         node_diff = diff.get(node_id)
         node_diff.change = change
         return node_diff
+
+    @staticmethod
+    def _has_compiled_code(manifest, node_id: str) -> bool:
+        manifest_node = manifest.nodes[node_id] if node_id in manifest.nodes else None
+        return bool(getattr(manifest_node, "compiled_code", None))
+
+    @staticmethod
+    def _should_recompute_cached(cached: Union[str, dict], manifest, node_id: str) -> bool:
+        # The per-node cache key has no environment, so base and current share one entry
+        # for an unchanged model. An all-unknown entry written by a side that had to render
+        # raw_code must not hide the result this side gets from compiled_code.
+        if not DbtAdapter._has_compiled_code(manifest, node_id):
+            return False
+        try:
+            data = json.loads(cached) if isinstance(cached, str) else cached
+        except ValueError:
+            return False
+        if data.get("from_compiled_code"):
+            return False
+        node = (data.get("nodes") or {}).get(node_id) or {}
+        columns = list((node.get("columns") or {}).values())
+        return bool(columns) and all(col.get("transformation_type") == "unknown" for col in columns)
 
     @staticmethod
     def _make_node_content_key(
@@ -1235,10 +1306,11 @@ class DbtAdapter(BaseAdapter):
         return nid
 
     @staticmethod
-    def _serialize_cll_data(cll_data: CllData) -> str:
+    def _serialize_cll_data(cll_data: CllData, from_compiled_code: bool = False) -> str:
         """Serialize a per-node CllData to JSON, excluding change analysis fields (change_status, change_category)."""
         return json.dumps(
             {
+                "from_compiled_code": from_compiled_code,
                 "nodes": {
                     nid: n.model_dump(exclude={"change_status", "change_category"}) for nid, n in cll_data.nodes.items()
                 },
@@ -1248,9 +1320,9 @@ class DbtAdapter(BaseAdapter):
         )
 
     @staticmethod
-    def _deserialize_cll_data(data_str: str) -> CllData:
+    def _deserialize_cll_data(data_str: Union[str, dict]) -> CllData:
         """Deserialize a per-node CllData from JSON."""
-        data = json.loads(data_str)
+        data = json.loads(data_str) if isinstance(data_str, str) else data_str
         return CllData(
             nodes={nid: CllNode(**n) for nid, n in data["nodes"].items()},
             columns={cid: CllColumn(**c) for cid, c in data["columns"].items()},
@@ -1320,8 +1392,12 @@ class DbtAdapter(BaseAdapter):
             cached_json = cache.get_node(node_id, content_key)
             if cached_json:
                 try:
-                    cll_data_one = self._deserialize_cll_data(cached_json)
-                    node_cache_hits += 1
+                    cached_data = json.loads(cached_json)
+                    if self._should_recompute_cached(cached_data, manifest, node_id):
+                        cached_json = None
+                    else:
+                        cll_data_one = self._deserialize_cll_data(cached_data)
+                        node_cache_hits += 1
                 except Exception as e:
                     logger.debug(
                         "[cll cache] corrupted entry for %s, recomputing: %s",
@@ -1344,7 +1420,10 @@ class DbtAdapter(BaseAdapter):
                 if cll_data_one is None:
                     continue
                 try:
-                    batch_to_store.append((node_id, content_key, self._serialize_cll_data(cll_data_one)))
+                    from_compiled_code = self._has_compiled_code(manifest, node_id)
+                    batch_to_store.append(
+                        (node_id, content_key, self._serialize_cll_data(cll_data_one, from_compiled_code))
+                    )
                 except Exception as e:
                     logger.debug("[cll cache] failed to serialize %s: %s", node_id, e)
 
@@ -2135,14 +2214,23 @@ class DbtAdapter(BaseAdapter):
             Path(self.runtime_config.project_root),
         )
         self.previous_state.manifest = previous_manifest
+        self._use_manifest_project(self.manifest, previous_manifest)
 
-        # The dependencies of the review mode is derived from manifests.
-        # It is a workaround solution to use macro dispatch
-        # see: https://docs.getdbt.com/reference/dbt-jinja-functions/dispatch
-        dependencies = {}
-        for macro in self.manifest.macros.values():
-            if macro.package_name not in dependencies:
-                dependencies[macro.package_name] = self.runtime_config
+    def _use_manifest_project(self, *manifests, adopt_project_name: bool = True):
+        # recce can run from a dbt project other than the one that built the manifest
+        # (for example, the Recce Cloud placeholder project). dbt makes only the root
+        # project's macros global, and adapter.dispatch() searches only packages listed
+        # in the dependencies. Take both from the manifest so its macros resolve.
+        manifests = [m for m in manifests if m is not None]
+        if not manifests:
+            return
+        project_name = getattr(manifests[0].metadata, "project_name", None) if adopt_project_name else None
+        if project_name:
+            self.runtime_config.project_name = project_name
+        dependencies = dict(self.runtime_config.dependencies or {})
+        for manifest in manifests:
+            for macro in manifest.macros.values():
+                dependencies.setdefault(macro.package_name, self.runtime_config)
         self.runtime_config.dependencies = dependencies
 
     def refresh(self, refresh_file_path: str = None):
@@ -2357,16 +2445,10 @@ class DbtAdapter(BaseAdapter):
         )
         self.previous_state.manifest = as_manifest(self.base_manifest)
         self.previous_state.manifest.macros = local_macros
-
-        # The dependencies of the review mode is derived from manifests.
-        # It is a workaround solution to use macro dispatch
-        # see: https://docs.getdbt.com/reference/dbt-jinja-functions/dispatch
-        dependencies = {}
-        for macro in self.manifest.macros.values():
-            if macro.package_name not in dependencies:
-                dependencies[macro.package_name] = self.runtime_config
-
-        self.runtime_config.dependencies = dependencies
+        # Both manifests now carry only local macros, so register their packages for
+        # dispatch but keep the local project name: adopting the imported (untrusted)
+        # manifest's name would stop the local root-project macros from being global.
+        self._use_manifest_project(self.manifest, self.previous_state.manifest, adopt_project_name=False)
 
         if not self.curr_manifest or not self.base_manifest:
             raise Exception(

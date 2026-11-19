@@ -1,4 +1,3 @@
-import io
 import ntpath
 import os
 import re
@@ -6,6 +5,7 @@ import shutil
 import stat
 import tempfile
 import unicodedata
+import uuid
 import zipfile
 from datetime import datetime
 from typing import List, Optional, Tuple
@@ -21,6 +21,58 @@ _WINDOWS_RESERVED_NAMES = frozenset(
     ["CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"]
     + [f"{device}{suffix}" for device in ("COM", "LPT") for suffix in "123456789\u00b9\u00b2\u00b3"]
 )
+
+
+# Bounds apply per workflow artifact, including explicit directory members.
+MAX_ARCHIVE_BYTES = 512 * 1024 * 1024
+MAX_ARCHIVE_MEMBERS = 16
+MAX_DOWNLOAD_BYTES = 128 * 1024 * 1024
+ARTIFACT_DOWNLOAD_TIMEOUT = (5, 30)
+_ALLOWED_ARTIFACT_FILENAMES = frozenset(
+    ("manifest.json", "catalog.json", "run_results.json", "sources.json", "semantic_manifest.json", "recce_state.json")
+)
+
+
+def _bounded_archive_members(archive: zipfile.ZipFile) -> List[zipfile.ZipInfo]:
+    members = archive.infolist()
+    if len(members) > MAX_ARCHIVE_MEMBERS:
+        raise ValueError("Artifact archive exceeds member count limit")
+    if sum(info.file_size for info in members) > MAX_ARCHIVE_BYTES:
+        raise ValueError("Artifact archive exceeds uncompressed byte limit")
+    return members
+
+
+def _artifact_file_parts(archive: zipfile.ZipFile) -> List[Tuple[str, ...]]:
+    """Allow flat JSON or one dbt wrapper with optional root state, never metadata paths."""
+    files = []
+    layouts = set()
+    destinations = set()
+    wrappers = ("target", "target-base")
+    for info in _bounded_archive_members(archive):
+        name = info.orig_filename
+        parts = _archive_path_parts(name)
+        is_dir = _archive_entry_is_dir(info, name)
+        if any(part.startswith(".") or part.casefold() == "git~1" for part in parts):
+            raise ValueError(f"Disallowed path in artifact archive: {name!r}")
+        if is_dir:
+            if len(parts) != 1 or parts[0] not in wrappers or info.file_size:
+                raise ValueError(f"Disallowed directory in artifact archive: {name!r}")
+            layouts.add(parts[0])
+        else:
+            if parts[-1] not in _ALLOWED_ARTIFACT_FILENAMES or not (
+                len(parts) == 1 or (len(parts) == 2 and parts[0] in wrappers)
+            ):
+                raise ValueError(f"Disallowed filename or layout in artifact archive: {name!r}")
+            if parts != ("recce_state.json",):
+                layouts.add(parts[0] if len(parts) == 2 else "flat")
+            key = _destination_key((parts[-1],))
+            if key in destinations:
+                raise ValueError(f"Duplicate destination in artifact archive: {name!r}")
+            destinations.add(key)
+            files.append(parts)
+    if not files or len(layouts) > 1:
+        raise ValueError("Artifact archive must contain JSON files in one flat, target/, or target-base/ layout")
+    return files
 
 
 def _archive_path_parts(name: str) -> Tuple[str, ...]:
@@ -116,7 +168,7 @@ def _extract_zip(archive: zipfile.ZipFile, root: str) -> None:
     entries = []
     kinds = {}  # destination key -> is_dir, for every member and its implied parent directories
     members = set()
-    for info in archive.infolist():
+    for info in _bounded_archive_members(archive):
         name = info.orig_filename
         parts = _archive_path_parts(name)
         is_dir = _archive_entry_is_dir(info, name)
@@ -138,10 +190,15 @@ def _extract_zip(archive: zipfile.ZipFile, root: str) -> None:
             raise ValueError(f"Artifact archive collides with the staging directory {staging!r}")
         # Staged names are member indexes, never archive-controlled names. Reading each member
         # to EOF makes zipfile verify its CRC-32 before anything is published.
+        total_bytes = 0
         for index, (info, _, _, is_dir) in enumerate(entries):
             if not is_dir:
                 with archive.open(info) as source, open(os.path.join(staging, str(index)), "xb") as target:
-                    shutil.copyfileobj(source, target)
+                    while chunk := source.read(min(64 * 1024, MAX_ARCHIVE_BYTES - total_bytes + 1)):
+                        total_bytes += len(chunk)
+                        if total_bytes > MAX_ARCHIVE_BYTES:
+                            raise ValueError("Artifact archive exceeds uncompressed byte limit")
+                        target.write(chunk)
 
         for _, name, parts, is_dir in entries:
             _check_destination(root, name, parts, is_dir)
@@ -152,18 +209,57 @@ def _extract_zip(archive: zipfile.ZipFile, root: str) -> None:
                 os.replace(os.path.join(staging, str(index)), destination)
 
 
-def download_artifact(github_token: str, artifact: Artifact) -> List[str]:
+def _artifact_temporary_parent(root: str) -> str:
+    # gettempdir() probes candidates by writing, and its cached value may be inside
+    # the worktree. Inspect and resolve candidates before allowing any such writes.
+    candidates = ([tempfile.tempdir] if tempfile.tempdir is not None else []) + tempfile._candidate_tempdir_list()
+    for candidate in candidates:
+        parent = os.path.realpath(os.fsdecode(candidate))
+        if not _is_within(root, parent) and os.path.isdir(parent) and os.access(parent, os.W_OK | os.X_OK):
+            return parent
+    raise OSError("No suitable temporary directory outside the worktree")
+
+
+def download_artifact(
+    github_token: str, artifact: Artifact, *, worktree_root: Optional[str] = None
+) -> Tuple[str, List[str]]:
+    """Validate an artifact privately, then publish flat files in a fresh isolated directory.
+
+    Return the absolute output directory and filenames. Existing worktree files are never
+    extraction destinations. A failed validation or publication leaves no partial output.
     """
-    Download the artifact from the Github and extract it into the current directory.
-    """
+    root = os.path.realpath(worktree_root if worktree_root is not None else os.getcwd())
+    if not os.path.isdir(root):
+        raise ValueError("Artifact output anchor must be an existing worktree directory")
+    temporary_parent = _artifact_temporary_parent(root)
     headers = {
         "Authorization": f"Bearer {github_token}",
     }
-    r = requests.get(artifact.archive_download_url, headers=headers)
-    r.raise_for_status()
-    with zipfile.ZipFile(io.BytesIO(r.content)) as z:
-        _extract_zip(z, os.getcwd())
-        return z.namelist()
+    with tempfile.TemporaryDirectory(prefix="recce-artifact-validated-", dir=temporary_parent) as validated:
+        with tempfile.TemporaryFile(dir=temporary_parent) as downloaded:
+            with requests.get(
+                artifact.archive_download_url, headers=headers, stream=True, timeout=ARTIFACT_DOWNLOAD_TIMEOUT
+            ) as response:
+                response.raise_for_status()
+                received = 0
+                for chunk in response.iter_content(chunk_size=64 * 1024):
+                    received += len(chunk)
+                    if received > MAX_DOWNLOAD_BYTES:
+                        raise ValueError("Artifact download exceeds compressed byte limit")
+                    downloaded.write(chunk)
+            downloaded.seek(0)
+            with zipfile.ZipFile(downloaded) as archive:
+                files = _artifact_file_parts(archive)
+                _extract_zip(archive, validated)
+        # Publish one complete directory on the worktree filesystem, after CRC and policy checks.
+        output = os.path.join(root, f".recce-github-artifact-{uuid.uuid4().hex}")
+        if os.path.lexists(output):
+            raise FileExistsError("Artifact output directory already exists")
+        with tempfile.TemporaryDirectory(prefix=".recce-github-staging-", dir=root) as staging:
+            for parts in files:
+                shutil.copyfile(os.path.join(validated, *parts), os.path.join(staging, parts[-1]))
+            os.rename(staging, output)
+    return output, [parts[-1] for parts in files]
 
 
 def recce_ci_artifact(**kwargs):
@@ -192,6 +288,10 @@ def recce_ci_artifact(**kwargs):
         git_instance = git.Repo(search_parent_directories=True)
     except git.exc.InvalidGitRepositoryError:
         console.print("[[red]Error[/red]] Not a git repository. Please run this command in a git repository.")
+        return 1
+
+    if git_instance.working_tree_dir is None:
+        console.print("[[red]Error[/red]] No Git worktree found. Please run this command in a Git worktree.")
         return 1
 
     try:
@@ -246,14 +346,21 @@ def recce_ci_artifact(**kwargs):
         console.print("[[yellow]Skip[/yellow]] No artifacts found.")
         return 0
     for artifact in artifacts:
-        console.print(f"Artifact: {artifact.name} {artifact.archive_download_url}")
+        console.print(f"Artifact: {escape(artifact.name)}")
         try:
-            artifact_files = download_artifact(github_token, artifact)
+            output, artifact_files = download_artifact(
+                github_token, artifact, worktree_root=git_instance.working_tree_dir
+            )
+        except requests.RequestException:
+            # Transport errors can contain signed redirect URLs; do not echo them.
+            console.print(f"[[red]Error[/red]] HTTP download failed for artifact {escape(artifact.name)}")
+            return 1
         except (ValueError, OSError, zipfile.BadZipFile) as e:
             console.print(
                 f"[[red]Error[/red]] Failed to download or extract artifact {escape(artifact.name)}: {escape(str(e))}"
             )
             return 1
+        console.print(f"Artifact directory: {output}", markup=False, highlight=False, soft_wrap=True)
         console.print(f'Extracted Files: {", ".join(artifact_files)}')
     console.rule("Complete")
     return 0

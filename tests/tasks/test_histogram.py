@@ -98,20 +98,22 @@ def test_numeric_histogram_geometry_covers_literal_domains(
         assert geometry.width >= Decimal("1")
 
 
+@pytest.fixture
+def ansi_date_trunc(monkeypatch):
+    """Edge-math tests drive query_datetime_histogram with a fake task and no dbt project."""
+    monkeypatch.setattr(histogram, "_render_date_trunc", lambda unit, column: f"date_trunc('{unit}', {column})")
+
+
 @pytest.mark.parametrize(
     ("params_update", "stored_value", "execution_request", "effective_bins"),
     [
         ({}, 50, 50, 50),
         ({"num_bins": None}, None, 50, 50),
-        ({"num_bins": 0}, 0, 50, 50),
-        ({"num_bins": False}, 0, 50, 50),
-        ({"num_bins": -3}, -3, -3, 1),
-        ({"num_bins": "-3"}, -3, -3, 1),
         ({"num_bins": " 7 "}, 7, 7, 7),
         ({"num_bins": 1.0}, 1, 1, 1),
         ({"num_bins": "1.0"}, 1, 1, 1),
         ({"num_bins": True}, 1, 1, 1),
-        ({"num_bins": 10000}, 10000, 10000, 10000),
+        ({"num_bins": 500}, 500, 500, 500),
     ],
 )
 def test_histogram_num_bins_accepted_compatibility_matrix(
@@ -139,6 +141,18 @@ def test_histogram_num_bins_accepted_compatibility_matrix(
     assert geometry.num_bins == effective_bins
 
 
+@pytest.mark.parametrize("num_bins", [0, False, -3, "-3", 501, 10000])
+def test_histogram_num_bins_rejects_out_of_range_values(num_bins):
+    """DRC-5336 (D3): 1 <= num_bins <= 500. Previously 0/negative/unbounded values were accepted."""
+    with pytest.raises(ValueError):
+        HistogramDiffParams(
+            model="numbers",
+            column_name="amount",
+            column_type="INTEGER",
+            num_bins=num_bins,
+        )
+
+
 @pytest.mark.parametrize("num_bins", [2.5, "2.5"])
 def test_histogram_num_bins_still_rejects_fractional_inputs(num_bins):
     """Catch optimization work broadening the request contract by accident."""
@@ -151,9 +165,10 @@ def test_histogram_num_bins_still_rejects_fractional_inputs(num_bins):
         )
 
 
-def test_histogram_num_bins_has_no_new_model_or_strategy_cap():
-    """Catch either request parsing or compact dispatch imposing a hidden ceiling."""
-    params = HistogramDiffParams(
+def test_histogram_strategy_has_no_cap_of_its_own():
+    """The bucketing strategy must stay compact for any bin count; the request cap (DRC-5336)
+    lives in HistogramDiffParams, so build the params without validation here."""
+    params = HistogramDiffParams.model_construct(
         model="numbers",
         column_name="amount",
         column_type="INTEGER",
@@ -324,6 +339,7 @@ def execute_histogram_template(dbt_test_helper, sql_template):
     return [(row[0], row[1]) for row in result.rows]
 
 
+@pytest.mark.usefixtures("ansi_date_trunc")
 def test_daily_datetime_histogram_edges_cross_months_monotonically():
     """Catch absolute ``relativedelta(day=...)`` fields resetting edges within a month."""
     task = DatetimeHistogramQueryTask(
@@ -354,6 +370,7 @@ def test_daily_datetime_histogram_edges_cross_months_monotonically():
     assert current == {"counts": [0, 0, 5, 7]}
 
 
+@pytest.mark.usefixtures("ansi_date_trunc")
 def test_yearly_datetime_histogram_uses_additive_interval_spacing():
     """Catch absolute years and one-year SQL rows escaping a multi-year bucket."""
     task = DatetimeHistogramQueryTask(
@@ -379,6 +396,7 @@ def test_yearly_datetime_histogram_uses_additive_interval_spacing():
     assert current["counts"][-1] == 7
 
 
+@pytest.mark.usefixtures("ansi_date_trunc")
 def test_datetime_histogram_preserves_the_successful_side_when_one_query_fails():
     """Catch a handled warehouse failure becoming a secondary ``None.rows`` exception."""
     task = DatetimeHistogramQueryTask(
@@ -404,7 +422,7 @@ def test_datetime_histogram_task_returns_a_stable_partial_payload_when_one_query
 
     class PartialDatetimeHistogramTask(HistogramDiffTask):
         def execute_sql(self, sql, *, base):
-            if "MIN(created_at)" in sql:
+            if 'MIN("created_at")' in sql:
                 return [(date(2026, 1, 1), date(2026, 1, 1), 4 if base else 7)]
             if base:
                 raise RuntimeError("base warehouse query failed")
@@ -414,6 +432,7 @@ def test_datetime_histogram_task_returns_a_stable_partial_payload_when_one_query
             return None
 
     adapter = MagicMock()
+    adapter.get_columns.return_value = [SimpleNamespace(column="created_at", dtype="TIMESTAMP")]
     monkeypatch.setattr(histogram, "default_context", lambda: SimpleNamespace(adapter=adapter))
     task = PartialDatetimeHistogramTask(
         {
@@ -440,6 +459,7 @@ def test_datetime_histogram_task_returns_a_stable_partial_payload_when_one_query
         (date.max, [date.max - timedelta(days=1), date.max]),
     ],
 )
+@pytest.mark.usefixtures("ansi_date_trunc")
 def test_datetime_histogram_extreme_daily_edges_stay_monotonic_and_bounded(extreme, expected_edges):
     """Catch the year-3000 overflow guard reversing edges or allocating an unbounded range."""
     task = DatetimeHistogramQueryTask(
@@ -463,6 +483,7 @@ def test_datetime_histogram_extreme_daily_edges_stay_monotonic_and_bounded(extre
     assert current == {"counts": [5]}
 
 
+@pytest.mark.usefixtures("ansi_date_trunc")
 def test_datetime_histogram_date_max_yearly_edges_remain_bounded():
     """Catch terminal-date handling allocating by day or capping valid years at 3000."""
     task = DatetimeHistogramQueryTask(
@@ -826,9 +847,12 @@ def test_duckdb_compact_ten_thousand_bin_request_executes_without_sql_growth(dbt
             "model": "compact_ten_thousand_bins",
             "column_name": "amount",
             "column_type": "INTEGER",
-            "num_bins": 10000,
+            "num_bins": 500,
         }
     )
+    # The request cap (DRC-5336) is below this test's scale; lift it on the already-built
+    # params so the compact-SQL guarantee for very large bin counts stays covered.
+    task.params.num_bins = 10000
     result = task.execute()
 
     assert task.params.num_bins == 10000
@@ -1047,6 +1071,7 @@ def test_numeric_histogram_query_rejects_decimal_edges_that_cannot_round_trip(mi
 )
 def test_histogram_task_rejects_decimal_extrema_outside_float_range(dbt_test_helper, minimum, maximum):
     """Catch task results that expose an overflowing or underflowing extremum as a JSON number."""
+    create_typed_histogram_model(dbt_test_helper, "numbers", "NUMERIC", ["1"])
     with pytest.raises(ValueError, match="cannot be represented as a finite JSON number"):
         DecimalExtremaHistogramTask(minimum, maximum).execute()
 
@@ -1061,6 +1086,7 @@ def test_histogram_task_rejects_decimal_extrema_outside_float_range(dbt_test_hel
 )
 def test_histogram_task_reports_extrema_beyond_double_precision(dbt_test_helper, column_type, minimum, maximum):
     """Catch a histogram that computed correctly being failed by its own min/max echo."""
+    create_typed_histogram_model(dbt_test_helper, "numbers", column_type, ["1"])
     task = DecimalExtremaHistogramTask(minimum, maximum, column_type=column_type)
 
     result = task.execute()
@@ -1193,7 +1219,7 @@ def test_validator():
             "model": "customers",
             "column_name": "age",
             "column_type": "int",
-            "num_bins": 1_000_000,
+            "num_bins": 500,
         }
     )
 
@@ -1255,6 +1281,7 @@ def test_supported_temporal_aliases_use_datetime_execution_and_result_shape(colu
     )
     task.execute_sql = MagicMock(return_value=[(minimum, maximum, 1)])
     adapter = MagicMock()
+    adapter.get_columns.return_value = [SimpleNamespace(column="created_at", dtype=column_type)]
     monkeypatch.setattr(histogram, "default_context", lambda: SimpleNamespace(adapter=adapter))
     monkeypatch.setattr(
         histogram,

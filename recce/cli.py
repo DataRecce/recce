@@ -276,7 +276,7 @@ def _execute_sql(context, sql_template, base=False):
 
     dbt_adapter: DbtAdapter = context.adapter
     with dbt_adapter.connection_named("recce"):
-        sql = dbt_adapter.generate_sql(sql_template, base)
+        sql = dbt_adapter.generate_sql(sql_template, base, safe_template=True)
         response, result = dbt_adapter.execute(sql, fetch=True, auto_begin=True)
         table = result
         df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
@@ -632,7 +632,7 @@ def init(cache_db, **kwargs):
                 parent_checksums = [DbtAdapter._get_node_checksum(manifest, pid) for pid in p_list]
                 content_key = DbtAdapter._make_node_content_key(checksum, parent_checksums, col_names, adapter_type)
                 cached_json = cache.get_node(nid, content_key)
-                if cached_json:
+                if cached_json and not DbtAdapter._should_recompute_cached(cached_json, manifest, nid):
                     cache_hits += 1
                     success += 1
                     progress.advance(task)
@@ -644,7 +644,10 @@ def init(cache_db, **kwargs):
                         fail += 1
                         progress.advance(task)
                         continue
-                    batch_to_store.append((nid, content_key, DbtAdapter._serialize_cll_data(cll_data)))
+                    from_compiled_code = DbtAdapter._has_compiled_code(manifest, nid)
+                    batch_to_store.append(
+                        (nid, content_key, DbtAdapter._serialize_cll_data(cll_data, from_compiled_code))
+                    )
                     success += 1
                 except Exception as e:
                     fail += 1
@@ -2448,7 +2451,13 @@ def github(**kwargs):
 
 @github.command(
     cls=TrackCommand,
-    short_help="Download the artifacts from the GitHub repository based on the current Pull Request.",
+    short_help="Download CI artifacts into isolated directories.",
+    help=(
+        "Download artifacts from the current branch's first successful pull request workflow run. "
+        "Each archive is validated and extracted into a fresh isolated directory under the Git worktree. "
+        "The absolute output path is printed; pass it to recce server --target-path "
+        "(or --target-base-path for a baseline). Only allowlisted dbt/Recce JSON files are accepted."
+    ),
 )
 @click.option(
     "--github-token",
