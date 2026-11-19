@@ -38,7 +38,8 @@ CllResult = Tuple[
 _DEFAULT_DB_PATH = os.path.join(os.path.expanduser("~"), ".recce", "cll_cache.db")
 # 5: DRC-5072 — under sqlglot>=30.25 a missing-schema raise cached the whole model as `unknown`.
 # 6: DRC-5073 — partial schemas, `select *` CTE tracing, no CTE-named placeholder dependencies.
-_CACHE_SCHEMA_VERSION = 6
+# 7: DRC-5379 — manifest project/package macros now resolve in raw_code renders.
+_CACHE_SCHEMA_VERSION = 7
 _DEFAULT_TTL_SECONDS = 7 * 24 * 3600  # 7 days
 
 

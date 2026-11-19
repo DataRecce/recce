@@ -1585,3 +1585,68 @@ def test_get_cll_full_map(dbt_test_helper):
     assert "model.model2_c" in result.columns
     assert "model.model2_y" in result.columns
     assert "model.model3_c" in result.columns
+
+
+def test_build_full_cll_map_recomputes_all_unknown_entry_when_compiled_code_exists(dbt_test_helper, tmp_path):
+    from recce.util.cll import CllCache, get_cll_cache, set_cll_cache
+
+    for name in ("fixed", "failed"):
+        dbt_test_helper.create_model(
+            name,
+            unique_id=f"model.{name}",
+            curr_sql="select {{ macro_that_does_not_exist() }} as c",
+            base_sql="select {{ macro_that_does_not_exist() }} as c",
+            curr_columns={"c": "int"},
+            base_columns={"c": "int"},
+        )
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+    original = get_cll_cache()
+    cache = CllCache(db_path=str(tmp_path / "cll_cache.db"))
+    set_cll_cache(cache)
+    try:
+        first = adapter.build_full_cll_map()
+        assert first.columns["model.fixed_c"].transformation_type == "unknown"
+        assert cache.stats["entries"] == 2
+
+        _set_compiled_code(adapter, "model.fixed", "select 1 as c")
+        adapter._full_cll_map = None
+        adapter.get_cll_cached.cache_clear()
+        second = adapter.build_full_cll_map()
+    finally:
+        set_cll_cache(original)
+
+    assert second.columns["model.fixed_c"].transformation_type != "unknown"
+    assert second.columns["model.failed_c"].transformation_type == "unknown"
+    assert cache.stats["entries"] == 2
+
+
+def test_build_full_cll_map_keeps_all_unknown_entry_from_compiled_code(dbt_test_helper, tmp_path):
+    from unittest.mock import patch
+
+    from recce.util.cll import CllCache, get_cll_cache, set_cll_cache
+
+    dbt_test_helper.create_model(
+        "bad_sql",
+        unique_id="model.bad_sql",
+        curr_sql="select 1 as c",
+        base_sql="select 1 as c",
+        curr_columns={"c": "int"},
+        base_columns={"c": "int"},
+    )
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+    _set_compiled_code(adapter, "model.bad_sql", "select from from")
+    original = get_cll_cache()
+    set_cll_cache(CllCache(db_path=str(tmp_path / "cll_cache.db")))
+    try:
+        first = adapter.build_full_cll_map()
+        assert first.columns["model.bad_sql_c"].transformation_type == "unknown"
+
+        adapter._full_cll_map = None
+        adapter.get_cll_cached.cache_clear()
+        with patch.object(adapter, "get_cll_cached", wraps=adapter.get_cll_cached) as spy:
+            second = adapter.build_full_cll_map()
+    finally:
+        set_cll_cache(original)
+
+    assert second.columns["model.bad_sql_c"].transformation_type == "unknown"
+    assert "model.bad_sql" not in [call.args[0] for call in spy.call_args_list]

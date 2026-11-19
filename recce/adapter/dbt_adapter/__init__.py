@@ -613,6 +613,7 @@ class DbtAdapter(BaseAdapter):
             Path(self.runtime_config.target_path),
             Path(self.runtime_config.project_root),
         )
+        self._use_manifest_project(curr_manifest, base_manifest)
 
         # set the file paths to watch
         self.artifacts_files = [
@@ -1190,9 +1191,8 @@ class DbtAdapter(BaseAdapter):
                         changed_columns_final[column_name] = changed_columns[column_name.lower()]
 
                 change.columns = changed_columns_final
-            except Exception:
-                # TODO: telemetry
-                pass
+            except Exception as e:
+                logger.warning("[change analysis] %s: category is unknown, %s", node_id, type(e).__name__)
 
         breaking_perf_tracker.end_lineage_diff()
         log_performance("change analysis per node", breaking_perf_tracker.to_dict())
@@ -1200,6 +1200,28 @@ class DbtAdapter(BaseAdapter):
         node_diff = diff.get(node_id)
         node_diff.change = change
         return node_diff
+
+    @staticmethod
+    def _has_compiled_code(manifest, node_id: str) -> bool:
+        manifest_node = manifest.nodes[node_id] if node_id in manifest.nodes else None
+        return bool(getattr(manifest_node, "compiled_code", None))
+
+    @staticmethod
+    def _should_recompute_cached(cached: Union[str, dict], manifest, node_id: str) -> bool:
+        # The per-node cache key has no environment, so base and current share one entry
+        # for an unchanged model. An all-unknown entry written by a side that had to render
+        # raw_code must not hide the result this side gets from compiled_code.
+        if not DbtAdapter._has_compiled_code(manifest, node_id):
+            return False
+        try:
+            data = json.loads(cached) if isinstance(cached, str) else cached
+        except ValueError:
+            return False
+        if data.get("from_compiled_code"):
+            return False
+        node = (data.get("nodes") or {}).get(node_id) or {}
+        columns = list((node.get("columns") or {}).values())
+        return bool(columns) and all(col.get("transformation_type") == "unknown" for col in columns)
 
     @staticmethod
     def _make_node_content_key(
@@ -1248,10 +1270,11 @@ class DbtAdapter(BaseAdapter):
         return nid
 
     @staticmethod
-    def _serialize_cll_data(cll_data: CllData) -> str:
+    def _serialize_cll_data(cll_data: CllData, from_compiled_code: bool = False) -> str:
         """Serialize a per-node CllData to JSON, excluding change analysis fields (change_status, change_category)."""
         return json.dumps(
             {
+                "from_compiled_code": from_compiled_code,
                 "nodes": {
                     nid: n.model_dump(exclude={"change_status", "change_category"}) for nid, n in cll_data.nodes.items()
                 },
@@ -1261,9 +1284,9 @@ class DbtAdapter(BaseAdapter):
         )
 
     @staticmethod
-    def _deserialize_cll_data(data_str: str) -> CllData:
+    def _deserialize_cll_data(data_str: Union[str, dict]) -> CllData:
         """Deserialize a per-node CllData from JSON."""
-        data = json.loads(data_str)
+        data = json.loads(data_str) if isinstance(data_str, str) else data_str
         return CllData(
             nodes={nid: CllNode(**n) for nid, n in data["nodes"].items()},
             columns={cid: CllColumn(**c) for cid, c in data["columns"].items()},
@@ -1333,8 +1356,12 @@ class DbtAdapter(BaseAdapter):
             cached_json = cache.get_node(node_id, content_key)
             if cached_json:
                 try:
-                    cll_data_one = self._deserialize_cll_data(cached_json)
-                    node_cache_hits += 1
+                    cached_data = json.loads(cached_json)
+                    if self._should_recompute_cached(cached_data, manifest, node_id):
+                        cached_json = None
+                    else:
+                        cll_data_one = self._deserialize_cll_data(cached_data)
+                        node_cache_hits += 1
                 except Exception as e:
                     logger.debug(
                         "[cll cache] corrupted entry for %s, recomputing: %s",
@@ -1357,7 +1384,10 @@ class DbtAdapter(BaseAdapter):
                 if cll_data_one is None:
                     continue
                 try:
-                    batch_to_store.append((node_id, content_key, self._serialize_cll_data(cll_data_one)))
+                    from_compiled_code = self._has_compiled_code(manifest, node_id)
+                    batch_to_store.append(
+                        (node_id, content_key, self._serialize_cll_data(cll_data_one, from_compiled_code))
+                    )
                 except Exception as e:
                     logger.debug("[cll cache] failed to serialize %s: %s", node_id, e)
 
@@ -2148,14 +2178,23 @@ class DbtAdapter(BaseAdapter):
             Path(self.runtime_config.project_root),
         )
         self.previous_state.manifest = previous_manifest
+        self._use_manifest_project(self.manifest, previous_manifest)
 
-        # The dependencies of the review mode is derived from manifests.
-        # It is a workaround solution to use macro dispatch
-        # see: https://docs.getdbt.com/reference/dbt-jinja-functions/dispatch
-        dependencies = {}
-        for macro in self.manifest.macros.values():
-            if macro.package_name not in dependencies:
-                dependencies[macro.package_name] = self.runtime_config
+    def _use_manifest_project(self, *manifests):
+        # recce can run from a dbt project other than the one that built the manifest
+        # (for example, the Recce Cloud placeholder project). dbt makes only the root
+        # project's macros global, and adapter.dispatch() searches only packages listed
+        # in the dependencies. Take both from the manifest so its macros resolve.
+        manifests = [m for m in manifests if m is not None]
+        if not manifests:
+            return
+        project_name = getattr(manifests[0].metadata, "project_name", None)
+        if project_name:
+            self.runtime_config.project_name = project_name
+        dependencies = dict(self.runtime_config.dependencies or {})
+        for manifest in manifests:
+            for macro in manifest.macros.values():
+                dependencies.setdefault(macro.package_name, self.runtime_config)
         self.runtime_config.dependencies = dependencies
 
     def refresh(self, refresh_file_path: str = None):
@@ -2352,16 +2391,7 @@ class DbtAdapter(BaseAdapter):
             Path(self.runtime_config.project_root),
         )
         self.previous_state.manifest = as_manifest(self.base_manifest)
-
-        # The dependencies of the review mode is derived from manifests.
-        # It is a workaround solution to use macro dispatch
-        # see: https://docs.getdbt.com/reference/dbt-jinja-functions/dispatch
-        dependencies = {}
-        for macro in self.manifest.macros.values():
-            if macro.package_name not in dependencies:
-                dependencies[macro.package_name] = self.runtime_config
-
-        self.runtime_config.dependencies = dependencies
+        self._use_manifest_project(self.manifest, self.previous_state.manifest)
 
         if not self.curr_manifest or not self.base_manifest:
             raise Exception(

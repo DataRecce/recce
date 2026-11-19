@@ -632,7 +632,7 @@ def init(cache_db, **kwargs):
                 parent_checksums = [DbtAdapter._get_node_checksum(manifest, pid) for pid in p_list]
                 content_key = DbtAdapter._make_node_content_key(checksum, parent_checksums, col_names, adapter_type)
                 cached_json = cache.get_node(nid, content_key)
-                if cached_json:
+                if cached_json and not DbtAdapter._should_recompute_cached(cached_json, manifest, nid):
                     cache_hits += 1
                     success += 1
                     progress.advance(task)
@@ -644,7 +644,10 @@ def init(cache_db, **kwargs):
                         fail += 1
                         progress.advance(task)
                         continue
-                    batch_to_store.append((nid, content_key, DbtAdapter._serialize_cll_data(cll_data)))
+                    from_compiled_code = DbtAdapter._has_compiled_code(manifest, nid)
+                    batch_to_store.append(
+                        (nid, content_key, DbtAdapter._serialize_cll_data(cll_data, from_compiled_code))
+                    )
                     success += 1
                 except Exception as e:
                     fail += 1
