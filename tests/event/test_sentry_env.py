@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+import sentry_sdk as real_sentry_sdk
 
 import recce.event as event
 
@@ -65,6 +66,11 @@ def test_released_build_starts_sentry(stubs, version, expected_env):
     assert kwargs["environment"] == expected_env
     assert kwargs["release"] == version
     assert kwargs["data_collection"]["stack_frame_variables"] is False
+    assert kwargs["data_collection"]["http_bodies"] == []
+    assert kwargs["attach_stacktrace"] is False
+    # Run the real SDK option validation: recce.track swallows init errors,
+    # so a rejected option would silently turn Sentry off.
+    real_sentry_sdk.Client(**kwargs).close()
 
 
 @pytest.mark.parametrize("value", ["1", "TRUE"])
