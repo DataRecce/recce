@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import os
 import re
 import sys
@@ -9,6 +10,7 @@ from hashlib import sha256
 from typing import Dict
 
 import sentry_sdk
+from sentry_sdk.integrations.logging import LoggingIntegration
 
 import recce
 import recce.git
@@ -60,12 +62,24 @@ def init():
         dsn=sentry_dns,
         environment=sentry_env,
         release=__version__,
-        # Set traces_sample_rate to 1.0 to capture 100%
-        # of transactions for performance monitoring.
-        # We recommend adjusting this value in production.
         traces_sample_rate=1.0,
-        # DbtAdapter's dataclass repr includes the full manifests (several GB).
-        include_local_variables=False,
+        attach_stacktrace=False,
+        integrations=[LoggingIntegration(level=None, event_level=logging.ERROR)],
+        # Opt out of the additional data collected by default in Sentry SDK 3.
+        data_collection={
+            "user_info": False,
+            "http_bodies": [],
+            "http_headers": {"request": {"mode": "off"}},
+            "cookies": {"mode": "off"},
+            "url_query_params": {"mode": "off"},
+            "graphql": {"document": False, "variables": False},
+            "gen_ai": {"inputs": False, "outputs": False},
+            "mcp": {"inputs": False, "outputs": False},
+            "database_query_data": False,
+            "queues": False,
+            # DbtAdapter's dataclass repr includes the full manifests (several GB).
+            "stack_frame_variables": False,
+        },
     )
     sentry_sdk.set_tag("recce.version", __version__)
     sentry_sdk.set_tag("platform", sys.platform)
