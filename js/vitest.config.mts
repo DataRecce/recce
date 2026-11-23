@@ -342,7 +342,7 @@ export default defineConfig({
     // ESM module handling for problematic packages
     deps: {
       optimizer: {
-        web: {
+        client: {
           include: [
             // ESM-only modules that need transformation
             "react-syntax-highlighter",
