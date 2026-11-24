@@ -176,6 +176,13 @@ def silence_no_nodes_warning():
 logger = logging.getLogger("uvicorn")
 MIN_DBT_NODE_COMPOSITION = 3
 
+# Trusted no-op stand-ins for the dbt context members imported raw_code most often
+# calls, so sandboxed rendering (DRC-5335) does not reject ordinary models.
+_IMPORTED_NODE_NOOP_CONTEXT = {
+    "config": lambda *args, **kwargs: "",
+    "is_incremental": lambda: False,
+}
+
 
 class ArtifactsEventHandler(FileSystemEventHandler):
     def __init__(self, watch_files: List[str], callback: Callable = None):
@@ -350,6 +357,8 @@ class DbtAdapter(BaseAdapter):
     runtime_config: RuntimeConfig = None
     adapter: SQLAdapter = None
     manifest: Manifest = None
+    # True once artifacts came from an imported (untrusted) state: their macros are never used.
+    _artifacts_imported: bool = False
     previous_state: PreviousState = None
     target_path: str = None
     _full_cll_map: Optional["CllData"] = None
@@ -709,7 +718,12 @@ class DbtAdapter(BaseAdapter):
     ):
         if context is None:
             context = {}
-        manifest = provided_manifest if provided_manifest is not None else as_manifest(self.get_manifest(base))
+        if provided_manifest is not None:
+            manifest = provided_manifest
+        else:
+            manifest = as_manifest(self.get_manifest(base))
+            if self._artifacts_imported and self.manifest is not None:
+                manifest.macros = self.manifest.macros
         parser = SqlBlockParser(self.runtime_config, manifest, self.runtime_config)
 
         if dbt_version >= dbt_version.parse("v1.8"):
@@ -728,12 +742,14 @@ class DbtAdapter(BaseAdapter):
             # Validate before dbt parses the template. Ad-hoc SQL needs only
             # relation lookup and project vars, never dbt's execution macros.
             safe_env = SandboxedEnvironment(extensions=["jinja2.ext.do"])
-            allowed_calls = {"ref", "source", "var"}
+            # Callables supplied by Recce itself in ``context`` (e.g. the CLL ref/source
+            # resolvers) are trusted and may be called too; they override dbt's.
+            allowed_calls = {"ref", "source", "var"} | {name for name, value in context.items() if callable(value)}
             for call in safe_env.parse(sql_template).find_all(nodes.Call):
                 if not isinstance(call.node, nodes.Name) or call.node.name not in allowed_calls:
                     raise RecceException("Only ref(), source(), and var() calls are allowed in query templates")
 
-            return self._render_safe_template(sql_template, manifest)
+            return self._render_safe_template(sql_template, manifest, context)
 
         node_id = str("generated_" + uuid.uuid4().hex)
         node = parser.parse_remote(sql_template, node_id)
@@ -760,12 +776,31 @@ class DbtAdapter(BaseAdapter):
             compiled_code = jinja.get_rendered(sql_template, jinja_ctx, node)
             return compiled_code
 
-    def _render_safe_template(self, sql_template: str, manifest) -> str:
+    def _generate_node_sql(self, raw_code: str, base: bool, context: Dict) -> str:
+        """Render a manifest node's ``raw_code`` for lineage/change analysis.
+
+        Imported artifacts are untrusted (DRC-5335): their ``raw_code`` renders in the
+        ``safe_template`` sandbox, which only allows ref()/source()/var() plus the
+        caller's own resolvers, so it can never reach env_var(), run_query(),
+        adapter.* or any other dbt context member. config() and is_incremental() are
+        no-ops there (they render to "" and False at runtime anyway). A template that
+        needs anything else raises RecceException and the caller degrades to "unknown".
+        """
+        if not self._artifacts_imported:
+            return self.generate_sql(raw_code, base=base, context=context)
+        sandbox_context = {**_IMPORTED_NODE_NOOP_CONTEXT, **context}
+        return self.generate_sql(raw_code, base=base, context=sandbox_context, safe_template=True)
+
+    def _render_safe_template(self, sql_template: str, manifest, context: Optional[Dict] = None) -> str:
         """Render an ad-hoc template in a standalone sandbox.
 
         ref/source resolve from the compiled manifest's relation metadata and var from the
         static project vars. dbt's parser/runtime context (parse_remote, RuntimeVar) is never
         used, so no project macro, hook or var re-render runs.
+
+        Callables in ``context`` are supplied by Recce itself (the CLL/change-analysis
+        ref/source resolvers, the imported-node no-ops), so they are trusted: they are
+        callable in the sandbox and override the defaults above.
         """
         from jinja2 import StrictUndefined
         from jinja2.sandbox import SandboxedEnvironment
@@ -816,7 +851,8 @@ class DbtAdapter(BaseAdapter):
             raise RecceException("Undefined dbt variable")
 
         safe_context = {"ref": safe_ref, "source": safe_source, "var": safe_var}
-        allowed_functions = tuple(safe_context.values())
+        safe_context.update(context or {})
+        allowed_functions = tuple(value for value in safe_context.values() if callable(value))
         safe_env = SandboxedEnvironment(undefined=StrictUndefined)
         safe_env.is_safe_callable = lambda value: any(value is fn for fn in allowed_functions)
         return safe_env.from_string(sql_template).render(safe_context)
@@ -1150,12 +1186,12 @@ class DbtAdapter(BaseAdapter):
                         schema[name] = {name: column.get("type") for name, column in columns.items()}
                     return schema
 
-                base_sql = self.generate_sql(
+                base_sql = self._generate_node_sql(
                     base_node.get("raw_code"),
                     base=True,
                     context=jinja_context,
                 )
-                curr_sql = self.generate_sql(
+                curr_sql = self._generate_node_sql(
                     curr_node.get("raw_code"),
                     base=False,
                     context=jinja_context,
@@ -1974,7 +2010,7 @@ class DbtAdapter(BaseAdapter):
             if pre_compiled:
                 compiled_sql = pre_compiled
             else:
-                compiled_sql = self.generate_sql(raw_code, base=base, context=jinja_context)
+                compiled_sql = self._generate_node_sql(raw_code, base=base, context=jinja_context)
             dialect = self.adapter.type()
             if self.get_manifest(base).metadata.adapter_type is not None:
                 dialect = self.get_manifest(base).metadata.adapter_type
@@ -2180,7 +2216,7 @@ class DbtAdapter(BaseAdapter):
         self.previous_state.manifest = previous_manifest
         self._use_manifest_project(self.manifest, previous_manifest)
 
-    def _use_manifest_project(self, *manifests):
+    def _use_manifest_project(self, *manifests, adopt_project_name: bool = True):
         # recce can run from a dbt project other than the one that built the manifest
         # (for example, the Recce Cloud placeholder project). dbt makes only the root
         # project's macros global, and adapter.dispatch() searches only packages listed
@@ -2188,7 +2224,7 @@ class DbtAdapter(BaseAdapter):
         manifests = [m for m in manifests if m is not None]
         if not manifests:
             return
-        project_name = getattr(manifests[0].metadata, "project_name", None)
+        project_name = getattr(manifests[0].metadata, "project_name", None) if adopt_project_name else None
         if project_name:
             self.runtime_config.project_name = project_name
         dependencies = dict(self.runtime_config.dependencies or {})
@@ -2364,6 +2400,18 @@ class DbtAdapter(BaseAdapter):
         }
         return artifacts
 
+    def _get_local_macros(self) -> dict:
+        """Macros that come from the local dbt project, never from imported state."""
+        if self.manifest is not None:
+            return dict(self.manifest.macros)
+        try:
+            from dbt.parser.manifest import ManifestLoader
+
+            return dict(ManifestLoader.load_macros(self.runtime_config, lambda macro: None).macros)
+        except Exception as e:
+            logger.warning("Unable to load local dbt macros; imported models will not be rendered: %s", e)
+            return {}
+
     def import_artifacts(self, artifacts: ArtifactsRoot, merge=True):
         # Merge the artifacts from the state file or cloud
         def _select_artifact(
@@ -2384,14 +2432,23 @@ class DbtAdapter(BaseAdapter):
         self.base_catalog = _select_artifact(self.base_catalog, load_catalog(data=artifacts.base.get("catalog")))
         self.curr_catalog = _select_artifact(self.curr_catalog, load_catalog(data=artifacts.current.get("catalog")))
 
+        # Imported artifacts are untrusted data: never take macros from them (DRC-5335).
+        # Rendering imported models must only execute macros loaded from the local project.
+        local_macros = self._get_local_macros()
+        self._artifacts_imported = True
         self.manifest = as_manifest(self.curr_manifest)
+        self.manifest.macros = local_macros
         self.previous_state = previous_state(
             Path(self.base_path),
             Path(self.runtime_config.target_path),
             Path(self.runtime_config.project_root),
         )
         self.previous_state.manifest = as_manifest(self.base_manifest)
-        self._use_manifest_project(self.manifest, self.previous_state.manifest)
+        self.previous_state.manifest.macros = local_macros
+        # Both manifests now carry only local macros, so register their packages for
+        # dispatch but keep the local project name: adopting the imported (untrusted)
+        # manifest's name would stop the local root-project macros from being global.
+        self._use_manifest_project(self.manifest, self.previous_state.manifest, adopt_project_name=False)
 
         if not self.curr_manifest or not self.base_manifest:
             raise Exception(

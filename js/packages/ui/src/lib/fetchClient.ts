@@ -183,6 +183,10 @@ function parseResponseBody(res: Response): Promise<unknown> | null {
 // Factory
 // ---------------------------------------------------------------------------
 
+const CSRF_HEADER_NAME = "X-Recce-Request";
+const CSRF_HEADER_VALUE = "1";
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
 export function createFetchClient(config: FetchClientConfig): ApiClient {
   const { baseURL, headers: defaultHeaders, timeout, middleware } = config;
 
@@ -193,6 +197,12 @@ export function createFetchClient(config: FetchClientConfig): ApiClient {
     reqConfig?: RequestConfig,
   ): Promise<TResponse> {
     const headers = new Headers(defaultHeaders);
+
+    // CSRF defence (DRC-5335): the Recce server rejects state-changing requests
+    // that lack this custom header, which cross-site forms cannot send.
+    if (!SAFE_METHODS.has(method.toUpperCase())) {
+      headers.set(CSRF_HEADER_NAME, CSRF_HEADER_VALUE);
+    }
 
     const init: Record<string, unknown> = { method, headers };
 

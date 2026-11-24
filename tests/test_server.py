@@ -34,7 +34,7 @@ def init_app_state():
 
 
 def test_health():
-    client = TestClient(app)
+    client = TestClient(app, headers={"X-Recce-Request": "1"})
     response = client.get("/api/health")
     assert response.status_code == 200
     data = response.json()
@@ -47,7 +47,7 @@ def test_stateless(dbt_test_helper):
     from recce.state import FileStateLoader
 
     context.state_loader = FileStateLoader()
-    client = TestClient(app)
+    client = TestClient(app, headers={"X-Recce-Request": "1"})
     response = client.get("/api/info")
     assert response.status_code == 200
     info = response.json()
@@ -60,7 +60,7 @@ def test_file_mode(dbt_test_helper):
     from recce.state import FileStateLoader
 
     context.state_loader = FileStateLoader(state_file="/tmp/recce_state.json")
-    client = TestClient(app)
+    client = TestClient(app, headers={"X-Recce-Request": "1"})
     response = client.get("/api/info")
     assert response.status_code == 200
     info = response.json()
@@ -79,7 +79,7 @@ def test_saveas_and_rename(dbt_test_helper, temp_folder):
     from recce.state import FileStateLoader
 
     context.state_loader = FileStateLoader(state_file=state_file)
-    client = TestClient(app)
+    client = TestClient(app, headers={"X-Recce-Request": "1"})
 
     response = client.post("/api/save", json={"filename": "recce_state2.json"})
     assert response.status_code == 200
@@ -119,7 +119,7 @@ def test_saveas_and_rename(dbt_test_helper, temp_folder):
 
 def test_keep_alive_without_idle_timeout():
     """Test keep-alive endpoint when idle timeout is not configured"""
-    client = TestClient(app)
+    client = TestClient(app, headers={"X-Recce-Request": "1"})
 
     # Ensure last_activity is None (idle timeout not configured)
     app.state.last_activity = None
@@ -133,7 +133,7 @@ def test_keep_alive_without_idle_timeout():
 
 def test_keep_alive_with_idle_timeout():
     """Test keep-alive endpoint resets idle timer when idle timeout is configured"""
-    client = TestClient(app)
+    client = TestClient(app, headers={"X-Recce-Request": "1"})
 
     # Set up idle timeout state
     initial_time = datetime.now(timezone.utc)
@@ -155,7 +155,7 @@ def test_keep_alive_with_idle_timeout():
 
 def test_spa_route_checks():
     """Test that /checks route serves index.html correctly via StaticFiles"""
-    client = TestClient(app)
+    client = TestClient(app, headers={"X-Recce-Request": "1"})
     response = client.get("/checks")
     assert response.status_code == 200
     assert response.headers["content-type"] == "text/html; charset=utf-8"
@@ -164,7 +164,7 @@ def test_spa_route_checks():
 
 def test_spa_route_lineage():
     """Test that /lineage route serves index.html correctly via StaticFiles"""
-    client = TestClient(app)
+    client = TestClient(app, headers={"X-Recce-Request": "1"})
     response = client.get("/lineage")
     assert response.status_code == 200
     assert response.headers["content-type"] == "text/html; charset=utf-8"
@@ -173,7 +173,7 @@ def test_spa_route_lineage():
 
 def test_spa_route_query():
     """Test that /query route serves index.html correctly via StaticFiles"""
-    client = TestClient(app)
+    client = TestClient(app, headers={"X-Recce-Request": "1"})
     response = client.get("/query")
     assert response.status_code == 200
     assert response.headers["content-type"] == "text/html; charset=utf-8"
@@ -182,7 +182,7 @@ def test_spa_route_query():
 
 def test_spa_route_with_query_parameters():
     """Test that query parameters work with SPA routes"""
-    client = TestClient(app)
+    client = TestClient(app, headers={"X-Recce-Request": "1"})
     # StaticFiles serves the index.html regardless of query params
     # The actual routing happens client-side in the SPA
     response = client.get("/checks?id=abc-123")
@@ -198,7 +198,7 @@ def test_spa_route_with_query_parameters():
 
 def test_nonexistent_route_returns_404():
     """Test that non-existent routes return 404.html with 404 status code"""
-    client = TestClient(app)
+    client = TestClient(app, headers={"X-Recce-Request": "1"})
     response = client.get("/nonexistent-page")
     assert response.status_code == 404
     assert response.headers["content-type"] == "text/html; charset=utf-8"
@@ -229,7 +229,7 @@ class TestReadinessGate:
         """Health endpoint should return 200 with ready=false when ready_event is not set."""
         self._set_readiness(ready=False)
 
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         response = client.get("/api/health")
         assert response.status_code == 200
         data = response.json()
@@ -241,7 +241,7 @@ class TestReadinessGate:
         """Health endpoint should return 200 with ready=false and error type when startup failed."""
         self._set_readiness(ready=True, error=RuntimeError("dbt project not found"))
 
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         response = client.get("/api/health")
         assert response.status_code == 200
         data = response.json()
@@ -254,7 +254,7 @@ class TestReadinessGate:
         """Health endpoint should return ready=true when server is fully loaded."""
         self._set_readiness(ready=True)
 
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         response = client.get("/api/health")
         assert response.status_code == 200
         data = response.json()
@@ -266,7 +266,7 @@ class TestReadinessGate:
         """Data endpoints should return 503 when startup failed."""
         self._set_readiness(ready=True, error=RuntimeError("dbt project not found"))
 
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         response = client.get("/api/version")
         assert response.status_code == 503
         assert "startup failed" in response.json()["error"].lower()
@@ -275,7 +275,7 @@ class TestReadinessGate:
         """Data endpoint should succeed once ready_event is set with no error."""
         self._set_readiness(ready=True)
 
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         response = client.get("/api/version")
         assert response.status_code == 200
 
@@ -284,7 +284,7 @@ class TestReadinessGate:
         if hasattr(app.state, "ready_event"):
             del app.state.ready_event
 
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         response = client.get("/api/health")
         assert response.status_code == 200
         data = response.json()
@@ -297,7 +297,7 @@ class TestReadinessGate:
         if hasattr(app.state, "ready_event"):
             del app.state.ready_event
 
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         response = client.get("/api/health")
         assert response.status_code == 200
 
@@ -325,7 +325,7 @@ class TestV2VocabularyEndpoints:
             edges=[],
             metadata={},
         )
-        client = TestClient(app)
+        client = TestClient(app, headers={"X-Recce-Request": "1"})
         with patch.object(context, "get_merged_lineage", return_value=lineage):
             legacy = client.get("/api/info")
             v2 = client.get("/api/info", headers={"Accept-Vocabulary": "v2"})
@@ -371,7 +371,7 @@ class TestV2VocabularyEndpoints:
         old_flag = getattr(app.state, "flag", None)
         app.state.flag = {}
         try:
-            client = TestClient(app)
+            client = TestClient(app, headers={"X-Recce-Request": "1"})
             with patch.object(context.adapter, "get_cll", return_value=cll_data):
                 legacy = client.post("/api/cll", json={})
                 v2 = client.post("/api/cll", json={}, headers={"Accept-Vocabulary": "v2"})
