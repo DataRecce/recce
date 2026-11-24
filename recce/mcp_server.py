@@ -189,6 +189,14 @@ class CloudBackend:
             return await self._tool_update_check(arguments)
         if name == "impact_analysis":
             return await self._tool_impact_analysis(arguments)
+        if name == "list_suggested_actions":
+            return await self._tool_list_suggested_actions(arguments)
+        if name == "create_suggested_action":
+            return await self._tool_create_suggested_action(arguments)
+        if name == "update_suggested_action":
+            return await self._tool_update_suggested_action(arguments)
+        if name == "delete_suggested_action":
+            return await self._tool_delete_suggested_action(arguments)
         raise ValueError(f"Unknown tool: {name}")
 
     async def _tool_get_server_info(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
@@ -380,6 +388,45 @@ class CloudBackend:
             "updated": sorted(fields),
             "is_checked": check.get("is_checked"),
         }
+
+    async def _tool_list_suggested_actions(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        result = await self._request("GET", "suggested-actions")
+        return {"actions": result.get("actions", [])}
+
+    async def _tool_create_suggested_action(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        title = arguments.get("title")
+        if not title:
+            raise ValueError("title is required")
+        body = {"title": title}
+        if "description" in arguments:
+            body["description"] = arguments["description"]
+        return await self._request("POST", "suggested-actions", json=body)
+
+    async def _tool_update_suggested_action(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        action_id = arguments.get("action_id")
+        if not action_id:
+            raise ValueError("action_id is required")
+        if "is_done" not in arguments:
+            raise ValueError("is_done is required")
+        return await self._request(
+            "PATCH",
+            f"suggested-actions/{quote(str(action_id), safe='')}",
+            json={"is_done": arguments["is_done"]},
+        )
+
+    async def _tool_delete_suggested_action(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        action_id = arguments.get("action_id")
+        if not action_id:
+            raise ValueError("action_id is required")
+        reason = arguments.get("reason")
+        if not reason:
+            raise ValueError("reason is required")
+        await self._request(
+            "DELETE",
+            f"suggested-actions/{quote(str(action_id), safe='')}",
+            json={"reason": reason},
+        )
+        return {"action_id": str(action_id), "deleted": True}
 
     async def _tool_lineage_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         info = await self._request("GET", "info")
@@ -1622,6 +1669,95 @@ class RecceMCPServer:
                     )
                 )
 
+                # Suggested actions are stored only in Recce Cloud.
+                if self.backend is not None:
+                    tools.extend(
+                        [
+                            Tool(
+                                name="list_suggested_actions",
+                                description=(
+                                    "List the suggested actions of the active Recce Cloud session, in "
+                                    "creation order. Returns {actions: [{id, session_id, title, "
+                                    "description, is_done, created_at, updated_at}]}. Deleted actions "
+                                    "are not listed."
+                                ),
+                                inputSchema={
+                                    "type": "object",
+                                    "properties": {},
+                                },
+                            ),
+                            Tool(
+                                name="create_suggested_action",
+                                description=(
+                                    "Create a suggested action on the active Recce Cloud session. The "
+                                    "new action is not done. Returns the created action: {id, "
+                                    "session_id, title, description, is_done, created_at, updated_at}."
+                                ),
+                                inputSchema={
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 255,
+                                            "description": "Short title of the action. Must not be blank.",
+                                        },
+                                        "description": {
+                                            "type": "string",
+                                            "maxLength": 4000,
+                                            "description": "Details of the action. Defaults to an empty string.",
+                                        },
+                                    },
+                                    "required": ["title"],
+                                },
+                            ),
+                            Tool(
+                                name="update_suggested_action",
+                                description=(
+                                    "Mark a suggested action on the active Recce Cloud session as done "
+                                    "or not done. Returns the updated action."
+                                ),
+                                inputSchema={
+                                    "type": "object",
+                                    "properties": {
+                                        "action_id": {
+                                            "type": "string",
+                                            "description": "The ID of the suggested action",
+                                        },
+                                        "is_done": {
+                                            "type": "boolean",
+                                            "description": "true marks the action done; false marks it not done",
+                                        },
+                                    },
+                                    "required": ["action_id", "is_done"],
+                                },
+                            ),
+                            Tool(
+                                name="delete_suggested_action",
+                                description=(
+                                    "Delete a suggested action from the active Recce Cloud session. "
+                                    "The reason is recorded. Returns {action_id, deleted: true}."
+                                ),
+                                inputSchema={
+                                    "type": "object",
+                                    "properties": {
+                                        "action_id": {
+                                            "type": "string",
+                                            "description": "The ID of the suggested action",
+                                        },
+                                        "reason": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 4000,
+                                            "description": "Why the action is deleted. Must not be blank.",
+                                        },
+                                    },
+                                    "required": ["action_id", "reason"],
+                                },
+                            ),
+                        ]
+                    )
+
             self.mcp_logger.log_list_tools(tools)
 
             # Log available tools to console
@@ -1657,6 +1793,10 @@ class RecceMCPServer:
                     "create_check",
                     "update_check",
                     "impact_analysis",
+                    "list_suggested_actions",
+                    "create_suggested_action",
+                    "update_suggested_action",
+                    "delete_suggested_action",
                 }
                 # Unconfigured-mode gate: when neither a local context nor a cloud
                 # backend is set, only set_backend and get_server_info are usable.
