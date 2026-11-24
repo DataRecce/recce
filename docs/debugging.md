@@ -10,6 +10,14 @@ recce server --debug
 
 Logs to console and `recce_error.log`.
 
+### Sentry error reporting
+
+Recce uses Sentry Python SDK 3. Error events, log breadcrumbs, and streamed
+performance spans remain enabled when Sentry is active. The SDK does not send
+a separate Sentry Logs stream. Automatic collection of stack-frame locals,
+HTTP bodies, request headers, cookies, URL query parameters, database query
+data, and MCP or generative AI payloads is disabled.
+
 ### Artifact/Connection Issues
 
 ```bash
