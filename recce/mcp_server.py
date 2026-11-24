@@ -1699,12 +1699,10 @@ class RecceMCPServer:
                                         "title": {
                                             "type": "string",
                                             "minLength": 1,
-                                            "maxLength": 255,
                                             "description": "Short title of the action. Must not be blank.",
                                         },
                                         "description": {
                                             "type": "string",
-                                            "maxLength": 4000,
                                             "description": "Details of the action. Defaults to an empty string.",
                                         },
                                     },
@@ -1748,7 +1746,6 @@ class RecceMCPServer:
                                         "reason": {
                                             "type": "string",
                                             "minLength": 1,
-                                            "maxLength": 4000,
                                             "description": "Why the action is deleted. Must not be blank.",
                                         },
                                     },
