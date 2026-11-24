@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "@fontsource/montserrat/800.css";
 import "./global.css";
 import Providers from "@datarecce/ui/components/app/Providers";
-import { GoogleTagManager } from "@next/third-parties/google";
 import Script from "next/script";
 import { ReactNode } from "react";
+import GoogleTagManagerGate from "./GoogleTagManagerGate";
 
 const GTM_ID = process.env.GTM_ID;
 export const metadata: Metadata = {
@@ -25,7 +25,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning={true}>
       {GTM_ID != null && GTM_ID.trim().length > 0 && (
-        <GoogleTagManager gtmId={GTM_ID} />
+        <GoogleTagManagerGate gtmId={GTM_ID} />
       )}
       {/* Handle legacy hashbang URL redirects */}
       <Script

@@ -10,7 +10,7 @@ OSS identity / opt-out / common-props contract (P4 design):
 - $process_person_profile=False on every capture so anonymous CLI users create
   NO PostHog person rows (D6)
 - opt-out reuses the existing OSS gate recce.event.should_log_event() (D5)
-- RECCE_DISABLE_TELEMETRY kill switch disables ONLY the PostHog path (D12)
+- RECCE_DISABLE_TELEMETRY / DO_NOT_TRACK kill switch disables every telemetry path
 - hardcoded prod phc_ write-only key (lands in shared prod project 267645),
   RECCE_POSTHOG_API_KEY env override for staging/test isolation
 
@@ -46,11 +46,15 @@ EVENT_SOURCE = "oss-cli"
 
 def _is_kill_switched():
     # type: () -> bool
-    """Return True when the PostHog path is disabled via env (D12).
+    """Return True when RECCE_DISABLE_TELEMETRY or DO_NOT_TRACK is set to a
+    truthy value. The same switch turns off Amplitude and Sentry too."""
+    try:
+        from recce.event import is_telemetry_kill_switched
 
-    PostHog-scoped during the dual-run window — does NOT gate Amplitude/Sentry.
-    """
-    return bool(os.environ.get("RECCE_DISABLE_TELEMETRY"))
+        return is_telemetry_kill_switched()
+    except Exception:
+        # Fail closed.
+        return True
 
 
 def _get_api_key():

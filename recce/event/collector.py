@@ -154,17 +154,30 @@ class Collector:
                     f.write(json.dumps(o))
 
     def send_events(self):
+        if self._api_key is None or self._unsend_events_file is None:
+            return
         with self.load_json() as o:
-            payload = dict(
-                api_key=self._api_key,
-                events=o["unsend_events"],
-            )
+            events = o.get("unsend_events") or []
             o["unsend_events"] = []
+        if not events:
+            # Nothing queued (e.g. the user opted out): make no request at all.
+            return
+        payload = dict(
+            api_key=self._api_key,
+            events=events,
+        )
         try:
             requests.post(self._api_endpoint, json=payload)
         except Exception:
             # TODO: handle exception when sending events
             pass
+
+    def clear_events(self):
+        """Drop every queued event without sending it."""
+        if self._unsend_events_file is None or not os.path.exists(self._unsend_events_file):
+            return
+        with self.load_json() as o:
+            o["unsend_events"] = []
 
     def _store_to_file(self, event):
         with self.load_json() as o:

@@ -114,20 +114,40 @@ class TestOptOutParity:
                 log_codespaces_events("server")
 
             ph_track.assert_not_called()
+            # The Amplitude emit bypassed log_event's gate before; it is gated now.
+            collector.log_event.assert_not_called()
         finally:
             os.unlink(path)
 
 
 class TestFlush:
     def test_flush_events_calls_posthog_shutdown(self, collector):
-        with patch("recce.event.posthog_telemetry.shutdown") as mock_shutdown:
-            from recce.event import flush_events
+        path = _profile(anonymous_tracking=True)
+        try:
+            with (
+                patch("recce.event.RECCE_USER_PROFILE", path),
+                patch("recce.event.posthog_telemetry.shutdown") as mock_shutdown,
+            ):
+                from recce.event import flush_events
 
-            flush_events()
+                flush_events()
 
-            # Amplitude flush unchanged + PostHog shutdown invoked.
-            collector.send_events.assert_called_once()
-            mock_shutdown.assert_called_once()
+                collector.send_events.assert_called_once()
+                mock_shutdown.assert_called_once()
+        finally:
+            os.unlink(path)
+
+    def test_flush_events_sends_nothing_when_opted_out(self, collector):
+        path = _profile(anonymous_tracking=False)
+        try:
+            with patch("recce.event.RECCE_USER_PROFILE", path):
+                from recce.event import flush_events
+
+                flush_events()
+
+                collector.send_events.assert_not_called()
+        finally:
+            os.unlink(path)
 
 
 class TestPersonProfileIdentity:

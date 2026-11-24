@@ -46,9 +46,7 @@ class TestGetDistinctId:
 
 
 class TestGetCommonProperties:
-    @patch(
-        "recce_cloud.auth.profile.load_profile", return_value={"user_id": "test-uid"}
-    )
+    @patch("recce_cloud.auth.profile.load_profile", return_value={"user_id": "test-uid"})
     @patch("recce_cloud.ci_providers.CIDetector.detect", return_value=None)
     @patch("recce_cloud.__version__", "1.2.3")
     def test_includes_version_and_platform(self, mock_ci, mock_profile):
@@ -104,9 +102,7 @@ class TestTrack:
     @patch("recce_cloud.telemetry.get_common_properties", return_value={"v": "1"})
     @patch("recce_cloud.telemetry.get_distinct_id", return_value="user123")
     @patch("recce_cloud.telemetry._get_client")
-    def test_disables_person_profile_processing(
-        self, mock_get_client, mock_id, mock_props
-    ):
+    def test_disables_person_profile_processing(self, mock_get_client, mock_id, mock_props):
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
 
@@ -128,17 +124,13 @@ class TestTrack:
 
 
 class TestEnvironmentDetection:
-    @patch(
-        "recce_cloud.constants.get_api_host", return_value="https://cloud.datarecce.io"
-    )
+    @patch("recce_cloud.constants.get_api_host", return_value="https://cloud.datarecce.io")
     def test_prod_host_datarecce(self, mock_host):
         from recce_cloud.telemetry import _is_prod_environment
 
         assert _is_prod_environment() is True
 
-    @patch(
-        "recce_cloud.constants.get_api_host", return_value="https://cloud.reccehq.com"
-    )
+    @patch("recce_cloud.constants.get_api_host", return_value="https://cloud.reccehq.com")
     def test_prod_host_reccehq(self, mock_host):
         from recce_cloud.telemetry import _is_prod_environment
 
@@ -159,20 +151,16 @@ class TestEnvironmentDetection:
 
         assert _is_prod_environment() is False
 
-    @patch(
-        "recce_cloud.constants.get_api_host", return_value="https://cloud.datarecce.io/"
-    )
+    @patch("recce_cloud.constants.get_api_host", return_value="https://cloud.datarecce.io/")
     def test_trailing_slash_stripped(self, mock_host):
         from recce_cloud.telemetry import _is_prod_environment
 
         assert _is_prod_environment() is True
 
     @patch.dict(os.environ, {}, clear=True)
-    @patch(
-        "recce_cloud.constants.get_api_host", return_value="https://cloud.datarecce.io"
-    )
+    @patch("recce_cloud.constants.get_api_host", return_value="https://cloud.datarecce.io")
     def test_prod_uses_hardcoded_key(self, mock_host):
-        from recce_cloud.telemetry import _get_api_key, _POSTHOG_KEY_PROD
+        from recce_cloud.telemetry import _POSTHOG_KEY_PROD, _get_api_key
 
         assert _get_api_key() == _POSTHOG_KEY_PROD
         assert _POSTHOG_KEY_PROD != ""
@@ -230,6 +218,27 @@ class TestShouldTrack:
 
         assert _should_track() is False
 
+    @patch(
+        "recce_cloud.auth.profile.load_profile",
+        return_value={"anonymous_tracking": True},
+    )
+    def test_kill_switch_overrides_opted_in_profile(self, mock_profile):
+        from recce_cloud.telemetry import _should_track
+
+        for env in ({"RECCE_DISABLE_TELEMETRY": "1"}, {"DO_NOT_TRACK": "true"}):
+            with patch.dict(os.environ, env):
+                assert _should_track() is False
+
+    @patch(
+        "recce_cloud.auth.profile.load_profile",
+        return_value={"anonymous_tracking": True},
+    )
+    def test_falsy_kill_switch_value_keeps_tracking(self, mock_profile):
+        from recce_cloud.telemetry import _should_track
+
+        with patch.dict(os.environ, {"RECCE_DISABLE_TELEMETRY": "0"}):
+            assert _should_track() is True
+
 
 class TestGetClient:
     def test_noop_when_no_api_key(self):
@@ -284,8 +293,9 @@ class TestTrackedCommand:
             assert "duration_seconds" in completed_call[0][1]
 
     def test_tracks_failed_command_via_sys_exit(self):
-        import click
         import sys
+
+        import click
 
         @click.command(cls=TrackedCommand)
         def fail_cmd():
