@@ -12,7 +12,7 @@ from recce.mcp_server import (  # noqa: E402
     run_mcp_server,
 )
 from recce.util.recce_cloud import RecceCloudException  # noqa: E402
-from tests.mcp_compat import invoke_call_tool  # noqa: E402
+from tests.mcp_compat import invoke_call_tool, invoke_list_tools  # noqa: E402
 
 
 class MockResponse:
@@ -445,6 +445,135 @@ async def test_update_check_rejects_a_call_with_no_field_to_change(cloud_request
         await backend.call_tool("update_check", {"check_id": "check-1"})
 
     assert cloud_requests.call_count == 1
+
+
+_ACTION = {
+    "id": "action-1",
+    "session_id": "sess-123",
+    "title": "Check null amounts",
+    "description": "",
+    "is_done": False,
+    "created_at": "2026-11-24T00:00:00Z",
+    "updated_at": "2026-11-24T00:00:00Z",
+}
+
+
+@pytest.mark.asyncio
+async def test_list_suggested_actions_gets_the_session_actions(cloud_requests):
+    cloud_requests.side_effect = [MockResponse(204), MockResponse(200, {"actions": [_ACTION]})]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    result = await backend.call_tool("list_suggested_actions", {})
+
+    method, url = cloud_requests.call_args.args[:2]
+    assert method == "GET"
+    assert url == "https://cloud.reccehq.com/api/v2/sessions/sess-123/suggested-actions"
+    assert result == {"actions": [_ACTION]}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "arguments, expected_body",
+    [
+        ({"title": "Check null amounts"}, {"title": "Check null amounts"}),
+        ({"title": "Check null amounts", "description": "why"}, {"title": "Check null amounts", "description": "why"}),
+    ],
+)
+async def test_create_suggested_action_posts_only_the_given_fields(cloud_requests, arguments, expected_body):
+    cloud_requests.side_effect = [MockResponse(204), MockResponse(201, _ACTION)]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    result = await backend.call_tool("create_suggested_action", arguments)
+
+    method, url = cloud_requests.call_args.args[:2]
+    assert method == "POST"
+    assert url == "https://cloud.reccehq.com/api/v2/sessions/sess-123/suggested-actions"
+    assert cloud_requests.call_args.kwargs["json"] == expected_body
+    assert result == _ACTION
+
+
+@pytest.mark.asyncio
+async def test_update_suggested_action_patches_is_done(cloud_requests):
+    cloud_requests.side_effect = [MockResponse(204), MockResponse(200, {**_ACTION, "is_done": True})]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    result = await backend.call_tool("update_suggested_action", {"action_id": "action-1", "is_done": True})
+
+    method, url = cloud_requests.call_args.args[:2]
+    assert method == "PATCH"
+    assert url == "https://cloud.reccehq.com/api/v2/sessions/sess-123/suggested-actions/action-1"
+    assert cloud_requests.call_args.kwargs["json"] == {"is_done": True}
+    assert result["is_done"] is True
+
+
+@pytest.mark.asyncio
+async def test_delete_suggested_action_sends_the_reason(cloud_requests):
+    cloud_requests.side_effect = [MockResponse(204), MockResponse(204)]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    result = await backend.call_tool("delete_suggested_action", {"action_id": "action-1", "reason": "duplicate"})
+
+    method, url = cloud_requests.call_args.args[:2]
+    assert method == "DELETE"
+    assert url == "https://cloud.reccehq.com/api/v2/sessions/sess-123/suggested-actions/action-1"
+    assert cloud_requests.call_args.kwargs["json"] == {"reason": "duplicate"}
+    assert result == {"action_id": "action-1", "deleted": True}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "name, arguments, message",
+    [
+        ("create_suggested_action", {}, "title is required"),
+        ("update_suggested_action", {"is_done": True}, "action_id is required"),
+        ("update_suggested_action", {"action_id": "action-1"}, "is_done is required"),
+        ("delete_suggested_action", {"reason": "duplicate"}, "action_id is required"),
+        ("delete_suggested_action", {"action_id": "action-1"}, "reason is required"),
+    ],
+)
+async def test_suggested_action_tools_reject_missing_arguments(cloud_requests, name, arguments, message):
+    cloud_requests.side_effect = [MockResponse(204)]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    with pytest.raises(ValueError, match=message):
+        await backend.call_tool(name, arguments)
+
+    assert cloud_requests.call_count == 1
+
+
+_SUGGESTED_ACTION_TOOLS = {
+    "list_suggested_actions",
+    "create_suggested_action",
+    "update_suggested_action",
+    "delete_suggested_action",
+}
+
+
+@pytest.mark.asyncio
+async def test_suggested_action_tools_are_listed_only_with_a_cloud_backend():
+    cloud_server = RecceMCPServer(backend=AsyncMock())
+    local_server = RecceMCPServer(context=MagicMock())
+
+    cloud_names = {tool.name for tool in await invoke_list_tools(cloud_server)}
+    local_names = {tool.name for tool in await invoke_list_tools(local_server)}
+
+    assert _SUGGESTED_ACTION_TOOLS <= cloud_names
+    assert not (_SUGGESTED_ACTION_TOOLS & local_names)
+
+
+@pytest.mark.asyncio
+async def test_suggested_action_tools_are_blocked_outside_server_mode():
+    from recce.server import RecceServerMode
+
+    backend = AsyncMock()
+    server = RecceMCPServer(backend=backend, mode=RecceServerMode.read_only)
+
+    names = {tool.name for tool in await invoke_list_tools(server)}
+    result = await invoke_call_tool(server, "create_suggested_action", {"title": "x"})
+
+    assert not (_SUGGESTED_ACTION_TOOLS & names)
+    assert result.isError is True
+    backend.call_tool.assert_not_awaited()
 
 
 @pytest.mark.asyncio

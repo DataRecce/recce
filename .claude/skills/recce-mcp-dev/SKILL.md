@@ -108,24 +108,23 @@ branches, the `_handle_*` adapters, or `tests/mcp_compat.py` has to be checked t
 only in the default pytest run.
 
 **Tool count — mode-dependent, verify per mode.** `list_tools` registers **at
-most 20** tools, and how many it actually returns depends on the server mode:
+most 24** tools, and how many it actually returns depends on the server mode:
 
 | Gate | Count | Tools |
 |------|-------|-------|
 | always | 7 | `lineage_diff`, `schema_diff`, `get_model`, `get_cll`, `get_server_info`, `set_backend`, `select_nodes` |
 | `self.backend is None` (local only) | 1 | `analyze_model` |
-| `self.mode == RecceServerMode.server` | 12 | `row_count_diff`, `query`, `query_diff`, `profile_diff`, `value_diff`, `value_diff_detail`, `top_k_diff`, `histogram_diff`, `list_checks`, `run_check`, `create_check`, `impact_analysis` |
+| `self.mode == RecceServerMode.server` | 13 | `row_count_diff`, `query`, `query_diff`, `profile_diff`, `value_diff`, `value_diff_detail`, `top_k_diff`, `histogram_diff`, `list_checks`, `run_check`, `create_check`, `update_check`, `impact_analysis` |
+| server mode **and** `self.backend is not None` (cloud only) | 4 | `list_suggested_actions`, `create_suggested_action`, `update_suggested_action`, `delete_suggested_action` |
 
-So preview and read-only mode expose 8; cloud mode never exceeds 19. `grep -c
+So preview and read-only mode expose 8 locally and 7 in cloud; server mode exposes 21 locally and 24 in cloud. `grep -c
 'Tool(' recce/mcp_server.py` counts **code sites**, not any single session's
 surface — read the `if` guards around the `analyze_model` and server-mode blocks
 before quoting a number.
 
 The `/recce-mcp-e2e` harness exercises 8 tools (2 always-on + 6 server-mode diff
-tools), so a green E2E run is **not** full-surface coverage. Not covered by that
-harness: `analyze_model`, `create_check`, `get_cll`, `get_model`,
-`get_server_info`, `histogram_diff`, `impact_analysis`, `select_nodes`,
-`set_backend`, `top_k_diff`, `value_diff`, `value_diff_detail`.
+tools), so a green E2E run is **not** full-surface coverage. Every other tool in
+the table above is not covered by that harness.
 
 Each new MCP feature or behavior change should be covered at all three layers.
 
