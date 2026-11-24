@@ -1072,6 +1072,14 @@ class RecceMCPServer:
                                 "type": "string",
                                 "description": "Required when mode='cloud'. Recce Cloud session ID.",
                             },
+                            "cloud_session_id": {
+                                "type": "string",
+                                "description": (
+                                    "Same as session_id. Pass the session ID here if session_id "
+                                    "does not reach the server (Claude Desktop drops an argument "
+                                    "named session_id)."
+                                ),
+                            },
                             "api_token": {
                                 "type": "string",
                                 "description": (
@@ -2583,9 +2591,12 @@ class RecceMCPServer:
             self._tool_schema_cache = {}
 
             if mode == "cloud":
-                session_id = arguments.get("session_id")
+                session_id = arguments.get("session_id") or arguments.get("cloud_session_id")
                 if not session_id:
-                    raise ValueError("session_id is required when mode='cloud'.")
+                    raise ValueError(
+                        "session_id is required when mode='cloud'. "
+                        "If you passed it and still see this error, pass it as cloud_session_id."
+                    )
 
                 # Resolution order: explicit arg > self.api_token (startup) > profile.yml.
                 # An explicit arg also persists to self.api_token so subsequent swaps reuse it.

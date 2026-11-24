@@ -566,6 +566,20 @@ async def test_set_backend_swaps_to_cloud_at_runtime():
 
 
 @pytest.mark.asyncio
+async def test_set_backend_accepts_cloud_session_id_alias():
+    cloud_backend = AsyncMock()
+    cloud_backend.instance_status = "ready"
+
+    server = RecceMCPServer(api_token="token-abc")
+
+    with patch("recce.mcp_server.CloudBackend.create", return_value=cloud_backend) as mock_create:
+        result = await server._tool_set_backend({"mode": "cloud", "cloud_session_id": "sess-alias"})
+
+    mock_create.assert_awaited_once_with(session_id="sess-alias", api_token="token-abc")
+    assert result["session_id"] == "sess-alias"
+
+
+@pytest.mark.asyncio
 async def test_set_backend_accepts_explicit_api_token_arg():
     """Explicit api_token in set_backend overrides any token loaded at startup."""
     cloud_backend = AsyncMock()
