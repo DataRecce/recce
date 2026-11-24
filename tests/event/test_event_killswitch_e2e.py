@@ -3,10 +3,10 @@
 TESTS-FIRST (red): the PostHog fan-out and recce.event.posthog_telemetry do not
 exist yet.
 
-- KILL SWITCH (D12): with RECCE_DISABLE_TELEMETRY set, drive a full TrackCommand
-  invoke (CliRunner, like recce_cloud's TestTrackedCommand) and assert the PostHog
-  client.capture is never called, while the Amplitude path is UNTOUCHED by the
-  kill switch (kill switch is PostHog-scoped during the dual-run window).
+- KILL SWITCH: with RECCE_DISABLE_TELEMETRY (or DO_NOT_TRACK) set, drive a full
+  TrackCommand invoke (CliRunner, like recce_cloud's TestTrackedCommand) and
+  assert neither PostHog nor Amplitude records or sends anything, even for an
+  opted-in profile.
 - recce-insight 7.3 CONTRACT: the property dicts PostHog emits for command /
   api_event / load_state carry the exact keys recce-insight int models extract,
   so the mart does not silently null out.
@@ -17,6 +17,7 @@ import tempfile
 from unittest.mock import MagicMock, patch
 
 import click
+import pytest
 from click.testing import CliRunner
 
 from recce import yaml as pyml
@@ -31,11 +32,11 @@ def _opted_in_profile():
 
 
 class TestKillSwitchE2E:
-    @patch.dict(os.environ, {"RECCE_DISABLE_TELEMETRY": "1"})
+    @pytest.mark.parametrize("env", [{"RECCE_DISABLE_TELEMETRY": "1"}, {"DO_NOT_TRACK": "true"}])
     @patch("recce.git.current_branch", return_value=None)
     @patch("recce.git.hosting_repo", return_value=None)
     @patch("recce.get_runner", return_value=None)
-    def test_kill_switch_blocks_posthog_capture_keeps_amplitude(self, mock_runner, mock_repo, mock_branch):
+    def test_kill_switch_blocks_every_path(self, mock_runner, mock_repo, mock_branch, env):
         from recce.track import TrackCommand
 
         @click.command(cls=TrackCommand)
@@ -45,6 +46,7 @@ class TestKillSwitchE2E:
         path = _opted_in_profile()
         try:
             with (
+                patch.dict(os.environ, env),
                 patch("recce.event.RECCE_USER_PROFILE", path),
                 patch("recce.event._collector") as mock_collector,
                 # Patch the lazily-built PostHog client so we can observe capture.
@@ -58,9 +60,9 @@ class TestKillSwitchE2E:
                 result = runner.invoke(hello)
                 assert result.exit_code == 0
 
-                # Kill switch is PostHog-scoped: Amplitude still records the command.
-                assert mock_collector.log_event.called
-                # No PostHog capture under the kill switch.
+                # The kill switch covers Amplitude too: nothing recorded or sent.
+                mock_collector.log_event.assert_not_called()
+                mock_collector.send_events.assert_not_called()
                 ph_client.capture.assert_not_called()
         finally:
             os.unlink(path)

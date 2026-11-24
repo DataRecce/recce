@@ -13,7 +13,6 @@ import threading
 from unittest.mock import patch
 
 import click
-import pytest
 from click.testing import CliRunner
 
 
@@ -254,12 +253,11 @@ class TestShouldLogEvent:
         assert should_log_event() is False
 
     @patch("builtins.open", side_effect=PermissionError("Permission denied"))
-    def test_does_not_catch_permission_error(self, mock_open):
-        """should_log_event() should NOT catch PermissionError — only FileNotFoundError."""
+    def test_unreadable_profile_fails_closed(self, mock_open):
+        """An unreadable profile.yml means telemetry is off, not a crash."""
         from recce.event import should_log_event
 
-        with pytest.raises(PermissionError):
-            should_log_event()
+        assert should_log_event() is False
 
     @patch("recce.event._collector")
     @patch("recce.event.RECCE_USER_PROFILE")

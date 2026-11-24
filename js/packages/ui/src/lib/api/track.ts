@@ -49,16 +49,34 @@ function capturePosthog(
 let amplitudeInitialized = false;
 let posthogInitialized = false;
 
-export function trackInit() {
-  function getCookie(key: string) {
-    const b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
-    return b ? b.pop() : "";
-  }
+// Values an older or misbehaving server could put in the cookie for "no user".
+// Starlette serialized `set_cookie(value=None)` as the string "None", which
+// read as a user id and turned tracking ON for opted-out users.
+const NO_USER_COOKIE_VALUES = new Set(["", "none", "null", "undefined"]);
 
-  const userId =
-    process.env.NODE_ENV === "development"
-      ? "web_dev"
-      : getCookie("recce_user_id");
+/**
+ * The telemetry user id from the `recce_user_id` cookie, or undefined when the
+ * user opted out. The server removes the cookie when telemetry is off, so this
+ * is the browser's single opt-out signal for every tracker (Amplitude, PostHog,
+ * Google Tag Manager).
+ */
+export function getTrackingUserId(): string | undefined {
+  if (process.env.NODE_ENV === "development") {
+    return "web_dev";
+  }
+  if (typeof document === "undefined") {
+    return undefined;
+  }
+  const match = document.cookie.match(/(^|;)\s*recce_user_id\s*=\s*([^;]+)/);
+  const value = match?.pop()?.trim();
+  if (!value || NO_USER_COOKIE_VALUES.has(value.toLowerCase())) {
+    return undefined;
+  }
+  return value;
+}
+
+export function trackInit() {
+  const userId = getTrackingUserId();
   const apiKey = process.env.AMPLITUDE_API_KEY;
   if (userId && apiKey) {
     try {

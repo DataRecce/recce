@@ -278,7 +278,13 @@ def submit_run(type, params, check_id=None, triggered_by=None):
                 sentry_sdk.capture_message(f"Failed to execute {run_type} task")
                 logger.error("Failed to execute %s task", run_type)
             else:
-                sentry_sdk.capture_exception(e)
+                from recce.event import SENTRY_REDACT_TAG
+
+                # Task errors routinely quote the compiled SQL and warehouse
+                # output: Sentry gets the type and stack, not the message.
+                with sentry_sdk.new_scope() as scope:
+                    scope.set_tag(SENTRY_REDACT_TAG, "true")
+                    sentry_sdk.capture_exception(e)
                 failed_reason = str(e) if str(e) != "None" else repr(e)
                 failed_reason = failed_reason.replace(". ", ".\n")
                 logger.error(f"Failed to execute {run_type} task: {failed_reason}")

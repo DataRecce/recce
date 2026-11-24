@@ -442,14 +442,20 @@ async def extract_cloud_user_context(request: Request, call_next):
 async def set_context_by_cookie(request: Request, call_next):
     response = await call_next(request)
 
+    # The browser starts its trackers (Amplitude, PostHog, GTM) only when this
+    # cookie holds a user id, so it is the frontend's opt-out signal.
     user_id_in_cookie = request.cookies.get("recce_user_id")
+
+    if not event.is_anonymous_tracking():
+        # Opted out or kill-switched: remove the cookie. Never set it to None —
+        # Starlette serializes that as the string "None", which the browser
+        # treats as a user id.
+        if user_id_in_cookie is not None:
+            response.delete_cookie(key="recce_user_id")
+        return response
+
     user_id = event.get_user_id()
-
-    if event.is_anonymous_tracking() is False:
-        # Disable anonymous tracking
-        user_id = None
-
-    if user_id_in_cookie is None or user_id_in_cookie != user_id:
+    if user_id and user_id_in_cookie != user_id:
         response.set_cookie(key="recce_user_id", value=user_id)
     return response
 

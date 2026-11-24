@@ -14,6 +14,7 @@ import logging
 import os
 import sys
 import time
+
 import click
 
 logger = logging.getLogger(__name__)
@@ -57,9 +58,23 @@ def _get_api_key():
     return os.environ.get("RECCE_POSTHOG_API_KEY") or ""
 
 
+_TRUTHY_ENV_VALUES = ("1", "true", "yes", "on")
+
+
+def _is_kill_switched():
+    # type: () -> bool
+    """RECCE_DISABLE_TELEMETRY or the DO_NOT_TRACK convention turns telemetry off."""
+    return any(
+        os.environ.get(name, "").strip().lower() in _TRUTHY_ENV_VALUES
+        for name in ("RECCE_DISABLE_TELEMETRY", "DO_NOT_TRACK")
+    )
+
+
 def _should_track():
     # type: () -> bool
-    """Check if tracking is enabled via profile."""
+    """Check if tracking is enabled via profile and no kill switch is set."""
+    if _is_kill_switched():
+        return False
     try:
         from recce_cloud.auth.profile import load_profile
 
@@ -123,15 +138,12 @@ def get_common_properties():
     # type: () -> Dict[str, Any]
     """Properties included with every event."""
     from recce_cloud import __version__
-
     from recce_cloud.constants import get_api_host
 
     props = {
         "user_id": get_distinct_id(),
         "recce_cloud_version": __version__,
-        "python_version": "{}.{}".format(
-            sys.version_info.major, sys.version_info.minor
-        ),
+        "python_version": "{}.{}".format(sys.version_info.major, sys.version_info.minor),
         "os_platform": sys.platform,
         "cloud_environment": "production" if _is_prod_environment() else "staging",
         "cloud_api_host": get_api_host(),

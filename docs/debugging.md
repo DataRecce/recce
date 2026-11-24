@@ -12,11 +12,23 @@ Logs to console and `recce_error.log`.
 
 ### Sentry error reporting
 
-Recce uses Sentry Python SDK 3. Error events, log breadcrumbs, and streamed
-performance spans remain enabled when Sentry is active. The SDK does not send
-a separate Sentry Logs stream. Automatic collection of stack-frame locals,
-HTTP bodies, request headers, cookies, URL query parameters, database query
-data, and MCP or generative AI payloads is disabled.
+Recce uses Sentry Python SDK 3. Sentry starts only when telemetry is allowed:
+`anonymous_tracking: true` in `~/.recce/profile.yml` and neither
+`RECCE_DISABLE_TELEMETRY` nor `DO_NOT_TRACK` set. When it is active, error
+events and streamed performance spans are sent. Log lines are not sent at all
+(no events, breadcrumbs or Sentry Logs), because they can carry warehouse
+error text and SQL.
+
+What is stripped before sending (`recce/event/__init__.py`):
+
+- the hostname (`server_name`, and `server.address` on spans)
+- command-line arguments (`ArgvIntegration`, and the `process.command_args`
+  span attribute SDK 3 adds to every segment span)
+- home-directory paths, rewritten to `~`
+- exception messages from dbt and warehouse-driver modules, and from failed
+  run tasks (the type and stack trace are kept)
+- stack-frame locals, HTTP bodies, request headers, cookies, URL query
+  parameters, database query data, and MCP or generative AI payloads
 
 ### Artifact/Connection Issues
 

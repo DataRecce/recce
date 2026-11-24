@@ -28,6 +28,7 @@ def stubs():
         patch("recce.event._get_api_key", return_value="key"),
         patch("recce.event._get_sentry_dns", return_value="https://p@example.invalid/1"),
         patch("recce.event.load_user_profile", return_value={"user_id": "uid-test"}),
+        patch("recce.event.telemetry_enabled", return_value=True),
     ):
         yield SimpleNamespace(sentry_sdk=sentry_sdk, collector=collector)
 
@@ -92,3 +93,34 @@ def test_unrecognized_opt_in_value_does_not_start_sentry(stubs):
         event.init()
 
     stubs.sentry_sdk.init.assert_not_called()
+
+
+def test_opted_out_user_never_starts_sentry_and_drops_the_queue(stubs):
+    with (
+        patch("recce.event.telemetry_enabled", return_value=False),
+        patch("recce.event.__version__", "1.62.0"),
+    ):
+        event.init()
+
+    stubs.sentry_sdk.init.assert_not_called()
+    stubs.collector.clear_events.assert_called_once()
+
+
+def test_sentry_does_not_send_hostname_argv_or_log_lines(stubs):
+    from sentry_sdk.integrations.argv import ArgvIntegration
+    from sentry_sdk.integrations.logging import LoggingIntegration
+
+    with patch("recce.event.__version__", "1.62.0"):
+        event.init()
+
+    kwargs = stubs.sentry_sdk.init.call_args.kwargs
+    assert kwargs["server_name"] == ""
+    assert kwargs["data_collection"]["user_info"] is False
+    assert any(isinstance(i, ArgvIntegration) for i in kwargs["disabled_integrations"])
+    (logging_integration,) = [i for i in kwargs["integrations"] if isinstance(i, LoggingIntegration)]
+    # SDK 3 splits log capture into Sentry Logs, events and breadcrumbs: all off.
+    assert logging_integration._logs_handler is None
+    assert logging_integration._event_handler is None
+    assert logging_integration._breadcrumb_handler is None
+    assert kwargs["before_send"] is event._scrub_sentry_event
+    assert kwargs["before_send_span"] is event._scrub_sentry_span

@@ -200,6 +200,26 @@ describe("trackInit() — gate and kill switch", () => {
     expect(mockPosthogIdentify).not.toHaveBeenCalled();
   });
 
+  // Older servers opted users out by setting the cookie to the string "None",
+  // which used to read as a user id and start every tracker.
+  test.each(["None", "none", "null", "undefined"])(
+    "treats a %s cookie as opted out: no Amplitude, no PostHog",
+    async (value) => {
+      const mod = await importTrackFresh();
+      setRecceUserIdCookie(value);
+      expect(mod.getTrackingUserId()).toBeUndefined();
+      mod.trackInit();
+      expect(mockAmplitudeInitAll).not.toHaveBeenCalled();
+      expect(mockPosthogInit).not.toHaveBeenCalled();
+    },
+  );
+
+  test("getTrackingUserId returns the cookie's user id when present", async () => {
+    const mod = await importTrackFresh();
+    setRecceUserIdCookie(RECCE_USER_ID);
+    expect(mod.getTrackingUserId()).toBe(RECCE_USER_ID);
+  });
+
   test("does NOT init PostHog when NEXT_PUBLIC_RECCE_DISABLE_TELEMETRY=true even with cookie + key", async () => {
     const mod = await importTrackFresh();
     process.env.NEXT_PUBLIC_RECCE_DISABLE_TELEMETRY = "true";
