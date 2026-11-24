@@ -17,7 +17,7 @@
     <a href="https://pypi.org/project/recce/#files"><img src="https://img.shields.io/pypi/dw/recce?style=flat-square" alt="downloads"></a> &nbsp;
     <a href="https://github.com/DataRecce/recce/blob/main/LICENSE"><img src="https://img.shields.io/github/license/DataRecce/recce?style=flat-square" alt="license"></a> &nbsp;
     <a href="https://getdbt.slack.com/archives/C05C28V7CPP"><img src="https://img.shields.io/badge/Slack-4A154B?style=flat-square&amp;logo=slack&amp;logoColor=white" alt="Slack"></a> &nbsp;
-    <a href="https://discord.com/invite/5zb2aK9KBV"><img src="https://img.shields.io/discord/664381609771925514?color=%237289DA&amp;label=chat&amp;logo=discord&amp;logoColor=white&amp;style=flat-square" alt="InfuseAI Discord Invite"></a> &nbsp;
+    <a href="https://discord.gg/DnmXC4ehsy"><img src="https://img.shields.io/badge/chat-Discord-7289DA?logo=discord&amp;logoColor=white&amp;style=flat-square" alt="Join our community on Discord"></a> &nbsp;
 </p>
 
 <p align="center">
@@ -164,7 +164,7 @@ For more detailed development guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md)
 Here's where you can get in touch with the Recce team and find support, add a subscribe to our newsletter option as well:
 
 - [chat on our website](https://reccehq.com/). We welcome you to start a chat or drop us a note. Our team monitors the chat box and will follow up soon.
-- [Our discord](https://discord.com/invite/VpwXRC34jz)
+- [Join our community on Discord](https://discord.gg/DnmXC4ehsy)
 - [dbt Slack](https://www.getdbt.com/community/join-the-community) in the [#tools-recce](https://getdbt.slack.com/archives/C05C28V7CPP) channel
 - Email us [help@reccehq.com](mailto:help@reccehq.com)
 
