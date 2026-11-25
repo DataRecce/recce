@@ -6,7 +6,9 @@ Tests go through these helpers so they read the same on both.
 """
 
 from dataclasses import dataclass
+from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
+from unittest.mock import AsyncMock
 
 from mcp.types import CallToolRequestParams, TextContent, Tool
 
@@ -31,9 +33,15 @@ def is_error(result) -> bool:
     return bool(value)
 
 
-async def invoke_call_tool(server, name: str, arguments: Optional[Dict[str, Any]] = None) -> ToolResult:
+def fake_request_context():
+    """A request context whose session records server-to-client notifications."""
+    return SimpleNamespace(session=AsyncMock())
+
+
+async def invoke_call_tool(server, name: str, arguments: Optional[Dict[str, Any]] = None, ctx=None) -> ToolResult:
     """Call a tool and normalise the result, including the error case."""
-    result = await server._handle_call_tool(None, CallToolRequestParams(name=name, arguments=arguments or {}))
+    ctx = ctx or fake_request_context()
+    result = await server._handle_call_tool(ctx, CallToolRequestParams(name=name, arguments=arguments or {}))
     return ToolResult(content=list(result.content), isError=is_error(result))
 
 

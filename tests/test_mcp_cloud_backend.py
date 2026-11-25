@@ -12,7 +12,11 @@ from recce.mcp_server import (  # noqa: E402
     run_mcp_server,
 )
 from recce.util.recce_cloud import RecceCloudException  # noqa: E402
-from tests.mcp_compat import invoke_call_tool, invoke_list_tools  # noqa: E402
+from tests.mcp_compat import (  # noqa: E402
+    fake_request_context,
+    invoke_call_tool,
+    invoke_list_tools,
+)
 
 
 class MockResponse:
@@ -782,6 +786,66 @@ async def test_set_backend_invalid_mode_raises():
     server = RecceMCPServer()
     with pytest.raises(ValueError, match="Invalid mode"):
         await server._tool_set_backend({"mode": "bogus"})
+
+
+def test_server_declares_tool_list_changed_capability():
+    tools_capability = RecceMCPServer()._initialization_options().capabilities.tools
+    list_changed = getattr(tools_capability, "list_changed", None)
+    if list_changed is None:
+        list_changed = tools_capability.listChanged
+    assert list_changed is True
+
+
+@pytest.mark.asyncio
+async def test_set_backend_success_notifies_tool_list_changed():
+    cloud_backend = AsyncMock()
+    cloud_backend.instance_status = "ready"
+    server = RecceMCPServer(api_token="token-abc")
+    ctx = fake_request_context()
+
+    with patch("recce.mcp_server.CloudBackend.create", return_value=cloud_backend):
+        result = await invoke_call_tool(server, "set_backend", {"mode": "cloud", "session_id": "sess-123"}, ctx=ctx)
+
+    assert result.isError is False
+    ctx.session.send_tool_list_changed.assert_awaited_once_with()
+    tool_names = {tool.name for tool in await invoke_list_tools(server)}
+    assert "list_suggested_actions" in tool_names
+    assert "analyze_model" not in tool_names
+
+
+@pytest.mark.asyncio
+async def test_set_backend_failure_does_not_notify_tool_list_changed():
+    server = RecceMCPServer()
+    ctx = fake_request_context()
+
+    result = await invoke_call_tool(server, "set_backend", {"mode": "bogus"}, ctx=ctx)
+
+    assert result.isError is True
+    ctx.session.send_tool_list_changed.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_other_tools_do_not_notify_tool_list_changed():
+    server = RecceMCPServer()
+    ctx = fake_request_context()
+
+    await invoke_call_tool(server, "get_server_info", ctx=ctx)
+
+    ctx.session.send_tool_list_changed.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_mcp1_set_backend_notifies_on_request_session():
+    cloud_backend = AsyncMock()
+    cloud_backend.instance_status = "ready"
+    server = RecceMCPServer(api_token="token-abc")
+    server.server = MagicMock()
+    server.server.request_context.session = AsyncMock()
+
+    with patch("recce.mcp_server.CloudBackend.create", return_value=cloud_backend):
+        await server._call_tool_v1("set_backend", {"mode": "cloud", "session_id": "sess-123"})
+
+    server.server.request_context.session.send_tool_list_changed.assert_awaited_once_with()
 
 
 @pytest.mark.asyncio
