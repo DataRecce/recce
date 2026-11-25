@@ -1015,6 +1015,7 @@ class RecceMCPServer:
                         "properties": {
                             "model_id": {
                                 "type": "string",
+                                "minLength": 1,
                                 "description": "The unique ID of the model (e.g., 'model.project.model_name')",
                             },
                         },
@@ -2790,7 +2791,7 @@ class RecceMCPServer:
         base_status = "unknown" if single_env else cls._read_base_status(options)
         return context, binding, base_status
 
-    async def _load_local_context(self, options: dict) -> None:
+    async def _load_local_context(self, options: dict, *, same_selection: bool = True) -> None:
         from recce.core import set_default_context
 
         options = dict(options)
@@ -2805,8 +2806,20 @@ class RecceMCPServer:
                 single_env = True
                 options["target_base_path"] = target
         cache_key = (project_dir, target, options["target_base_path"])
-        if self.context is not None and self._local_cache_key == cache_key and self.single_env == single_env:
+        state_loader = options.get("state_loader")
+        if (
+            same_selection
+            and self.context is not None
+            and self.state_loader is state_loader
+            and self._local_cache_key == cache_key
+            and self.single_env == single_env
+        ):
             return
+        refreshing = same_selection and self.context is not None and self.state_loader is state_loader
+        if refreshing:
+            # Saved state may contain the fallback manifest and supersede the
+            # newly available base. Read the selected on-disk artifacts only.
+            options.pop("state_loader", None)
 
         try:
             context, invocation, base_status = await anyio.to_thread.run_sync(
@@ -2818,11 +2831,15 @@ class RecceMCPServer:
                 raise ValueError(self._local_recovery_message()) from exc
             raise
 
-        if self.state_loader is not options.get("state_loader"):
+        if self.state_loader is not state_loader:
             self._export_local_state()
+        elif refreshing:
+            context.state_loader = state_loader
+            context.runs = self.context.runs
+            context.checks = self.context.checks
         set_default_context(context)
         self.context = context
-        self.state_loader = options.get("state_loader")
+        self.state_loader = state_loader
         self._dbt_invocation = invocation
         self._local_cache_key = cache_key
         self._local_load_error = None
@@ -2902,7 +2919,7 @@ class RecceMCPServer:
                 options.pop("state_loader", None)
                 options.pop("review", None)
             options.update(changes)
-            await self._load_local_context(options)
+            await self._load_local_context(options, same_selection=not changes)
             self._local_options = options
 
             self.backend = None
