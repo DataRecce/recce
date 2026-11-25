@@ -53,7 +53,14 @@ def lock_down_duckdb(cursor) -> None:
         current = cursor.fetchone()
         if matches_policy(current):
             return
+        # Set this before clearing exemptions or disabling external access.
+        if current[4] != "":
+            cursor.execute("SET temp_directory = ''")
         for index, (name, value) in enumerate(_SQLMESH_SANDBOX_SETTINGS.items()):
+            if name == "temp_directory":
+                continue
+            if name == "allowed_paths" and set(current[index]).issubset(database_paths):
+                continue
             if current[index] != expected[index]:
                 cursor.execute(f"SET {name} = {value}")
         cursor.execute(settings_query)

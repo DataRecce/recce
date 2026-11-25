@@ -62,6 +62,41 @@ def _make_run(result=None, error=None, run_type=RunType.ROW_COUNT_DIFF):
     return Run(type=run_type, result=result, error=error)
 
 
+@pytest.mark.asyncio
+async def test_non_query_run_exports_actionable_redacted_error(tmp_path, monkeypatch):
+    """Exercise the executor, CLI handling, and exported non-query run record."""
+    import json
+
+    from recce.run import cli_run
+
+    recorded = []
+    context = MagicMock(adapter_type="dbt", review_mode=False)
+    context.state_loader.state = None
+    context.export_state.side_effect = lambda: [run.model_dump(mode="json") for run in recorded]
+    output = tmp_path / "output.json"
+    context.state_loader.export.side_effect = lambda state: output.write_text(json.dumps(state))
+    preset = {"name": "orders count", "type": "row_count_diff", "params": {"node_names": ["orders"]}}
+
+    def blocked_task():
+        raise DuckDBExternalAccessBlocked() from ValueError("private-driver-detail")
+
+    monkeypatch.setattr("recce.core.load_context", lambda **kwargs: context)
+    monkeypatch.setattr("recce.apis.run_func.default_context", lambda: context)
+    monkeypatch.setattr("recce.apis.run_func.create_task", lambda *args: SimpleNamespace(execute=blocked_task))
+    monkeypatch.setattr("recce.apis.run_func.RunDAO", lambda: SimpleNamespace(create=recorded.append))
+    monkeypatch.setattr("recce.run.RecceConfig", lambda: {"checks": [preset]})
+    monkeypatch.setattr("recce.run.create_check_from_run", lambda *args, **kwargs: None)
+    monkeypatch.setattr("recce.run.purge_preset_checks", lambda: None)
+    monkeypatch.setattr("recce.event.log_load_state", lambda **kwargs: None)
+    failures = tmp_path / "failures.md"
+    assert await cli_run(str(output), error_log=str(failures)) == 0
+    assert "--duckdb-external-access" in failures.read_text()
+    error = json.loads(output.read_text())[0]["error"]
+    assert error and "private-driver-detail" not in error
+    assert "recce.yml" not in error, error
+    assert "--duckdb-external-access" not in error
+
+
 class TestRunShouldBeApproved:
     """Tests for run_should_be_approved handling None values and edge cases."""
 

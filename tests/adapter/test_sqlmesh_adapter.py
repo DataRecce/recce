@@ -17,6 +17,7 @@ from types import ModuleType
 from unittest.mock import MagicMock
 
 import pytest
+from sqlglot import exp
 
 from recce.artifact_health import classify_schema_coverage
 
@@ -332,3 +333,109 @@ def test_sqlmesh_lockdown_removes_external_path_exemptions(
     # configured external source or directory may survive the lockdown.
     assert str(csv) not in paths
     assert directories == []
+
+
+@pytest.mark.parametrize("as_text", [True, False], ids=["text", "ast"])
+@pytest.mark.parametrize("routine", ["nextval", "setseed"])
+def test_query_validation_considers_sequence_function_effects(sqlmesh_adapter, as_text, routine):
+    import duckdb
+    from sqlglot import exp
+
+    from recce.exceptions import RecceException
+
+    with duckdb.connect() as engine:
+        row = engine.execute(
+            "SELECT has_side_effects FROM duckdb_functions() WHERE function_name = ?", [routine]
+        ).fetchone()
+    assert row == (True,)
+    adapter = sqlmesh_adapter(MagicMock(default_dialect="duckdb"), None, None)
+    expression = exp.select(exp.Anonymous(this=routine, expressions=[exp.Placeholder()]))
+    with pytest.raises(RecceException, match="SQLMesh requires a single read-only query"):
+        adapter.replace_virtual_tables(expression.sql(dialect="duckdb") if as_text else expression)
+
+
+def test_tokenizer_errors_are_redacted(sqlmesh_adapter):
+    from recce.exceptions import RecceException
+
+    adapter = sqlmesh_adapter(MagicMock(default_dialect="duckdb"), None, None)
+    with pytest.raises(RecceException, match=r"^SQLMesh requires a single read-only query\.$") as failure:
+        adapter.replace_virtual_tables("SELECT 'example-marker")
+    assert failure.value.__suppress_context__ is True
+
+
+def test_disabled_extension_autoload_gets_access_hint(sqlmesh_adapter, monkeypatch, duckdb_context):
+    from recce.exceptions import DuckDBExternalAccessBlocked
+
+    adapter = _load(sqlmesh_adapter, monkeypatch, duckdb_context)
+    cursor = duckdb_context.engine_adapter.cursor
+    assert cursor.execute("SELECT current_setting('autoload_known_extensions')").fetchone() == (False,)
+    with pytest.raises(DuckDBExternalAccessBlocked, match="--duckdb-external-access"):
+        adapter.fetchdf_with_limit("SELECT * FROM sqlite_scan(NULL, NULL)", limit=1)
+
+
+@pytest.mark.asyncio
+async def test_preset_check_gets_extension_access_hint(sqlmesh_adapter, monkeypatch, duckdb_context):
+    from types import SimpleNamespace
+
+    from recce.apis.run_security import QUERY_FAILURE_MESSAGE
+    from recce.run import execute_preset_checks
+
+    adapter = _load(sqlmesh_adapter, monkeypatch, duckdb_context)
+    context = SimpleNamespace(adapter=adapter, adapter_type="sqlmesh", review_mode=False)
+    recorded = []
+    monkeypatch.setattr("recce.apis.run_func.default_context", lambda: context)
+    monkeypatch.setattr("recce.tasks.query.default_context", lambda: context)
+    monkeypatch.setattr("recce.apis.run_func.RunDAO", lambda: SimpleNamespace(create=recorded.append))
+    monkeypatch.setattr("recce.run.create_check_from_run", lambda *args, **kwargs: None)
+    monkeypatch.setattr("recce.run.purge_preset_checks", lambda: None)
+    monkeypatch.setattr("sentry_sdk.capture_message", lambda *args, **kwargs: None)
+
+    preset = {
+        "name": "extension example",
+        "type": "query",
+        "params": {"sql_template": "SELECT * FROM sqlite_scan(NULL, NULL)"},
+    }
+    rc, failures = await execute_preset_checks([preset], is_skip_query=False)
+    assert recorded[0].error == QUERY_FAILURE_MESSAGE
+    assert (rc, failures) != (0, []), "The runner reported Success for a failed query"
+    assert "--duckdb-external-access" in failures[0]["failed_reason"]
+
+
+def test_ignored_settings_prevent_dispatch(duckdb_context, sqlmesh_adapter, monkeypatch):
+    from recce.exceptions import RecceConfigException
+
+    adapter = _load(sqlmesh_adapter, monkeypatch, duckdb_context, duckdb_external_access=True)
+    adapter.duckdb_external_access = False
+
+    class NoOpSettingsCursor:
+        def execute(self, sql):
+            return self
+
+        def fetchall(self):
+            return []
+
+        def fetchone(self):
+            return (True, True, [], [], "", True, False)
+
+    duckdb_context.engine_adapter.cursor = NoOpSettingsCursor()
+    with pytest.raises(RecceConfigException):
+        adapter.fetchdf_with_limit("SELECT 1")
+    duckdb_context.fetchdf.assert_not_called()
+
+
+@pytest.mark.parametrize("node", [exp.Create, exp.Command, exp.Block, exp.Pragma, exp.Set, exp.Install, exp.LoadData])
+def test_validator_rejects_disallowed_descendant_class(sqlmesh_adapter, node):
+    from recce.exceptions import RecceException
+
+    adapter = sqlmesh_adapter(MagicMock(default_dialect="duckdb"), None, None)
+    # Inert ASTs distinguish each descendant guard without SQL dispatch.
+    with pytest.raises(RecceException, match="SQLMesh requires a single read-only query"):
+        adapter.replace_virtual_tables(exp.select(node()))
+
+
+def test_validator_requires_query_root(sqlmesh_adapter):
+    from recce.exceptions import RecceException
+
+    adapter = sqlmesh_adapter(MagicMock(default_dialect="duckdb"), None, None)
+    with pytest.raises(RecceException, match="SQLMesh requires a single read-only query"):
+        adapter.replace_virtual_tables("VALUES (1)")

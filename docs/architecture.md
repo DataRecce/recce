@@ -39,9 +39,16 @@ credentials so each new cursor is restricted. SQLMesh guards its actual query
 engine when its dialect is DuckDB, verifies the sandbox on each execution
 cursor, and locks the configuration. SQLMesh accepts only a single read-only
 query, including for query-diff ASTs; dbt node selectors are unsupported.
+SQLMesh's DuckDB queries execute in read-only transactions, including with external access
+enabled, so routines hidden in views cannot mutate persistent database state.
 `recce run --duckdb-external-access` opts trusted checks into external I/O;
-YAML cannot enable it for `run`. See the [migration notes](release-notes.md)
-for compatibility details and SQLMesh's temporary disk spilling restriction.
+YAML cannot enable it for `run`. Migration: checks that read CSV, Parquet, S3,
+or other external resources, including through existing views, now require this
+explicit flag. Failed checks retain the existing `recce run` exit-status semantics;
+inspect the check results or failure report. SQLMesh's DuckDB sandbox disables
+temporary disk spilling to avoid directory exemptions that permit external I/O.
+Large queries must fit in memory, or trusted projects can explicitly opt into
+external access to retain their configured spill directory.
 
 ### In-Memory State with Persistence
 
