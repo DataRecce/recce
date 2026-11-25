@@ -11,7 +11,7 @@
 "use client";
 
 import { colors } from "@datarecce/ui/theme";
-import * as Sentry from "@sentry/nextjs";
+import * as Sentry from "@sentry/react";
 import { useEffect, useState } from "react";
 
 interface GlobalErrorProps {

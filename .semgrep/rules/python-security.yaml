@@ -1,0 +1,94 @@
+rules:
+  - id: recce-unsafe-generate-sql
+    languages: [python]
+    severity: ERROR
+    message: >-
+      generate_sql() defaults to safe_template=False, which allows unsandboxed
+      dbt macro execution. Pass safe_template=True explicitly when rendering
+      user-supplied or task SQL templates.
+    metadata:
+      category: security
+      cwe: "CWE-94: Improper Control of Generation of Code"
+    patterns:
+      - pattern-either:
+          - pattern: $ADAPTER.generate_sql(..., safe_template=False, ...)
+          - patterns:
+              - pattern: $ADAPTER.generate_sql(...)
+              - pattern-not: $ADAPTER.generate_sql(..., safe_template=True, ...)
+    paths:
+      exclude:
+        - "/tests/**"
+
+  - id: recce-requests-missing-timeout
+    languages: [python]
+    severity: ERROR
+    message: >-
+      HTTP request via `requests` is missing an explicit `timeout=` argument.
+      Always set a bounded timeout so stalled upstreams cannot hang the server
+      or CLI indefinitely.
+    metadata:
+      category: security
+      cwe: "CWE-400: Uncontrolled Resource Consumption"
+    patterns:
+      - pattern-either:
+          - pattern: requests.get(...)
+          - pattern: requests.post(...)
+          - pattern: requests.put(...)
+          - pattern: requests.delete(...)
+          - pattern: requests.patch(...)
+          - pattern: requests.head(...)
+          - pattern: requests.options(...)
+          - pattern: requests.request(...)
+      - pattern-not: requests.$METHOD(..., timeout=$T, ...)
+      - pattern-not: requests.$METHOD(..., **$KWARGS)
+    paths:
+      exclude:
+        - "/tests/**"
+
+  - id: recce-tarfile-unsafe-extract
+    languages: [python]
+    severity: ERROR
+    message: >-
+      tarfile extraction without a `filter=` argument (e.g. filter="data") is
+      vulnerable to path traversal (Zip Slip / Tar Slip) and symlink attacks.
+      Pass filter="data" or validate every member before extracting.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory"
+    patterns:
+      - pattern-either:
+          - patterns:
+              - pattern-inside: |
+                  import tarfile
+                  ...
+              - pattern: $TAR.extractall(...)
+              - pattern-not: $TAR.extractall(..., filter=$F, ...)
+          - patterns:
+              - pattern-inside: |
+                  import tarfile
+                  ...
+              - pattern: $TAR.extract(...)
+              - pattern-not: $TAR.extract(..., filter=$F, ...)
+    paths:
+      exclude:
+        - "/tests/**"
+
+  - id: recce-yaml-unsafe-load
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Unsafe YAML deserialization can execute arbitrary Python objects.
+      Use yaml.safe_load() or pass Loader=yaml.SafeLoader explicitly.
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+    patterns:
+      - pattern-either:
+          - pattern: yaml.unsafe_load(...)
+          - patterns:
+              - pattern: yaml.load(...)
+              - pattern-not: yaml.load(..., Loader=yaml.SafeLoader, ...)
+              - pattern-not: yaml.load(..., Loader=yaml.CSafeLoader, ...)
+    paths:
+      exclude:
+        - "/tests/**"

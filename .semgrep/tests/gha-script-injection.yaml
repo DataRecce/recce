@@ -1,0 +1,32 @@
+name: Test Workflow
+on: pull_request
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Unsafe PR title interpolation
+        # ruleid: recce-gha-script-injection
+        run: echo "${{ github.event.pull_request.title }}"
+
+      - name: Unsafe input interpolation
+        # ruleid: recce-gha-script-injection
+        run: |
+          echo "${{ inputs.version }}"
+
+      - name: Unsafe step output interpolation
+        # ruleid: recce-gha-script-injection
+        run: |
+          tag="${{ steps.meta.outputs.tag }}"
+
+      - name: Safe env indirection
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          VERSION: ${{ inputs.version }}
+        # ok: recce-gha-script-injection
+        run: |
+          echo "$PR_TITLE"
+          echo "$VERSION"
+
+      - name: Safe matrix value
+        # ok: recce-gha-script-injection
+        run: uv sync --python ${{ matrix.python-version }}

@@ -1,0 +1,63 @@
+# DRC-5460: Custom Semgrep security rules CI gate.
+# Enforces security invariants from the Recce Cybersecurity Defense Lifecycle Review:
+# - No untrusted ${{ ... }} interpolation inside GitHub Actions `run:` scripts
+# - No generate_sql() calls without safe_template=True
+# - No requests.* calls without an explicit timeout=
+# - No tarfile.extract()/extractall() calls without a filter=
+# - No yaml.load()/unsafe_load() without SafeLoader
+name: Semgrep Security Rules
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "recce/**"
+      - ".github/workflows/**"
+      - ".semgrep/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "recce/**"
+      - ".github/workflows/**"
+      - ".semgrep/**"
+  workflow_dispatch:
+
+jobs:
+  semgrep:
+    name: Custom Semgrep Security Rules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "latest"
+
+      - name: Install Semgrep
+        run: uv tool install "semgrep>=1.100.0"
+
+      - name: Verify Semgrep rule unit tests
+        run: |
+          semgrep --test --config .semgrep/rules/python-security.yaml .semgrep/tests/python-security.py --metrics=off
+          semgrep --test --config .semgrep/rules/gha-script-injection.yaml .semgrep/tests/gha-script-injection.yaml --metrics=off
+
+      - name: Run Semgrep security scan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ] && [ -n "$BASE_REF" ]; then
+            semgrep scan --config .semgrep/rules/ --exclude 'recce/data' --baseline-commit "origin/${BASE_REF}" --error --metrics=off recce/ .github/workflows/
+          elif [ "$EVENT_NAME" = "push" ]; then
+            semgrep scan --config .semgrep/rules/ --exclude 'recce/data' --baseline-commit HEAD~1 --error --metrics=off recce/ .github/workflows/
+          else
+            semgrep scan --config .semgrep/rules/ --exclude 'recce/data' --error --metrics=off recce/ .github/workflows/
+          fi
