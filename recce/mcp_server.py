@@ -709,6 +709,8 @@ class RecceMCPServer:
         self.api_token = api_token
         self._backend_lock = asyncio.Lock()
         self._local_cache_key: Optional[tuple] = None
+        self._local_options: Optional[dict] = None
+        self._local_load_error: Optional[str] = None
         self._tool_schema_cache: Dict[str, Dict[str, Any]] = {}
         self.mcp_logger = MCPLogger(debug=debug, log_file=log_file)
         self.server = self._build_server()
@@ -1084,6 +1086,8 @@ class RecceMCPServer:
                     "('local', 'cloud', or 'none' when unconfigured), adapter type, git branch, "
                     "supported tasks, and review mode status. Useful for diagnostics and "
                     "understanding which diff tools are available.\n\n"
+                    "Before local artifacts are loaded, returns mode='local' and context_loaded=false "
+                    "without reading artifacts or reporting adapter details.\n\n"
                     "The 'base_status' field is a single-cased enum (all lowercase) reporting "
                     "whether the local target-base/ artifacts are usable for diff operations:\n"
                     "  - 'fresh': artifacts are within the freshness threshold and SHA matches; safe to diff.\n"
@@ -1805,8 +1809,13 @@ class RecceMCPServer:
                 }
                 # Unconfigured-mode gate: when neither a local context nor a cloud
                 # backend is set, only set_backend and get_server_info are usable.
-                if self.context is None and self.backend is None and name not in {"set_backend", "get_server_info"}:
-                    raise ValueError("No backend configured. Call set_backend(mode='local'|'cloud', ...) first.")
+                if (
+                    self.context is None
+                    and self.backend is None
+                    and (self._local_options is None or self._local_load_error is not None)
+                    and name not in {"set_backend", "get_server_info"}
+                ):
+                    raise ValueError(self._local_recovery_message())
 
                 if self.mode != RecceServerMode.server and name in blocked_tools_in_non_server:
                     # Allowed tools = all registered minus blocked
@@ -1824,15 +1833,31 @@ class RecceMCPServer:
                         f"Tool '{name}' is not available in {self.mode.value} mode. "
                         f"Only {', '.join(repr(t) for t in allowed_tools)} are available in this mode."
                     )
+                if (
+                    self.backend is None
+                    and self.context is None
+                    and self._local_options is not None
+                    and name not in {"set_backend", "get_server_info"}
+                ):
+                    if await self._get_tool_input_schema(name) is None:
+                        raise ValueError(f"Unknown tool: {name}")
+                    async with self._backend_lock:
+                        if self.backend is None and self.context is None:
+                            if self._local_load_error is not None:
+                                raise ValueError(self._local_recovery_message())
+                            try:
+                                self._load_local_context(self._local_options)
+                            except Exception as exc:
+                                self._local_load_error = str(exc)
+                                raise ValueError(self._local_recovery_message()) from exc
 
                 if name == "set_backend":
                     result = await self._tool_set_backend(arguments)
                 elif name == "get_server_info" and self.context is None and self.backend is None:
-                    result = {
-                        "mode": "none",
-                        "configured": False,
-                        "message": "No backend configured. Call set_backend(mode='local'|'cloud', ...) first.",
-                    }
+                    if self._local_options is not None and self._local_load_error is None:
+                        result = {"mode": "local", "context_loaded": False}
+                    else:
+                        result = {"mode": "none", "configured": False, "message": self._local_recovery_message()}
                 elif self.backend is not None:
                     result = await self.backend.call_tool(name, arguments)
                 elif name == "lineage_diff":
@@ -2687,6 +2712,7 @@ class RecceMCPServer:
             "support_tasks": context.support_tasks(),
             "single_env": self.single_env,
         }
+        result["context_loaded"] = True
 
         # Include base_status so agents can programmatically detect stale state.
         # All-lowercase enum (matches the recommendation field's casing):
@@ -2708,6 +2734,54 @@ class RecceMCPServer:
                 logger.warning(f"[MCP] Failed to load git/PR info: {e}")
 
         return result
+
+    def _local_recovery_message(self) -> str:
+        message = "No backend configured. Call set_backend(mode='local'|'cloud', ...) first."
+        if self._local_load_error:
+            return f"{message} Local context failed to load: {self._local_load_error}"
+        return message
+
+    def _load_local_context(self, options: dict) -> None:
+        from recce import core
+        from recce.cli import check_base_freshness, resolve_target_base_path
+
+        options = dict(options)
+        project_dir = options.get("project_dir")
+        target = options.setdefault("target_path", "target")
+        base = options.setdefault("target_base_path", "target-base")
+        cache_key = (project_dir, target, base)
+        if self.context is not None and self._local_cache_key == cache_key:
+            return
+
+        base_dir = Path(project_dir or "./").joinpath(base)
+        target_dir = Path(project_dir or "./").joinpath(target)
+        single_env = not options.get("review") and target_dir.is_dir() and not base_dir.is_dir()
+        if single_env:
+            options["target_base_path"] = target
+        previous = core.default_context()
+        core.recce_context = None
+        try:
+            context = load_context(**options)
+        except Exception:
+            core.recce_context = previous
+            raise
+
+        self.context = context
+        self._local_cache_key = cache_key
+        self._local_load_error = None
+        self.single_env = single_env
+        self._base_status = "unknown"
+        if single_env:
+            logger.warning(SINGLE_ENV_WARNING)
+        else:
+            try:
+                base_path = resolve_target_base_path(project_dir, base)
+                freshness = check_base_freshness(target_base_path=base_path)
+                self._base_status = freshness["status"]
+                if self._base_status != "fresh":
+                    logger.warning("%s", freshness["message"])
+            except Exception as exc:
+                logger.debug("[MCP] Base freshness check skipped: %s", exc)
 
     async def _tool_set_backend(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Switch the active backend (local or cloud) at runtime.
@@ -2763,39 +2837,12 @@ class RecceMCPServer:
                 }
 
             # mode == "local"
-            project_dir = arguments.get("project_dir")
-            target_path = arguments.get("target_path", "target")
-            target_base_path = arguments.get("target_base_path", "target-base")
-            cache_key = (project_dir, target_path, target_base_path)
-
-            if self.context is None or self._local_cache_key != cache_key:
-                # Reset the global so RecceContext.load runs fresh against new params.
-                from recce import core as _core
-
-                _core.recce_context = None
-
-                # Mirror CLI single-env fallback: if target/ exists but target-base/
-                # doesn't, point both envs at target/ so load_context() doesn't fail
-                # on a missing base manifest.
-                base_path = Path(project_dir or "./").joinpath(target_base_path)
-                target_dir = Path(project_dir or "./").joinpath(target_path)
-                effective_base = target_base_path
-                if target_dir.is_dir() and not base_path.is_dir():
-                    effective_base = target_path
-                    self.single_env = True
-                else:
-                    self.single_env = not base_path.is_dir()
-
-                load_kwargs = {
-                    "target_path": target_path,
-                    "target_base_path": effective_base,
-                }
-                if project_dir:
-                    load_kwargs["project_dir"] = project_dir
-                self.context = load_context(**load_kwargs)
-                self._local_cache_key = cache_key
-
-                logger.info(f"[MCP] Loaded local context (project_dir={project_dir}, single_env={self.single_env})")
+            options = dict(self._local_options or {})
+            options.update(
+                {key: arguments[key] for key in ("project_dir", "target_path", "target_base_path") if key in arguments}
+            )
+            self._load_local_context(options)
+            self._local_options = options
 
             self.backend = None
             return {
@@ -3200,8 +3247,7 @@ async def run_mcp_server(
                Optionally includes 'debug' flag for enabling MCP logging
     """
     state_loader = kwargs.get("state_loader", None)
-    # Extract single_env flag before load_context (not a dbt kwarg)
-    single_env = kwargs.pop("single_env", False)
+    cloud_snapshot = kwargs.pop("cloud_snapshot", False)
 
     # Setup logging
     logging.basicConfig(
@@ -3215,9 +3261,7 @@ async def run_mcp_server(
     if session and not cloud:
         raise ValueError("--cloud is required when --session is provided")
 
-    # Resolve initial mode from CLI hints. Both unset is allowed: the server starts
-    # unconfigured and the agent flips it via the set_backend tool. Failed local-context
-    # load also falls through to unconfigured so the long-lived MCP keeps running.
+    # Resolve tool permissions independently of whether a backend is loaded.
     mode_str = kwargs.get("mode")
     server_mode = None
     if mode_str:
@@ -3251,66 +3295,21 @@ async def run_mcp_server(
         )
     else:
         context = None
-        try:
-            context = load_context(**kwargs)
-        except Exception as e:
-            logger.warning(
-                f"[MCP] No local dbt context loaded ({e}); starting unconfigured. "
-                "Use the set_backend tool to attach a backend."
-            )
+        if cloud_snapshot:
+            try:
+                context = load_context(**kwargs)
+            except Exception as e:
+                logger.warning("[MCP] No snapshot context loaded (%s); starting unconfigured.", e)
 
         server = RecceMCPServer(
             context,
             mode=server_mode,
             debug=debug,
             state_loader=state_loader,
-            single_env=single_env,
             api_token=api_token,
         )
-        if context is not None:
-            cache_key = (
-                kwargs.get("project_dir"),
-                kwargs.get("target_path", "target"),
-                kwargs.get("target_base_path", "target-base"),
-            )
-            server._local_cache_key = cache_key
-
-            # Freshness check (M2, AC-3): warn on stale or missing base artifacts at startup.
-            # Lazy import to avoid circular import; best-effort — startup never fails here.
-            try:
-                from recce.cli import check_base_freshness, resolve_target_base_path
-
-                # Honor --project-dir like the CLI does. Without this, MCP
-                # startup looks for ./target-base/manifest.json relative to
-                # CWD, missing artifacts that exist at --project-dir-relative
-                # paths (or worse, picking up a stale manifest from another
-                # project that happens to live in CWD).
-                _tb = resolve_target_base_path(
-                    kwargs.get("project_dir"),
-                    kwargs.get("target_base_path", "target-base"),
-                )
-                _freshness = check_base_freshness(target_base_path=_tb)
-                server._base_status = _freshness.get("status", "fresh")
-                if server._base_status in ("stale_time", "stale_sha"):
-                    _age = _freshness.get("artifact_age_hours") or 0
-                    logger.warning(
-                        f"Base artifacts are stale ({_age:.1f} hours old). "
-                        "Diffs may not reflect the latest base. "
-                        f"Run: dbt docs generate --target-path {_tb} "
-                        "(or use `recce check-base` for full diagnosis)"
-                    )
-                elif server._base_status == "missing":
-                    # MISSING is the most actionable failure of the three: diffs
-                    # will fail outright, not silently mislead. Surface it loudly
-                    # alongside the rebuild path.
-                    logger.warning(
-                        f"Base artifacts not found at '{_tb}/manifest.json'. "
-                        "Diff tools will fail until base artifacts are built. "
-                        f"Run: dbt build --target-path {_tb} "
-                        "(or use `recce check-base` for full diagnosis)"
-                    )
-            except Exception as _e:
-                logger.debug(f"[MCP] Base freshness check skipped: {_e}")
+        if not cloud_snapshot:
+            server._local_options = kwargs
 
     # Run in either stdio or SSE mode
     if sse:

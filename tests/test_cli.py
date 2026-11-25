@@ -300,55 +300,15 @@ class TestCommandMCPServer(TestCase):
     @patch("recce.mcp_server.run_mcp_server", new_callable=MagicMock)
     @patch("recce.config.RecceConfig")
     @patch("recce.util.api_token.prepare_api_token", return_value=None)
-    def test_cmd_mcp_server_single_env_when_base_missing(
+    def test_cmd_mcp_server_preserves_artifact_paths(
         self, mock_prepare_api_token, mock_recce_config, mock_run_mcp_server, mock_asyncio_run
     ):
-        """target-path exists but target-base/ doesn't → single_env mode activates."""
-
-        def is_dir_side_effect(path):
-            return "target-base" not in str(path)
-
-        with patch.object(Path, "is_dir", autospec=True, side_effect=is_dir_side_effect):
-            result = self.runner.invoke(
-                cli_command_mcp_server,
-                ["--target-path", "target", "--target-base-path", "target-base"],
-            )
-
+        result = self.runner.invoke(
+            cli_command_mcp_server, ["--target-path", "current", "--target-base-path", "baseline"]
+        )
         assert result.exit_code == 0
-
-        # run_mcp_server should receive single_env=True and target_base_path=target_path
-        mock_run_mcp_server.assert_called_once()
-        call_kwargs = mock_run_mcp_server.call_args.kwargs
-        assert call_kwargs["single_env"] is True
-        assert call_kwargs["target_base_path"] == "target"
-
-        # Console should show guidance messages
-        assert "Base artifacts not found" in result.output
-        assert "single-environment mode" in result.output
-        assert "dbt docs generate" in result.output
-
-    @patch("asyncio.run")
-    @patch("recce.mcp_server.run_mcp_server", new_callable=MagicMock)
-    @patch("recce.config.RecceConfig")
-    @patch("recce.util.api_token.prepare_api_token", return_value=None)
-    def test_cmd_mcp_server_no_single_env_when_base_exists(
-        self, mock_prepare_api_token, mock_recce_config, mock_run_mcp_server, mock_asyncio_run
-    ):
-        """When target-base/ directory exists, single_env mode is NOT activated."""
-        with patch.object(Path, "is_dir", return_value=True):
-            result = self.runner.invoke(
-                cli_command_mcp_server,
-                ["--target-path", "target", "--target-base-path", "target-base"],
-            )
-
-        assert result.exit_code == 0
-
-        mock_run_mcp_server.assert_called_once()
-        call_kwargs = mock_run_mcp_server.call_args.kwargs
-        assert call_kwargs.get("single_env", False) is False
-        assert call_kwargs["target_base_path"] == "target-base"
-
-        # No single-env guidance in output
+        assert mock_run_mcp_server.call_args.kwargs["target_path"] == "current"
+        assert mock_run_mcp_server.call_args.kwargs["target_base_path"] == "baseline"
         assert "Base artifacts not found" not in result.output
 
     @patch("asyncio.run")
@@ -416,6 +376,7 @@ class TestCommandMCPServer(TestCase):
         call_kwargs = mock_run_mcp_server.call_args.kwargs
         # Cloud-live branch must NOT fire — env var is snapshot mode
         assert call_kwargs["cloud"] is False
+        assert call_kwargs["cloud_snapshot"] is True
         assert call_kwargs["session"] is None
         assert call_kwargs["state_loader"] is mock_state_loader
 

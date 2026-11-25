@@ -2732,12 +2732,12 @@ def mcp_server(state_file, sse, host, port, **kwargs):
 
     \b
     Prerequisites:
-        Development dbt artifacts (target/) must exist before starting.
+        Development dbt artifacts (target/) must exist before using local data tools.
         Base artifacts (target-base/) are recommended for full diffing.
         - Development: dbt docs generate            (creates target/)
         - Base: dbt docs generate --target-path target-base
                                                      (creates target-base/)
-        Without base artifacts, the server starts in single-environment
+        Without base artifacts, local tools run in single-environment
         mode where diff tools compare the current environment against
         itself (no changes expected).
 
@@ -2859,28 +2859,11 @@ def mcp_server(state_file, sse, host, port, **kwargs):
         state_loader = create_state_loader_by_args(state_file, **kwargs)
         kwargs["state_loader"] = state_loader
 
-    # Check Single Environment Onboarding Mode (local startup hint only).
-    # When target-base/ doesn't exist, fall back to single-env mode: set
-    # target_base_path = target_path so both envs load the same artifacts,
-    # making all diffs show no changes. The MCP server adds _warning to responses.
-    # Skipped in cloud-session and cloud-snapshot modes — they bring their own state.
-    if not is_cloud_session and not is_cloud_snapshot:
-        project_dir_path = Path(kwargs.get("project_dir") or "./")
-        target_path = project_dir_path.joinpath(Path(kwargs.get("target_path", "target")))
-        target_base_path = project_dir_path.joinpath(Path(kwargs.get("target_base_path", "target-base")))
-        if target_path.is_dir() and not target_base_path.is_dir():
-            kwargs["single_env"] = True
-            kwargs["target_base_path"] = kwargs.get("target_path")
-            console.print(
-                "[yellow]Base artifacts not found. "
-                "Starting in single-environment mode (diffs will show no changes).[/yellow]"
-            )
-            console.print("To enable diffing: dbt docs generate --target-path target-base")
-
     # Don't let env-derived cloud=True trigger run_mcp_server's CloudBackend branch
     # — cloud-snapshot runs as a local MCP against the downloaded state file.
     if not is_cloud_session:
         kwargs["cloud"] = False
+        kwargs["cloud_snapshot"] = is_cloud_snapshot
 
     try:
         if is_cloud_session:
