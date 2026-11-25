@@ -2313,6 +2313,9 @@ class TestRunMCPServer:
             info = await invoke_call_tool(server, "get_server_info")
             assert '"context_loaded":false' in info.content[0].text
             assert (await invoke_call_tool(server, "get_model")).isError
+            invalid_model = await invoke_call_tool(server, "get_model", {"model_id": ""})
+            assert invalid_model.isError
+            assert "Input validation error" in invalid_model.content[0].text
             invalid_update = await invoke_call_tool(server, "update_check", {"check_id": "existing"})
             assert invalid_update.isError
             assert "Input validation error" in invalid_update.content[0].text
@@ -2400,27 +2403,40 @@ class TestRunMCPServer:
     @pytest.mark.asyncio
     async def test_local_reattach_picks_up_base_created_after_first_diff(self, tmp_path, monkeypatch):
         from recce import core
+        from recce.models import Run, RunDAO
 
         monkeypatch.setattr(core, "recce_context", None)
         (tmp_path / "target").mkdir()
-        context = MagicMock(spec=RecceContext, adapter_type="dbt")
+        initial = RecceContext(adapter_type="dbt")
+        replacement = RecceContext(adapter_type="dbt")
+        saved_run = Run(type=RunType.QUERY)
+        saved_check = Check(name="Customer count", type=RunType.QUERY)
+        state_loader = MagicMock(session_id=None)
+        initial.state_loader = state_loader
 
         async def run(server):
             with patch.object(server, "_tool_schema_diff", return_value={"data": []}):
                 diff = await invoke_call_tool(server, "schema_diff")
             assert not diff.isError
             assert '"_warning"' in diff.content[0].text
+            RunDAO().create(saved_run)
+            initial.checks.append(saved_check)
             (tmp_path / "target-base").mkdir()
             result = await invoke_call_tool(server, "set_backend", {"mode": "local"})
             assert not result.isError
             assert '"single_env":false' in result.content[0].text
             assert [call.kwargs["target_base_path"] for call in load.call_args_list] == ["target", "target-base"]
+            assert load.call_args_list[0].kwargs["state_loader"] is state_loader
+            assert "state_loader" not in load.call_args_list[1].kwargs
+            assert replacement.state_loader is state_loader
+            assert RunDAO().find_run_by_id(saved_run.run_id) == saved_run
+            assert str(saved_check.check_id) in (await invoke_call_tool(server, "list_checks")).content[0].text
 
         with (
             patch.object(RecceMCPServer, "run", run),
-            patch.object(RecceContext, "load", return_value=context) as load,
+            patch.object(RecceContext, "load", side_effect=[initial, replacement]) as load,
         ):
-            await run_mcp_server(project_dir=str(tmp_path), api_token=None)
+            await run_mcp_server(project_dir=str(tmp_path), state_loader=state_loader, api_token=None)
 
     @pytest.mark.asyncio
     async def test_attach_different_project_does_not_reuse_startup_state(self, tmp_path, monkeypatch):
@@ -2444,6 +2460,31 @@ class TestRunMCPServer:
             patch.object(RecceContext, "load", return_value=context) as load,
         ):
             await run_mcp_server(project_dir=str(tmp_path), state_loader=startup_loader, api_token=None)
+
+    @pytest.mark.asyncio
+    async def test_changed_base_detaches_state_even_when_both_paths_fall_back(self, tmp_path, monkeypatch):
+        from recce import core
+
+        monkeypatch.setattr(core, "recce_context", None)
+        (tmp_path / "target").mkdir()
+        state_loader = MagicMock(session_id=None)
+        initial = MagicMock(spec=RecceContext, adapter_type="dbt", state_loader=state_loader, checks=[])
+        replacement = RecceContext(adapter_type="dbt")
+
+        async def run(server):
+            assert not (await invoke_call_tool(server, "list_checks")).isError
+            attached = await invoke_call_tool(server, "set_backend", {"mode": "local", "target_base_path": "other"})
+            assert not attached.isError
+            assert "state_loader" not in load.call_args.kwargs
+            assert server.context is replacement
+            assert server.state_loader is None
+            state_loader.export.assert_called_once()
+
+        with (
+            patch.object(RecceMCPServer, "run", run),
+            patch.object(RecceContext, "load", side_effect=[initial, replacement]) as load,
+        ):
+            await run_mcp_server(project_dir=str(tmp_path), state_loader=state_loader, api_token=None)
 
 
 def test_mcp_cli_command_exists():
