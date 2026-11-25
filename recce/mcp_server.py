@@ -12,11 +12,14 @@ import os
 import textwrap
 import time
 from collections.abc import Mapping
+from contextvars import copy_context
 from datetime import datetime, timezone
+from functools import partial
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import quote
 
+import anyio
 import jsonschema
 import requests
 from mcp.server import Server
@@ -711,6 +714,9 @@ class RecceMCPServer:
         self._local_cache_key: Optional[tuple] = None
         self._local_options: Optional[dict] = None
         self._local_load_error: Optional[str] = None
+        self._force_single_env = False
+        self._dbt_invocation = None
+        self._base_status = "unknown"
         self._tool_schema_cache: Dict[str, Dict[str, Any]] = {}
         self.mcp_logger = MCPLogger(debug=debug, log_file=log_file)
         self.server = self._build_server()
@@ -913,6 +919,8 @@ class RecceMCPServer:
                         - impacted=true: model is modified or downstream of a modified model (connected via ref()).
                         - impacted=false: model is NOT in the impact path, even if it shares upstream sources.
                         Always check the 'impacted' column before reporting which models are affected by a change.
+                        If a local response includes _warning, there is no separate base environment.
+
 
                         Rendering guidance for Mermaid diagram:
                         Use graph LR and apply these styles based on change_status and impacted:
@@ -969,7 +977,8 @@ class RecceMCPServer:
                     "The commonest cause is a build that only builds what changed, but this tool does "
                     "not observe the cause; do not report one as fact. When it is 'unknown', coverage "
                     "was not assessed at all (cloud-backed sessions), so an empty `data` is "
-                    "uncorroborated rather than verified.",
+                    "uncorroborated rather than verified. If a local response includes _warning, "
+                    "there is no separate base environment, even if coverage is complete.",
                     inputSchema={
                         "type": "object",
                         "properties": {
@@ -1613,6 +1622,7 @@ class RecceMCPServer:
                                     },
                                 },
                                 "required": ["check_id"],
+                                "anyOf": [{"required": [field]} for field in UPDATABLE_CHECK_FIELDS],
                             },
                         ),
                     ]
@@ -1778,6 +1788,7 @@ class RecceMCPServer:
         async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
             """Handle tool calls"""
             start_time = time.perf_counter()
+            invocation_token = None
 
             # Redact sensitive arguments before logging to stderr or persistent log file
             log_arguments = _redact_sensitive_args(arguments)
@@ -1845,11 +1856,11 @@ class RecceMCPServer:
                         if self.backend is None and self.context is None:
                             if self._local_load_error is not None:
                                 raise ValueError(self._local_recovery_message())
-                            try:
-                                self._load_local_context(self._local_options)
-                            except Exception as exc:
-                                self._local_load_error = str(exc)
-                                raise ValueError(self._local_recovery_message()) from exc
+                            await self._load_local_context(self._local_options)
+
+                if self.backend is None and self._dbt_invocation is not None:
+                    var, value = self._dbt_invocation
+                    invocation_token = var.set(value)
 
                 if name == "set_backend":
                     result = await self._tool_set_backend(arguments)
@@ -1860,10 +1871,9 @@ class RecceMCPServer:
                         result = {"mode": "none", "configured": False, "message": self._local_recovery_message()}
                 elif self.backend is not None:
                     result = await self.backend.call_tool(name, arguments)
-                elif name == "lineage_diff":
-                    result = await self._tool_lineage_diff(arguments)
-                elif name == "schema_diff":
-                    result = await self._tool_schema_diff(arguments)
+                elif name in {"lineage_diff", "schema_diff"}:
+                    handler = self._tool_lineage_diff if name == "lineage_diff" else self._tool_schema_diff
+                    result = self._maybe_add_single_env_warning(await handler(arguments))
                 elif name == "row_count_diff":
                     result = await self._tool_row_count_diff(arguments)
                 elif name == "query":
@@ -1942,6 +1952,9 @@ class RecceMCPServer:
                 # Re-raise so the caller reports isError=True: on mcp 1.x the SDK does
                 # it, on 2.0 _handle_call_tool does (see its docstring).
                 raise
+            finally:
+                if invocation_token is not None:
+                    var.reset(invocation_token)
 
         return list_tools, call_tool
 
@@ -2720,7 +2733,7 @@ class RecceMCPServer:
         if self.single_env:
             result["base_status"] = "single_env"
         else:
-            result["base_status"] = getattr(self, "_base_status", "unknown")
+            result["base_status"] = self._base_status
 
         # Add git and pull_request info if state_loader is available
         if context.state_loader:
@@ -2741,47 +2754,89 @@ class RecceMCPServer:
             return f"{message} Local context failed to load: {self._local_load_error}"
         return message
 
-    def _load_local_context(self, options: dict) -> None:
-        from recce import core
+    @staticmethod
+    def _read_base_status(options: dict) -> str:
         from recce.cli import check_base_freshness, resolve_target_base_path
+
+        try:
+            base_path = resolve_target_base_path(
+                options.get("project_dir"), options.get("target_base_path", "target-base")
+            )
+            freshness = check_base_freshness(target_base_path=base_path)
+            if freshness["status"] in {"stale_time", "stale_sha", "missing"}:
+                logger.warning(
+                    "Base artifacts at %s: %s. Run `recce check-base` for details.", base_path, freshness["status"]
+                )
+            return freshness["status"]
+        except Exception as exc:
+            logger.debug("[MCP] Base freshness check skipped: %s", exc)
+            return "unknown"
+
+    @classmethod
+    def _prepare_local_context(cls, options: dict, single_env: bool):
+        context = RecceContext.load(**options)
+        binding = None
+        if context.adapter_type == "dbt":
+            # Rebind dbt's invocation state in each MCP request, not the
+            # worker's unrelated context variables.
+            try:
+                from dbt_common.context import get_invocation_context
+
+                invocation = get_invocation_context()
+            except (ImportError, LookupError):  # older dbt, or a test adapter
+                pass
+            else:
+                binding = next(((var, value) for var, value in copy_context().items() if value is invocation), None)
+        base_status = "unknown" if single_env else cls._read_base_status(options)
+        return context, binding, base_status
+
+    async def _load_local_context(self, options: dict) -> None:
+        from recce.core import set_default_context
 
         options = dict(options)
         project_dir = options.get("project_dir")
         target = options.setdefault("target_path", "target")
         base = options.setdefault("target_base_path", "target-base")
-        cache_key = (project_dir, target, base)
-        if self.context is not None and self._local_cache_key == cache_key:
+        single_env = self._force_single_env
+        if not single_env and not options.get("review") and not options.get("sqlmesh"):
+            base_dir = Path(project_dir or "./").joinpath(base)
+            target_dir = Path(project_dir or "./").joinpath(target)
+            if target_dir.is_dir() and not base_dir.is_dir():
+                single_env = True
+                options["target_base_path"] = target
+        cache_key = (project_dir, target, options["target_base_path"])
+        if self.context is not None and self._local_cache_key == cache_key and self.single_env == single_env:
             return
 
-        base_dir = Path(project_dir or "./").joinpath(base)
-        target_dir = Path(project_dir or "./").joinpath(target)
-        single_env = not options.get("review") and target_dir.is_dir() and not base_dir.is_dir()
-        if single_env:
-            options["target_base_path"] = target
-        previous = core.default_context()
-        core.recce_context = None
         try:
-            context = load_context(**options)
-        except Exception:
-            core.recce_context = previous
+            context, invocation, base_status = await anyio.to_thread.run_sync(
+                partial(self._prepare_local_context, options, single_env)
+            )
+        except Exception as exc:
+            if self.context is None and self.backend is None:
+                self._local_load_error = str(exc)
+                raise ValueError(self._local_recovery_message()) from exc
             raise
 
+        if self.state_loader is not options.get("state_loader"):
+            self._export_local_state()
+        set_default_context(context)
         self.context = context
+        self.state_loader = options.get("state_loader")
+        self._dbt_invocation = invocation
         self._local_cache_key = cache_key
         self._local_load_error = None
         self.single_env = single_env
-        self._base_status = "unknown"
+        self._base_status = base_status
         if single_env:
             logger.warning(SINGLE_ENV_WARNING)
-        else:
+
+    def _export_local_state(self) -> None:
+        if self.context is not None and self.state_loader is not None:
             try:
-                base_path = resolve_target_base_path(project_dir, base)
-                freshness = check_base_freshness(target_base_path=base_path)
-                self._base_status = freshness["status"]
-                if self._base_status != "fresh":
-                    logger.warning("%s", freshness["message"])
+                self.state_loader.export(self.context.export_state())
             except Exception as exc:
-                logger.debug("[MCP] Base freshness check skipped: %s", exc)
+                logger.warning("[MCP] Failed to export local state before switching backends: %s", exc)
 
     async def _tool_set_backend(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Switch the active backend (local or cloud) at runtime.
@@ -2819,12 +2874,7 @@ class RecceMCPServer:
                 if not api_token:
                     raise ValueError("Recce Cloud API token not found. Run `recce connect-to-cloud` first.")
 
-                # Best-effort export of local state before swapping away.
-                if self.context is not None and self.state_loader is not None:
-                    try:
-                        self.state_loader.export(self.context.export_state())
-                    except Exception as e:
-                        logger.warning(f"[MCP] Failed to export local state on swap to cloud: {e}")
+                self._export_local_state()
 
                 new_backend = await CloudBackend.create(session_id=session_id, api_token=api_token)
                 self.backend = new_backend
@@ -2838,10 +2888,21 @@ class RecceMCPServer:
 
             # mode == "local"
             options = dict(self._local_options or {})
-            options.update(
-                {key: arguments[key] for key in ("project_dir", "target_path", "target_base_path") if key in arguments}
-            )
-            self._load_local_context(options)
+            changes = {
+                key: arguments[key]
+                for key, default in (
+                    ("project_dir", None),
+                    ("target_path", "target"),
+                    ("target_base_path", "target-base"),
+                )
+                if key in arguments and arguments[key] != options.get(key, default)
+            }
+            if changes:
+                # State and review mode belong to the original artifact pair.
+                options.pop("state_loader", None)
+                options.pop("review", None)
+            options.update(changes)
+            await self._load_local_context(options)
             self._local_options = options
 
             self.backend = None
@@ -3248,6 +3309,7 @@ async def run_mcp_server(
     """
     state_loader = kwargs.get("state_loader", None)
     cloud_snapshot = kwargs.pop("cloud_snapshot", False)
+    single_env = kwargs.pop("single_env", False)
 
     # Setup logging
     logging.basicConfig(
@@ -3306,10 +3368,19 @@ async def run_mcp_server(
             mode=server_mode,
             debug=debug,
             state_loader=state_loader,
+            single_env=single_env,
             api_token=api_token,
         )
-        if not cloud_snapshot:
+        server._force_single_env = single_env
+        if not cloud_snapshot or context is not None:
             server._local_options = kwargs
+        if cloud_snapshot and context is not None:
+            server._local_cache_key = (
+                kwargs.get("project_dir"),
+                kwargs.get("target_path", "target"),
+                kwargs.get("target_base_path", "target-base"),
+            )
+            server._base_status = server._read_base_status(kwargs)
 
     # Run in either stdio or SSE mode
     if sse:

@@ -679,6 +679,27 @@ async def test_snapshot_starts_unconfigured_when_load_context_fails():
 
 
 @pytest.mark.asyncio
+async def test_snapshot_survives_cloud_round_trip():
+    snapshot = MagicMock(adapter_type="dbt")
+    cloud = AsyncMock(instance_status="ready")
+
+    async def run(server):
+        await server._tool_set_backend({"mode": "cloud", "session_id": "live"})
+        restored = await invoke_call_tool(server, "set_backend", {"mode": "local"})
+        assert not restored.isError
+        assert server.context is snapshot
+        local_load.assert_not_called()
+
+    with (
+        patch.object(RecceMCPServer, "run", run),
+        patch("recce.mcp_server.load_context", return_value=snapshot),
+        patch("recce.mcp_server.RecceContext.load") as local_load,
+        patch("recce.mcp_server.CloudBackend.create", return_value=cloud),
+    ):
+        await run_mcp_server(cloud_snapshot=True, review=True, api_token="test-token")
+
+
+@pytest.mark.asyncio
 async def test_set_backend_swaps_to_cloud_at_runtime():
     """A set_backend(mode='cloud', session_id=...) call swaps the backend in place."""
     cloud_backend = AsyncMock()
@@ -1142,15 +1163,18 @@ async def test_set_backend_cloud_swallows_state_export_exception():
 
 
 @pytest.mark.asyncio
-async def test_set_backend_local_loads_context_and_returns_metadata():
-    """mode='local' invokes load_context and returns adapter_type / single_env."""
+async def test_set_backend_local_loads_context_and_returns_metadata(monkeypatch):
+    """mode='local' returns adapter_type and single_env after loading."""
+    from recce import core
+
+    monkeypatch.setattr(core, "recce_context", None)
     fake_context = MagicMock()
     fake_context.adapter_type = "dbt"
 
     server = RecceMCPServer()
 
     with (
-        patch("recce.mcp_server.load_context", return_value=fake_context) as mock_load,
+        patch("recce.mcp_server.RecceContext.load", return_value=fake_context) as mock_load,
         patch("recce.mcp_server.Path") as mock_path,
     ):
         # target/ exists, target-base/ doesn't → single-env fallback engages.
@@ -1174,15 +1198,18 @@ async def test_set_backend_local_loads_context_and_returns_metadata():
 
 
 @pytest.mark.asyncio
-async def test_set_backend_local_keeps_dual_env_when_base_dir_present():
+async def test_set_backend_local_keeps_dual_env_when_base_dir_present(monkeypatch):
     """Both target/ and target-base/ exist → single_env stays False."""
+    from recce import core
+
+    monkeypatch.setattr(core, "recce_context", None)
     fake_context = MagicMock()
     fake_context.adapter_type = "dbt"
 
     server = RecceMCPServer()
 
     with (
-        patch("recce.mcp_server.load_context", return_value=fake_context) as mock_load,
+        patch("recce.mcp_server.RecceContext.load", return_value=fake_context) as mock_load,
         patch("recce.mcp_server.Path") as mock_path,
     ):
         base_dir = MagicMock()

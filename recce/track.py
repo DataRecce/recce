@@ -181,13 +181,9 @@ class TrackCommand(Command):
                 if target_base_path is not None:
                     props["target_base_path"] = sha256(target_base_path.encode()).hexdigest()
 
-                try:
-                    from recce.core import load_context
+                from recce.core import default_context
 
-                    recce_context = load_context()
-                except Exception:
-                    # it's not a ready-for-use project
-                    recce_context = None
+                recce_context = default_context()
 
                 if recce_context is not None:
                     if recce_context.adapter_type == "dbt":
