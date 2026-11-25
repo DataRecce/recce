@@ -4251,7 +4251,7 @@ class TestHandlerRegistration:
         instance = mock_server.return_value
         # The 1.x SDK consumes the handlers in their native shapes, undecorated.
         instance.list_tools.return_value.assert_called_once_with(server._list_tools)
-        instance.call_tool.return_value.assert_called_once_with(server._call_tool)
+        instance.call_tool.return_value.assert_called_once_with(server._call_tool_v1)
         assert "on_list_tools" not in mock_server.call_args.kwargs
 
 

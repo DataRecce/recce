@@ -23,6 +23,7 @@ import anyio
 import jsonschema
 import requests
 from mcp.server import Server
+from mcp.server.lowlevel import NotificationOptions
 from mcp.server.stdio import stdio_server
 from mcp.types import CallToolResult, ListToolsResult, TextContent, Tool
 
@@ -747,7 +748,7 @@ class RecceMCPServer:
         if not MCP_V2:
             server = Server("recce", instructions=self._build_instructions())
             server.list_tools()(self._list_tools)
-            server.call_tool()(self._call_tool)
+            server.call_tool()(self._call_tool_v1)
             return server
 
         return Server(
@@ -760,6 +761,22 @@ class RecceMCPServer:
     async def _handle_list_tools(self, ctx, params) -> ListToolsResult:
         """`tools/list` in the mcp 2.0 handler signature (also used by tests on 1.x)."""
         return ListToolsResult(tools=await self._list_tools())
+
+    async def _call_tool_v1(self, name: str, arguments: Dict[str, Any]) -> List[TextContent]:
+        """`tools/call` for the mcp 1.x decorator, which hands the handler no context."""
+        content = await self._call_tool(name, arguments)
+        await self._notify_tool_list_changed(name, self.server.request_context.session)
+        return content
+
+    @staticmethod
+    async def _notify_tool_list_changed(name: str, session) -> None:
+        # set_backend moves the backend-dependent gates in _list_tools. A client keeps
+        # the list it read at startup until it is told to read it again.
+        if name == "set_backend":
+            await session.send_tool_list_changed()
+
+    def _initialization_options(self):
+        return self.server.create_initialization_options(NotificationOptions(tools_changed=True))
 
     async def _get_tool_input_schema(self, name: str) -> Optional[Dict[str, Any]]:
         """Look up a tool's JSON schema, building the cache on first use.
@@ -803,6 +820,7 @@ class RecceMCPServer:
             content = await self._call_tool(params.name, arguments)
         except Exception as e:
             return CallToolResult(content=[TextContent(type="text", text=str(e))], isError=True)
+        await self._notify_tool_list_changed(params.name, ctx.session)
         return CallToolResult(content=content)
 
     @staticmethod
@@ -3201,7 +3219,7 @@ class RecceMCPServer:
                 await self.server.run(
                     read_stream,
                     write_stream,
-                    self.server.create_initialization_options(),
+                    self._initialization_options(),
                 )
         finally:
             # Export state on shutdown if state_loader is available
@@ -3253,7 +3271,7 @@ class RecceMCPServer:
                     await self.server.run(
                         streams[0],
                         streams[1],
-                        self.server.create_initialization_options(),
+                        self._initialization_options(),
                     )
             finally:
                 logger.info(f"[MCP HTTP] SSE connection closed from {client_info}")
