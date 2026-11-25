@@ -1,0 +1,20 @@
+rules:
+  - id: recce-gha-script-injection
+    languages: [yaml]
+    severity: ERROR
+    message: >-
+      Untrusted GitHub Actions expression (${{ ... }}) interpolated directly
+      inside a `run:` shell script enables command injection. Pass the value
+      through an `env:` variable and reference it quoted ("$VAR") in the shell.
+    metadata:
+      category: security
+      cwe: "CWE-78: Improper Neutralization of Special Elements used in an OS Command"
+    patterns:
+      - pattern-inside: |
+          steps:
+            ...
+      - pattern: |
+          run: $SCRIPT
+      - metavariable-regex:
+          metavariable: $SCRIPT
+          regex: '(?s).*\$\{\{\s*(github\.event\.|github\.head_ref|github\.base_ref|github\.ref_name|github\.ref\b|inputs\.|steps\.[^}]+\.outputs\.|needs\.[^}]+\.outputs\.)'

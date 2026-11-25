@@ -13,7 +13,7 @@ import { useThemeColors } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
-import * as Sentry from "@sentry/nextjs";
+import * as Sentry from "@sentry/react";
 import { useEffect } from "react";
 
 interface ErrorProps {
