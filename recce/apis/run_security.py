@@ -14,10 +14,14 @@ def stored_run_error(run_type, error):
     messages (``RecceException``: missing model/column/relation) and redacts anything else,
     e.g. raw warehouse driver errors. The full error is logged server-side by the caller.
     """
-    from recce.exceptions import RecceException
+    from recce.exceptions import DuckDBExternalAccessBlocked, RecceException
 
     if run_type in QUERY_RUN_TYPES:
         return QUERY_FAILURE_MESSAGE
+    if isinstance(error, DuckDBExternalAccessBlocked):
+        # State is shared between CLI and server contexts. Keep migration
+        # instructions in the caller's presentation, not the persisted error.
+        return "DuckDB external access is disabled."
     if isinstance(error, RecceException):
         return str(error) if str(error) != "None" else repr(error)
     return RUN_FAILURE_MESSAGE

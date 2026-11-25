@@ -2410,7 +2410,9 @@ class DbtAdapter(BaseAdapter):
         creds = self.runtime_config.credentials
         if creds.settings is None:
             creds.settings = {}
-        creds.settings["enable_external_access"] = "false"
+        from recce.adapter.duckdb_security import duckdb_external_access_settings
+
+        creds.settings.update(duckdb_external_access_settings())
 
     @contextmanager
     def connection_named(self, name: str) -> Iterator[None]:

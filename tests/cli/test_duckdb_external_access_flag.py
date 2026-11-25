@@ -1,11 +1,10 @@
 """Tests for --duckdb-external-access CLI flag wiring.
 
-The flag is exposed on the two HTTP-exposed surfaces where unauth callers can
-submit SQL: `recce server` and `recce mcp-server`. Both default to blocked and
+The flag is exposed on `recce server`, `recce mcp-server`, and `recce run`.
+The server commands default to blocked and
 resolve the setting identically (flag OR `duckdb_external_access` in recce.yml).
-`recce run` (the public CLI entry point) sets duckdb_external_access=True before
-loading the adapter so existing check files with read_csv/COPY workflows do not
-break. The hidden `recce query` and `recce diff` debug commands intentionally
+`recce run` requires an explicit CLI flag; preset YAML cannot opt into external
+access. The hidden `recce query` and `recce diff` debug commands intentionally
 follow the safe adapter default (external access disabled) and have no opt-out
 flag.
 """
@@ -43,12 +42,13 @@ def test_flag_present_in_mcp_server_help():
     assert "--duckdb-external-access" in result.output
 
 
-def test_flag_absent_from_run_help():
-    """`recce run` is not HTTP-exposed; the opt-out flag is not offered there."""
+def test_flag_present_in_run_help():
+    """CI checks require an explicit opt-in for DuckDB external access."""
     runner = CliRunner()
     result = runner.invoke(cli, ["run", "--help"])
     assert result.exit_code == 0
-    assert "--duckdb-external-access" not in result.output
+    assert "--duckdb-external-access" in result.output
+    assert "Default: blocked" in result.output
 
 
 @pytest.fixture
@@ -58,6 +58,34 @@ def reset_recce_config():
     SingletonMeta._instances = {}
     yield
     SingletonMeta._instances = {}
+
+
+@pytest.mark.parametrize(
+    "extra_args,recce_yml,expected",
+    [
+        ([], None, False),
+        (["--duckdb-external-access"], None, True),
+        ([], "duckdb_external_access: true\n", False),
+    ],
+    ids=["default-blocked", "explicit-opt-in", "yaml-cannot-opt-in"],
+)
+def test_run_external_access_resolution(reset_recce_config, extra_args, recce_yml, expected):
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        if recce_yml:
+            with open("recce.yml", "w", encoding="utf-8") as f:
+                f.write(recce_yml)
+        with (
+            patch("recce.cli.create_state_loader_by_args") as loader,
+            patch("recce.core.RecceContext.verify_required_artifacts", return_value=(True, None)) as verify,
+            patch("recce.run.cli_run", new_callable=AsyncMock, return_value=0) as run,
+            patch("recce.util.api_token.prepare_api_token", return_value=None),
+        ):
+            loader.return_value.verify.return_value = True
+            result = runner.invoke(cli, ["run", *extra_args])
+    assert result.exit_code == 0, result.output
+    assert verify.call_args.kwargs["duckdb_external_access"] is expected
+    assert run.call_args.kwargs["duckdb_external_access"] is expected
 
 
 def _mcp_external_access_kwarg(runner, extra_args=None, recce_yml=None):

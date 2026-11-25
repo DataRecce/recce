@@ -1,13 +1,100 @@
 import logging
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from recce.apis.run_security import QUERY_FAILURE_MESSAGE
+from recce.exceptions import DuckDBExternalAccessBlocked
 from recce.models.types import Run, RunType
 from recce.run import run_should_be_approved, schema_diff_should_be_approved
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("source", ["preset", "saved"])
+async def test_run_reports_duckdb_opt_in_and_preserves_exit_status(source, tmp_path):
+    from recce.run import cli_run
+
+    run = _make_run(error=QUERY_FAILURE_MESSAGE, run_type=RunType.QUERY)
+    preset = {"name": "external input", "type": "query", "params": {"sql_template": "SELECT 1"}}
+    saved = SimpleNamespace(
+        check_id="check",
+        name=preset["name"],
+        type=RunType.QUERY,
+        description="",
+        params=preset["params"],
+        is_checked=False,
+    )
+    ctx = MagicMock()
+    ctx.state_loader.state = None if source == "preset" else SimpleNamespace(checks=[saved])
+    ctx.state_loader.export.return_value = "Export successful"
+    failure = AsyncMock(side_effect=DuckDBExternalAccessBlocked())
+    report = tmp_path / "failures.md"
+    with (
+        patch("recce.core.load_context", return_value=ctx),
+        patch("recce.run.RecceConfig") as config,
+        patch("recce.run.purge_preset_checks"),
+        patch("recce.run.create_check_from_run"),
+        patch("recce.run.submit_run", side_effect=lambda *args, **kwargs: (run, failure())),
+        patch("recce.event.log_load_state"),
+        patch("recce.run.Console") as console,
+    ):
+        config.return_value.get.return_value = [preset]
+        rc = await cli_run(str(tmp_path / "output.json"), error_log=str(report))
+
+    assert rc == 0  # Keep the established export/process-status contract.
+    assert run.error == QUERY_FAILURE_MESSAGE
+    ctx.state_loader.export.assert_called_once()
+    assert "recce run --duckdb-external-access" in report.read_text()
+    tables = [call.args[0] for call in console.return_value.print.call_args_list if call.args]
+    from rich.console import Console
+
+    output = Console(width=240, record=True)
+    for table in tables:
+        output.print(table)
+    rendered = output.export_text()
+    assert "--duckdb-external-access" in rendered
+    assert "recce.yml" not in rendered
 
 
 def _make_run(result=None, error=None, run_type=RunType.ROW_COUNT_DIFF):
     """Helper to create a Run with minimal required fields."""
     return Run(type=run_type, result=result, error=error)
+
+
+@pytest.mark.asyncio
+async def test_non_query_run_exports_actionable_redacted_error(tmp_path, monkeypatch):
+    """Exercise the executor, CLI handling, and exported non-query run record."""
+    import json
+
+    from recce.run import cli_run
+
+    recorded = []
+    context = MagicMock(adapter_type="dbt", review_mode=False)
+    context.state_loader.state = None
+    context.export_state.side_effect = lambda: [run.model_dump(mode="json") for run in recorded]
+    output = tmp_path / "output.json"
+    context.state_loader.export.side_effect = lambda state: output.write_text(json.dumps(state))
+    preset = {"name": "orders count", "type": "row_count_diff", "params": {"node_names": ["orders"]}}
+
+    def blocked_task():
+        raise DuckDBExternalAccessBlocked() from ValueError("private-driver-detail")
+
+    monkeypatch.setattr("recce.core.load_context", lambda **kwargs: context)
+    monkeypatch.setattr("recce.apis.run_func.default_context", lambda: context)
+    monkeypatch.setattr("recce.apis.run_func.create_task", lambda *args: SimpleNamespace(execute=blocked_task))
+    monkeypatch.setattr("recce.apis.run_func.RunDAO", lambda: SimpleNamespace(create=recorded.append))
+    monkeypatch.setattr("recce.run.RecceConfig", lambda: {"checks": [preset]})
+    monkeypatch.setattr("recce.run.create_check_from_run", lambda *args, **kwargs: None)
+    monkeypatch.setattr("recce.run.purge_preset_checks", lambda: None)
+    monkeypatch.setattr("recce.event.log_load_state", lambda **kwargs: None)
+    failures = tmp_path / "failures.md"
+    assert await cli_run(str(output), error_log=str(failures)) == 0
+    assert "--duckdb-external-access" in failures.read_text()
+    error = json.loads(output.read_text())[0]["error"]
+    assert error and "private-driver-detail" not in error
+    assert "recce.yml" not in error, error
+    assert "--duckdb-external-access" not in error
 
 
 class TestRunShouldBeApproved:

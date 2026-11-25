@@ -1446,6 +1446,15 @@ DEFAULT_RECCE_STATE_FILE = "recce_state.json"
 @click.option("--skip-query", is_flag=True, help="Skip running the queries for the checks.")
 @click.option("--skip-check", is_flag=True, help="Skip running the checks.")
 @click.option(
+    "--duckdb-external-access",
+    is_flag=True,
+    default=False,
+    help=(
+        "Default: blocked. Allow DuckDB checks to access external files, network resources, "
+        "and extensions. Only enable for trusted checks."
+    ),
+)
+@click.option(
     "--git-current-branch",
     help="The git branch of the current environment.",
     type=click.STRING,
@@ -1484,6 +1493,10 @@ def run(output, **kwargs):
     recce run -o my_recce_state.json
 
     \b
+    # Allow external DuckDB I/O only for trusted checks
+    recce run --duckdb-external-access
+
+    \b
     # Run recce and output to the specified path
     recce run --cloud --cloud-token <token> --password <password>
 
@@ -1507,9 +1520,6 @@ def run(output, **kwargs):
 
     # Initialize Recce Config
     RecceConfig(config_file=kwargs.get("config"))
-
-    # Only `recce server` restricts DuckDB external access by default.
-    kwargs.setdefault("duckdb_external_access", True)
 
     patch_derived_args(kwargs)
     # Remove share_url from kwargs to avoid affecting state loader creation
