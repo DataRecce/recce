@@ -65,6 +65,12 @@ def command_event():
 
 
 class TestCommandEventProp:
+    def test_command_telemetry_does_not_load_a_missing_context(self, command_event):
+        with patch("recce.core.load_context") as load, patch("recce.core.default_context", return_value=None):
+            props = command_event(lambda: None)
+        load.assert_not_called()
+        assert "adapter_type" not in props
+
     def test_prop_sent_on_success(self, command_event):
         with patch("importlib.metadata.version", _fake_version({"dbt-core": "1.12.4"})):
             props = command_event(lambda: None)

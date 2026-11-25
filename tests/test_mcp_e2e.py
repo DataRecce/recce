@@ -1210,6 +1210,42 @@ class TestMCPProtocolE2E:
     """Layer 2: Full MCP protocol via in-memory transport."""
 
     @pytest.mark.asyncio
+    async def test_deferred_adapter_invocation_survives_the_next_protocol_request(self, tmp_path, monkeypatch):
+        from recce import core
+        from recce.mcp_server import run_mcp_server
+
+        dbt_context = pytest.importorskip("dbt_common.context")
+        monkeypatch.setattr(core, "recce_context", None)
+        context = core.RecceContext(adapter_type="dbt")
+
+        def load(**options):
+            dbt_context.set_invocation_context({"RECCE_TEST_INVOCATION": "initialized by local load"})
+            return context
+
+        async def get_model(arguments):
+            return {"name": dbt_context.get_invocation_context().env["RECCE_TEST_INVOCATION"]}
+
+        async def run(server):
+            async with create_mcp_client(server) as client:
+                await client.list_tools()
+                cold = await client.call_tool("get_server_info", {})
+                assert json.loads(cold.content[0].text) == {"mode": "local", "context_loaded": False}
+                loader.assert_not_called()
+                first = await client.call_tool("list_checks", {})
+                assert not is_error(first)
+                second = await client.call_tool("get_model", {"model_id": "model.project.customers"})
+                assert not is_error(second), second.content
+                assert json.loads(second.content[0].text) == {"name": "initialized by local load"}
+                loader.assert_called_once()
+
+        with (
+            patch.object(core.RecceContext, "load", side_effect=load) as loader,
+            patch.object(RecceMCPServer, "_tool_get_model", side_effect=get_model),
+            patch.object(RecceMCPServer, "run", run),
+        ):
+            await run_mcp_server(project_dir=str(tmp_path), api_token=None)
+
+    @pytest.mark.asyncio
     async def test_list_tools_returns_all_server_mode_tools(self, mcp_e2e_with_data):
         server, _ = mcp_e2e_with_data
         async with create_mcp_client(server) as client:

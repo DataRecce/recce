@@ -2301,7 +2301,6 @@ class TestRunMCPServer:
 
     @pytest.mark.asyncio
     async def test_deferred_local_loading(self, tmp_path, monkeypatch):
-
         from recce import core
 
         monkeypatch.setattr(core, "recce_context", None)
@@ -2314,6 +2313,9 @@ class TestRunMCPServer:
             info = await invoke_call_tool(server, "get_server_info")
             assert '"context_loaded":false' in info.content[0].text
             assert (await invoke_call_tool(server, "get_model")).isError
+            invalid_update = await invoke_call_tool(server, "update_check", {"check_id": "existing"})
+            assert invalid_update.isError
+            assert "Input validation error" in invalid_update.content[0].text
             load.assert_not_called()
             with patch.object(server, "_tool_get_model", return_value={"model": "orders"}):
                 results = await asyncio.gather(
@@ -2325,7 +2327,7 @@ class TestRunMCPServer:
 
         with (
             patch.object(RecceMCPServer, "run", run),
-            patch("recce.mcp_server.load_context", return_value=context) as load,
+            patch.object(RecceContext, "load", return_value=context) as load,
         ):
             await run_mcp_server(project_dir=str(tmp_path), api_token=None)
 
@@ -2337,11 +2339,24 @@ class TestRunMCPServer:
         backend = AsyncMock()
         backend.instance_status = "ready"
         backend.call_tool.return_value = {"mode": "cloud"}
+        creating = asyncio.Event()
+        ready = asyncio.Event()
+
+        async def create(**kwargs):
+            creating.set()
+            await ready.wait()
+            return backend
 
         async def run(server):
             cloud_args = {"mode": "cloud", "session_id": "session"}
-            assert not (await invoke_call_tool(server, "set_backend", cloud_args)).isError
-            assert not (await invoke_call_tool(server, "lineage_diff")).isError
+            swap = asyncio.create_task(invoke_call_tool(server, "set_backend", cloud_args))
+            await creating.wait()
+            diff = asyncio.create_task(invoke_call_tool(server, "lineage_diff"))
+            await asyncio.sleep(0)
+            assert not diff.done()
+            ready.set()
+            assert not (await swap).isError
+            assert not (await diff).isError
             load.assert_not_called()
             attached = await invoke_call_tool(server, "set_backend", {"mode": "local"})
             assert attached.isError
@@ -2351,8 +2366,8 @@ class TestRunMCPServer:
 
         with (
             patch.object(RecceMCPServer, "run", run),
-            patch("recce.mcp_server.CloudBackend.create", return_value=backend),
-            patch("recce.mcp_server.load_context", side_effect=FileNotFoundError("manifest.json not found")) as load,
+            patch("recce.mcp_server.CloudBackend.create", side_effect=create),
+            patch.object(RecceContext, "load", side_effect=FileNotFoundError("manifest.json not found")) as load,
         ):
             await run_mcp_server(api_token="test-token")
 
@@ -2376,11 +2391,59 @@ class TestRunMCPServer:
 
         with (
             patch.object(RecceMCPServer, "run", run),
-            patch(
-                "recce.mcp_server.load_context", side_effect=[FileNotFoundError("manifest.json not found"), context]
+            patch.object(
+                RecceContext, "load", side_effect=[FileNotFoundError("manifest.json not found"), context]
             ) as load,
         ):
             await run_mcp_server(target="custom", api_token=None)
+
+    @pytest.mark.asyncio
+    async def test_local_reattach_picks_up_base_created_after_first_diff(self, tmp_path, monkeypatch):
+        from recce import core
+
+        monkeypatch.setattr(core, "recce_context", None)
+        (tmp_path / "target").mkdir()
+        context = MagicMock(spec=RecceContext, adapter_type="dbt")
+
+        async def run(server):
+            with patch.object(server, "_tool_schema_diff", return_value={"data": []}):
+                diff = await invoke_call_tool(server, "schema_diff")
+            assert not diff.isError
+            assert '"_warning"' in diff.content[0].text
+            (tmp_path / "target-base").mkdir()
+            result = await invoke_call_tool(server, "set_backend", {"mode": "local"})
+            assert not result.isError
+            assert '"single_env":false' in result.content[0].text
+            assert [call.kwargs["target_base_path"] for call in load.call_args_list] == ["target", "target-base"]
+
+        with (
+            patch.object(RecceMCPServer, "run", run),
+            patch.object(RecceContext, "load", return_value=context) as load,
+        ):
+            await run_mcp_server(project_dir=str(tmp_path), api_token=None)
+
+    @pytest.mark.asyncio
+    async def test_attach_different_project_does_not_reuse_startup_state(self, tmp_path, monkeypatch):
+        from recce import core
+
+        monkeypatch.setattr(core, "recce_context", None)
+        startup_loader = MagicMock()
+        context = MagicMock(spec=RecceContext, adapter_type="dbt")
+
+        async def run(server):
+            result = await invoke_call_tool(
+                server, "set_backend", {"mode": "local", "project_dir": str(tmp_path / "new")}
+            )
+            assert not result.isError
+            assert "state_loader" not in load.call_args.kwargs
+            assert server.state_loader is None
+            startup_loader.export.assert_not_called()
+
+        with (
+            patch.object(RecceMCPServer, "run", run),
+            patch.object(RecceContext, "load", return_value=context) as load,
+        ):
+            await run_mcp_server(project_dir=str(tmp_path), state_loader=startup_loader, api_token=None)
 
 
 def test_mcp_cli_command_exists():
