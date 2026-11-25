@@ -2300,73 +2300,87 @@ class TestRunMCPServer:
     """Test cases for the run_mcp_server function"""
 
     @pytest.mark.asyncio
-    @patch("recce.mcp_server.load_context")
-    @patch.object(RecceMCPServer, "run")
-    async def test_run_mcp_server(self, mock_run, mock_load_context):
-        """Test the run_mcp_server entry point"""
-        # Mock the context
-        mock_context = MagicMock(spec=RecceContext)
-        mock_load_context.return_value = mock_context
+    async def test_deferred_local_loading(self, tmp_path, monkeypatch):
 
-        # Mock the server run method
-        mock_run.return_value = None
+        from recce import core
 
-        # Run the server
-        await run_mcp_server(project_dir="/test/path")
+        monkeypatch.setattr(core, "recce_context", None)
+        (tmp_path / "target").mkdir()
+        context = MagicMock(spec=RecceContext)
+        context.adapter_type = "dbt"
 
-        # Verify context was loaded with correct kwargs
-        mock_load_context.assert_called_once_with(project_dir="/test/path")
+        async def run(server):
+            await server._handle_list_tools(None, None)
+            info = await invoke_call_tool(server, "get_server_info")
+            assert '"context_loaded":false' in info.content[0].text
+            assert (await invoke_call_tool(server, "get_model")).isError
+            load.assert_not_called()
+            with patch.object(server, "_tool_get_model", return_value={"model": "orders"}):
+                results = await asyncio.gather(
+                    *(invoke_call_tool(server, "get_model", {"model_id": "model.pkg.orders"}) for _ in range(2))
+                )
+            assert all(not result.isError for result in results)
+            assert load.call_count == 1
+            assert load.call_args.kwargs["target_base_path"] == "target"
 
-        # Verify server was run
-        mock_run.assert_called_once()
-
-    @pytest.mark.asyncio
-    @patch("recce.mcp_server.load_context")
-    @patch.object(RecceMCPServer, "run")
-    async def test_run_mcp_server_passes_single_env(self, mock_run, mock_load_context):
-        """Test that run_mcp_server pops single_env from kwargs and passes it to constructor"""
-        mock_context = MagicMock(spec=RecceContext)
-        mock_load_context.return_value = mock_context
-        mock_run.return_value = None
-
-        init_kwargs = {}
-
-        def capture_init(self_arg, *args, **kw):
-            init_kwargs.update(kw)
-            self_arg.context = mock_context
-            self_arg.state_loader = kw.get("state_loader")
-            self_arg.mode = RecceServerMode.server
-            self_arg.single_env = kw.get("single_env", False)
-            self_arg.server = MagicMock()
-            self_arg.mcp_logger = MagicMock()
-
-        with patch.object(RecceMCPServer, "__init__", side_effect=capture_init):
-            await run_mcp_server(project_dir="/test/path", single_env=True)
-
-        # Verify single_env was passed to constructor
-        assert init_kwargs.get("single_env") is True
-
-        # Verify single_env was NOT passed to load_context (it should be popped)
-        load_context_kwargs = mock_load_context.call_args[1]
-        assert "single_env" not in load_context_kwargs
+        with (
+            patch.object(RecceMCPServer, "run", run),
+            patch("recce.mcp_server.load_context", return_value=context) as load,
+        ):
+            await run_mcp_server(project_dir=str(tmp_path), api_token=None)
 
     @pytest.mark.asyncio
-    @patch("recce.mcp_server.load_context")
-    async def test_run_mcp_server_context_error(self, mock_load_context):
-        """run_mcp_server stays alive when context load fails — it boots unconfigured.
+    async def test_cloud_switch_and_recovery_do_not_load_local_artifacts(self, monkeypatch):
+        from recce import core
 
-        The Claude Skill auto-launches the MCP at Claude Code startup; a missing
-        local dbt project must NOT crash the server. The agent can flip the
-        backend at runtime via the set_backend MCP tool.
-        """
-        from recce.mcp_server import RecceMCPServer
+        monkeypatch.setattr(core, "recce_context", None)
+        backend = AsyncMock()
+        backend.instance_status = "ready"
+        backend.call_tool.return_value = {"mode": "cloud"}
 
-        mock_load_context.side_effect = FileNotFoundError("manifest.json not found")
+        async def run(server):
+            cloud_args = {"mode": "cloud", "session_id": "session"}
+            assert not (await invoke_call_tool(server, "set_backend", cloud_args)).isError
+            assert not (await invoke_call_tool(server, "lineage_diff")).isError
+            load.assert_not_called()
+            attached = await invoke_call_tool(server, "set_backend", {"mode": "local"})
+            assert attached.isError
+            assert "manifest.json not found" in attached.content[0].text
+            info = await invoke_call_tool(server, "get_server_info")
+            assert '"mode":"cloud"' in info.content[0].text
 
-        with patch.object(RecceMCPServer, "run") as mock_run:
-            await run_mcp_server()
+        with (
+            patch.object(RecceMCPServer, "run", run),
+            patch("recce.mcp_server.CloudBackend.create", return_value=backend),
+            patch("recce.mcp_server.load_context", side_effect=FileNotFoundError("manifest.json not found")) as load,
+        ):
+            await run_mcp_server(api_token="test-token")
 
-        mock_run.assert_awaited_once()
+    @pytest.mark.asyncio
+    async def test_first_local_call_reports_missing_artifacts_without_disconnect(self, monkeypatch):
+        from recce import core
+
+        monkeypatch.setattr(core, "recce_context", None)
+        context = MagicMock(spec=RecceContext)
+        context.adapter_type = "dbt"
+
+        async def run(server):
+            failure = await invoke_call_tool(server, "lineage_diff")
+            assert failure.isError
+            assert "manifest.json not found" in failure.content[0].text
+            assert "set_backend" in failure.content[0].text
+            info = await invoke_call_tool(server, "get_server_info")
+            assert '"mode":"none"' in info.content[0].text
+            assert not (await invoke_call_tool(server, "set_backend", {"mode": "local"})).isError
+            assert load.call_args.kwargs["target"] == "custom"
+
+        with (
+            patch.object(RecceMCPServer, "run", run),
+            patch(
+                "recce.mcp_server.load_context", side_effect=[FileNotFoundError("manifest.json not found"), context]
+            ) as load,
+        ):
+            await run_mcp_server(target="custom", api_token=None)
 
 
 def test_mcp_cli_command_exists():

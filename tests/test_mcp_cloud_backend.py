@@ -654,8 +654,8 @@ async def test_run_mcp_server_cloud_mode_requires_session_and_token():
 
 
 @pytest.mark.asyncio
-async def test_run_mcp_server_starts_unconfigured_when_load_context_fails():
-    """No CLI flags + no dbt project → server boots with no backend; agent flips it later."""
+async def test_snapshot_starts_unconfigured_when_load_context_fails():
+    """A failed snapshot load leaves the transport available."""
     captured = {}
 
     def capture_init(self_obj, *args, **kwargs):
@@ -663,12 +663,13 @@ async def test_run_mcp_server_starts_unconfigured_when_load_context_fails():
         captured["backend"] = kwargs.get("backend")
 
     with (
-        patch("recce.mcp_server.load_context", side_effect=RuntimeError("no dbt project")),
+        patch("recce.mcp_server.load_context", side_effect=RuntimeError("no snapshot")) as load,
         patch("recce.event.get_recce_api_token", return_value=None),
         patch.object(RecceMCPServer, "__init__", side_effect=capture_init, return_value=None) as mock_init,
         patch.object(RecceMCPServer, "run") as mock_run,
     ):
-        await run_mcp_server()
+        await run_mcp_server(cloud_snapshot=True)
+        load.assert_called_once()
 
     mock_init.assert_called_once()
     init_kwargs = mock_init.call_args.kwargs
