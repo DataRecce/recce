@@ -200,6 +200,8 @@ class CloudBackend:
             return await self._tool_create_check(arguments)
         if name == "update_check":
             return await self._tool_update_check(arguments)
+        if name == "delete_check":
+            return await self._tool_delete_check(arguments)
         if name == "impact_analysis":
             return await self._tool_impact_analysis(arguments)
         if name == "list_suggested_actions":
@@ -401,6 +403,13 @@ class CloudBackend:
             "updated": sorted(fields),
             "is_checked": check.get("is_checked"),
         }
+
+    async def _tool_delete_check(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        check_id = arguments.get("check_id")
+        if not check_id:
+            raise ValueError("check_id is required")
+        await self._request("DELETE", f"checks/{quote(str(check_id), safe='')}")
+        return {"check_id": str(check_id), "deleted": True}
 
     async def _tool_list_suggested_actions(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         result = await self._request("GET", "suggested-actions")
@@ -1664,6 +1673,23 @@ class RecceMCPServer:
                                 "anyOf": [{"required": [field]} for field in UPDATABLE_CHECK_FIELDS],
                             },
                         ),
+                        Tool(
+                            name="delete_check",
+                            description=(
+                                "Delete a check. This cannot be undone. The runs of the check are "
+                                "kept. Returns {check_id, deleted: true}."
+                            ),
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "check_id": {
+                                        "type": "string",
+                                        "description": "The ID of the check to delete",
+                                    },
+                                },
+                                "required": ["check_id"],
+                            },
+                        ),
                     ]
                 )
 
@@ -1851,6 +1877,7 @@ class RecceMCPServer:
                     "run_check",
                     "create_check",
                     "update_check",
+                    "delete_check",
                     "impact_analysis",
                     "list_suggested_actions",
                     "create_suggested_action",
@@ -1949,6 +1976,8 @@ class RecceMCPServer:
                     result = await self._tool_create_check(arguments)
                 elif name == "update_check":
                     result = await self._tool_update_check(arguments)
+                elif name == "delete_check":
+                    result = await self._tool_delete_check(arguments)
                 else:
                     raise ValueError(f"Unknown tool: {name}")
 
@@ -3231,6 +3260,21 @@ class RecceMCPServer:
             "updated": sorted(fields),
             "is_checked": updated.is_checked,
         }
+
+    async def _tool_delete_check(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Delete a check."""
+        from recce.apis.check_func import export_persistent_state
+        from recce.models import CheckDAO
+
+        check_id = arguments.get("check_id")
+        if not check_id:
+            raise ValueError("check_id is required")
+
+        if not CheckDAO().delete(check_id):
+            raise ValueError(f"Check with ID {check_id} not found")
+        await asyncio.get_event_loop().run_in_executor(None, export_persistent_state)
+
+        return {"check_id": str(check_id), "deleted": True}
 
     async def run(self):
         """Run the MCP server in stdio mode"""

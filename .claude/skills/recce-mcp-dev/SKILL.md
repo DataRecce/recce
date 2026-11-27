@@ -108,16 +108,16 @@ branches, the `_handle_*` adapters, or `tests/mcp_compat.py` has to be checked t
 only in the default pytest run.
 
 **Tool count — mode-dependent, verify per mode.** `list_tools` registers **at
-most 24** tools, and how many it actually returns depends on the server mode:
+most 25** tools, and how many it actually returns depends on the server mode:
 
 | Gate | Count | Tools |
 |------|-------|-------|
 | always | 7 | `lineage_diff`, `schema_diff`, `get_model`, `get_cll`, `get_server_info`, `set_backend`, `select_nodes` |
 | `self.backend is None` (local only) | 1 | `analyze_model` |
-| `self.mode == RecceServerMode.server` | 13 | `row_count_diff`, `query`, `query_diff`, `profile_diff`, `value_diff`, `value_diff_detail`, `top_k_diff`, `histogram_diff`, `list_checks`, `run_check`, `create_check`, `update_check`, `impact_analysis` |
+| `self.mode == RecceServerMode.server` | 14 | `row_count_diff`, `query`, `query_diff`, `profile_diff`, `value_diff`, `value_diff_detail`, `top_k_diff`, `histogram_diff`, `list_checks`, `run_check`, `create_check`, `update_check`, `delete_check`, `impact_analysis` |
 | server mode **and** `self.backend is not None` (cloud only) | 4 | `list_suggested_actions`, `create_suggested_action`, `update_suggested_action`, `delete_suggested_action` |
 
-So preview and read-only mode expose 8 locally and 7 in cloud; server mode exposes 21 locally and 24 in cloud. `grep -c
+So preview and read-only mode expose 8 locally and 7 in cloud; server mode exposes 22 locally and 25 in cloud. `grep -c
 'Tool(' recce/mcp_server.py` counts **code sites**, not any single session's
 surface — read the `if` guards around the `analyze_model` and server-mode blocks
 before quoting a number.
