@@ -836,6 +836,29 @@ async def test_set_backend_success_notifies_tool_list_changed():
 
 
 @pytest.mark.asyncio
+async def test_set_backend_notifies_tool_list_changed_on_modern_protocol():
+    import anyio
+
+    pytest.importorskip("mcp.server.subscriptions")
+    from mcp import Client
+    from mcp.shared.subscriptions import ToolsListChanged
+
+    cloud_backend = AsyncMock()
+    cloud_backend.instance_status = "ready"
+    server = RecceMCPServer(api_token="token-abc")
+
+    with patch("recce.mcp_server.CloudBackend.create", return_value=cloud_backend):
+        async with Client(server.server, mode="2026-07-28") as client:
+            async with client.listen(tools_list_changed=True) as sub:
+                result = await client.call_tool("set_backend", {"mode": "cloud", "session_id": "sess-123"})
+                assert result.is_error is False
+                with anyio.fail_after(5):
+                    event = await sub.__anext__()
+
+    assert isinstance(event, ToolsListChanged)
+
+
+@pytest.mark.asyncio
 async def test_set_backend_failure_does_not_notify_tool_list_changed():
     server = RecceMCPServer()
     ctx = fake_request_context()

@@ -27,6 +27,15 @@ from mcp.server.lowlevel import NotificationOptions
 from mcp.server.stdio import stdio_server
 from mcp.types import CallToolResult, ListToolsResult, TextContent, Tool
 
+try:
+    from mcp.server.subscriptions import (
+        InMemorySubscriptionBus,
+        ListenHandler,
+        ToolsListChanged,
+    )
+except ImportError:
+    InMemorySubscriptionBus = None
+
 # DRC-3634: submit_run is the run-persistence entry point shared with the
 # recce server's run_router.  Local-mode ad-hoc diff tools import it to
 # persist Runs to the in-process RecceContext so the state exported to S3
@@ -719,6 +728,7 @@ class RecceMCPServer:
         self._dbt_invocation = None
         self._base_status = "unknown"
         self._tool_schema_cache: Dict[str, Dict[str, Any]] = {}
+        self._subscription_bus = None
         self.mcp_logger = MCPLogger(debug=debug, log_file=log_file)
         self.server = self._build_server()
 
@@ -751,11 +761,17 @@ class RecceMCPServer:
             server.call_tool()(self._call_tool_v1)
             return server
 
+        listen_kwargs = {}
+        if InMemorySubscriptionBus is not None:
+            self._subscription_bus = InMemorySubscriptionBus()
+            listen_kwargs["on_subscriptions_listen"] = ListenHandler(self._subscription_bus)
+
         return Server(
             "recce",
             instructions=self._build_instructions(),
             on_list_tools=self._handle_list_tools,
             on_call_tool=self._handle_call_tool,
+            **listen_kwargs,
         )
 
     async def _handle_list_tools(self, ctx, params) -> ListToolsResult:
@@ -768,12 +784,16 @@ class RecceMCPServer:
         await self._notify_tool_list_changed(name, self.server.request_context.session)
         return content
 
-    @staticmethod
-    async def _notify_tool_list_changed(name: str, session) -> None:
+    async def _notify_tool_list_changed(self, name: str, session) -> None:
         # set_backend moves the backend-dependent gates in _list_tools. A client keeps
         # the list it read at startup until it is told to read it again.
-        if name == "set_backend":
-            await session.send_tool_list_changed()
+        if name != "set_backend":
+            return
+        await session.send_tool_list_changed()
+        # On protocol 2026-07-28 the notification above is not delivered; the client
+        # receives it only through its subscriptions/listen stream.
+        if self._subscription_bus is not None:
+            await self._subscription_bus.publish(ToolsListChanged())
 
     def _initialization_options(self):
         return self.server.create_initialization_options(NotificationOptions(tools_changed=True))
