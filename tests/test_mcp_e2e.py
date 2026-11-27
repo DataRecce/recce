@@ -1273,6 +1273,7 @@ class TestMCPProtocolE2E:
                 "run_check",
                 "create_check",
                 "update_check",
+                "delete_check",
             }
             assert expected == tool_names
 

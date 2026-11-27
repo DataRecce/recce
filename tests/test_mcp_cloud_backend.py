@@ -451,6 +451,45 @@ async def test_update_check_rejects_a_call_with_no_field_to_change(cloud_request
     assert cloud_requests.call_count == 1
 
 
+@pytest.mark.asyncio
+async def test_delete_check_sends_delete_to_the_session_check(cloud_requests):
+    cloud_requests.side_effect = [MockResponse(204), MockResponse(200, {"message": "Check deleted"})]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    result = await backend.call_tool("delete_check", {"check_id": "check-1"})
+
+    method, url = cloud_requests.call_args.args[:2]
+    assert method == "DELETE"
+    assert url == "https://cloud.reccehq.com/api/v2/sessions/sess-123/checks/check-1"
+    assert result == {"check_id": "check-1", "deleted": True}
+
+
+@pytest.mark.asyncio
+async def test_delete_check_surfaces_a_rejected_task_token(cloud_requests):
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(403, text='{"detail":"Task tokens cannot delete checks"}'),
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="rct-task")
+
+    with pytest.raises(RecceCloudException) as excinfo:
+        await backend.call_tool("delete_check", {"check_id": "check-1"})
+
+    assert excinfo.value.status_code == 403
+    assert "Task tokens cannot delete checks" in excinfo.value.reason
+
+
+@pytest.mark.asyncio
+async def test_delete_check_requires_check_id(cloud_requests):
+    cloud_requests.side_effect = [MockResponse(204)]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    with pytest.raises(ValueError, match="check_id is required"):
+        await backend.call_tool("delete_check", {})
+
+    assert cloud_requests.call_count == 1
+
+
 _ACTION = {
     "id": "action-1",
     "session_id": "sess-123",

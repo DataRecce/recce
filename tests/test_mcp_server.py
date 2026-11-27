@@ -808,6 +808,51 @@ class TestRecceMCPServer:
         mock_check_dao.update_check_by_id.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_tool_delete_check_removes_and_persists(self, mcp_server):
+        server, _ = mcp_server
+
+        mock_check_dao = MagicMock()
+        mock_check_dao.delete.return_value = True
+
+        with (
+            patch("recce.models.CheckDAO", return_value=mock_check_dao),
+            patch("recce.apis.check_func.export_persistent_state") as mock_export,
+        ):
+            result = await server._tool_delete_check({"check_id": "check-1"})
+
+        mock_check_dao.delete.assert_called_once_with("check-1")
+        mock_export.assert_called_once()
+        assert result == {"check_id": "check-1", "deleted": True}
+
+    @pytest.mark.asyncio
+    async def test_tool_delete_check_unknown_check_id(self, mcp_server):
+        server, _ = mcp_server
+
+        mock_check_dao = MagicMock()
+        mock_check_dao.delete.return_value = False
+
+        with (
+            patch("recce.models.CheckDAO", return_value=mock_check_dao),
+            patch("recce.apis.check_func.export_persistent_state") as mock_export,
+        ):
+            with pytest.raises(ValueError, match="not found"):
+                await server._tool_delete_check({"check_id": "missing"})
+
+        mock_export.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_delete_check_is_listed_only_in_server_mode(self):
+        server_tools = await invoke_list_tools(RecceMCPServer(MagicMock(spec=RecceContext)))
+        preview = RecceMCPServer(MagicMock(spec=RecceContext), mode=RecceServerMode.preview)
+        preview_tools = await invoke_list_tools(preview)
+
+        result = await TestCallToolHandler._invoke_call_tool(preview, "delete_check", {"check_id": "check-1"})
+
+        assert "delete_check" in {t.name for t in server_tools}
+        assert "delete_check" not in {t.name for t in preview_tools}
+        assert result.isError is True
+
+    @pytest.mark.asyncio
     async def test_tool_create_check_idempotent_update(self, mcp_server):
         """create_check with same (type, params) updates instead of creating."""
         server, _ = mcp_server
